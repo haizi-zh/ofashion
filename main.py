@@ -1,9 +1,11 @@
+import emiliopucci
+import common
+
 __author__ = 'Zephyre'
 
-import common
-import samsonite
 
 if __name__ == "__main__":
-    entries = samsonite.fetch()
-    for store in entries:
-        print store
+    entries = emiliopucci.fetch()
+    # print('%d stores found.'%entries.__len__())
+    # for c in entries:
+    #     print c
