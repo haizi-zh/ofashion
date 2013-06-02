@@ -7,6 +7,7 @@ import donna_karan
 import ysl
 import samsonite
 import y3
+import shanghaitang
 
 __author__ = 'Zephyre'
 
@@ -20,4 +21,5 @@ if __name__ == "__main__":
     # entries = samsonite.fetch()
     # y3.fetch()
     # zegna.fetch()
+    shanghaitang.fetch()
     print 'DONE!'
