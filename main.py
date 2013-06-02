@@ -1,11 +1,11 @@
-import emiliopucci
+import debeers
 import common
 
 __author__ = 'Zephyre'
 
 
 if __name__ == "__main__":
-    entries = emiliopucci.fetch()
+    entries = debeers.fetch()
     # print('%d stores found.'%entries.__len__())
     # for c in entries:
     #     print c
