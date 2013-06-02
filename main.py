@@ -21,5 +21,6 @@ if __name__ == "__main__":
     # entries = samsonite.fetch()
     # y3.fetch()
     # zegna.fetch()
-    shanghaitang.fetch()
+    ysl.fetch()
+    # shanghaitang.fetch()
     print 'DONE!'

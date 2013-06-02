@@ -42,6 +42,8 @@ def reformat_addr(addr):
     new_addr = re.subn(ur'[\s\u3000]+', ' ', new_addr)[0]
     new_addr = re.subn(ur'\s+,', u',', new_addr)[0]
     new_addr = re.subn(ur',+', u',', new_addr)[0]
+    if new_addr[-1].__eq__(','):
+        new_addr = new_addr[0:-1]
     return new_addr
 
 
@@ -148,3 +150,24 @@ def post_data(url, data):
         else:
             print 'misc error: ' + e.__str__()
         raise e
+
+
+def walk_tree(node):
+    """
+    从根节点出发，遍历
+    """
+    try:
+        func = node['func']
+        data = node['data']
+    except TypeError, e:
+        print e.__str__()
+
+    if func is None:
+        # 叶节点
+        return [data]
+    else:
+        siblings = func(data)
+        leaf_list = []
+        for entry in siblings:
+            leaf_list.extend(walk_tree(entry))
+        return leaf_list

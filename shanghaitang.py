@@ -2,13 +2,9 @@
 
 __author__ = 'Zephyre'
 
-import json
 import string
-import urllib
-import urllib2
 import re
 import common
-import string
 
 url = 'http://www.shanghaitang.com/stores.html'
 
@@ -111,6 +107,12 @@ def get_stores(html, cities):
 
 
 def fetch():
-    html = common.get_data(url)
-    c1, c2, c3 = get_district(html)
-    return get_stores(html, c3)
+    def func(url):
+        html = common.get_data(url)
+        c3 = get_district(html)[2]
+        stores=get_stores(html,c3)
+        return [{'func':None,'data':s} for s in stores]
+
+    node = {'func': func, 'data': url}
+    return common.walk_tree(node)
+
