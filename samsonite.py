@@ -91,11 +91,11 @@ def fetch():
 
             itor = re.finditer(r'</script>\s*?(\w+)\s*?</span>', html, re.U | re.S)
             for m in itor:
-                store_names.append(m.group(1))
+                store_names.append(m.group(1).strip())
 
             itor = re.finditer(r'<!--<tr><td class="text">(\w+)</td></tr>-->', html, re.U | re.S)
             for m in itor:
-                store_addrs.append(m.group(1))
+                store_addrs.append(common.reformat_addr(m.group(1)))
             count = min(store_addrs.__len__(), store_names.__len__())
 
             for i in xrange(count):

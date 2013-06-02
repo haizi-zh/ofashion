@@ -68,7 +68,7 @@ def get_stores(url):
             store_proto['coord'] = {'lat': string.atof(m[0]), 'lng': string.atof(m[1])}
 
         for m in re.findall(r'<span class="map-address">(.*?)</span>', sub_html):
-            store_proto['addr'] = common.html2plain(m.strip())
+            store_proto['addr'] = common.reformat_addr(m.strip())
 
         # phone: <span class="type">phone:</span> +86 (0431) 88981642<br />
         for m in re.findall(r'<span class="type">phone:</span>(.*?)<br />', sub_html):
@@ -114,7 +114,9 @@ def recur_stores(url, data=None, level=0):
         stores.extend(get_stores(url))
     return stores
 
+
 func_map = {'get_countries': get_countries, 'get_stores': get_stores}
+
 
 def fetch():
     # 根节点

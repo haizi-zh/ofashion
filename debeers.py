@@ -14,17 +14,10 @@ def get_stores(url, type, opt):
     """
     获得洲，城市等信息
     """
-    opener = urllib2.build_opener()
-    opener.addheaders = [("User-Agent",
-                          "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
-                          "Chrome/27.0.1453.94 Safari/537.36"),
-                         ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
     host = 'http://www.debeers.com.cn'
     if type == 0:
         url = host + '/stores'
-    print('Fetching for %s' % url)
-    response = opener.open(url)
-    html = response.read()
+    html = common.get_data(url)
 
     if type == 0:
         # 洲列表
@@ -70,6 +63,7 @@ def get_stores(url, type, opt):
 
         stores = []
         for e in entries:
+            opt['url'] = e['url']
             stores.extend(get_stores(e['url'], 2, opt))
         return stores
     elif type == 2:
@@ -83,14 +77,16 @@ def get_stores(url, type, opt):
         html = html[start:end]
 
         store = {'type': 2}
+        store['url'] = opt['url']
+        store['continent'] = opt['continent']
 
         m = re.findall(r'<h2 class="store-name">(.+?)</h2>', html, re.U)
         if m is not None:
             store['name'] = m[0].strip()
 
-        start = html.find('<h3>营业时间</h3>')
+        start = html.find(u'<h3>营业时间</h3>')
         if not start == -1:
-            start += '<h3>营业时间</h3>'.__len__()
+            start += u'<h3>营业时间</h3>'.__len__()
             end = html.find('</div>', start)
             hour_str = html[start:end].strip()
             store['hours'] = hour_str
@@ -110,16 +106,14 @@ def get_stores(url, type, opt):
             if m is not None:
                 store['email'] = m[0]
 
-            start = addr_src.find('<h3>地址</h3>')
+            start = addr_src.find(u'<h3>地址</h3>')
             if not start == -1:
-                start += '<h3>地址</h3>'.__len__()
+                start += u'<h3>地址</h3>'.__len__()
                 end = addr_src.find('<p', start)
-                addr_src = addr_src[start:end].strip()
-                addr_entries = addr_src.split('<br />')
-                addr_entries = [val.strip() for val in addr_entries]
-                store['addr'] = '\r\n'.join(addr_entries)
+                addr_src = common.reformat_addr(addr_src[start:end])
+                store['addr'] = addr_src
 
-        print('Found store: %s, %s, %s' % (store['name'], store['tel'], opt['continent']))
+        print('Found store: %s, %s, %s, (%s)' % (store['name'], store['addr'], store['tel'], store['continent']))
         return [store]
 
 

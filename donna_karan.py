@@ -9,6 +9,8 @@ import common
 __author__ = 'Zephyre'
 
 __brand__ = 'dkny'
+__brand__ = 'donnakaran'
+
 
 def get_district(url, opt):
     """
@@ -56,8 +58,10 @@ def get_stores(url):
     html = response.read()
     stores = json.loads(html)[u'Stores'][u'Items']
     for s in stores:
-        print('Found store: %s, %s' % (s['Name'], s['Address']))
+        print('Found store: %s, %s. Tel: %s, lat=%s, lng=%s' % (
+            s['Name'], s['Address'], s['Phone'], s['Latitude'], s['Longitude']))
     return stores
+
 
 def fetch_stores(url, type, data):
     """
@@ -110,7 +114,7 @@ def fetch_stores(url, type, data):
                   urllib.urlencode({'output': 'json', 'country': country, 'region': region,
                                     'city': c['name'],
                                     'zip': '', 'brand': __brand__, 'p': 1})
-            print('Fetching for %s...' % c['name'])
+            print('\tFetching for %s...' % c['name'])
             col = fetch_stores(url, 3, None)
             if col is not None:
                 stores.extend(col)
@@ -121,5 +125,5 @@ def fetch_stores(url, type, data):
 
 
 def fetch(brand):
-    __brand__=brand
+    __brand__ = brand
     return fetch_stores(None, 0, None)

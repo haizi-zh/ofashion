@@ -24,6 +24,26 @@ lng = 'lng'
 lat = 'lat'
 store_type = 'storetype'
 
+# 中日韩Unicode字符区
+ucjk = ur'\u2E80-\u9FFF'
+# 全角空格
+ucjk_whitespace = ur'\u3000'
+
+
+def reformat_addr(addr):
+    """
+    格式化地址字符串，将多余的空格、换行、制表符等合并
+    """
+    new_addr = html2plain(addr.strip())
+    # <br/>换成换行符
+    new_addr = re.subn(ur'<\s*br\s*/>', u'\r\n', new_addr)[0]
+    # 换行转换
+    new_addr = re.subn(ur'(?:\r\n)+', ', ', new_addr)[0]
+    new_addr = re.subn(ur'[\s\u3000]+', ' ', new_addr)[0]
+    new_addr = re.subn(ur'\s+,', u',', new_addr)[0]
+    new_addr = re.subn(ur',+', u',', new_addr)[0]
+    return new_addr
+
 
 def html2plain(text):
     """
@@ -57,22 +77,20 @@ def proc_response(response):
         desc = hd['content-type']
         m = re.findall('charset=(.*)', desc)
         if m.__len__() > 0:
-            charset = m[0]
+            charset = m[0].lower()
 
     data = response.read()
-    if 'content-encoding' in hd:
-        desc = hd['content-encoding']
-        if desc.__eq__('gzip'):
-            html = decode_data(data)
-        else:
-            html = data
+    if 'content-encoding' in hd and hd['content-encoding'].lower().__eq__('gzip'):
+        html = decode_data(data)
+    else:
+        html = data
 
-    if charset.__eq__('utf-8'):
-        html = html.decode('utf-8')
-    elif charset in set(('gb2312', 'gb18030', 'gbk')):
+    if charset in set(('gb2312', 'gb18030', 'gbk')):
         html = html.decode('gb18030')
     elif charset.__eq__('big5'):
         html = html.decode('big5')
+    else:
+        html = html.decode('utf-8')
     return html
 
 

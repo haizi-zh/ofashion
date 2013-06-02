@@ -1,10 +1,12 @@
 # coding=utf-8
 from HTMLParser import HTMLParser
+import common
 
 __author__ = 'Zephyre'
 
 import urllib2
-import ZenithWatch
+import zenithwatch
+
 
 def y3continents(url, tag, sel, fetchStore):
     """
@@ -128,13 +130,14 @@ def y3continents(url, tag, sel, fetchStore):
     parser.procStore = fetchStore
     parser.feed(html)
     if fetchStore:
+        for store in parser.storeData:
+            store['Address'] = common.reformat_addr(store['Address'].decode('utf-8'))
         return parser.storeData
     else:
         return parser.continentData
 
 
-def run():
-
+def fetch():
     def procCity(url):
         try:
             stores = y3continents(url, 'store-list', None, True)
