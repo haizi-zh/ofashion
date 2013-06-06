@@ -1,3 +1,6 @@
+# coding=utf-8
+import re
+
 import emiliopucci
 import zegna
 import debeers
@@ -11,9 +14,27 @@ import shanghaitang
 
 __author__ = 'Zephyre'
 
+
+def calc(val):
+    a = (0.1, 0.15, 0.4, 0.1, 0.15, 0.1)
+    tot = map(lambda x, y: x * y, a, val)
+    return sum(tot)
+
+
+def test():
+    common.load_rev_char()
+    print common.html2plain('&lt;')
+
+
 if __name__ == "__main__":
-    # entries = ysl.fetch()
-    # entries = zenithwatch.fetch()
+    # test()
+    # db=common.StoresDb()
+    # db.connect_db()
+    # db.execute('INSERT INTO stores (brand_id, brandname_e) VALUES (1234, "你好Haizi")')
+    # db.disconnect_db()
+
+
+    # zenithwatch.fetch()
     # entries = emiliopucci.fetch()
     # entries = donna_karan.fetch('dnky')
     # entries = donna_karan.fetch('donnakaran')
@@ -21,6 +42,8 @@ if __name__ == "__main__":
     # entries = samsonite.fetch()
     # y3.fetch()
     # zegna.fetch()
-    ysl.fetch()
+    # ysl.fetch()
     # shanghaitang.fetch()
+    # db_test()
+
     print 'DONE!'

@@ -4,12 +4,17 @@ import string
 import urllib
 import urllib2
 import re
-import common
+import common as cm
 
 __author__ = 'Zephyre'
 
 __brand__ = 'dkny'
 __brand__ = 'donnakaran'
+
+db = None
+brand_id = 10110
+brandname_e = 'Donna Karan'
+brandname_c = u'唐娜·凯伦'
 
 
 def get_district(url, opt):
@@ -55,11 +60,61 @@ def get_stores(url):
                           "Chrome/27.0.1453.94 Safari/537.36"),
                          ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
     response = opener.open(url)
-    html = response.read()
-    stores = json.loads(html)[u'Stores'][u'Items']
+    html = response.read().encode('utf-8')
+    jsonobj = json.loads(html)
+    stores = jsonobj[u'Stores'][u'Items']
+    region_list = jsonobj['Regions']
+    region_id = jsonobj['Region']
+    region = ''
+    if len(region_list) > 0 and region_id != 0:
+        for val in region_list:
+            if val['RegionId'] == region_id:
+                region = val['Name']
+                break
+
+    country = jsonobj['CurrentCountry']['Name']
     for s in stores:
-        print('Found store: %s, %s. Tel: %s, lat=%s, lng=%s' % (
-            s['Name'], s['Address'], s['Phone'], s['Latitude'], s['Longitude']))
+        # print('Found store: %s, %s. Tel: %s, lat=%s, lng=%s' % (
+        #     s['Name'], s['Address'], s['Phone'], s['Latitude'], s['Longitude']))
+
+        store_type = ['']
+        # Some stores may have varioius store types
+        if len(s['StoreTypes']) > 0:
+            store_type = list(val['Name'] for val in s['StoreTypes'])
+        if s['Url'] is not None:
+            url = s['Url']
+        else:
+            url = ''
+        if s['ZipCode'] is not None and not s['ZipCode'].__eq__(''):
+            zip = s['ZipCode']
+        else:
+            zip = ''
+        local_addr = s['Address']
+        if local_addr[-1] == '.':
+            local_addr = local_addr[:-1]
+        if not zip.__eq__(''):
+            addr = u'%s, %s, %s' % (local_addr, s['City'], zip)
+        else:
+            addr = u'%s, %s' % (local_addr, s['City'])
+        if region.__eq__(''):
+            addr = u'%s, %s' % (addr, country)
+        else:
+            addr = u'%s, %s, %s' % (addr, region, country)
+
+        for t in store_type:
+            entry = {'brand_id': brand_id, 'brandname_e': brandname_e,
+                     'addr_e': addr, 'country_e': country, 'city_e': s['City'], 'comments': s['Comments'],
+                     'province_e': region, 'zip': zip,
+                     'email': s['Email'], 'fax': s['Fax'], 'lat': s['Latitude'], 'lng': s['Longitude'],
+                     'name_e': s['Name'], 'tel': s['Phone'], 'store_type': t, 'url': url}
+
+            print 'Found store: %s, %s' % (s['Name'], addr)
+            fields = u'(' + (u', '.join(entry.keys())) + u')'
+            values = u'(' + (u','.join([u'"' + unicode(entry[k]) + u'"' for k in entry.keys()])) + u')'
+            # statement = u'DELETE FROM stores WHERE brand_id=%d AND name_e="%s"' % (brand_id, s['Name'])
+            # db.execute(statement)
+            statement = u'INSERT INTO stores %s VALUES %s' % (fields, values)
+            db.execute(statement)
     return stores
 
 
@@ -74,8 +129,8 @@ def fetch_stores(url, type, data):
         countries = get_district(url, opt)
         stores = []
         for c in countries:
-            if not c['code'].__eq__('us'):
-                continue
+            # if not c['code'].__eq__('us'):
+            #     continue
 
             url = 'http://www.donnakaran.com/store/formpartial?' + urllib.urlencode({'country': c['code']})
             print('Fetching for %s...' % c['name'])
@@ -126,4 +181,10 @@ def fetch_stores(url, type, data):
 
 def fetch(brand):
     __brand__ = brand
-    return fetch_stores(None, 0, None)
+    global db
+    db = cm.StoresDb()
+    db.connect_db()
+    # Walk from the root node, where level == 1.
+    results = fetch_stores(None, 0, None)
+    db.disconnect_db()
+    return results

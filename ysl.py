@@ -2,94 +2,139 @@
 
 __author__ = 'Zephyre'
 
-import json
-import string
-import urllib
-import urllib2
 import re
-import common
+import common as cm
 
 url = 'http://www.ysl.com/en_US/stores'
+db = None
+brand_id = 10388
+brandname_e = 'YSL (Yve Saint Laurent)'
+brandname_c = u'伊夫圣罗兰'
 
 
 def get_store_details(html, opt):
-    stores = []
-    for m in re.findall('<li>\s*?<address>\s*?<h2>(.*?)</h2><br/>(.*?)</address>\s*?</li>', html, re.S):
+    # For US cities, the content might be like: Houston, Texas. Strip the state info:
+    if opt[cm.country_e].strip().__eq__(u'United States'):
+        city = opt[cm.city_e]
+        idx = city.rfind(',')
+        if idx != -1:
+            opt[cm.city_e] = city[:idx].strip().upper()
+            opt[cm.province_e] = city[idx + 1:].strip().upper()
+
+    def f(m):
         store_name = m[0].strip()
         addr_str = m[1].strip()
 
         spl = addr_str.split('<br/>')
-        store_type = spl[0].strip()
-        store_hour = spl[-2].strip()
-        store_tel = spl[-3].strip()
-        store_addr = common.reformat_addr('\r\n'.join([val.strip() for val in spl[1:-3]]))
+        store_type = cm.html2plain(spl[0].strip())
 
-        stores.append(
-            {'continent': opt['continent'], 'city': opt['city'], 'country': opt['country'], 'name': store_name,
-             'addr': store_addr, 'type': store_type, 'opening': store_hour, 'tel': store_tel})
-        print('Found store: %s | %s | %s | (%s | %s)' % (store_name, store_addr, store_tel, opt['country'], opt['continent']))
+        store_addr = spl[1].strip()
+        hour_idx = 2
+        store_tel = ''
+        for i in xrange(2, len(spl)):
+            # If this is not a phone number:
+            tel = cm.extract_tel(spl[i])
+            if tel is None:
+                store_addr += ', ' + spl[i]
+                hour_idx = i + 1
+            else:
+                store_tel = spl[i].strip()
+                hour_idx = i + 1
+                break
+
+        if hour_idx < len(spl):
+            store_hour = cm.html2plain(', '.join(spl[hour_idx:])).strip()
+        else:
+            store_hour = ''
+
+        # store_addr = cm.reformat_addr('\r\n'.join([val.strip() for val in spl[1:-3]]))
+        store_addr = cm.reformat_addr(store_addr)
+        store_entry = {cm.continent_e: opt[cm.continent_e].strip().upper(), cm.city_e: opt[cm.city_e].strip().upper(),
+                       cm.country_e: opt[cm.country_e].strip().upper(),
+                       cm.name_e: cm.name_e, cm.addr_e: store_addr, cm.store_type: store_type, cm.hours: store_hour,
+                       cm.tel: store_tel}
+        if opt.has_key(cm.province_e):
+            store_entry[cm.province_e] = opt[cm.province_e]
+        else:
+            store_entry[cm.province_e] = ''
+        print(
+            u'Found store: %s | %s | %s | (%s | %s)' % (
+                store_name, store_addr, store_tel, opt[cm.country_e], opt[cm.continent_e]))
+
+        s = u'INSERT INTO stores (brand_id, brandname_e, brandname_c, continent_e, country_e, province_e, city_e, ' \
+            u'name_e, addr_e, store_type, hours, tel) VALUES (%d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", ' \
+            u'"%s", "%s", "%s")' % (
+                brand_id, brandname_e, brandname_c, store_entry[cm.continent_e], store_entry[cm.country_e],
+                store_entry[cm.province_e], store_entry[cm.city_e], store_name, store_addr, store_type, store_hour,
+                store_tel)
+        db.execute(s)
+        return store_entry
+
+    stores = [f(m) for m in re.findall('<li>\s*?<address>\s*?<h2>(.*?)</h2><br/>(.*?)</address>\s*?</li>', html, re.S)]
     return stores
 
 
 def get_entries(html, pat):
-    entries = [m for m in re.findall(pat, html, re.S | re.U)]
+    entries = [m.strip() for m in re.findall(pat, html, re.S | re.U)]
 
     # 分成若干洲片段
-    con_split = [html.find(pat) for pat in [r'<li><span>%s</span>' % con for con in entries]]
+    con_split = []
+    for pat in [r'<li><span>\s*?%s\s*?</span>' % con for con in entries]:
+        itor = re.finditer(pat, html)
+        for m in itor:
+            con_split.append(m.start())
+            break
+
+    # con_split = [html.find(pat) for pat in [r'<li><span>\s*?%s\s*?</span>' % con for con in entries]]
     con_split.append(-1)
     con_map = {} # {'America':'html sub str'}
     for i in xrange(con_split.__len__() - 1):
-        con_map[entries[i]] = html[con_split[i]:con_split[i + 1]]
-
+        con_map[entries[i]] = html[con_split[i]:con_split[i + 1]].strip()
     return con_map
-
-def get_continents(url):
-    pat = ur'<li><span>([\w\s]+?)</span>\s+<ul class="countries">'
-    return get_entries(common.get_data(url), pat)
-
-
-def get_countries(html):
-    pat = ur'<li><span>([\w\s]+?)</span>\s+<ul class="cities">'
-    return get_entries(html, pat)
-
-
-def get_cities(html):
-    pat = ur'<li><span>([\w\s]+?)</span>\s+<ul class="stores">'
-    return get_entries(html, pat)
 
 
 def fetch():
-    def func(o_data, level):
+    pattern = [ur'<li><span>([\w\s,]+?)</span>\s+<ul class="countries">[\w\s]',
+               ur'<li><span>([\w\s,]+?)</span>\s+<ul class="cities">[\w\s]',
+               ur'<li><span>([\w\s,]+?)</span>\s+<ul class="stores">']
+
+    def func(data, level):
+        """
+        :param data:
+        :param level:
+        :return: siblings
+        """
         if level == 4:
-            # 返回商店信息
-            stores = get_store_details(o_data['content'],
-                                       {'city': o_data['city'], 'country': o_data['country'],
-                                        'continent': o_data['continent']})
+            # get store details
+            stores = get_store_details(data['content'], data)
             return [{'func': None, 'data': s} for s in stores]
         else:
-            func_map = {1: get_continents, 2: get_countries, 3: get_cities}
             if level == 1:
-                param = o_data['url']
+                content = cm.get_data(data['url'])
             else:
-                param = o_data['content']
+                content = data['content']
 
-            entries = func_map[level](param)
-            siblings = []
-            for ent in entries:
+            entries = get_entries(content, pattern[level - 1])
+
+            def siblings_data(ent):
+                # Each time when a new level is reached, a new field is added to data, and the 'content'
+                # field is updated. This is returned to build new siblings.
+                local_d = dict(data)
                 if level == 1:
-                    data = {'continent': ent, 'content': entries[ent]}
+                    local_d[cm.continent_e] = ent
                 elif level == 2:
-                    data = {'country': ent, 'content': entries[ent], 'continent': o_data['continent']}
+                    local_d[cm.country_e] = ent
                 elif level == 3:
-                    data = {'city': ent, 'content': entries[ent], 'country': o_data['country'],
-                            'continent': o_data['continent']}
-                siblings.append({'func': lambda data: func(data, level + 1), 'data': data})
-            return siblings
+                    local_d[cm.city_e] = ent
+                local_d['content'] = entries[ent]
+                return local_d
 
-    node = {'func': lambda data: func(data, 1), 'data': {'url': url}}
-    return common.walk_tree(node)
+            return [{'func': lambda data: func(data, level + 1), 'data': siblings_data(ent)} for ent in entries]
 
-
-
-
-
+    global db
+    db = cm.StoresDb()
+    db.connect_db()
+    # Walk from the root node, where level == 1.
+    results = cm.walk_tree({'func': lambda data: func(data, 1), 'data': {'url': url}})
+    db.disconnect_db()
+    return results
