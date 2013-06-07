@@ -3,7 +3,6 @@ import string
 
 __author__ = 'Zephyre'
 
-import urllib2
 import re
 import common as cm
 
@@ -117,14 +116,14 @@ def fetch_stores(data):
         store_item[cm.brandname_c] = brandname_c
         cm.chn_check(store_item)
         print '%s: Found store: %s, %s (%s, %s)' % (
-        brandname_e, store_item[cm.name_e], store_item[cm.addr_e], store_item[cm.country_e],
-        store_item[cm.continent_e])
+            brandname_e, store_item[cm.name_e], store_item[cm.addr_e], store_item[cm.country_e],
+            store_item[cm.continent_e])
         db.insert_record(store_item, 'stores')
         stores.append(store_item)
     return stores
 
 
-def fetch(level=1, data=None):
+def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
         """
         :param data:
@@ -145,24 +144,10 @@ def fetch(level=1, data=None):
 
     global db
     db = cm.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
     results = cm.walk_tree({'func': lambda data: func(data, level), 'data': data})
     db.disconnect_db()
     return results
-
-
-# def fetch1():
-#     entries = get_countries()
-#     stores = []
-#     for con in entries.keys():
-#         print('Fetching for %s...' % con)
-#         for c in entries[con]:
-#             print('Fetching for %s...' % c['country'])
-#             col = fetch_stores({'continent':con, 'country':c, 'country_id':c['country_id']})
-#             if col is not None:
-#                 stores.extend(col)
-#                 for s in col:
-#                     print(s)

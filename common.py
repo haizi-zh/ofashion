@@ -261,7 +261,42 @@ def extract_tel(text):
     return ''
 
 
-def post_data(url, data):
+def extract_closure(html, start_tag, end_tag):
+    """
+    解析HTML标签，将对应的标签之间的内容取出来。
+    :param html:
+    :param start_tag:
+    :param end_tag:
+    :return:
+    """
+    # it=re.finditer(start_tag, html)
+    # try:
+    #     m=it.next()
+    #     start=m.start()+len(m.group())
+    # except StopIteration:
+    #     return ''
+
+    it = re.finditer(ur'(%s|%s)' % (start_tag, end_tag), html)
+    cnt = 0
+    start = 0
+    end = 0
+    for m in it:
+        term = m.group()
+        if re.match(start_tag, term):
+            if cnt == 0:
+                start = m.start()
+            cnt += 1
+        else:
+            cnt -= 1
+        end = m.end()
+        if cnt < 0:
+            return ['', 0, 0]
+        elif cnt == 0:
+            break
+    return [html[start:end], start, end]
+
+
+def post_data(url, data=None, timeout=timeout, retry=3):
     """
     POST指定url
     """
@@ -272,33 +307,40 @@ def post_data(url, data):
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
 
-    try:
-        req = urllib2.Request(url)
-        req.add_data(data)
-        for pair in headers:
-            req.add_header(pair[0], pair[1])
-        response = urllib2.urlopen(req)
+    i = -1
+    while True:
+        i += 1
+        try:
+            req = urllib2.Request(url)
+            if data is not None:
+                req.add_data(urllib.urlencode(data))
+            for pair in headers:
+                req.add_header(pair[0], pair[1])
+            response = urllib2.urlopen(req, timeout=timeout)
 
-        return proc_response(response)
-    except Exception, e:
-        if isinstance(e, urllib2.HTTPError):
-            print 'http error: {0}'.format(e.code)
-        elif isinstance(e, urllib2.URLError) and isinstance(e.reason, socket.timeout):
-            print 'url error: socket timeout {0}'.format(e.__str__())
-        else:
-            print 'misc error: ' + e.__str__()
-        raise e
+            return proc_response(response)
+        except Exception, e:
+            if isinstance(e, urllib2.HTTPError):
+                print 'http error: {0}'.format(e.code)
+            elif isinstance(e, urllib2.URLError) and isinstance(e.reason, socket.timeout):
+                print 'url error: socket timeout {0}'.format(e.__str__())
+            else:
+                print 'misc error: ' + e.__str__()
+            if i >= retry:
+                raise e
+            else:
+                continue
 
 
 class StoresDb(object):
     def StoresDb(self):
         self.__brand_store_db = None
 
-    def connect_db(self):
+    def connect_db(self, host='localhost', user='root', passwd='', db='brand_stores'):
         """
         Connect to the brand store database
         """
-        self.__brand_store_db = _mysql.connect(user='root', passwd='07996019', db='brand_stores')
+        self.__brand_store_db = _mysql.connect(host=host, user=user, passwd=passwd, db=db)
         self.__brand_store_db.query("SET NAMES 'utf8'")
 
     def disconnect_db(self):
@@ -413,15 +455,15 @@ def load_geo():
                 # 新的国家
                 item = {'country_e': country_e, 'country_c': country_c, 'continent_e': continent_e,
                         'continent_c': continent_c}
-                country_map_c[country_c] =item
-                country_map_e[country_e]=item
+                country_map_c[country_c] = item
+                country_map_e[country_e] = item
             else:
                 if country_e in country_map_e:
-                    item=country_map_e[country_e]
+                    item = country_map_e[country_e]
                 else:
-                    item=country_map_c[country_c]
-                country_map_c[country_c]=item
-                country_map_e[country_e]=item
+                    item = country_map_c[country_c]
+                country_map_c[country_c] = item
+                country_map_e[country_e] = item
 
 
 def geo_translate(c):
@@ -430,7 +472,7 @@ def geo_translate(c):
     :rtype : [english, 中文]
     :param c:
     """
-    if len(country_map_e)==0 or len(country_map_c)==0:
+    if len(country_map_e) == 0 or len(country_map_c) == 0:
         load_geo()
 
     result = {}

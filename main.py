@@ -1,11 +1,13 @@
 # coding=utf-8
 
 import common
-from robot import viktor_rolf
-from robot import emiliopucci
-from robot import y3
-from robot import zenithwatch
+import dunhill
+import emiliopucci
 import shanghaitang
+import viktor_rolf
+import y3
+import zegna
+import zenithwatch
 
 __author__ = 'Zephyre'
 
@@ -17,9 +19,11 @@ def calc(val):
 
 
 def test():
-    common.geo_translate(u'美国')
-    common.geo_translate('united states of america')
-    common.geo_translate('usa')
+    html = '<p>you can </p><li class="store"><div class="store-inner"><div class="store-title -h3a">Las Vegas</div>' \
+           '<div class="store-address">Forum Shops at Caesars3500 Las Vegas Blvd So.<br />Las Vegas<br />' \
+           'NV 89109<br />702.979.3936</div></div></li><div span="a">new</div><a href="google.com">Haha</a>'
+    new_html, start, end = common.extract_closure(html, ur'<div\b', ur'</div>')
+
     return []
 
 
@@ -28,5 +32,11 @@ if __name__ == "__main__":
     if test_flag:
         test()
     else:
-        shanghaitang.fetch()
+        # zenithwatch.fetch()
+        # viktor_rolf.fetch()
+        # shanghaitang.fetch()
+        # emiliopucci.fetch()
+        # zegna.fetch()
+        # y3.fetch()
+        dunhill.fetch(passwd='07996019')
         print 'DONE!'

@@ -6,6 +6,7 @@
 爱沙尼亚, estonia, 塔林, Tallinn
 冰岛, iceland, 雷克雅未克, Reykjavik
 白俄罗斯, belarus, 明斯克, Minsk
+白俄罗斯, BIELORUSSIA, 明斯克, Minsk
 保加利亚, bulgaria, 索非亚, Sofia
 波兰, poland, 华沙, Warsaw
 波斯尼亚和黑塞哥维那, bosnia, 萨拉热窝, Sarajevo
@@ -13,11 +14,13 @@
 德国, germany, 柏林, Berlin
 丹麦, denmark, 哥本哈根, Copenhagen
 俄罗斯, russia, 莫斯科, Moscow
+俄罗斯, russian federation, 莫斯科, Moscow
 法国, france, 巴黎, Paris
 芬兰, finland, 赫尔辛基, Helsinki
 荷兰, holand, 阿姆斯特丹, Amsterdam
 荷兰, netherlands, 阿姆斯特丹, Amsterdam
 捷克, czech, 布拉格, Prague
+捷克, czech republic, 布拉格, Prague
 克罗地亚, croatia, 萨格勒布, Zagreb
 拉脱维亚, latvia, 里加, Riga
 立陶宛, lithuania, 维尔纽斯, Vilnius
@@ -44,11 +47,13 @@
 意大利, italy, 罗马, Rome
 英国, united kingdom, 伦敦, London
 英国, UK, 伦敦, London
+大不列颠, Great Britain, , 
 亚洲国家列表, asia, , 
 阿富汗, afghanistan, 喀布尔, Kabul
 阿拉伯联合酋长国, united arab emirates, 阿布扎比, Abu Dhabi
 阿拉伯联合酋长国, united arabs emirates, 阿布扎比, Abu Dhabi
 阿拉伯联合酋长国, uae, 阿布扎比, Abu Dhabi
+阿拉伯联合酋长国, u.a.e., 阿布扎比, Abu Dhabi
 阿联酋, uae, 阿布扎比, Abu Dhabi
 阿曼, oman, 马斯喀特, Muscat
 阿塞拜疆, azerbaijan, 巴库, Baku
@@ -88,6 +93,8 @@
 乌兹别克斯坦, uzbekistan, 塔什干, Tashkent
 新加坡, singapore, 新加坡, Singapore
 叙利亚, syria, 大马士革, Damascus
+叙利亚, Syrian Arab Republic, 大马士革, Damascus
+亚美尼亚, armenia, 埃里温, Yerevan
 亚美尼亚共和国, armenia, 埃里温, Yerevan
 也门, yemen, 萨那, Sanaa
 伊朗, iran, 德黑兰, Tehran
@@ -107,12 +114,14 @@
 澳门, Macau, 澳门, Macau
 中国澳门, Macau, 澳门, Macau
 中国澳门特别行政区, Macau, 澳门, Macau
+澳门, Macao, 澳门, Macau
 北美洲国家列表,north america , ,
 安提瓜和巴布达, antigua barbuda, 圣约翰, Saint John's
 巴巴多斯, barbados, 布里奇敦, Bridgetown
 巴哈马, bahamas, 拿骚, Nassau
 多米尼克, dominica, 罗索, Roseau
 格林纳达, grenada, 圣乔治, Saint George's
+阿鲁巴, Aruba, , 
 古巴, cuba, 哈瓦那, Havana
 古巴共和国, cuba, 哈瓦那, Havana
 圣马丁,Sint Maarten,,

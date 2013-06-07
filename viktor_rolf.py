@@ -77,19 +77,20 @@ def fetch_stores(data):
                                         common.country_c: ret[common.country_c],
                                         common.country_e: ret[common.country_e]})
         common.update_entry(entry, {common.brandname_c: brandname_c, common.brandname_e: brandname_e,
-                                    common.zip_code: zip_cdt, common.city_e: city_cdt})
+                                    common.zip_code: zip_cdt})
+        # common.city_e: city_cdt})
         common.chn_check(entry)
 
         print '%s Found store: %s, %s (%s, %s)' % (
-        brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
-        entry[common.continent_e])
+            brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
+            entry[common.continent_e])
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 
     return store_list
 
 
-def fetch(level=1, data=None):
+def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
         """
         :param data:
@@ -100,7 +101,7 @@ def fetch(level=1, data=None):
 
     global db
     db = common.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}

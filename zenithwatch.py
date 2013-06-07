@@ -179,7 +179,7 @@ def fetch_store_details(url, data):
     return stores
 
 
-def fetch(level=1, data=None):
+def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
         """
 
@@ -196,7 +196,7 @@ def fetch(level=1, data=None):
 
     global db
     db = cm.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}

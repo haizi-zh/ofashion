@@ -104,7 +104,7 @@ def fetch_cities(data):
 func_map = {1: fetch_continents, 2: fetch_countries, 3: fetch_cities}
 
 
-def fetch(level=1, data=None):
+def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
         """
         :param data:
@@ -134,7 +134,7 @@ def fetch(level=1, data=None):
 
     global db
     db = cm.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}

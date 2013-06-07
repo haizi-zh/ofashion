@@ -179,11 +179,11 @@ def fetch_stores(url, type, data):
         return get_stores(url)
 
 
-def fetch(brand):
+def fetch(brand, user='root', passwd=''):
     __brand__ = brand
     global db
     db = cm.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     # Walk from the root node, where level == 1.
     results = fetch_stores(None, 0, None)
     db.disconnect_db()

@@ -199,7 +199,7 @@ def get_stores(html, cities):
     return store_list
 
 
-def fetch(data=None):
+def fetch(data=None, user='root', passwd=''):
     try:
         html = common.get_data(url)
     except Exception:
@@ -210,7 +210,7 @@ def fetch(data=None):
 
     global db
     db = common.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     cities = get_district(html)[2]
     stores = get_stores(html, cities)
     db.disconnect_db()

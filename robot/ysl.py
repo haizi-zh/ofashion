@@ -93,7 +93,7 @@ def get_entries(html, pat):
     return con_map
 
 
-def fetch():
+def fetch(user='root', passwd=''):
     pattern = [ur'<li><span>([\w\s,]+?)</span>\s+<ul class="countries">[\w\s]',
                ur'<li><span>([\w\s,]+?)</span>\s+<ul class="cities">[\w\s]',
                ur'<li><span>([\w\s,]+?)</span>\s+<ul class="stores">']
@@ -133,7 +133,7 @@ def fetch():
 
     global db
     db = cm.StoresDb()
-    db.connect_db()
+    db.connect_db(user=user, passwd=passwd)
     # Walk from the root node, where level == 1.
     results = cm.walk_tree({'func': lambda data: func(data, 1), 'data': {'url': url}})
     db.disconnect_db()
