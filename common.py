@@ -217,7 +217,10 @@ def get_data(url, data=None, timeout=timeout, retry=3):
         i += 1
         try:
             if data is not None:
-                response = opener.open(url, urllib.urlencode(data), timeout=timeout)
+                if url[-1] == '/':
+                    url = url[:-1]
+                url += '?' + urllib.urlencode(data)
+                response = opener.open(url, timeout=timeout)
             else:
                 response = opener.open(url, timeout=timeout)
 

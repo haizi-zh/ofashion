@@ -1,4 +1,5 @@
 # coding=utf-8
+import baume
 
 import common
 import dunhill
@@ -39,4 +40,5 @@ if __name__ == "__main__":
         # zegna.fetch()
         # y3.fetch()
         dunhill.fetch(passwd='07996019')
+        # baume.fetch(passwd='07996019')
         print 'DONE!'
