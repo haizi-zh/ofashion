@@ -170,8 +170,9 @@ def fetch_store_details(url, data):
                     entry[cm.continent_c] = t2['continent_c']
                     entry[cm.continent_e] = t2['continent_e']
                 entry[cm.city_e] = city
-        print 'Found store: %s, %s. (%s, %s)' % (
-            entry[cm.name_e], entry[cm.addr_e], entry[cm.continent_e], entry[cm.country_e])
+        print '%s Found store: %s, %s. (%s, %s)' % (brandname_e,
+                                                    entry[cm.name_e], entry[cm.addr_e], entry[cm.continent_e],
+                                                    entry[cm.country_e])
         cm.chn_check(entry)
         stores.append(entry)
         db.insert_record(entry, 'stores')
