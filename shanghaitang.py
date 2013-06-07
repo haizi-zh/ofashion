@@ -7,6 +7,10 @@ import re
 import common
 
 url = 'http://www.shanghaitang.com/stores.html'
+host = 'http://www.shanghaitang.com'
+brand_id = 10371
+brandname_e = u'Shanghai Tang'
+brandname_c = u'上海滩'
 
 
 def get_district(html):
@@ -57,7 +61,7 @@ def get_district(html):
     return [continents, countries, cities]
 
 
-def get_stores(html, cities):
+def get_stores1(html, cities):
     start = None
     stores = []
 
@@ -93,7 +97,6 @@ def get_stores(html, cities):
             start = m.start()
             cid = val
             continue
-
         end = m.start()
         store = proc(html, start, end, cid)
         if store is not None:
@@ -106,13 +109,109 @@ def get_stores(html, cities):
     return stores
 
 
-def fetch():
-    def func(url):
+def get_coordinates(url):
+    try:
         html = common.get_data(url)
-        c3 = get_district(html)[2]
-        stores=get_stores(html,c3)
-        return [{'func':None,'data':s} for s in stores]
+    except Exception:
+        print 'Error occured in retrieving the coordinates: %s' % url
+        dump_data = {'level': 2, 'time': common.format_time(), 'data': {'data': url}, 'brand_id': brand_id}
+        common.dump(dump_data)
+        return []
 
-    node = {'func': func, 'data': url}
-    return common.walk_tree(node)
+    m = re.findall(ur'new google.maps.LatLng\(\s*?(-?\d+\.\d+)\s*?,\s*?(-?\d+\.\d+)\s*?\)', html)
+    if len(m) > 0:
+        return [string.atof(m[0][0]), string.atof(m[0][1])]
+    else:
+        return ['', '']
 
+
+def get_stores(html, cities):
+    """
+    获得门店信息
+    :param html:
+    :param cities: 已取得的城市信息
+    """
+    sub_list = []
+    start = 0
+    start_city_id = 0
+    for m in re.finditer(ur'<div class="store-row city(\d+).*?">', html):
+        if start == 0:
+            start = m.start()
+            start_city_id = string.atoi(m.group(1))
+            continue
+        end = m.start()
+        # sub_list.append(html[start:end])
+        sub_list.append({'city_id': start_city_id, 'html': html[start:end]})
+        start = end
+        start_city_id = string.atoi(m.group(1))
+    sub_list.append({'city_id': string.atoi(m.group(1)), 'html': html[start:]})
+
+    store_list = []
+    for m in sub_list:
+        city_id = m['city_id']
+        sub_html = m['html']
+        entry = common.init_store_entry(brand_id)
+        for m1 in re.findall(ur'<div class="store-desc">(.+?)</div>', sub_html, re.S):
+            entry[common.name_e] = common.reformat_addr(m1)
+            break
+
+        for m1 in re.findall(ur'<div class="store-terminal">(.+?)</div>', sub_html, re.S):
+            entry[common.addr_e] = common.reformat_addr(m1)
+            break
+
+        for m1 in re.findall(ur'<div class="store-tel">(.+?)</div>', sub_html, re.S):
+            entry[common.tel] = common.extract_tel(m1)
+            break
+
+        for m1 in re.findall(ur'<div class="store-opening-hour">\s*?(?:Opening Hours:)?(.+?)</div>', sub_html,
+                             re.S):
+            entry[common.hours] = common.reformat_addr(m1)
+            break
+
+        m1 = re.findall(ur'href="/(.+?)" title="View on map"', sub_html)
+        if len(m1) > 0:
+            entry[common.url] = host + '/' + m1[0]
+            lat, lng = get_coordinates(entry[common.url])
+            common.update_entry(entry, {common.lat: lat, common.lng: lng})
+
+        # geo
+        city_e = cities[city_id]['name'].strip()
+        country_e = cities[city_id]['country']['name'].strip().upper()
+        continent_e = cities[city_id]['country']['continent'].strip().upper()
+        common.update_entry(entry,
+                            {common.city_e: city_e, common.country_e: country_e, common.continent_e: continent_e})
+        ret = common.geo_translate(country_e.strip())
+        if len(ret) > 0:
+            common.update_entry(entry, {common.continent_c: ret[common.continent_c],
+                                        common.continent_e: ret[common.continent_e],
+                                        common.country_c: ret[common.country_c],
+                                        common.country_e: ret[common.country_e]})
+        common.update_entry(entry, {common.brandname_c: brandname_c, common.brandname_e: brandname_e})
+        common.chn_check(entry)
+
+        print '%s Found store: %s, %s (%s, %s)' % (
+            brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
+            entry[common.continent_e])
+        db.insert_record(entry, 'stores')
+
+        store_list.append(entry)
+
+    return store_list
+
+
+def fetch(data=None):
+    try:
+        html = common.get_data(url)
+    except Exception:
+        print 'Error occured: %s' % url
+        dump_data = {'level': 1, 'time': common.format_time(), 'data': {'data': url}, 'brand_id': brand_id}
+        common.dump(dump_data)
+        return []
+
+    global db
+    db = common.StoresDb()
+    db.connect_db()
+    cities = get_district(html)[2]
+    stores = get_stores(html, cities)
+    db.disconnect_db()
+    return stores

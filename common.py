@@ -409,13 +409,19 @@ def load_geo():
             terms = l.split(',')
             country_c = terms[0].strip()
             country_e = terms[1].strip().upper()
-            entry = {'country_e': country_e, 'country_c': country_c, 'continent_e': continent_e,
-                     'continent_c': continent_c}
-            country_map_c[country_c] = entry
-            country_map_e[country_e] = entry
-
-
-geo_loaded = False
+            if country_e not in country_map_e and country_c not in country_map_c:
+                # 新的国家
+                item = {'country_e': country_e, 'country_c': country_c, 'continent_e': continent_e,
+                        'continent_c': continent_c}
+                country_map_c[country_c] =item
+                country_map_e[country_e]=item
+            else:
+                if country_e in country_map_e:
+                    item=country_map_e[country_e]
+                else:
+                    item=country_map_c[country_c]
+                country_map_c[country_c]=item
+                country_map_e[country_e]=item
 
 
 def geo_translate(c):
@@ -424,10 +430,8 @@ def geo_translate(c):
     :rtype : [english, 中文]
     :param c:
     """
-    global geo_loaded
-    if not geo_loaded:
+    if len(country_map_e)==0 or len(country_map_c)==0:
         load_geo()
-        geo_loaded = True
 
     result = {}
     c = c.strip()

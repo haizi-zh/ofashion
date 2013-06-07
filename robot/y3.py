@@ -52,8 +52,9 @@ def fetch_stores(data):
                                     cm.country_e: geo_term[cm.country_e], cm.country_c: geo_term[cm.country_c]})
         cm.chn_check(store)
 
-        print 'Found store: %s, %s (%s, %s)' % (store[cm.name_e], store[cm.addr_e], store[cm.country_e],
-                                                store[cm.continent_e])
+        print '%s: Found store: %s, %s (%s, %s)' % (
+            brandname_e, store[cm.name_e], store[cm.addr_e], store[cm.country_e],
+            store[cm.continent_e])
         db.insert_record(store, 'stores')
         entries.append(store)
 

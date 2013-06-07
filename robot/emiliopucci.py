@@ -94,7 +94,7 @@ def fetch_stores(data):
             # 第一个为门店名称
             if idx == 1:
                 store_item[cm.name_e] = cm.reformat_addr(m1.group(1))
-                addr+=m1.group(1)+'\n\r'
+                addr += m1.group(1) + '\n\r'
             else:
                 # 是否为电话？
                 tel_str = cm.extract_tel(m1.group(1))
@@ -116,8 +116,9 @@ def fetch_stores(data):
         store_item[cm.brandname_e] = brandname_e
         store_item[cm.brandname_c] = brandname_c
         cm.chn_check(store_item)
-        print 'Found store: %s, %s (%s, %s)' % (store_item[cm.name_e], store_item[cm.addr_e], store_item[cm.country_e],
-                                                store_item[cm.continent_e])
+        print '%s: Found store: %s, %s (%s, %s)' % (
+        brandname_e, store_item[cm.name_e], store_item[cm.addr_e], store_item[cm.country_e],
+        store_item[cm.continent_e])
         db.insert_record(store_item, 'stores')
         stores.append(store_item)
     return stores

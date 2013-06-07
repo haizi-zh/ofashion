@@ -2,6 +2,10 @@
 
 import common
 from robot import viktor_rolf
+from robot import emiliopucci
+from robot import y3
+from robot import zenithwatch
+import shanghaitang
 
 __author__ = 'Zephyre'
 
@@ -13,18 +17,16 @@ def calc(val):
 
 
 def test():
-    common.load_rev_char()
-    print common.html2plain('&lt;')
+    common.geo_translate(u'美国')
+    common.geo_translate('united states of america')
+    common.geo_translate('usa')
+    return []
+
 
 if __name__ == "__main__":
-    # entries = donna_karan.fetch('dnky')
-    # entries = donna_karan.fetch('donnakaran')
-    # entries = debeers.fetch()
-    # entries = samsonite.fetch()
-    viktor_rolf.fetch()
-    # zegna.fetch()
-    # ysl.fetch()
-    # shanghaitang.fetch()
-    # db_test()
-
-    print 'DONE!'
+    test_flag = False
+    if test_flag:
+        test()
+    else:
+        shanghaitang.fetch()
+        print 'DONE!'

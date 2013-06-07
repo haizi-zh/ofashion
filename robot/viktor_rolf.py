@@ -80,8 +80,9 @@ def fetch_stores(data):
                                     common.zip_code: zip_cdt, common.city_e: city_cdt})
         common.chn_check(entry)
 
-        print 'Found store: %s, %s (%s, %s)' % (entry[common.name_e], entry[common.addr_e], entry[common.country_e],
-                                                entry[common.continent_e])
+        print '%s Found store: %s, %s (%s, %s)' % (
+        brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
+        entry[common.continent_e])
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 
