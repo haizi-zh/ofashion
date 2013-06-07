@@ -45,6 +45,7 @@ brandname_e = 'brandname_e'
 brandname_c = 'brandname_c'
 district_c = 'district_c'
 district_e = 'district_e'
+comments = 'comments'
 
 # 中日韩Unicode字符区
 ucjk = ur'\u2E80-\u9FFF'
@@ -122,7 +123,7 @@ def reformat_addr(addr):
     # 去掉多余的标签
     new_addr = re.subn(ur'<.+?>', u'', new_addr)[0]
     # 换行转换
-    new_addr = re.subn(ur'(?:\r\n)+', ', ', new_addr)[0]
+    new_addr = re.subn(ur'(?:[\r\n])+', ', ', new_addr)[0]
     new_addr = re.subn(ur'[\s\u3000]+', ' ', new_addr)[0]
     new_addr = re.subn(ur'\s+,', u',', new_addr)[0]
     new_addr = re.subn(ur',\s+', u',', new_addr)[0]

@@ -140,23 +140,3 @@ def fetch(level=1, data=None):
     results = cm.walk_tree({'func': lambda data: func(data, 1), 'data': data})
     db.disconnect_db()
     return results
-
-
-def procRoot():
-    url = 'http://www.y-3.com/store-finder'
-    result = y3continents(url, 'store-finder-filter-title', 'Select Region', False)
-    regions = result.keys()
-    stores = []
-    r = 'Asia'
-    # for r in regions:
-    print 'Fetching in region: %s' % r
-    stores.extend(procRegion(result[r]))
-    return stores
-
-
-def fetch1():
-    # storeList = procRoot()
-    storeList = procRegion('http://www.y-3.com/store-finder/asia')
-    print(storeList)
-    # url = 'http://www.y-3.com/store-finder/europe/de/berlin'
-    # print(y3continents(url, 'store-list', None, True))

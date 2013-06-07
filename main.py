@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import common
-from robot import y3
+from robot import viktor_rolf
 
 __author__ = 'Zephyre'
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # entries = donna_karan.fetch('donnakaran')
     # entries = debeers.fetch()
     # entries = samsonite.fetch()
-    y3.fetch()
+    viktor_rolf.fetch()
     # zegna.fetch()
     # ysl.fetch()
     # shanghaitang.fetch()
