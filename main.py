@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import common
-from robot import emiliopucci
+from robot import y3
 
 __author__ = 'Zephyre'
 
@@ -17,12 +17,11 @@ def test():
     print common.html2plain('&lt;')
 
 if __name__ == "__main__":
-    entries = emiliopucci.fetch()
     # entries = donna_karan.fetch('dnky')
     # entries = donna_karan.fetch('donnakaran')
     # entries = debeers.fetch()
     # entries = samsonite.fetch()
-    # y3.fetch()
+    y3.fetch()
     # zegna.fetch()
     # ysl.fetch()
     # shanghaitang.fetch()

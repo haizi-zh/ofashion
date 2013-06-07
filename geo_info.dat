@@ -12,10 +12,11 @@
 比利时, belgium, 布鲁塞尔, Brussels
 德国, germany, 柏林, Berlin
 丹麦, denmark, 哥本哈根, Copenhagen
-俄罗斯联邦, russia, 莫斯科, Moscow
+俄罗斯, russia, 莫斯科, Moscow
 法国, france, 巴黎, Paris
 芬兰, finland, 赫尔辛基, Helsinki
 荷兰, holand, 阿姆斯特丹, Amsterdam
+荷兰, netherlands, 阿姆斯特丹, Amsterdam
 捷克, czech, 布拉格, Prague
 克罗地亚, croatia, 萨格勒布, Zagreb
 拉脱维亚, latvia, 里加, Riga
@@ -25,10 +26,11 @@
 马其顿, macedonia, 斯科普里, Skopje
 马耳他, malta, 瓦莱塔, 
 卢森堡, luxembourg, 卢森堡, Luxembourg
+黑山, Montenegro, 波德戈里察, Podgorica
 摩纳哥, monaco, 摩纳哥, Monaco
 摩尔多瓦, moldova, 基希讷乌, Chisinau
 挪威, norway, 奥斯路, Oslo
-塞尔维亚和黑山共和国, serbia, , 
+塞尔维亚, serbia, , 
 葡萄牙, portugal, 里斯本, Lisbon
 瑞典, sweden, 斯德哥尔摩, Stockholm
 瑞士, switzerland, 伯尔尼, Bern
@@ -52,12 +54,13 @@
 巴勒斯坦, palestine, 耶路撒冷, Jerusalem
 巴林, bahrain, 麦纳麦, Manama
 不丹, bhutan, 廷布, Thimphu
-朝鲜, north-korea, 平壤, Pyongyang
+朝鲜, north korea, 平壤, Pyongyang
 东帝汶, timor, 帝力, Dili
 菲律宾, philippines, 马尼拉, Manila
 格鲁吉亚, georgia, 第比利斯, T'bilisi
 哈萨克斯坦, kazakhstan, 阿斯塔纳, Astana
 韩国, korea, 首尔, seoul
+韩国, south korea, 首尔, seoul
 吉尔吉斯共和国, kirgizstan, 比什凯克, Bishkek
 柬埔寨, cambodia, 金边, Phnom Penh
 卡塔尔, qatar, 多哈, Doha
@@ -186,4 +189,4 @@
 瑙鲁, nauru, 亚伦, Yaren District
 汤加, tonga, 努库阿洛法, Nuku'alofa
 瓦努阿图, vanuatu, 维拉港, Port-Vila
-新西兰, new-zealand, 惠灵顿, Wellington
+新西兰, new zealand, 惠灵顿, Wellington

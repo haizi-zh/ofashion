@@ -148,7 +148,7 @@ def fetch(level=1, data=None):
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
-    results = cm.walk_tree({'func': lambda data: func(data, 1), 'data': data})
+    results = cm.walk_tree({'func': lambda data: func(data, level), 'data': data})
     db.disconnect_db()
     return results
 
