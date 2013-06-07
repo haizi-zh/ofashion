@@ -4,6 +4,7 @@ import gzip
 import json
 import re
 import socket
+import string
 import urllib
 import urllib2
 import _mysql
@@ -50,29 +51,33 @@ ucjk = ur'\u2E80-\u9FFF'
 # 全角空格
 ucjk_whitespace = ur'\u3000'
 
-pat_tel = ur'[+ \.\d\-]{5,}' # ur'[+ \d\-]*\d{3,}[+ \d\-]*+'
 
 def chn_check(entry):
     # 检查是否为台湾、香港和澳门
-    cc=entry[country_c]
-    ce=entry[country_e]
+    cc = entry[country_c]
+    ce = entry[country_e]
     flag = False
     if u'台灣' in cc or u'台湾' in cc or u'TAIWAN' in ce:
-        entry[province_c]=u'台湾'
-        entry[province_e]=u'TAIWAN'
+        entry[province_c] = u'台湾'
+        entry[province_e] = u'TAIWAN'
+        flag = True
     elif u'香港' in cc or 'HONG KONG' in ce or 'HONGKONG' in ce:
-        entry[province_c]=u'香港'
-        entry[province_e]=u'HONG KONG'
-        entry[city_c]=u'香港'
-        entry[city_e]=u'HONG KONG'
+        entry[province_c] = u'香港'
+        entry[province_e] = u'HONG KONG'
+        entry[city_c] = u'香港'
+        entry[city_e] = u'HONG KONG'
+        flag = True
     elif u'澳門' in cc or u'澳门' in cc or 'MACAU' in ce:
-        entry[province_c]=u'澳门'
-        entry[province_e]=u'MACAU'
-        entry[city_c]=u'澳门'
-        entry[city_e]=u'MACAU'
+        entry[province_c] = u'澳门'
+        entry[province_e] = u'MACAU'
+        entry[city_c] = u'澳门'
+        entry[city_e] = u'MACAU'
+        flag = True
     if flag:
-        entry[continent_c]=u'亚洲'
-        entry[continent_e]=u'ASIA'
+        entry[continent_c] = u'亚洲'
+        entry[continent_e] = u'ASIA'
+        entry[country_c] = u'中国'
+        entry[country_e] = u'CHINA'
     return entry
 
 
@@ -115,7 +120,7 @@ def reformat_addr(addr):
     # <br/>换成换行符
     new_addr = re.subn(ur'<\s*br\s*/>', u'\r\n', new_addr)[0]
     # 去掉多余的标签
-    new_addr = re.subn(ur'<.+>', u'', new_addr)[0]
+    new_addr = re.subn(ur'<.+?>', u'', new_addr)[0]
     # 换行转换
     new_addr = re.subn(ur'(?:\r\n)+', ', ', new_addr)[0]
     new_addr = re.subn(ur'[\s\u3000]+', ' ', new_addr)[0]
@@ -241,16 +246,18 @@ def dump(data):
 
 def extract_tel(text):
     """
-    Test a string to see whether it represents a telephone number
+    是否为电话号码
+    :rtype : 电话号码。如果不是，则为''
     :param text:
     """
-    # Remove whitespaces
-    text, num = re.subn(r'\s+', '', text)
-    m = re.match(r'[\+\(\)\+\.\d]+', text)
-    if m is None:
-        return None
-    else:
-        return text
+    pat_tel = ur'[+ \.\d\-\(\)]{5,}' # ur'[+ \d\-]*\d{3,}[+ \d\-]*+'
+    m_tel = re.findall(pat_tel, text)
+    if len(m_tel) > 0:
+        # 数字至少为6个：
+        if len(re.findall(ur'\d', m_tel[0])) >= 6:
+            return m_tel[0].strip()
+
+    return ''
 
 
 def post_data(url, data):
@@ -312,7 +319,17 @@ class StoresDb(object):
         # INSERT INTO tbl (...) VALUES (...)
         fields = '(' + ', '.join(entry.keys()) + ')'
         # values = '(' + ', '.join([u'"' + str(entry[k]) + '"' for k in entry.keys()]) + ')'
-        values = '(' + ', '.join(['"' + unicode(entry[k]) + '"' for k in entry.keys()]) + ')'
+        def get_value_term(key, value):
+            if key == 'lng' or key == 'lat':
+                if value == '':
+                    ret = u'null'
+                else:
+                    ret = u'"%f"' % value
+            else:
+                ret = u'"%s"' % value
+            return ret
+
+        values = '(' + ', '.join([get_value_term(k, entry[k]) for k in entry.keys()]) + ')'
         statement = u'INSERT INTO %s %s VALUES %s' % (tbl, fields, values)
         self.execute(statement)
 

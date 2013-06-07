@@ -1,0 +1,103 @@
+ 	&#160;	&nbsp;	non-breaking space
+?	&#255;	&yuml;	small y, umlaut mark
+"	&#34;	&quot;	quotation mark
+'	&#39;	&apos;	apostrophe 
+&	&#38;	&amp;	ampersand
+<	&#60;	&lt;	less-than
+>	&#62;	&gt;	greater-than
+ 	&#160;	&nbsp;	non-breaking space
+¡	&#161;	&iexcl;	inverted exclamation mark
+¢	&#162;	&cent;	cent
+£	&#163;	&pound;	pound
+¤	&#164;	&curren;	currency
+¥	&#165;	&yen;	yen
+¦	&#166;	&brvbar;	broken vertical bar
+§	&#167;	&sect;	section
+¨	&#168;	&uml;	spacing diaeresis
+©	&#169;	&copy;	copyright
+ª	&#170;	&ordf;	feminine ordinal indicator
+«	&#171;	&laquo;	angle quotation mark (left)
+¬	&#172;	&not;	negation
+&	#173;	&shy;	soft hyphen
+®	&#174;	&reg;	registered trademark
+¯	&#175;	&macr;	spacing macron
+°	&#176;	&deg;	degree
+±	&#177;	&plusmn;	plus-or-minus 
+²	&#178;	&sup2;	superscript 2
+³	&#179;	&sup3;	superscript 3
+´	&#180;	&acute;	spacing acute
+µ	&#181;	&micro;	micro
+¶	&#182;	&para;	paragraph
+·	&#183;	&middot;	middle dot
+¸	&#184;	&cedil;	spacing cedilla
+¹	&#185;	&sup1;	superscript 1
+º	&#186;	&ordm;	masculine ordinal indicator
+»	&#187;	&raquo;	angle quotation mark (right)
+¼	&#188;	&frac14;	fraction 1/4
+½	&#189;	&frac12;	fraction 1/2
+¾	&#190;	&frac34;	fraction 3/4
+¿	&#191;	&iquest;	inverted question mark
+×	&#215;	&times;	multiplication
+÷	&#247;	&divide;	division
+à	&#192;	&Agrave;	capital a, grave accent
+á	&#193;	&Aacute;	capital a, acute accent
+?	&#194;	&Acirc;	capital a, circumflex accent
+?	&#195;	&Atilde;	capital a, tilde
+?	&#196;	&Auml;	capital a, umlaut mark
+?	&#197;	&Aring;	capital a, ring
+?	&#198;	&AElig;	capital ae
+?	&#199;	&Ccedil;	capital c, cedilla
+è	&#200;	&Egrave;	capital e, grave accent
+é	&#201;	&Eacute;	capital e, acute accent
+ê	&#202;	&Ecirc;	capital e, circumflex accent
+?	&#203;	&Euml;	capital e, umlaut mark
+ì	&#204;	&Igrave;	capital i, grave accent
+í	&#205;	&Iacute;	capital i, acute accent
+?	&#206;	&Icirc;	capital i, circumflex accent
+?	&#207;	&Iuml;	capital i, umlaut mark
+D	&#208;	&ETH;	capital eth, Icelandic
+?	&#209;	&Ntilde;	capital n, tilde
+ò	&#210;	&Ograve;	capital o, grave accent
+ó	&#211;	&Oacute;	capital o, acute accent
+?	&#212;	&Ocirc;	capital o, circumflex accent
+?	&#213;	&Otilde;	capital o, tilde
+?	&#214;	&Ouml;	capital o, umlaut mark
+?	&#216;	&Oslash;	capital o, slash
+ù	&#217;	&Ugrave;	capital u, grave accent
+ú	&#218;	&Uacute;	capital u, acute accent
+?	&#219;	&Ucirc;	capital u, circumflex accent
+ü	&#220;	&Uuml;	capital u, umlaut mark
+Y	&#221;	&Yacute;	capital y, acute accent
+T	&#222;	&THORN;	capital THORN, Icelandic
+?	&#223;	&szlig;	small sharp s, German
+à	&#224;	&agrave;	small a, grave accent
+á	&#225;	&aacute;	small a, acute accent
+a	&#226;	&acirc;	small a, circumflex accent
+?	&#227;	&atilde;	small a, tilde
+?	&#228;	&auml;	small a, umlaut mark
+?	&#229;	&aring;	small a, ring
+?	&#230;	&aelig;	small ae
+?	&#231;	&ccedil;	small c, cedilla
+è	&#232;	&egrave;	small e, grave accent
+é	&#233;	&eacute;	small e, acute accent
+ê	&#234;	&ecirc;	small e, circumflex accent
+?	&#235;	&euml;	small e, umlaut mark
+ì	&#236;	&igrave;	small i, grave accent
+í	&#237;	&iacute;	small i, acute accent
+?	&#238;	&icirc;	small i, circumflex accent
+?	&#239;	&iuml;	small i, umlaut mark
+e	&#240;	&eth;	small eth, Icelandic
+?	&#241;	&ntilde;	small n, tilde
+ò	&#242;	&ograve;	small o, grave accent
+ó	&#243;	&oacute;	small o, acute accent
+?	&#244;	&ocirc;	small o, circumflex accent
+?	&#245;	&otilde;	small o, tilde
+?	&#246;	&ouml;	small o, umlaut mark
+?	&#248;	&oslash;	small o, slash
+ù	&#249;	&ugrave;	small u, grave accent
+ú	&#250;	&uacute;	small u, acute accent
+?	&#251;	&ucirc;	small u, circumflex accent
+ü	&#252;	&uuml;	small u, umlaut mark
+y	&#253;	&yacute;	small y, acute accent
+t	&#254;	&thorn;	small thorn, Icelandic
+?	&#255;	&yuml;	small y, umlaut mark

@@ -110,10 +110,7 @@ def fetch_store_details(url, data):
                     entry[cm.fax] = m1.strip()
                 break
             if entry[cm.tel] == '' and entry[cm.fax] == '':
-                tmp = m.strip()
-                m_tel = re.findall(cm.pat_tel, tmp)
-                if len(m_tel) > 0:
-                    entry[cm.tel] = m_tel[0].strip()
+                entry[cm.tel] = cm.extract_tel(m.strip())
         for m in re.findall(ur'<p class="boutique-info-cadre-horaires">(.*?)</p>', s, re.S):
             if len(m.strip()) > 0:
                 entry[cm.hours] = m.strip()

@@ -5,7 +5,6 @@ import common
 __author__ = 'Zephyre'
 
 import urllib2
-import zenithwatch
 
 
 def y3continents(url, tag, sel, fetchStore):

@@ -34,7 +34,7 @@ def get_store_details(html, opt):
         for i in xrange(2, len(spl)):
             # If this is not a phone number:
             tel = cm.extract_tel(spl[i])
-            if tel is None:
+            if tel == '':
                 store_addr += ', ' + spl[i]
                 hour_idx = i + 1
             else:
