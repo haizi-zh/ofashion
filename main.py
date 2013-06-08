@@ -1,6 +1,7 @@
 # coding=utf-8
 import json
 import baume
+import cerruti
 
 import common
 import geosense as gs
@@ -56,5 +57,6 @@ if __name__ == "__main__":
         # dunhill.fetch(passwd='07996019')
         # baume.fetch(passwd='07996019')
         # comme_des_garcons.fetch(passwd='07996019')
-        louboutin.fetch(passwd='07996019')
+        # louboutin.fetch(passwd='07996019')
+        cerruti.fetch(passwd='07996019')
         print 'DONE!'
