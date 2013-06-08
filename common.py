@@ -370,7 +370,8 @@ class StoresDb(object):
                 else:
                     ret = u'"%f"' % value
             else:
-                ret = u'"%s"' % value
+                # 去掉中间的引号
+                ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\','')
             return ret
 
         values = '(' + ', '.join([get_value_term(k, entry[k]) for k in entry.keys()]) + ')'
