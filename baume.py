@@ -1,12 +1,9 @@
 # coding=utf-8
 import json
 import string
-import urllib
+import common
 
 __author__ = 'Zephyre'
-
-import re
-import common
 
 db = None
 host = 'http://www.baume-et-mercier.cn'

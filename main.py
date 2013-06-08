@@ -9,6 +9,7 @@ import viktor_rolf
 import y3
 import zegna
 import zenithwatch
+import comme_des_garcons
 
 __author__ = 'Zephyre'
 
@@ -39,6 +40,7 @@ if __name__ == "__main__":
         # emiliopucci.fetch()
         # zegna.fetch()
         # y3.fetch()
-        dunhill.fetch(passwd='07996019')
+        # dunhill.fetch(passwd='07996019')
         # baume.fetch(passwd='07996019')
+        comme_des_garcons.fetch(passwd='07996019')
         print 'DONE!'
