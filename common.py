@@ -115,6 +115,8 @@ def reformat_addr(addr):
     """
     格式化地址字符串，将多余的空格、换行、制表符等合并
     """
+    if addr is None:
+        return None
     new_addr = html2plain(addr.strip())
     # <br/>换成换行符
     new_addr = re.subn(ur'<\s*br\s*/>', u'\r\n', new_addr)[0]

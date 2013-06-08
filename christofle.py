@@ -117,31 +117,31 @@ def get_stores(data):
         entry[cm.country_e] = raw['name']
         raw = js['StoreLocatorType']
         entry[cm.store_type] = raw['name']
-
-        # Geo
-        country = entry[cm.country_e]
-        city = entry[cm.city_e]
-        ret = gs.look_up(city, 3)
-        if ret is not None:
-            if cm.city_e in ret[0]:
-                entry[cm.city_e] = ret[0][cm.city_e]
-            if cm.city_c in ret[0]:
-                entry[cm.city_c] = ret[0][cm.city_c]
-            if 'province' in ret[0]:
-                ret1 = gs.look_up(ret[0]['province'], 2)
-                if ret1 is not None:
-                    ret1 = ret1[0]
-                    if cm.province_e in ret1:
-                        entry[cm.province_e] = ret1[cm.province_e]
-                    if cm.province_c in ret1:
-                        entry[cm.province_c] = ret1[cm.province_c]
-        ret = gs.look_up(country, 1)
-        if ret is not None:
-            cm.update_entry(entry, {cm.country_e: ret[0][cm.country_e], cm.country_c: ret[0][cm.country_c]})
-            ret1 = gs.look_up(ret[0]['continent'], 0)[0]
-            cm.update_entry(entry, {cm.continent_e: ret1[cm.continent_e], cm.continent_c: ret1[cm.continent_c]})
-        else:
-            print 'Error in looking up %s' % country
+        gs.field_sense(entry)
+        # # Geo
+        # country = entry[cm.country_e]
+        # city = entry[cm.city_e]
+        # ret = gs.look_up(city, 3)
+        # if ret is not None:
+        #     if cm.city_e in ret[0]:
+        #         entry[cm.city_e] = ret[0][cm.city_e]
+        #     if cm.city_c in ret[0]:
+        #         entry[cm.city_c] = ret[0][cm.city_c]
+        #     if 'province' in ret[0]:
+        #         ret1 = gs.look_up(ret[0]['province'], 2)
+        #         if ret1 is not None:
+        #             ret1 = ret1[0]
+        #             if cm.province_e in ret1:
+        #                 entry[cm.province_e] = ret1[cm.province_e]
+        #             if cm.province_c in ret1:
+        #                 entry[cm.province_c] = ret1[cm.province_c]
+        # ret = gs.look_up(country, 1)
+        # if ret is not None:
+        #     cm.update_entry(entry, {cm.country_e: ret[0][cm.country_e], cm.country_c: ret[0][cm.country_c]})
+        #     ret1 = gs.look_up(ret[0]['continent'], 0)[0]
+        #     cm.update_entry(entry, {cm.continent_e: ret1[cm.continent_e], cm.continent_c: ret1[cm.continent_c]})
+        # else:
+        #     print 'Error in looking up %s' % country
 
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (
             brandname_e, brand_id, entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

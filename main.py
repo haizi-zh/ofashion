@@ -8,6 +8,7 @@ import common
 import geosense as gs
 import dunhill
 import emiliopucci
+import kenzo
 import louboutin
 import shanghaitang
 import viktor_rolf
@@ -60,5 +61,6 @@ if __name__ == "__main__":
         # comme_des_garcons.fetch(passwd='07996019')
         # louboutin.fetch(passwd='07996019')
         # cerruti.fetch(passwd='07996019')
-        christofle.fetch(passwd='07996019')
+        # christofle.fetch(passwd='07996019')
+        kenzo.fetch(passwd='07996019')
         print 'DONE!'

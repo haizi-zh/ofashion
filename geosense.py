@@ -1,6 +1,7 @@
 # coding=utf-8
 import json
 import re
+import common as cm
 
 __author__ = 'Zephyre'
 
@@ -83,6 +84,32 @@ def add_entries(continent_map={}, country_map={}, prov_map={}, city_map={}):
     #         js = json.dumps(continent_map, ensure_ascii=False)
     #         f.write(js.encode('utf-8'))
 
+def field_sense(entry):
+    # Geo
+    country = entry[cm.country_e]
+    city = entry[cm.city_e]
+    ret = look_up(city, 3)
+    if ret is not None:
+        if cm.city_e in ret[0]:
+            entry[cm.city_e] = ret[0][cm.city_e]
+        if cm.city_c in ret[0]:
+            entry[cm.city_c] = ret[0][cm.city_c]
+        if 'province' in ret[0]:
+            ret1 = look_up(ret[0]['province'], 2)
+            if ret1 is not None:
+                ret1 = ret1[0]
+                if cm.province_e in ret1:
+                    entry[cm.province_e] = ret1[cm.province_e]
+                if cm.province_c in ret1:
+                    entry[cm.province_c] = ret1[cm.province_c]
+    ret = look_up(country, 1)
+    if ret is not None:
+        cm.update_entry(entry, {cm.country_e: ret[0][cm.country_e], cm.country_c: ret[0][cm.country_c]})
+        ret1 = look_up(ret[0]['continent'], 0)[0]
+        cm.update_entry(entry, {cm.continent_e: ret1[cm.continent_e], cm.continent_c: ret1[cm.continent_c]})
+    else:
+        print 'Error in looking up %s' % country
+    cm.chn_check(entry)
 
 def look_up(term, level=-1):
     """
