@@ -90,12 +90,13 @@ def format_time(fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(time.time()))
 
 
-def init_store_entry(id):
+def init_store_entry(id_, name_e='', name_c=''):
     """
     根据字段定义，返回一个初始化的门店结构
 
     """
-    return {brand_id: id, fetch_time: format_time(), brandname_e: '', brandname_c: '', continent_e: '', continent_c: '',
+    return {brand_id: id_, fetch_time: format_time(), brandname_e: name_e, brandname_c: name_c, continent_e: '',
+            continent_c: '',
             country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '', district_c: '',
             district_e: '',
             name_c: '', name_e: '', name_l: '', addr_e: '', addr_c: '', addr_l: '', tel: '', email: '', fax: '',
@@ -421,24 +422,39 @@ rev_char = {}
 
 
 def load_rev_char():
-    f = open('html_resv.dat', 'r')
+    f = open('data/html_resv.dat', 'r')
     for line in f:
         l = line.decode('utf-8')
         mlist = re.findall(ur'(([^\s]| )+)\t', l)
         rev_char[mlist[2][0]] = mlist[0][0]
 
 
-country_map_c = {}
-country_map_e = {}
-continent_map_c = {}
-continent_map_e = {}
+continent_map = None
+country_map = None
+city_map = None
+province_map = None
 
 
 def load_geo():
+    global continent_map
+    global country_map
+    global city_map
+    with open('geo_data.dat', 'r') as file_:
+        all_map = json.loads(file_)
+
+    continent_map = all_map['continent_map']
+    country_map = all_map['country_map']
+    city_map = all_map['city_map']
+
+
+def load_geo2():
     """
     加载地理信息
 
     """
+    continent_map = {}
+    country_map = {}
+    city_map = {}
     f = open('geo_info.dat', 'r')
     continent_c = u'欧洲'
     continent_e = u'EUROPE'
@@ -446,36 +462,61 @@ def load_geo():
         l = line.decode('utf-8').strip()
         m = re.match(ur'(.*)国家列表', l)
         if m is not None:
-            continent_c = m.group(1)
+            continent_c = m.group(1).strip()
             continent_e = l.split(',')[1].strip().upper()
-            continent_map_c[continent_c] = continent_e
-            continent_map_e[continent_e] = continent_c
+            continent_map[continent_c] = continent_e
+            continent_map[continent_e] = continent_c
         else:
             terms = l.split(',')
             country_c = terms[0].strip()
             country_e = terms[1].strip().upper()
-            if country_e not in country_map_e and country_c not in country_map_c:
+            capital_c = terms[2].strip()
+            capital_e = terms[3].strip().upper()
+            if country_e not in country_map and country_c not in country_map:
                 # 新的国家
                 item = {'country_e': country_e, 'country_c': country_c, 'continent_e': continent_e,
-                        'continent_c': continent_c}
-                country_map_c[country_c] = item
-                country_map_e[country_e] = item
+                        'continent_c': continent_c, 'capital_e': capital_e, 'capital_c': capital_c}
+                country_map[country_c] = item
+                country_map[country_e] = item
             else:
-                if country_e in country_map_e:
-                    item = country_map_e[country_e]
+                if country_e in country_map:
+                    item = country_map[country_e]
                 else:
-                    item = country_map_c[country_c]
-                country_map_c[country_c] = item
-                country_map_e[country_e] = item
+                    item = country_map[country_c]
+                country_map[country_c] = item
+                country_map[country_e] = item
+    f.close()
+
+    # 城市信息
+    for c in country_map:
+        city_c = country_map[c]['capital_c']
+        city_e = country_map[c]['capital_e']
+        country = country_map[c]['country_e']
+        item = {'city_c': city_c, 'city_e': city_e, 'country': country}
+        if city_c != '':
+            city_map[city_c] = item
+        if city_e != '':
+            city_map[city_e] = item
+
+    all_geo = {'continent_map': continent_map, 'country_map': country_map, 'city_map': city_map}
+    jstr = json.dumps(all_geo, ensure_ascii=False)
+    f = open('geo_data.dat', 'w')
+    f.write(jstr.encode('utf-8'))
+    f.close()
+
+    f = open('geo_data.dat', 'r')
+    jobj = json.load(f)
+    f.close()
 
 
-def geo_translate(c):
+def geo_translate(c, level=-1):
     """
     得到中英文对照的国家名称
+    :param level: 查找级别：-1：全级别查找：自上而下；0：洲；1：国家；2：州/省；3:城市；4：城市区域
     :rtype : [english, 中文]
     :param c:
     """
-    if len(country_map_e) == 0 or len(country_map_c) == 0:
+    if continent_map is None:
         load_geo()
 
     result = {}

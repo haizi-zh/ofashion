@@ -44,7 +44,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     store_list = []
     for sub_html in sub_list:
-        entry = common.init_store_entry(brand_id)
+        entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
         m = re.findall(ur'<span class="contactboldtitle">(.+?)</span>', sub_html)
         if len(m) > 0:
             entry[common.name_l] = m[0]

@@ -2,6 +2,7 @@
 import baume
 
 import common
+import geosense as gs
 import dunhill
 import emiliopucci
 import shanghaitang
@@ -21,16 +22,13 @@ def calc(val):
 
 
 def test():
-    html = '<p>you can </p><li class="store"><div class="store-inner"><div class="store-title -h3a">Las Vegas</div>' \
-           '<div class="store-address">Forum Shops at Caesars3500 Las Vegas Blvd So.<br />Las Vegas<br />' \
-           'NV 89109<br />702.979.3936</div></div></li><div span="a">new</div><a href="google.com">Haha</a>'
-    new_html, start, end = common.extract_closure(html, ur'<div\b', ur'</div>')
-
+    gs.load_geo()
+    gs.test(gs.continent_map, gs.country_map, gs.province_map, gs.city_map)
     return []
 
 
 if __name__ == "__main__":
-    test_flag = False
+    test_flag = True
     if test_flag:
         test()
     else:
