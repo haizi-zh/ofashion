@@ -1,10 +1,12 @@
 # coding=utf-8
+import json
 import baume
 
 import common
 import geosense as gs
 import dunhill
 import emiliopucci
+import louboutin
 import shanghaitang
 import viktor_rolf
 import y3
@@ -23,12 +25,25 @@ def calc(val):
 
 def test():
     gs.load_geo()
-    gs.test(gs.continent_map, gs.country_map, gs.province_map, gs.city_map)
-    return []
+    gs.add_entries(gs.continent_map, gs.country_map, gs.province_map, gs.city_map)
+    # new_map={}
+    # for c in gs.continent_map:
+    #     c1 = gs.continent_map[c]
+    #     if common.is_chinese(c):
+    #         new_map[c]={common.continent_c:c,common.continent_e:c1}
+    #     else:
+    #         new_map[c]={common.continent_e:c,common.continent_c:c1}
+    # js=json.dumps(new_map,ensure_ascii=False)
+    # with open('new_con.dat', 'w') as f:
+    #     f.write(js.encode('utf-8'))
+    # return new_map
+    # gs.add_entries(gs.continent_map, gs.country_map, gs.province_map, gs.city_map)
+    # for city in gs.city_map
+    # return []
 
 
 if __name__ == "__main__":
-    test_flag = True
+    test_flag = False
     if test_flag:
         test()
     else:
@@ -40,5 +55,6 @@ if __name__ == "__main__":
         # y3.fetch()
         # dunhill.fetch(passwd='07996019')
         # baume.fetch(passwd='07996019')
-        comme_des_garcons.fetch(passwd='07996019')
+        # comme_des_garcons.fetch(passwd='07996019')
+        louboutin.fetch(passwd='07996019')
         print 'DONE!'

@@ -96,12 +96,9 @@ def init_store_entry(id_, name_e='', name_c=''):
 
     """
     return {brand_id: id_, fetch_time: format_time(), brandname_e: name_e, brandname_c: name_c, continent_e: '',
-            continent_c: '',
-            country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '', district_c: '',
-            district_e: '',
-            name_c: '', name_e: '', name_l: '', addr_e: '', addr_c: '', addr_l: '', tel: '', email: '', fax: '',
-            hotline: '',
-            store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
+            continent_c: '', country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '',
+            district_c: '', district_e: '', name_l: '', addr_e: '', addr_c: '', addr_l: '', tel: '', email: '', fax: '',
+            hotline: '', store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
 
 
 def update_entry(entry, data):
