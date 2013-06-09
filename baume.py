@@ -2,6 +2,7 @@
 import json
 import string
 import common
+import geosense as gs
 
 __author__ = 'Zephyre'
 
@@ -17,6 +18,7 @@ brandname_c = u'名仕'
 def fetch(level=1, data=None, user='root', passwd=''):
     db = common.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
 
     data = {'s': -89, 'w': -179, 'n': 89, 'e': 179, 'chinese': 0, 'repair': 1, 'store': 1}
     try:
@@ -51,31 +53,24 @@ def fetch(level=1, data=None, user='root', passwd=''):
                     break
 
         # 分析raw_stores
-
-
         for k in raw_stores:
             s = raw_stores[k]
             if 'more' in s:
                 flag = s['more']
             else:
-                entry = common.init_store_entry(brand_id)
-                common.update_entry(entry, {common.brandname_e: brandname_e,
-                                            common.brandname_c: brandname_c})
+                entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
 
-                country_c = s['country']
-                if country_c is not None:
-                    term = common.geo_translate(country_c)
-                    if len(term) == 0:
-                        print 'Error in geo translating: %s' % country_c
+                if s['country'] is not None:
+                    country_c = s['country'].strip().upper()
+                    ret = gs.look_up(country_c, 1)
+                    if ret is not None:
+                        entry[common.country_e] = ret['name_e']
+                        entry[common.country_c] = ret['name_c']
+                    else:
                         if common.is_chinese(country_c):
                             entry[common.country_c] = country_c
                         else:
                             entry[common.country_e] = country_c
-                    else:
-                        common.update_entry(entry, {common.continent_e: term[common.continent_e],
-                                                    common.continent_c: term[common.continent_c],
-                                                    common.country_e: term[common.country_e],
-                                                    common.country_c: term[common.country_c]})
 
                 if s['address'] is not None:
                     addr = common.reformat_addr(s['address'])
@@ -84,20 +79,31 @@ def fetch(level=1, data=None, user='root', passwd=''):
                     else:
                         entry[common.addr_e] = addr
 
-                if s['city'] is not None:
-                    if common.is_chinese(s['city']):
-                        entry[common.city_c] = s['city']
+                city = s['city']
+                if city is not None:
+                    city = city.strip().upper()
+                    ret = gs.look_up(city, 3)
+                    if ret is not None:
+                        entry[common.city_c] = ret['name_c']
+                        entry[common.city_e] = ret['name_e']
                     else:
-                        entry[common.city_e] = s['city']
+                        if common.is_chinese(city):
+                            entry[common.city_c] = city
+                        else:
+                            entry[common.city_e] = city
 
-                entry[common.email] = s['email']
-                entry[common.fax] = s['fax']
+                if s['email'] is not None:
+                    entry[common.email] = s['email']
+                if s['fax'] is not None:
+                    entry[common.fax] = s['fax']
                 if s['latitude'] is not None:
                     entry[common.lat] = string.atof(s['latitude'])
                 if s['longitude'] is not None:
                     entry[common.lng] = string.atof(s['longitude'])
-                entry[common.tel] = s['phone']
-                entry[common.zip_code] = s['postal_code']
+                if s['phone'] is not None:
+                    entry[common.tel] = s['phone']
+                if s['postal_code'] is not None:
+                    entry[common.zip_code] = s['postal_code']
 
                 if s['title'] is not None:
                     name = s['title']
@@ -106,14 +112,13 @@ def fetch(level=1, data=None, user='root', passwd=''):
                     else:
                         entry[common.name_e] = name
 
-                entry[common.hours] = s['operating_hours']
+                if s['operating_hours'] is not None:
+                    entry[common.hours] = s['operating_hours']
                 if s['url'] is not None:
                     entry[common.url] = host + s['url']
 
-                for k in entry:
-                    if entry[k] is None:
-                        entry[k] = ''
-                common.chn_check(entry)
+                gs.field_sense(entry)
+
                 print '%s: Found store: %s, %s (%s, %s)' % (
                     brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
                     entry[common.continent_e])
