@@ -6,6 +6,7 @@ __author__ = 'Zephyre'
 
 import re
 import common
+import geosense as gs
 
 db = None
 url = 'http://www.dunhill.com/stores/'
@@ -84,9 +85,11 @@ def get_stores(data):
             sub_html, start, end = common.extract_closure(html, ur'<li\b', ur'</li>')
             if end == 0:
                 break
-            html = html[end:]
+
             # 得到单个门店的页面代码
-            entry = common.init_store_entry(brand_id)
+            html = html[end:]
+            entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
+
             m = re.findall(ur'<div class="store-title -h3a">(.+?)</div>', sub_html)
             if len(m) > 0:
                 entry[common.name_e] = common.reformat_addr(m[0])
@@ -121,20 +124,10 @@ def get_stores(data):
             if len(m) > 0:
                 entry[common.lng] = string.atof(m[0])
 
-            entry[common.city_e] = data[common.city_e]
-            country_e = data[common.country_e]
-            term = common.geo_translate(country_e)
-            if len(term) == 0:
-                print 'Error in geo translating: %s' % country_e
-                entry[common.country_e] = country_e
-            else:
-                common.update_entry(entry, {common.continent_e: term[common.continent_e],
-                                            common.continent_c: term[common.continent_c],
-                                            common.country_e: term[common.country_e],
-                                            common.country_c: term[common.country_c]})
-            common.update_entry(entry, {common.brandname_e: brandname_e,
-                                        common.brandname_c: brandname_c})
-            common.chn_check(entry)
+            entry[common.city_e] = data[common.city_e].strip().upper()
+            entry[common.country_e] = data[common.country_e].strip().upper()
+            gs.field_sense(entry)
+
             print '%s: Found store: %s, %s (%s, %s)' % (
                 brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
                 entry[common.continent_e])
@@ -171,6 +164,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = common.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
