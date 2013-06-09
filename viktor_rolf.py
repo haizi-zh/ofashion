@@ -194,7 +194,7 @@ def get_frag_stores(data):
                 if ret is not None:
                     entry[common.city_e] = ret['name_e']
                 else:
-                    if len(re.findall('(\S+)', m1.group(2).strip().upper()))<3 and \
+                    if len(re.findall('(\S+)', m1.group(2).strip().upper()))==1 and \
                                     len(re.findall('(\d+)', m1.group(2).strip().upper()))==0:
                         entry[common.city_e] = m1.group(2).strip().upper()
                         entry[common.zip_code] = m1.group(1).strip()
