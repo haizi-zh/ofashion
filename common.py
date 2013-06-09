@@ -143,9 +143,6 @@ def is_chinese(text):
     return len(re.findall(ur'[\u2e80-\u9fff]+', text)) != 0
 
 
-rev_char_loaded = False
-
-
 def html2plain(text):
     """
     消除诸如&amp;等符号
@@ -155,11 +152,6 @@ def html2plain(text):
     ('<', '&lt;'),
     ('&', '&amp;')
     """
-    global rev_char_loaded
-    if not rev_char_loaded:
-        load_rev_char()
-        rev_char_loaded = True
-
     for k in rev_char.keys():
         pat = re.compile(k, re.I)
         text = pat.sub(rev_char[k], text)
@@ -299,6 +291,13 @@ def extract_closure(html, start_tag, end_tag):
     return [html[start:end], start, end]
 
 
+def write_log(msg, log_type='Error'):
+    log_name = format_time('%Y%m%d_%H%M%S') + '.log'
+    timestr = format_time()
+    with open(log_name, 'a') as f:
+        f.write((u'%s %s %s\n' % (timestr, log_type, msg)).encode('utf-8'))
+
+
 def post_data(url, data=None, timeout=timeout, retry=3):
     """
     POST指定url
@@ -373,7 +372,7 @@ class StoresDb(object):
                     ret = u'"%f"' % value
             else:
                 # 去掉中间的引号
-                ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\','')
+                ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\', '')
             return ret
 
         values = '(' + ', '.join([get_value_term(k, entry[k]) for k in entry.keys()]) + ')'
@@ -427,7 +426,10 @@ def load_rev_char():
         l = line.decode('utf-8')
         mlist = re.findall(ur'(([^\s]| )+)\t', l)
         rev_char[mlist[2][0]] = mlist[0][0]
+        rev_char[mlist[1][0]] = mlist[0][0]
 
+
+load_rev_char()
 
 continent_map = None
 country_map = None

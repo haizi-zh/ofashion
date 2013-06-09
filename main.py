@@ -57,7 +57,7 @@ if __name__ == "__main__":
         test()
     else:
         # zenithwatch.fetch()
-        # viktor_rolf.fetch()
+        viktor_rolf.fetch(passwd=passwd)
         # shanghaitang.fetch()
         # emiliopucci.fetch()
         # zegna.fetch()
@@ -67,6 +67,6 @@ if __name__ == "__main__":
         # comme_des_garcons.fetch(passwd='07996019')
         # louboutin.fetch(passwd)
         # cerruti.fetch(passwd)
-        christofle.fetch(passwd=passwd)
+        # christofle.fetch(passwd=passwd)
         # kenzo.fetch(passwd)
         print 'DONE!'

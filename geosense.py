@@ -55,15 +55,6 @@ def look_up(term, level=0):
             guid = guid[0]
         entry = deref_guid(g_map[level]['data'][guid])
         return entry
-        # # 解析其中的guid字段
-        # if 'province' in entry and entry['province'] != '':
-        #     tmp = province_map['data'][entry['province']]
-        #     entry['province'] = tmp
-        #
-        # if 'country' in entry and entry['country'] != '':
-        #     tmp = country_map['data'][entry['country']]
-        #     entry['country'] = tmp
-        # return entry
     else:
         return None
 

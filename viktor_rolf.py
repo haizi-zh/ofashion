@@ -1,6 +1,7 @@
 # coding=utf-8
 import re
 import common
+import geosense as gs
 
 __author__ = 'Zephyre'
 
@@ -37,7 +38,7 @@ def fetch_stores(data):
 
     store_list = []
     for m in re.findall(ur'<li>(.+?)</li>', html, re.S):
-        entry = common.init_store_entry(brand_id)
+        entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
         m1 = re.findall(ur'<h2>(.+?)</h2>', m)
         if len(m1) > 0:
             entry[common.name_e] = common.reformat_addr(m1[0])
@@ -50,36 +51,43 @@ def fetch_stores(data):
         addr = common.reformat_addr('\n\r'.join([m1 for m1 in re.findall(ur'<p>(.+?)</p>', m)]))
         entry[common.addr_e] = addr
         terms = addr.split(',')
+
+        # 是否所有的geosensing都未命中？
+        hit_flag = False
+
         # 最后一项是否为国家
-        country_cdt = ''
-        city_cdt = ''
+        country = ''
+        ret = gs.look_up(terms[-1], 1)
+        if ret is not None:
+            entry[common.country_e] = ret['name_e']
+            country = ret['name_e']
+            terms = terms[:-1]
+            hit_flag = True
+
+        # 查找州和城市
+        m = re.match(ur'.*(\d{5,})', terms[-1])
         zip_cdt = ''
-        if ',' in terms[-1]:
-            # 可能为TOKYO, JAPAN这种形式
-            tmp1 = terms[-1].split(',')
-            tmp2 = re.findall(ur'([\w ]+)', common.reformat_addr(tmp1[0]))
-            if len(tmp2) > 0:
-                city_cdt = tmp2[0].strip()
-                country_cdt = common.reformat_addr(tmp1[1])
-        else:
-            country_cdt = terms[-1]
+        if m is not None:
+            zip_cdt = m.group(1)
+        tmp = re.sub(ur'\d{5,}', '', terms[-1]).strip().upper()
+        ret = gs.look_up(terms[-1], 2)
+        if ret is not None:
+            entry[common.province_e] = ret['name_e']
+            entry[common.zip_code] = zip_cdt
+            terms = terms[:-1]
+            hit_flag = True
 
-        # 可能为 12345 Paris这种形式
-        tmp1 = re.findall(ur'(\d{4,})\s+([\w ]+)', common.reformat_addr(terms[-2]))
-        if len(tmp1) > 0:
-            zip_cdt = tmp1[0][0]
-            city_cdt = tmp1[0][1].strip()
+        ret = gs.look_up(terms[-1], 3)
+        if ret is not None:
+            entry[common.city_e] = ret['name_e']
+            entry[common.zip_code] = zip_cdt
+            hit_flag = True
 
-        ret = common.geo_translate(country_cdt.strip())
-        if len(ret) > 0:
-            common.update_entry(entry, {common.continent_c: ret[common.continent_c],
-                                        common.continent_e: ret[common.continent_e],
-                                        common.country_c: ret[common.country_c],
-                                        common.country_e: ret[common.country_e]})
-        common.update_entry(entry, {common.brandname_c: brandname_c, common.brandname_e: brandname_e,
-                                    common.zip_code: zip_cdt})
-        # common.city_e: city_cdt})
-        common.chn_check(entry)
+        if not hit_flag:
+            # 所有都未命中，输出：
+            common.write_log('Failed in geosensing: %s' % addr)
+
+        gs.field_sense(entry)
 
         print '%s Found store: %s, %s (%s, %s)' % (
             brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
@@ -102,6 +110,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = common.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
