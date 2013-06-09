@@ -17,6 +17,7 @@ brandname_c = u'高田贤三'
 def fetch(level=1, data=None, user='root', passwd=''):
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
 
     try:
         html = cm.get_data(url)
@@ -40,6 +41,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
         entry[cm.store_type]=s['contact']['selling']
         entry[cm.url]=host+s['link']
 
+        gs.update_city_map(s['city'], s['country'], s['continent'])
         cm.update_entry(entry,{cm.continent_e:s['continent'], cm.country_e:s['country'],
                                cm.city_e:s['city']})
         gs.field_sense(entry)
@@ -51,4 +53,6 @@ def fetch(level=1, data=None, user='root', passwd=''):
         store_list.append(entry)
 
     db.disconnect_db()
+    gs.commit_maps(1)
+    gs.commit_maps(3)
     return store_list
