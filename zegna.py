@@ -2,12 +2,10 @@
 
 __author__ = 'Zephyre'
 
-import json
 import string
-import urllib
-import urllib2
 import re
 import common
+import geosense as gs
 
 host = 'http://storelocator.zegna.com'
 brand_id = 10121
@@ -16,6 +14,13 @@ brandname_c = u'杰尼亚'
 
 
 def get_countries(url):
+    """
+    得到国家列表
+    :rtype : [{'url':**, 'name':**, 'state':**}, ...]
+    :param url:
+    :return:
+    """
+    print 'Trying to get country list at %s' % url
     countries = []
     try:
         html = common.get_data(url)
@@ -49,6 +54,7 @@ def get_countries(url):
 
 def get_stores(data):
     url = data['url']
+    print 'Trying to get stores for %s' % data['name']
     try:
         html = common.get_data(url)
     except Exception:
@@ -67,7 +73,7 @@ def get_stores(data):
         sub_html = html[start:end]
         start = end
 
-        entry = common.init_store_entry(brand_id)
+        entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
         for m in re.findall(r'<h1><a href="(.*?)">(.*?)</a>', sub_html):
             entry[common.url] = host + m[0]
             entry[common.name_e] = common.html2plain(m[1].strip())
@@ -106,17 +112,9 @@ def get_stores(data):
         # Geo
         if 'state' in data:
             entry[common.province_e] = data['state']
-        country_e = data['name']
-        ret = common.geo_translate(country_e)
-        if len(ret) > 0:
-            common.update_entry(entry, {common.continent_c: ret[common.continent_c],
-                                        common.continent_e: ret[common.continent_e],
-                                        common.country_c: ret[common.country_c],
-                                        common.country_e: ret[common.country_e]})
-        else:
-            entry[common.country_e] = country_e
-        common.update_entry(entry, {common.brandname_c: brandname_c, common.brandname_e: brandname_e})
-        common.chn_check(entry)
+        country_e = data['name'].strip().upper()
+        entry[common.country_e]=country_e
+        gs.field_sense(entry)
 
         print '%s Found store: %s, %s (%s, %s)' % (
             brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
@@ -146,12 +144,6 @@ def recur_stores(url, data=None, level=0):
 func_map = {'get_countries': get_countries, 'get_stores': get_stores}
 
 
-def fetch1():
-    # 根节点
-    root_node = {'url': None, 'level': 0}
-    recur_stores(None)
-
-
 def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
         """
@@ -176,6 +168,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = common.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': host + '/en/countries'}
