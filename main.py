@@ -27,8 +27,13 @@ def calc(val):
 
 
 def test():
-    gs.load_geo()
-    gs.add_entries(gs.continent_map, gs.country_map, gs.province_map, gs.city_map)
+    entry = gs.look_up(u'CHICAGO', 3)
+    entry = gs.look_up(u'武汉', 3)
+    entry = gs.look_up(u'CHICAGO', 3)
+
+    pass
+    # gs.load_geo()
+    # gs.add_entries(gs.continent_map, gs.country_map, gs.province_map, gs.city_map)
     # new_map={}
     # for c in gs.continent_map:
     #     c1 = gs.continent_map[c]
@@ -47,6 +52,7 @@ def test():
 
 if __name__ == "__main__":
     test_flag = False
+    passwd = '07996019'
     if test_flag:
         test()
     else:
@@ -59,8 +65,8 @@ if __name__ == "__main__":
         # dunhill.fetch(passwd='07996019')
         # baume.fetch(passwd='07996019')
         # comme_des_garcons.fetch(passwd='07996019')
-        # louboutin.fetch(passwd='07996019')
-        # cerruti.fetch(passwd='07996019')
-        # christofle.fetch(passwd='07996019')
-        kenzo.fetch(passwd='07996019')
+        # louboutin.fetch(passwd)
+        # cerruti.fetch(passwd)
+        christofle.fetch(passwd=passwd)
+        # kenzo.fetch(passwd)
         print 'DONE!'

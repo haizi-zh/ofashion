@@ -45,18 +45,26 @@ def get_countries(data):
         state = m[1].strip().upper()
         ret = gs.look_up(state, 2)
         if ret is not None:
-            state_list.append({'state': ret[0]['province_e'], 'state_code': ret[0]['state_code']})
+            # state_list.append({'state': ret[0]['province_e'], 'state_code': ret[0]['state_code']})
+            state_list.append({'state': ret['name_e'], 'state_code': ret['code']})
         else:
-            # state是代码
-            flag = True
-            for s in gs.province_map:
-                if 'state_code' in gs.province_map[s] and gs.province_map[s]['state_code'] == code:
-                    state = gs.province_map[s]['province_e']
+            # state其实是写成是代码
+            for key in gs.province_map['data']:
+                state = gs.province_map['data'][key]
+                if state['code'] == code:
+                    state = state['name_e']
                     state_list.append({'state': state, 'state_code': code})
-                    flag = False
                     break
-            if flag:
-                state_list.append({'state': 'HZZZZ', 'state_code': code})
+
+                    # flag = True
+                    # for s in gs.province_map:
+                    #     if 'state_code' in gs.province_map[s] and gs.province_map[s]['state_code'] == code:
+                    #         state = gs.province_map[s]['province_e']
+                    #         state_list.append({'state': state, 'state_code': code})
+                    #         flag = False
+                    #         break
+                    # if flag:
+                    #     state_list.append({'state': 'HZZZZ', 'state_code': code})
 
     # 2：国家信息
     c_list = [{'country_code': m[0], 'country': m[1].strip(), 'url': url}
@@ -179,6 +187,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
