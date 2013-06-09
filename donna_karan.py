@@ -5,6 +5,7 @@ import urllib
 import urllib2
 import re
 import common as cm
+import geosense as gs
 
 __author__ = 'Zephyre'
 
@@ -50,7 +51,7 @@ def get_district(url, opt):
     return countries
 
 
-def get_stores(url):
+def get_stores(url, data):
     """
     从json对象中获得商店信息
     """
@@ -73,6 +74,7 @@ def get_stores(url):
                 break
 
     country = jsonobj['CurrentCountry']['Name']
+    store_list = []
     for s in stores:
         # print('Found store: %s, %s. Tel: %s, lat=%s, lng=%s' % (
         #     s['Name'], s['Address'], s['Phone'], s['Latitude'], s['Longitude']))
@@ -102,20 +104,21 @@ def get_stores(url):
             addr = u'%s, %s, %s' % (addr, region, country)
 
         for t in store_type:
-            entry = {'brand_id': brand_id, 'brandname_e': brandname_e,
-                     'addr_e': addr, 'country_e': country, 'city_e': s['City'], 'comments': s['Comments'],
-                     'province_e': region, 'zip': zip,
-                     'email': s['Email'], 'fax': s['Fax'], 'lat': s['Latitude'], 'lng': s['Longitude'],
-                     'name_e': s['Name'], 'tel': s['Phone'], 'store_type': t, 'url': url}
+            entry = cm.init_store_entry(brand_id, brandname_e, brandname_c)
+            cm.update_entry(entry, {'addr_e': addr, 'country_e': country, 'city_e': s['City'],
+                                    'comments': s['Comments'],
+                                    'province_e': region.strip().upper(), 'zip': zip,
+                                    'email': s['Email'], 'fax': s['Fax'], 'lat': s['Latitude'], 'lng': s['Longitude'],
+                                    'name_e': s['Name'], 'tel': s['Phone'], 'store_type': t, 'url': url})
+            gs.field_sense(entry)
 
-            print 'Found store: %s, %s' % (s['Name'], addr)
-            fields = u'(' + (u', '.join(entry.keys())) + u')'
-            values = u'(' + (u','.join([u'"' + unicode(entry[k]) + u'"' for k in entry.keys()])) + u')'
-            # statement = u'DELETE FROM stores WHERE brand_id=%d AND name_e="%s"' % (brand_id, s['Name'])
-            # db.execute(statement)
-            statement = u'INSERT INTO stores %s VALUES %s' % (fields, values)
-            db.execute(statement)
-    return stores
+            print '%s Found store: %s, %s (%s, %s)' % (
+                brandname_e, entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+                entry[cm.continent_e])
+            db.insert_record(entry, 'stores')
+            store_list.append(entry)
+
+    return store_list
 
 
 def fetch_stores(url, type, data):
@@ -129,17 +132,17 @@ def fetch_stores(url, type, data):
         countries = get_district(url, opt)
         stores = []
         for c in countries:
-            # if not c['code'].__eq__('us'):
+            # if c['code']!='us':
             #     continue
 
             url = 'http://www.donnakaran.com/store/formpartial?' + urllib.urlencode({'country': c['code']})
             print('Fetching for %s...' % c['name'])
             if c['code'].__eq__('us'):
-                col = fetch_stores(url, 1, None)
+                col = fetch_stores(url, 1, {'country_name': c['name'], 'code': c['code']})
                 if col is not None:
                     stores.extend(col)
             else:
-                col = fetch_stores(url, 2, {'country': c['code'], 'region': 0})
+                col = fetch_stores(url, 2, {'country_name':c['name'], 'code': c['code'], 'region': 0})
                 if col is not None:
                     stores.extend(col)
         return stores
@@ -152,7 +155,10 @@ def fetch_stores(url, type, data):
             url = 'http://www.donnakaran.com/store/formpartial?' + \
                   urllib.urlencode({'country': 'us', 'region': s['code'], 'p': 1})
             print('Fetching for %s...' % s['name'])
-            col = fetch_stores(url, 2, {'country': 'us', 'region': s['code']})
+            d = dict(data)
+            d['region'] = s['code']
+            d['province_name'] = s['name'].strip().upper()
+            col = fetch_stores(url, 2, d)
             if col is not None:
                 stores.extend(col)
 
@@ -161,30 +167,41 @@ def fetch_stores(url, type, data):
         opt = ['param param-city', r'<option\s+value="([^\s]+)"\s*>([\w\s]+)</option>', 'http://www.donnakaran.com%s']
         cities = get_district(url, opt)
         stores = []
-        country = data['country']
+        country_code = data['code']
         region = data['region']
         for c in cities:
             # country=ca&region=0&city=burlington&zip=&brand=dkny&p=1&output=json
             url = 'http://www.donnakaran.com/store/listpartial?' + \
-                  urllib.urlencode({'output': 'json', 'country': country, 'region': region,
+                  urllib.urlencode({'output': 'json', 'country': country_code, 'region': region,
                                     'city': c['name'],
                                     'zip': '', 'brand': __brand__, 'p': 1})
             print('\tFetching for %s...' % c['name'])
-            col = fetch_stores(url, 3, None)
+            d = dict(data)
+            d['city_name'] = c['name']
+            col = fetch_stores(url, 3, d)
             if col is not None:
                 stores.extend(col)
         return stores
     elif type == 3:
-    # 获得城市中的商店信息
-        return get_stores(url)
+        # 获得城市中的商店信息
+        if 'province_name' in data:
+            gs.update_city_map(data['city_name'], data['country_name'], province_name=data['province_name'])
+        else:
+            gs.update_city_map(data['city_name'], data['country_name'])
+        return get_stores(url, data)
 
 
-def fetch(brand, user='root', passwd=''):
-    __brand__ = brand
+def fetch(user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
     # Walk from the root node, where level == 1.
     results = fetch_stores(None, 0, None)
+
     db.disconnect_db()
+    for i in xrange(4):
+        gs.commit_maps(i)
+
     return results

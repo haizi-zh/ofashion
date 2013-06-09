@@ -90,14 +90,15 @@ def format_time(fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(time.time()))
 
 
-def init_store_entry(id_, name_e='', name_c=''):
+def init_store_entry(bn_id, bn_e='', bn_c=''):
     """
     根据字段定义，返回一个初始化的门店结构
 
     """
-    return {brand_id: id_, fetch_time: format_time(), brandname_e: name_e, brandname_c: name_c, continent_e: '',
+    return {brand_id: bn_id, fetch_time: format_time(), brandname_e: bn_e, brandname_c: bn_c, continent_e: '',
             continent_c: '', country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '',
-            district_c: '', district_e: '', name_l: '', addr_e: '', addr_c: '', addr_l: '', tel: '', email: '', fax: '',
+            district_c: '', district_e: '', name_l: '', name_e: '', name_c:'', addr_e: '', addr_c: '',
+            addr_l: '', tel: '', email: '', fax: '',
             hotline: '', store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
 
 
@@ -511,30 +512,30 @@ def load_geo2():
     f.close()
 
 
-def geo_translate(c, level=-1):
-    """
-    得到中英文对照的国家名称
-    :param level: 查找级别：-1：全级别查找：自上而下；0：洲；1：国家；2：州/省；3:城市；4：城市区域
-    :rtype : [english, 中文]
-    :param c:
-    """
-    if continent_map is None:
-        load_geo()
-
-    result = {}
-    c = c.strip()
-    if re.match(ur'.*[\u2E80-\u9FFF]', c) is not None:
-        if country_map_c.has_key(c):
-            result = country_map_c[c]
-        elif continent_map_c.has_key(c):
-            result = continent_map_c[c]
-    else:
-        c = c.upper()
-        if country_map_e.has_key(c):
-            result = country_map_e[c]
-        elif continent_map_e.has_key(c):
-            result = continent_map_e[c]
-    return result
+# def geo_translate(c, level=-1):
+#     """
+#     得到中英文对照的国家名称
+#     :param level: 查找级别：-1：全级别查找：自上而下；0：洲；1：国家；2：州/省；3:城市；4：城市区域
+#     :rtype : [english, 中文]
+#     :param c:
+#     """
+#     if continent_map is None:
+#         load_geo()
+#
+#     result = {}
+#     c = c.strip()
+#     if re.match(ur'.*[\u2E80-\u9FFF]', c) is not None:
+#         if country_map_c.has_key(c):
+#             result = country_map_c[c]
+#         elif continent_map_c.has_key(c):
+#             result = continent_map_c[c]
+#     else:
+#         c = c.upper()
+#         if country_map_e.has_key(c):
+#             result = country_map_e[c]
+#         elif continent_map_e.has_key(c):
+#             result = continent_map_e[c]
+#     return result
 
 
 def walk_tree(node):
