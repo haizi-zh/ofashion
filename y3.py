@@ -1,6 +1,7 @@
 # coding=utf-8
 import re
 import common as cm
+import geosense as gs
 
 __author__ = 'Zephyre'
 
@@ -33,7 +34,7 @@ def fetch_stores(data):
     html = html[start:end]
 
     for m1 in re.findall(ur'<li class="(.*?)">(.*?)</li>', html, re.S):
-        store = cm.init_store_entry(brand_id)
+        store = cm.init_store_entry(brand_id, brandname_e, brandname_c)
         store[cm.store_type] = m1[0]
         sub_html = m1[1]
         m2 = re.findall(ur'<h3 class="store-name">(.*?)</h3>', sub_html)
@@ -43,14 +44,10 @@ def fetch_stores(data):
         if len(m2) > 0:
             store[cm.addr_e] = cm.reformat_addr(m2[0])
 
-        cm.update_entry(store, {cm.continent_e: data[cm.continent_e], cm.country_e: data[cm.country_e],
-                                cm.city_e: data[cm.city_e], cm.brandname_c: brandname_c, cm.brandname_e: brandname_e})
-        geo_term = cm.geo_translate(data[cm.country_e])
-        if len(geo_term) > 0:
-            cm.update_entry(store, {cm.continent_e: geo_term[cm.continent_e],
-                                    cm.continent_c: geo_term[cm.continent_c],
-                                    cm.country_e: geo_term[cm.country_e], cm.country_c: geo_term[cm.country_c]})
-        cm.chn_check(store)
+        cm.update_entry(store, {cm.continent_e: data[cm.continent_e].strip().upper(),
+                                cm.country_e: data[cm.country_e].strip().upper(),
+                                cm.city_e: data[cm.city_e].strip().upper()})
+        gs.field_sense(store)
 
         print '%s: Found store: %s, %s (%s, %s)' % (
             brandname_e, store[cm.name_e], store[cm.addr_e], store[cm.country_e],
@@ -120,24 +117,15 @@ def fetch(level=1, data=None, user='root', passwd=''):
             return [{'func': None, 'data': s} for s in store_l]
 
 
-            # district_l = get_countries(data['url'])
-            # siblings = []
-            # for c1 in district_l.keys():
-            #     country_l = district_l[c1]
-            #     for c2 in country_l:
-            #         c2['continent'] = c1
-            #         siblings.append({'func': lambda data: func(data, 2), 'data': c2})
-            # return siblings
-            # elif level == 2:
-            #     store_l = fetch_stores(data)
-            #     return [{'func': None, 'data': s} for s in store_l]
-
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
     results = cm.walk_tree({'func': lambda data: func(data, 1), 'data': data})
+
     db.disconnect_db()
     return results

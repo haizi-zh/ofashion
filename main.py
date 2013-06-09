@@ -5,6 +5,7 @@ import cerruti
 import christofle
 
 import common
+import donna_karan
 import geosense as gs
 import dunhill
 import emiliopucci
@@ -13,6 +14,7 @@ import louboutin
 import shanghaitang
 import viktor_rolf
 import y3
+import ysl
 import zegna
 import zenithwatch
 import comme_des_garcons
@@ -27,9 +29,12 @@ def calc(val):
 
 
 def test():
-    entry = gs.look_up(u'CHICAGO', 3)
-    entry = gs.look_up(u'武汉', 3)
-    entry = gs.look_up(u'CHICAGO', 3)
+    for key in gs.province_map['data']:
+        prov = gs.province_map['data'][key]
+        if prov['code'] != '':
+            gs.province_map['lookup'][prov['code']] = key
+
+    gs.commit_maps(2)
 
     pass
     # gs.load_geo()
@@ -52,21 +57,23 @@ def test():
 
 if __name__ == "__main__":
     test_flag = False
-    passwd = '07996019'
+    passwd = '123456'
     if test_flag:
         test()
     else:
-        # zenithwatch.fetch()
-        viktor_rolf.fetch(passwd=passwd)
-        # shanghaitang.fetch()
-        # emiliopucci.fetch()
-        # zegna.fetch()
-        # y3.fetch()
-        # dunhill.fetch(passwd='07996019')
+        # donna_karan.fetch(passwd=passwd)
+        # ysl.fetch(passwd=passwd)
+        zenithwatch.fetch(passwd=passwd)
+        # viktor_rolf.fetch(passwd=passwd)
+        # shanghaitang.fetch(passwd=passwd)
+        # emiliopucci.fetch(passwd=passwd)
+        # zegna.fetch(passwd=passwd)
+        # y3.fetch(passwd=passwd)
+        # dunhill.fetch(passwd=passwd)
         # baume.fetch(passwd='07996019')
-        # comme_des_garcons.fetch(passwd='07996019')
-        # louboutin.fetch(passwd)
-        # cerruti.fetch(passwd)
+        # comme_des_garcons.fetch(passwd=passwd)
+        # louboutin.fetch(passwd=passwd)
+        # cerruti.fetch(passwd=passwd)
         # christofle.fetch(passwd=passwd)
-        # kenzo.fetch(passwd)
+        # kenzo.fetch(passwd=passwd)
         print 'DONE!'

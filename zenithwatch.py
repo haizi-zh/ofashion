@@ -3,6 +3,7 @@ import json
 import string
 import re
 import common as cm
+import geosense as gs
 
 __author__ = 'Zephyre'
 
@@ -90,9 +91,8 @@ def fetch_store_details(url, data):
     stores = []
     # 针对每个门店：
     for s in sub_html:
-        entry = cm.init_store_entry(brand_id)
-        cm.update_entry(entry, {cm.brandname_c: brandname_c, cm.brandname_e: brandname_e, cm.url: url,
-                                cm.name_e: data['name'], cm.lat: data['lat'], cm.lng: data['lng'],
+        entry = cm.init_store_entry(brand_id, brandname_e, brandname_c)
+        cm.update_entry(entry, {cm.url: url, cm.name_e: data['name'], cm.lat: data['lat'], cm.lng: data['lng'],
                                 cm.store_type: data['type']})
         for m in re.findall(ur'<p class="boutique-info-cadre-titre">(.*?)</p>', s):
             if len(m.strip()) >= 0:
@@ -143,16 +143,18 @@ def fetch_store_details(url, data):
             if street_addr == '':
                 tmp = cm.reformat_addr(m)
                 terms = tmp.split(',')
-                t2 = cm.geo_translate(terms[-1])
-                if len(t2) != 0:
+                ret = gs.look_up(terms[-1], 1)
+                if ret is not None:
+                # t2 = cm.geo_translate(terms[-1])
+                # if len(t2) != 0:
                     # 这是一个国家
                     # 把最后的国家项分离出来
                     street_addr = ', '.join(terms[:-1])
                     entry[cm.addr_e] = cm.reformat_addr(street_addr)
-                    entry[cm.country_c] = t2['country_c']
-                    entry[cm.country_e] = t2['country_e']
-                    entry[cm.continent_c] = t2['continent_c']
-                    entry[cm.continent_e] = t2['continent_e']
+                    entry[cm.country_c] = ret['name_c']
+                    entry[cm.country_e] = ret['name_e']
+                    entry[cm.continent_c] = ret['continent']['name_c']
+                    entry[cm.continent_e] = ret['continent']['name_e']
                 else:
                     if cm.is_chinese(tmp):
                         entry[cm.addr_c] = tmp
@@ -161,21 +163,25 @@ def fetch_store_details(url, data):
             else:
                 street_addr = ', '.join([street_addr, zip_code, city])
                 entry[cm.addr_e] = cm.reformat_addr(street_addr)
-                t2 = cm.geo_translate(country)
-                if len(t2) == 0:
+                ret = gs.look_up(country, 1)
+                if ret is None:
+                # t2 = cm.geo_translate(country)
+                # if len(t2) == 0:
                     entry[cm.country_c] = country
                 else:
-                    entry[cm.country_c] = t2['country_c']
-                    entry[cm.country_e] = t2['country_e']
-                    entry[cm.continent_c] = t2['continent_c']
-                    entry[cm.continent_e] = t2['continent_e']
+                    entry[cm.country_c] = ret['name_c']
+                    entry[cm.country_e] = ret['name_e']
+                    entry[cm.continent_c] = ret['continent']['name_c']
+                    entry[cm.continent_e] = ret['continent']['name_e']
+
                 entry[cm.city_e] = city
+                gs.field_sense(entry)
+
         print '%s Found store: %s, %s. (%s, %s)' % (brandname_e,
                                                     entry[cm.name_e], entry[cm.addr_e], entry[cm.continent_e],
                                                     entry[cm.country_e])
-        cm.chn_check(entry)
-        stores.append(entry)
         db.insert_record(entry, 'stores')
+        stores.append(entry)
     return stores
 
 
@@ -197,6 +203,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
