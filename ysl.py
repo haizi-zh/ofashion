@@ -4,6 +4,7 @@ __author__ = 'Zephyre'
 
 import re
 import common as cm
+import geosense as gs
 
 url = 'http://www.ysl.com/en_US/stores'
 db = None
@@ -49,25 +50,25 @@ def get_store_details(html, opt):
 
         # store_addr = cm.reformat_addr('\r\n'.join([val.strip() for val in spl[1:-3]]))
         store_addr = cm.reformat_addr(store_addr)
-        store_entry = {cm.continent_e: opt[cm.continent_e].strip().upper(), cm.city_e: opt[cm.city_e].strip().upper(),
-                       cm.country_e: opt[cm.country_e].strip().upper(),
-                       cm.name_e: cm.name_e, cm.addr_e: store_addr, cm.store_type: store_type, cm.hours: store_hour,
-                       cm.tel: store_tel}
+
+        store_entry = cm.init_store_entry(brand_id, brandname_e, brandname_c)
+        cm.update_entry(store_entry,
+                        {cm.continent_e: opt[cm.continent_e].strip().upper(), cm.city_e: opt[cm.city_e].strip().upper(),
+                         cm.country_e: opt[cm.country_e].strip().upper(),
+                         cm.name_e: cm.name_e, cm.addr_e: store_addr, cm.store_type: store_type, cm.hours: store_hour,
+                         cm.tel: store_tel})
         if opt.has_key(cm.province_e):
             store_entry[cm.province_e] = opt[cm.province_e]
         else:
             store_entry[cm.province_e] = ''
-        print(
-            u'Found store: %s | %s | %s | (%s | %s)' % (
-                store_name, store_addr, store_tel, opt[cm.country_e], opt[cm.continent_e]))
 
-        s = u'INSERT INTO stores (brand_id, brandname_e, brandname_c, continent_e, country_e, province_e, city_e, ' \
-            u'name_e, addr_e, store_type, hours, tel) VALUES (%d, "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", ' \
-            u'"%s", "%s", "%s")' % (
-                brand_id, brandname_e, brandname_c, store_entry[cm.continent_e], store_entry[cm.country_e],
-                store_entry[cm.province_e], store_entry[cm.city_e], store_name, store_addr, store_type, store_hour,
-                store_tel)
-        db.execute(s)
+        gs.field_sense(store_entry)
+
+        print '%s Found store: %s, %s (%s, %s)' % (
+                brandname_e, store_entry[cm.name_e], store_entry[cm.addr_e], store_entry[cm.country_e],
+                store_entry[cm.continent_e])
+        db.insert_record(store_entry, 'stores')
+
         return store_entry
 
     stores = [f(m) for m in re.findall('<li>\s*?<address>\s*?<h2>(.*?)</h2><br/>(.*?)</address>\s*?</li>', html, re.S)]
@@ -134,6 +135,8 @@ def fetch(user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
     # Walk from the root node, where level == 1.
     results = cm.walk_tree({'func': lambda data: func(data, 1), 'data': {'url': url}})
     db.disconnect_db()
