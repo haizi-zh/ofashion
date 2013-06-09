@@ -59,6 +59,54 @@ def look_up(term, level=0):
         return None
 
 
+def commit_maps(opt=3):
+    if opt == 3:
+        with open('data/city_map_new.dat', 'w') as f:
+            f.write(json.dumps(city_map, ensure_ascii=False).encode('utf-8'))
+    elif opt == 2:
+        with open('data/province_map_new.dat', 'w') as f:
+            f.write(json.dumps(province_map, ensure_ascii=False).encode('utf-8'))
+    elif opt == 1:
+        with open('data/country_map_new.dat', 'w') as f:
+            f.write(json.dumps(country_map, ensure_ascii=False).encode('utf-8'))
+    elif opt == 0:
+        with open('data/continent_map_new.dat', 'w') as f:
+            f.write(json.dumps(continent_map, ensure_ascii=False).encode('utf-8'))
+
+
+def update_city_map(city_name=None, country_name=None, continent_name=None):
+    sha = hashlib.sha1()
+    if country_name not in country_map['lookup']:
+        if continent_name is None:
+            return
+        continent_guid = continent_map['lookup'][continent_name]
+        item = {'continent': continent_guid, 'name_e': country_name, 'name_c': ''}
+        while True:
+            sha.update(str(random.randint(0, sys.maxint)))
+            guid = ''.join(['%x' % ord(v) for v in sha.digest()])
+            if guid not in country_map['data']:
+                country_map['data'][guid] = item
+                country_map['lookup'][country_name] = guid
+                print 'Added: %s in %s' % (item['name_e'], continent_name)
+                break
+
+    if city_name == None:
+        return
+
+    country_name = look_up(country_name, 1)['name_e']
+    country_guid = country_map['lookup'][country_name]
+    if city_name not in city_map['lookup']:
+        item = {'country': country_guid, 'province': '', 'name_e': city_name, 'name_c': ''}
+        while True:
+            sha.update(str(random.randint(0, sys.maxint)))
+            guid = ''.join(['%x' % ord(v) for v in sha.digest()])
+            if guid not in city_map['data']:
+                city_map['data'][guid] = item
+                city_map['lookup'][city_name] = [guid]
+                print 'Added: %s in %s' % (item['name_e'], country_name)
+                break
+
+
 def load_geo():
     global continent_map
     global country_map
@@ -166,6 +214,20 @@ def field_sense(entry):
         cm.update_entry(entry, {cm.country_e: ret['name_e'], cm.country_c: ret['name_c']})
         ret1 = look_up(ret['continent']['name_e'], 0)
         cm.update_entry(entry, {cm.continent_e: ret1['name_e'], cm.continent_c: ret1['name_c']})
+
+        if entry[cm.zip_code]=='':
+            m=None
+            if ret['name_e']==look_up(u'CHINA', 1)['name_e']:
+                # 中国邮编
+                m = re.match(ur'\b(\d{6})\b', entry[cm.addr_e])
+            elif ret['name-e']==look_up(u'UNITED STATES',1)['name_e']:
+                # 美国邮编
+                m = re.match(ur'\b(\d{5})\b', entry[cm.addr_e])
+            elif ret['name-e']==look_up(u'JAPAN',1)['name_e']:
+                # 日本邮编
+                m = re.match(ur'\b(\d{3}\-\d{4})\b', entry[cm.addr_e])
+            if m is not None:
+                entry[cm.zip_code] = m.group(1)
     else:
         print 'Error in looking up %s' % country
     cm.chn_check(entry)

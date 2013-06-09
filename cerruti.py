@@ -127,6 +127,7 @@ def get_store_details(data):
     print '(%s / %d) Found store: %s, %s (%s, %s)' % (
         brandname_e, brand_id, entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
         entry[cm.continent_e])
+
     db.insert_record(entry, 'stores')
     return entry
 
@@ -156,9 +157,13 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()
+
     return results
