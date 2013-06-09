@@ -5,6 +5,7 @@ __author__ = 'Zephyre'
 import string
 import re
 import common
+import geosense as gs
 
 url = 'http://www.shanghaitang.com/stores.html'
 host = 'http://www.shanghaitang.com'
@@ -61,53 +62,53 @@ def get_district(html):
     return [continents, countries, cities]
 
 
-def get_stores1(html, cities):
-    start = None
-    stores = []
-
-    def proc(html, start, end, city_id):
-        sub_html = html[start:end]
-        store_name, store_addr, store_tel, store_opening = [''] * 4
-        for m1 in re.findall(ur'<div class="store-desc">(.+?)</div>', sub_html, re.S):
-            store_name = m1.strip()
-            break
-        if store_name.__eq__(''):
-            return None
-
-        for m1 in re.findall(ur'<div class="store-terminal">(.+?)</div>', sub_html, re.S):
-            store_addr = common.reformat_addr(m1)
-            break
-
-        for m1 in re.findall(ur'<div class="store-tel">\s*(Tel:)?\s*(.+?)\s*</div>', sub_html, re.S):
-            store_tel = m1[1].strip()
-            break;
-
-        for m1 in re.findall(ur'<div class="store-opening-hour">\s*?(?:Opening Hours:)?\s*?(.+?)\s*?</div>', sub_html,
-                             re.S):
-            store_opening = m1.strip()
-            break
-
-        return {'name': store_name, 'addr': store_addr, 'tel': store_tel, 'opening': store_opening,
-                'city': cities[city_id]['name'], 'country': cities[city_id]['country']['name'],
-                'continent': cities[city_id]['country']['continent']}
-
-    for m in re.finditer(ur'<div class="store-row city(\d+) hide">', html):
-        val = string.atoi(m.group(1))
-        if start is None:
-            start = m.start()
-            cid = val
-            continue
-        end = m.start()
-        store = proc(html, start, end, cid)
-        if store is not None:
-            stores.append(store)
-            start = end
-            cid = val
-            print('Found store: %s, %s (%s, %s, %s)' % (
-                store['name'], store['addr'], store['city'], store['country'], store['continent']))
-
-    return stores
-
+# def get_stores1(html, cities):
+#     start = None
+#     stores = []
+#
+#     def proc(html, start, end, city_id):
+#         sub_html = html[start:end]
+#         store_name, store_addr, store_tel, store_opening = [''] * 4
+#         for m1 in re.findall(ur'<div class="store-desc">(.+?)</div>', sub_html, re.S):
+#             store_name = m1.strip()
+#             break
+#         if store_name.__eq__(''):
+#             return None
+#
+#         for m1 in re.findall(ur'<div class="store-terminal">(.+?)</div>', sub_html, re.S):
+#             store_addr = common.reformat_addr(m1)
+#             break
+#
+#         for m1 in re.findall(ur'<div class="store-tel">\s*(Tel:)?\s*(.+?)\s*</div>', sub_html, re.S):
+#             store_tel = m1[1].strip()
+#             break;
+#
+#         for m1 in re.findall(ur'<div class="store-opening-hour">\s*?(?:Opening Hours:)?\s*?(.+?)\s*?</div>', sub_html,
+#                              re.S):
+#             store_opening = m1.strip()
+#             break
+#
+#         return {'name': store_name, 'addr': store_addr, 'tel': store_tel, 'opening': store_opening,
+#                 'city': cities[city_id]['name'], 'country': cities[city_id]['country']['name'],
+#                 'continent': cities[city_id]['country']['continent']}
+#
+#     for m in re.finditer(ur'<div class="store-row city(\d+) hide">', html):
+#         val = string.atoi(m.group(1))
+#         if start is None:
+#             start = m.start()
+#             cid = val
+#             continue
+#         end = m.start()
+#         store = proc(html, start, end, cid)
+#         if store is not None:
+#             stores.append(store)
+#             start = end
+#             cid = val
+#             print('Found store: %s, %s (%s, %s, %s)' % (
+#                 store['name'], store['addr'], store['city'], store['country'], store['continent']))
+#
+#     return stores
+#
 
 def get_coordinates(url):
     try:
@@ -150,7 +151,7 @@ def get_stores(html, cities):
     for m in sub_list:
         city_id = m['city_id']
         sub_html = m['html']
-        entry = common.init_store_entry(brand_id)
+        entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
         for m1 in re.findall(ur'<div class="store-desc">(.+?)</div>', sub_html, re.S):
             entry[common.name_e] = common.reformat_addr(m1)
             break
@@ -180,20 +181,21 @@ def get_stores(html, cities):
         continent_e = cities[city_id]['country']['continent'].strip().upper()
         common.update_entry(entry,
                             {common.city_e: city_e, common.country_e: country_e, common.continent_e: continent_e})
-        ret = common.geo_translate(country_e.strip())
-        if len(ret) > 0:
-            common.update_entry(entry, {common.continent_c: ret[common.continent_c],
-                                        common.continent_e: ret[common.continent_e],
-                                        common.country_c: ret[common.country_c],
-                                        common.country_e: ret[common.country_e]})
-        common.update_entry(entry, {common.brandname_c: brandname_c, common.brandname_e: brandname_e})
-        common.chn_check(entry)
+        gs.field_sense(entry)
+
+        # ret = common.geo_translate(country_e.strip())
+        # if len(ret) > 0:
+        #     common.update_entry(entry, {common.continent_c: ret[common.continent_c],
+        #                                 common.continent_e: ret[common.continent_e],
+        #                                 common.country_c: ret[common.country_c],
+        #                                 common.country_e: ret[common.country_e]})
+        # common.update_entry(entry, {common.brandname_c: brandname_c, common.brandname_e: brandname_e})
+        # common.chn_check(entry)
 
         print '%s Found store: %s, %s (%s, %s)' % (
             brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
             entry[common.continent_e])
         db.insert_record(entry, 'stores')
-
         store_list.append(entry)
 
     return store_list
@@ -211,6 +213,7 @@ def fetch(data=None, user='root', passwd=''):
     global db
     db = common.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
     cities = get_district(html)[2]
     stores = get_stores(html, cities)
     db.disconnect_db()
