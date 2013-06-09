@@ -78,54 +78,35 @@ def get_store_details(data):
         return []
 
     entry = cm.init_store_entry(brand_id, brandname_e, brandname_c)
-    entry[cm.name_e]=data['name']
-    entry[cm.url]=data['url']
-    start=html.find(ur'<div class="storelocator-breadcrumbs">')
-    if start==-1:
+    entry[cm.name_e] = data['name']
+    entry[cm.url] = data['url']
+    start = html.find(ur'<div class="storelocator-breadcrumbs">')
+    if start == -1:
         return []
-    sub,start,end=cm.extract_closure(html[start:], ur'<ul>', ur'</ul>')
-    if end==0:
+    sub, start, end = cm.extract_closure(html[start:], ur'<ul>', ur'</ul>')
+    if end == 0:
         return []
-    # 最后一个<li>...</li>
-    m = re.findall(ur'<li>(.+?)</li>',sub,re.S)
-    if len(m)>0:
-        entry[cm.addr_e]=cm.reformat_addr(m[-1])
-    # 经纬度
+        # 最后一个<li>...</li>
+    m = re.findall(ur'<li>(.+?)</li>', sub, re.S)
+    if len(m) > 0:
+        entry[cm.addr_e] = cm.reformat_addr(m[-1])
+        # 经纬度
     m = re.findall(ur'position: new google.maps.LatLng\((-?\d+\.\d+).*?(-?\d+\.\d+)\)', html)
-    if len(m)>0:
-        cm.update_entry(entry, {cm.lat:string.atof(m[0][0]), cm.lng:string.atof(m[0][1])})
+    if len(m) > 0:
+        cm.update_entry(entry, {cm.lat: string.atof(m[0][0]), cm.lng: string.atof(m[0][1])})
 
     # Geo
     country = data['country']
-    city=data['city']
-    cm.update_entry(entry,{cm.country_e:country, cm.city_e:city})
-
+    city = data['city']
+    cm.update_entry(entry, {cm.country_e: country, cm.city_e: city})
     gs.field_sense(entry)
-    # ret = gs.look_up(city, 3)
-    # if ret is not None:
-    #     if cm.city_e in ret[0]:
-    #         entry[cm.city_e]=ret[0][cm.city_e]
-    #     if cm.city_c in ret[0]:
-    #         entry[cm.city_c]=ret[0][cm.city_c]
-    #     if 'province' in ret[0]:
-    #         ret1 = gs.look_up(ret[0]['province'], 2)[0]
-    #         if cm.province_e in ret1:
-    #             entry[cm.province_e] = ret1[cm.province_e]
-    #         if cm.province_c in ret1:
-    #             entry[cm.province_c] = ret1[cm.province_c]
-    # ret = gs.look_up(country, 1)
-    # if ret is not None:
-    #     cm.update_entry(entry,{cm.country_e:ret[0][cm.country_e], cm.country_c:ret[0][cm.country_c]})
-    #     ret1 = gs.look_up(ret[0]['continent'], 0)[0]
-    #     cm.update_entry(entry, {cm.continent_e:ret1[cm.continent_e], cm.continent_c:ret1[cm.continent_c]})
-    # else:
-    #     print 'Error in looking up %s'%country
 
     print '(%s / %d) Found store: %s, %s (%s, %s)' % (
         brandname_e, brand_id, entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
         entry[cm.continent_e])
     db.insert_record(entry, 'stores')
     return entry
+
 
 def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
@@ -150,9 +131,15 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': url}
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()
+
+    for i in xrange(4):
+        gs.commit_maps(i)
+
     return results
