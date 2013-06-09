@@ -2,6 +2,7 @@
 import string
 import re
 import common
+import geosense as gs
 
 __author__ = 'Zephyre'
 
@@ -33,6 +34,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     db = common.StoresDb()
     db.connect_db(user=user, passwd=passwd)
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
+
 
     sub_pat = re.compile(ur'<!--.*?-->', re.S)
     html = re.sub(sub_pat, '', html)
@@ -48,26 +51,24 @@ def fetch(level=1, data=None, user='root', passwd=''):
         m = re.findall(ur'<span class="contactboldtitle">(.+?)</span>', sub_html)
         if len(m) > 0:
             entry[common.name_l] = m[0]
-        m = re.findall(ur'<span class="storethinlines">(.+?)</span>', sub_html, re.S)
+        m = re.findall(ur'<span class="storethinlines">(.+?)(?:</span>|</p>)', sub_html, re.S)
         if len(m) >= 2:
             addr = common.reformat_addr(m[0])
             entry[common.addr_l] = addr
             # 城市，国家和邮编
             addr_splits = addr.split(', ')
-            term = common.geo_translate(addr_splits[-1])
-            # 最后一位是国家
-            if len(term) == 0:
+
+            ret = gs.look_up(addr_splits[-1], 1)
+            if ret is None:
                 print 'Error in geo translating: %s' % addr_splits[-1]
             else:
-                common.update_entry(entry, {common.continent_e: term[common.continent_e],
-                                            common.continent_c: term[common.continent_c],
-                                            common.country_e: term[common.country_e],
-                                            common.country_c: term[common.country_c]})
+                entry[common.country_e]=ret['name_e']
                 m1 = re.findall(ur'(.+?)(\d{3}-\d{4})', addr_splits[-2])
                 if len(m1) > 0:
                     common.update_entry(entry, {common.city_e: common.reformat_addr(m1[0][0]),
                                                 common.zip_code: m1[0][1]})
-                    # 联系方式
+
+            # 联系方式
             tmp = m[1]
             m1 = re.findall(ur'[\d\-]{5,}', tmp)
             if len(m1) > 0:
@@ -76,7 +77,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
             if len(m1) > 0:
                 entry[common.email] = m1[0].strip()
 
-        common.chn_check(entry)
+        gs.field_sense(entry)
         print '%s: Found store: %s, %s (%s, %s)' % (
             brandname_e, entry[common.name_l], entry[common.addr_l], entry[common.country_e],
             entry[common.continent_e])
