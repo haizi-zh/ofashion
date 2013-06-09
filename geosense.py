@@ -76,10 +76,14 @@ def commit_maps(opt=3):
 
 def update_city_map(city_name=None, country_name=None, continent_name=None):
     sha = hashlib.sha1()
-    if country_name not in country_map['lookup']:
+    city_name = city_name.strip().upper()
+    country_name = country_name.strip().upper()
+    continent_name = continent_name.strip().upper()
+
+    if look_up(country_name, 1) is None:
         if continent_name is None:
             return
-        continent_guid = continent_map['lookup'][continent_name]
+        continent_guid = continent_map['lookup'][look_up(continent_name, 0)['name_e']]
         item = {'continent': continent_guid, 'name_e': country_name, 'name_c': ''}
         while True:
             sha.update(str(random.randint(0, sys.maxint)))
@@ -87,7 +91,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None):
             if guid not in country_map['data']:
                 country_map['data'][guid] = item
                 country_map['lookup'][country_name] = guid
-                print 'Added: %s in %s' % (item['name_e'], continent_name)
+                print 'Country added: %s in %s' % (item['name_e'], continent_name)
                 break
 
     if city_name == None:
@@ -95,7 +99,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None):
 
     country_name = look_up(country_name, 1)['name_e']
     country_guid = country_map['lookup'][country_name]
-    if city_name not in city_map['lookup']:
+    if look_up(city_name, 3) is None:
         item = {'country': country_guid, 'province': '', 'name_e': city_name, 'name_c': ''}
         while True:
             sha.update(str(random.randint(0, sys.maxint)))
@@ -103,7 +107,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None):
             if guid not in city_map['data']:
                 city_map['data'][guid] = item
                 city_map['lookup'][city_name] = [guid]
-                print 'Added: %s in %s' % (item['name_e'], country_name)
+                print 'City added: %s in %s' % (item['name_e'], country_name)
                 break
 
 
@@ -215,21 +219,37 @@ def field_sense(entry):
         ret1 = look_up(ret['continent']['name_e'], 0)
         cm.update_entry(entry, {cm.continent_e: ret1['name_e'], cm.continent_c: ret1['name_c']})
 
-        if entry[cm.zip_code]=='':
-            m=None
-            if ret['name_e']==look_up(u'CHINA', 1)['name_e']:
+        if entry[cm.zip_code] == '':
+            m = None
+            if ret['name_e'] == look_up(u'CHINA', 1)['name_e']:
                 # 中国邮编
-                m = re.match(ur'\b(\d{6})\b', entry[cm.addr_e])
-            elif ret['name-e']==look_up(u'UNITED STATES',1)['name_e']:
+                m = re.match(ur'.*\b(\d{6})\b', entry[cm.addr_e])
+            elif ret['name_e'] == look_up(u'UNITED STATES', 1)['name_e']:
                 # 美国邮编
-                m = re.match(ur'\b(\d{5})\b', entry[cm.addr_e])
-            elif ret['name-e']==look_up(u'JAPAN',1)['name_e']:
+                m = re.match(ur'.*\b(\d{5})\b', entry[cm.addr_e])
+            elif ret['name_e'] == look_up(u'JAPAN', 1)['name_e']:
                 # 日本邮编
-                m = re.match(ur'\b(\d{3}\-\d{4})\b', entry[cm.addr_e])
+                m = re.match(ur'.*\b(\d{3}\-\d{4})\b', entry[cm.addr_e])
             if m is not None:
                 entry[cm.zip_code] = m.group(1)
     else:
         print 'Error in looking up %s' % country
     cm.chn_check(entry)
+
+    if entry[cm.zip_code] == '':
+        # 数字和城市，州一起，可能为邮编
+        m = re.match(ur'.*\s+(\d{5,})\b', entry[cm.addr_e])
+        if m is not None:
+            tmp = entry[cm.addr_e][m.end() + 1:]
+            terms = re.findall(ur'\b(\S+?)\b', tmp)
+            if terms is not None:
+                if look_up(terms[0], 2) is not None or look_up(terms[0], 3) is not None:
+                    entry[cm.zip_code] = m.group(1)
+            else:
+                tmp = entry[cm.addr_e][m.end() - len(m.group(1)) - 1::-1]
+                terms = re.findall(ur'\b(\S+?)\b', tmp)
+                if terms is not None:
+                    if look_up(terms[0][::-1], 2) is not None or look_up(terms[0][::-1], 3) is not None:
+                        entry[cm.zip_code] = m.group(1)
 
 
