@@ -53,10 +53,9 @@ def fetch_stores(data):
     """
     url = data['post_url']
     try:
-        tmp = cm.post_data(url, {'country_id': data['country_id'], 'retail_city': '',
-                                           'retail_type': data['retail_type']})
-        tmp = tmp.decode('unicode_escape')
-        js = json.loads(tmp)
+
+        js = json.loads(cm.post_data(url, {'country_id': data['country_id'], 'retail_city': '',
+                                           'retail_type': data['retail_type']}).decode('unicode_escape'))
     except Exception:
         print 'Error occured in getting country list: %s' % url
         dump_data = {'level': 1, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
