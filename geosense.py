@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 import sys
+import time
 import common as cm
 
 __author__ = 'Zephyre'
@@ -75,10 +76,17 @@ def commit_maps(opt=3):
 
 
 def update_city_map(city_name=None, country_name=None, continent_name=None, province_name=None):
+    """
+    添加新的地理条目。
+    :param city_name:
+    :param country_name:
+    :param continent_name:
+    :param province_name:
+    :return:
+    """
     sha = hashlib.sha1()
-    city_name = city_name.strip().upper()
+
     country_name = country_name.strip().upper()
-    # continent_name = continent_name.strip().upper()
 
     if look_up(country_name, 1) is None:
         if continent_name is None:
@@ -99,6 +107,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
 
     country_name = look_up(country_name, 1)['name_e']
     country_guid = country_map['lookup'][country_name]
+    city_name = city_name.strip().upper()
     if look_up(city_name, 3) is None:
         item = {'country': country_guid, 'province': '', 'name_e': city_name, 'name_c': ''}
         if province_name is not None:
@@ -115,6 +124,35 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
                 print 'City added: %s in %s' % (item['name_e'], country_name)
                 break
 
+
+def geocode(city, retried):
+    metro_list=[]
+    js = cm.get_data('http://maps.googleapis.com/maps/api/geocode/json',
+                             {'address': city.encode('utf-8'), 'sensor': 'false'})
+    entry = json.loads(js)
+    if entry['status']=='OVER_QUERY_LIMIT':
+        if retried:
+            print 'Failed to geocode due to query limit: %s'%city
+        else:
+            print 'Cooling down...'
+            time.sleep(5)
+            geocode(city, True)
+            return
+
+    if entry['status'] != u'OK' or len(entry['results']) < 1:
+        print 'Failed to geocode: %s, reason: %s' % (city, entry['status'])
+        return
+
+    addr = entry['results'][0]['address_components']
+    geo = entry['results'][0]['geometry']
+
+    item = {'name_e': addr[0]['long_name'], 'country':'',
+            'lat': geo['location']['lat'], 'lng': geo['location']['lng']}
+    if len(addr) > 1:
+        item['country'] = addr[-1]['long_name']
+
+    print 'Added: %s' % item
+    metro_list.append(item)
 
 def load_geo():
     global continent_map
@@ -133,6 +171,9 @@ def load_geo():
 
 
 load_geo()
+
+
+
 
 
 def field_sense(entry):
