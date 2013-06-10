@@ -12,6 +12,7 @@ import geosense as gs
 import dunhill
 import emiliopucci
 import kenzo
+import levis
 import louboutin
 import marni
 import mido
@@ -82,4 +83,5 @@ if __name__ == "__main__":
         # sergio.fetch(passwd=passwd)
         # mido.fetch(passwd=passwd)
         # marni.fetch(passwd=passwd)
+        # levi.fetch(passwd=passwd)
         print 'DONE!'

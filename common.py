@@ -97,7 +97,7 @@ def init_store_entry(bn_id, bn_e='', bn_c=''):
     """
     return {brand_id: bn_id, fetch_time: format_time(), brandname_e: bn_e, brandname_c: bn_c, continent_e: '',
             continent_c: '', country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '',
-            district_c: '', district_e: '', name_l: '', name_e: '', name_c:'', addr_e: '', addr_c: '',
+            district_c: '', district_e: '', name_l: '', name_e: '', name_c: '', addr_e: '', addr_c: '',
             addr_l: '', tel: '', email: '', fax: '',
             hotline: '', store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
 
@@ -373,7 +373,8 @@ class StoresDb(object):
                     ret = u'"%f"' % value
             else:
                 # 去掉中间的引号
-                ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\', '')
+                ret = u'"%s"' % unicode(value).replace('"', '\\"').replace('\\', '\\\\')
+                # ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\', '')
             return ret
 
         values = '(' + ', '.join([get_value_term(k, entry[k]) for k in entry.keys()]) + ')'
