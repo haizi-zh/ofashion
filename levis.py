@@ -49,7 +49,6 @@ def fetch_cn(data):
                                                           entry[cm.continent_e])
                 store_list.append(entry)
                 db.insert_record(entry, 'stores')
-                store_list.append(entry)
 
     return store_list
 

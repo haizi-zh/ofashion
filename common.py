@@ -120,7 +120,7 @@ def reformat_addr(addr):
         return None
     new_addr = html2plain(addr.strip())
     # <br/>换成换行符
-    new_addr = re.subn(ur'<\s*br\s*/>', u'\r\n', new_addr)[0]
+    new_addr = re.subn(ur'<\s*br\s*/?>', u'\r\n', new_addr)[0]
     # 去掉多余的标签
     new_addr = re.subn(ur'<.+?>', u'', new_addr)[0]
     # 换行转换
