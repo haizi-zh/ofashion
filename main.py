@@ -19,6 +19,7 @@ import marni
 import maurice_lacroix
 import michael_kors
 import mido
+import missoni
 import sergio
 import shanghaitang
 import triumph
@@ -89,5 +90,7 @@ if __name__ == "__main__":
         # levi.fetch(passwd=passwd)
         # lukfook.fetch(passwd=passwd)
         # maurice_lacroix.fetch(passwd=passwd)
-        michael_kors.fetch(passwd=passwd)
+        # michael_kors.fetch(passwd=passwd)
+        missoni.fetch(passwd=passwd)
+
         print 'DONE!'
