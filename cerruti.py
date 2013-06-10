@@ -98,7 +98,6 @@ def get_store_details(data):
         dump_data = {'level': 1, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': brand_id}
         cm.dump(dump_data)
         return []
-    pass
 
     entry = cm.init_store_entry(brand_id, brandname_e, brandname_c)
     info = json.loads(html)['elements']

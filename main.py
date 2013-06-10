@@ -13,6 +13,7 @@ import dunhill
 import emiliopucci
 import kenzo
 import louboutin
+import sergio
 import shanghaitang
 import triumph
 import viktor_rolf
@@ -75,5 +76,6 @@ if __name__ == "__main__":
         # cerruti.fetch(passwd=passwd)
         # christofle.fetch(passwd=passwd)
         # kenzo.fetch(passwd=passwd)
-        triumph.fetch(passwd=passwd)
+        # triumph.fetch(passwd=passwd)
+        sergio.fetch(passwd=passwd)
         print 'DONE!'
