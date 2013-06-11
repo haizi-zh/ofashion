@@ -9,6 +9,7 @@ import urllib
 import urllib2
 import _mysql
 import time
+import HTMLParser
 
 __author__ = 'Zephyre'
 
@@ -46,7 +47,7 @@ brandname_c = 'brandname_c'
 district_c = 'district_c'
 district_e = 'district_e'
 comments = 'comments'
-store_class='store_class'
+store_class = 'store_class'
 
 # 中日韩Unicode字符区
 ucjk = ur'\u2E80-\u9FFF'
@@ -145,6 +146,9 @@ def is_chinese(text):
     return len(re.findall(ur'[\u2e80-\u9fff]+', text)) != 0
 
 
+unescape_hlp = HTMLParser.HTMLParser()
+
+
 def html2plain(text):
     """
     消除诸如&amp;等符号
@@ -154,9 +158,12 @@ def html2plain(text):
     ('<', '&lt;'),
     ('&', '&amp;')
     """
-    for k in rev_char.keys():
-        pat = re.compile(k, re.I)
-        text = pat.sub(rev_char[k], text)
+    while True:
+        m = re.search(ur'&.+?;', text)
+        if m is None:
+            break
+        text = text[:m.start()] + unescape_hlp.unescape(m.group(0)) + text[m.end():]
+
     return text
 
 
@@ -175,7 +182,7 @@ def proc_response(response):
     """
     hd = response.headers.dict
 
-    cookie_map={}
+    cookie_map = {}
     if 'set-cookie' in hd.keys():
         for term in re.split(';', hd['set-cookie']):
             if re.match('^\s*Expires=', term):
@@ -206,7 +213,7 @@ def proc_response(response):
         html = html.decode('big5')
     else:
         html = html.decode('utf-8')
-    if len(cookie_map)==0:
+    if len(cookie_map) == 0:
         return html, None
     else:
         return html, cookie_map
@@ -217,19 +224,24 @@ def get_data(url, data=None, timeout=timeout, retry=3, cookie=None):
     return html
 
 
-def get_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None):
+def get_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None, proxy=None):
     """
     GET指定url的
     """
-    opener = urllib2.build_opener()
+    if proxy is not None:
+        proxy_handler = urllib2.ProxyHandler({'http': proxy['url']})
+        opener = urllib2.build_opener(proxy_handler)
+    else:
+        opener = urllib2.build_opener()
+
     headers = [("User-Agent",
-                          "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
-                          "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
-                         ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
-                         ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
+                "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
+                "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
+               ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
+               ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
 
     if cookie is not None:
-        cookie_str = '; '.join(['%s=%s'%(k, cookie[k]) for k in cookie.keys()])
+        cookie_str = '; '.join(['%s=%s' % (k, cookie[k]) for k in cookie.keys()])
         headers.append(('Cookie', cookie_str))
 
     opener.addheaders = headers
@@ -345,7 +357,7 @@ def post_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None):
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
 
     if cookie is not None:
-        cookie_str = '; '.join(['%s=%s'%(k, cookie[k]) for k in cookie.keys()])
+        cookie_str = '; '.join(['%s=%s' % (k, cookie[k]) for k in cookie.keys()])
         headers.append(('Cookie', cookie_str))
 
     i = -1
@@ -411,7 +423,7 @@ class StoresDb(object):
                     ret = u'"%f"' % value
             else:
                 # 去掉中间的引号
-                ret = u'"%s"' % unicode(value).replace('"', '\\"').replace('\\', '\\\\')
+                ret = u'"%s"' % unicode(value).replace('"', '\\"')
                 # ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\', '')
             return ret
 
@@ -457,19 +469,19 @@ class StoresDb(object):
         return recordset
 
 
-rev_char = {}
+# rev_char = {}
 
 
-def load_rev_char():
-    f = open('data/html_resv.dat', 'r')
-    for line in f:
-        l = line.decode('utf-8')
-        mlist = re.findall(ur'(([^\s]| )+)\t', l)
-        rev_char[mlist[2][0]] = mlist[0][0]
-        rev_char[mlist[1][0]] = mlist[0][0]
-
-
-load_rev_char()
+# def load_rev_char():
+#     f = open('data/html_resv.dat', 'r')
+#     for line in f:
+#         l = line.decode('utf-8')
+#         mlist = re.findall(ur'(([^\s]| )+)\t', l)
+#         rev_char[mlist[2][0]] = mlist[0][0]
+#         rev_char[mlist[1][0]] = mlist[0][0]
+#
+#
+# load_rev_char()
 
 continent_map = None
 country_map = None

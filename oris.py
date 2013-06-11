@@ -36,8 +36,8 @@ def fetch_countries(data):
     country_list = []
     for m in re.findall('<li><a .*?href="(.+?)">(.+?)</a></li>', sub):
         d = data.copy()
-        country_e = cm.html2plain(m[1].strip().upper())
-        ret = gs.look_up(country_e, 2)
+        country_e = cm.html2plain(m[1]).strip().upper()
+        ret = gs.look_up(country_e, 1)
         if ret is not None:
             country_e=ret['name_e']
         d['country_e'] = country_e
@@ -73,7 +73,7 @@ def fetch_states(data):
 
     state_list = []
     for m in re.findall('<li><a .*?href="(.+?)">(.+?)</a></li>', sub):
-        province_e = cm.html2plain(m[1].strip().upper())
+        province_e = cm.html2plain(m[1]).strip().upper()
         if data['country_e'] == 'CHINA':
             # 去掉省中间的空格
             province_e = province_e.replace(' ', '')
@@ -116,7 +116,7 @@ def fetch_cities(data):
 
     city_list = []
     for m in re.findall('<li><a .*?href="(.+?)">(.+?)</a></li>', sub):
-        city_e = cm.html2plain(m[1].strip().upper())
+        city_e = cm.html2plain(m[1]).strip().upper()
         if data['country_e'] == 'CHINA':
             # 去掉省中间的空格
             city_e = city_e.replace(' ', '')

@@ -21,6 +21,7 @@ import michael_kors
 import mido
 import missoni
 import ninewest
+import oris
 import sergio
 import shanghaitang
 import triumph
@@ -69,30 +70,5 @@ if __name__ == "__main__":
     if test_flag:
         test()
     else:
-        # donna_karan.fetch(passwd=passwd)
-        # ysl.fetch(passwd=passwd)
-        # zenithwatch.fetch(passwd=passwd)
-        # viktor_rolf.fetch(passwd=passwd)
-        # shanghaitang.fetch(passwd=passwd)
-        # emiliopucci.fetch(passwd=passwd)
-        # zegna.fetch(passwd=passwd)
-        # y3.fetch(passwd=passwd)
-        # dunhill.fetch(passwd=passwd)
-        # baume.fetch(passwd='07996019')
-        # comme_des_garcons.fetch(passwd=passwd)
-        # louboutin.fetch(passwd=passwd)
-        # cerruti.fetch(passwd=passwd)
-        # christofle.fetch(passwd=passwd)
-        # kenzo.fetch(passwd=passwd)
-        # triumph.fetch(passwd=passwd)
-        # sergio.fetch(passwd=passwd)
-        # mido.fetch(passwd=passwd)
-        # marni.fetch(passwd=passwd)
-        # levi.fetch(passwd=passwd)
-        # lukfook.fetch(passwd=passwd)
-        # maurice_lacroix.fetch(passwd=passwd)
-        # michael_kors.fetch(passwd=passwd)
-        # missoni.fetch(passwd=passwd)
-        ninewest.fetch(passwd=passwd)
-
+        oris.fetch(passwd=passwd)
         print 'DONE!'
