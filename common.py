@@ -174,6 +174,19 @@ def proc_response(response):
     对response作处理，比如gzip，决定编码信息等
     """
     hd = response.headers.dict
+
+    cookie_map={}
+    if 'set-cookie' in hd.keys():
+        for term in re.split(';', hd['set-cookie']):
+            if re.match('^\s*Expires=', term):
+                continue
+            pat = re.compile('^\s*Path=.*?[,/]+', re.I)
+            term = re.sub(pat, '', term)
+
+            m = re.search('=', term)
+            if m is not None:
+                cookie_map[term[:m.start()].strip()] = term[m.end():].strip()
+
     charset = 'utf-8'
     if 'content-type' in hd:
         desc = hd['content-type']
@@ -193,19 +206,34 @@ def proc_response(response):
         html = html.decode('big5')
     else:
         html = html.decode('utf-8')
+    if len(cookie_map)==0:
+        return html, None
+    else:
+        return html, cookie_map
+
+
+def get_data(url, data=None, timeout=timeout, retry=3, cookie=None):
+    html, cookie = get_data_cookie(url, data, timeout, retry, cookie)
     return html
 
 
-def get_data(url, data=None, timeout=timeout, retry=3):
+def get_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None):
     """
     GET指定url的
     """
     opener = urllib2.build_opener()
-    opener.addheaders = [("User-Agent",
+    headers = [("User-Agent",
                           "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
                           "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
                          ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                          ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
+
+    if cookie is not None:
+        cookie_str = '; '.join(['%s=%s'%(k, cookie[k]) for k in cookie.keys()])
+        headers.append(('Cookie', cookie_str))
+
+    opener.addheaders = headers
+
     i = -1
     while True:
         i += 1
@@ -300,7 +328,12 @@ def write_log(msg, log_type='Error'):
         f.write((u'%s %s %s\n' % (timestr, log_type, msg)).encode('utf-8'))
 
 
-def post_data(url, data=None, timeout=timeout, retry=3):
+def post_data(url, data=None, timeout=timeout, retry=3, cookie=None):
+    html, cookie = post_data_cookie(url, data, timeout, retry, cookie)
+    return html
+
+
+def post_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None):
     """
     POST指定url
     """
@@ -310,6 +343,10 @@ def post_data(url, data=None, timeout=timeout, retry=3):
                 "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
+
+    if cookie is not None:
+        cookie_str = '; '.join(['%s=%s'%(k, cookie[k]) for k in cookie.keys()])
+        headers.append(('Cookie', cookie_str))
 
     i = -1
     while True:
