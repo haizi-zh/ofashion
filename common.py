@@ -253,6 +253,9 @@ def get_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None, proxy
             if data is not None:
                 if url[-1] == '/':
                     url = url[:-1]
+                for key in data:
+                    if isinstance(data[key], unicode):
+                        data[key] = data[key].encode('utf-8')
                 url += '?' + urllib.urlencode(data)
                 response = opener.open(url, timeout=timeout)
             else:
@@ -365,6 +368,9 @@ def post_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None):
         i += 1
         try:
             req = urllib2.Request(url)
+            for key in data:
+                if isinstance(data[key], unicode):
+                    data[key] = data[key].encode('utf-8')
             if data is not None:
                 req.add_data(urllib.urlencode(data))
             for pair in headers:
