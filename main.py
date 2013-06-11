@@ -21,7 +21,10 @@ import michael_kors
 import mido
 import missoni
 import ninewest
+import oasis
 import oris
+import paul_joe
+import paulshark
 import sergio
 import shanghaitang
 import triumph
@@ -70,5 +73,8 @@ if __name__ == "__main__":
     if test_flag:
         test()
     else:
-        oris.fetch(passwd=passwd)
+        # oris.fetch(passwd=passwd)
+        # paul_joe.fetch(passwd=passwd)
+        # oasis.fetch(passwd=passwd)
+        paulshark.fetch(passwd=passwd)
         print 'DONE!'
