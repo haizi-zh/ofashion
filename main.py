@@ -25,6 +25,7 @@ import oasis
 import oris
 import paul_joe
 import paulshark
+import paulsmith
 import sergio
 import shanghaitang
 import triumph
@@ -76,5 +77,6 @@ if __name__ == "__main__":
         # oris.fetch(passwd=passwd)
         # paul_joe.fetch(passwd=passwd)
         # oasis.fetch(passwd=passwd)
-        paulshark.fetch(passwd=passwd)
+        # paulshark.fetch(passwd=passwd)
+        # paulsmith.fetch(passwd=passwd)
         print 'DONE!'
