@@ -212,7 +212,20 @@ def proc_response(response):
     elif charset.__eq__('big5'):
         html = html.decode('big5')
     else:
-        html = html.decode('utf-8')
+        # 有时候，尽管标称为utf-8，实际上无法解码
+        default_charset = ['utf-8', 'iso-8859-1', 'gbk']
+        idx = 0
+        while True:
+            try:
+                html = html.decode(default_charset[idx])
+                break
+            except UnicodeDecodeError:
+                idx += 1
+                if idx >= len(default_charset):
+                    break
+                else:
+                    continue
+
     if len(cookie_map) == 0:
         return html, None
     else:
