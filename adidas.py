@@ -13,12 +13,16 @@ db = None
 def fetch_stores(data):
     url = data['url']
 
-    page = 1
+    if 'page' in data:
+        page = data['page']
+    else:
+        page = 1
+
     tot = -1
     tot_page = -1
     store_ids = set([])
     store_list = []
-
+    page_size = 400
     f = open('err_log_%s.log' % data['brandname_e'], 'w')
 
     while True:
@@ -28,7 +32,7 @@ def fetch_stores(data):
         try:
             html = cm.get_data(url, {'brand': 'adidas', 'geoengine': 'google', 'method': 'get',
                                      'category': 'store', 'latlng': '31.22434895,121.47675279999999, 10000',
-                                     'page': '%d' % page, 'pagesize': 400,
+                                     'page': '%d' % page, 'pagesize': page_size,
                                      'fields': 'name,street1,street2,addressline,buildingname,postal_code,city,'
                                                'state,store_owner,country,storetype,longitude_google,'
                                                'latitude_google,store_owner,state,performance,brand_store,'
@@ -43,19 +47,27 @@ def fetch_stores(data):
             dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
             cm.dump(dump_data)
             page += 1
-            if page > tot_page:
+            if 'page' in data:
                 break
             else:
-                continue
+                if page > tot_page:
+                    break
+                else:
+                    continue
 
         try:
             start = html.find('{')
             if start != -1:
                 html = html[start:]
+            # 去掉控制字符
+            pat = re.compile(u'[\r\n]')
+            html = re.sub(pat, ' ', html)
+            pat = re.compile(ur'\\.')
+            html = re.sub(pat, ' ', html)
             raw = json.loads(html)['wsResponse']
             if tot == -1:
                 tot = string.atoi(raw['results'])
-                tot_page = (tot - 1) / 500 + 1
+                tot_page = (tot - 1) / page_size + 1
             raw = raw['result']
 
             def addr_func(addr_list, addr_map, key):
@@ -76,7 +88,8 @@ def fetch_stores(data):
                     entry[cm.addr_e] = ', '.join(addr_list)
                     entry[cm.city_e] = s['city'].split('-')[0].strip().upper()
                     entry[cm.country_e] = s['country'].strip().upper()
-                    entry[cm.store_type] = s['storetype']
+                    if 'storetype' in s:
+                        entry[cm.store_type] = s['storetype']
                     entry[cm.lat] = string.atof(s['latitude_google'])
                     entry[cm.lng] = string.atof(s['longitude_google'])
                     entry[cm.store_class] = 'adidas'
@@ -99,9 +112,12 @@ def fetch_stores(data):
             print msg
             f.write('%s\n' % msg)
         finally:
-            page += 1
-            if page > tot_page:
+            if 'page' in data:
                 break
+            else:
+                page += 1
+                if page > tot_page:
+                    break
     return store_list
 
 
@@ -120,12 +136,12 @@ def fetch(level=1, data=None, user='root', passwd=''):
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': 'http://placesws.adidas-group.com/API/search',
-                'brand_id': 10004, 'brandname_e': u'Adidas SLVR Label', 'brandname_c': u'阿迪达斯'}
+            'brand_id': 10004, 'brandname_e': u'Adidas SLVR Label', 'brandname_c': u'阿迪达斯'}
 
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()
