@@ -23,6 +23,7 @@ import gilsander
 import hamilton
 import hublot
 import jimmy_choo
+import juicycouture
 import kenzo
 import kipling
 import levis
@@ -79,5 +80,5 @@ if __name__ == "__main__":
         # hublot.fetch(passwd=passwd)
         # escada.fetch(passwd=passwd)
         # esprit.fetch(passwd=passwd)
-        balenciaga.fetch(passwd=passwd)
+        juicycouture.fetch(passwd=passwd)
         print 'DONE!'
