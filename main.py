@@ -2,15 +2,26 @@
 import json
 import re
 import time
+import adidas
 import baume
 import cerruti
 import christofle
 
 import common
 import donna_karan
+import escada
+import esprit
+import etro
+import fcuk
+import folli
+import furla
 import geosense as gs
 import dunhill
 import emiliopucci
+import gilsander
+import hamilton
+import hublot
+import jimmy_choo
 import kenzo
 import levis
 import louboutin
@@ -46,26 +57,24 @@ def calc(val):
 
 
 def test():
-    # with open('sample.txt', 'r') as f:
-    #     for line in f.readlines():
-    #         l = line.strip().decode('utf-8')
-    #         m = re.match(ur'^([A-Z]{2})\s+,', l)
-    #         if l == '' or m is None:
-    #             continue
-    #
-    #         code = m.group(1)
-    #         country = l.split(',')[1].strip().upper()
-    #
-    #         if country not in gs.country_map['lookup']:
-    #             print 'Failed to lookup (%s %s)' % (code, country)
-    #             continue
-    #         guid = gs.country_map['lookup'][country]
-    #         gs.country_map['data'][guid]['code'] = code
-    #         gs.country_map['lookup'][code] = guid
-    #
-    # gs.commit_maps(1)
+    country_info = gs.look_up('GERMANY', 1)
 
-    pass
+    with open('sample.txt', 'r') as f:
+        for line in f.readlines():
+            line=line.decode('utf-8')
+            terms = line.split(',')
+            city = terms[1].strip().upper()
+            country = terms[2].strip().upper()
+
+            gs.update_city_map(city, country, 'EUROPE')
+
+    # s = json.dumps(gs.province_map).encode('utf-8')
+    # with open('data/province_map.dat', 'w') as f:
+    #     f.write(s)
+    #
+    s = json.dumps(gs.city_map).encode('utf-8')
+    with open('data/city_map.dat', 'w') as f:
+        f.write(s)
 
 
 if __name__ == "__main__":
@@ -79,4 +88,11 @@ if __name__ == "__main__":
         # oasis.fetch(passwd=passwd)
         # paulshark.fetch(passwd=passwd)
         # paulsmith.fetch(passwd=passwd)
+        # adidas.fetch(passwd=passwd)
+        # furla.fetch(passwd=passwd)
+        # hamilton.fetch(passwd=passwd)
+        # hublot.fetch(passwd=passwd)
+        # escada.fetch(passwd=passwd)
+        # esprit.fetch(passwd=passwd)
+        jimmy_choo.fetch(passwd=passwd)
         print 'DONE!'

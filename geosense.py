@@ -48,6 +48,9 @@ def look_up(term, level=0):
     :param level: 查询级别：0：洲；1：国家；2：州/省；3：城市
     :return:
     """
+    if term is None:
+        return None
+
     term = term.strip().upper()
     g_map = [continent_map, country_map, province_map, city_map]
     if term in g_map[level]['lookup']:
@@ -86,9 +89,19 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
     """
     sha = hashlib.sha1()
 
-    country_name = country_name.strip().upper()
+    if continent_name is not None:
+        continent_name=continent_name.strip().upper()
+    if country_name is not None:
+        country_name = country_name.strip().upper()
+    if province_name is not None:
+        province_name = province_name.strip().upper()
 
-    if look_up(country_name, 1) is None:
+    city_list = city_name.split('/')
+    for i in xrange(len(city_list)):
+        city_list[i]=city_list[i].strip().upper()
+    city_name = city_list[0]
+
+    if country_name is not None and look_up(country_name, 1) is None:
         if continent_name is None:
             return
         continent_guid = continent_map['lookup'][look_up(continent_name, 0)['name_e']]
@@ -102,37 +115,52 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
                 print 'Country added: %s in %s' % (item['name_e'], continent_name)
                 break
 
-    if city_name == None:
-        return
+    if province_name is not None and look_up(province_name, 2) is None:
+        item = {'country': '', 'code': '', 'name_e': province_name, 'name_c': ''}
+        ret = look_up(country_name, 1)
+        if ret is not None:
+            item['country'] = country_map['lookup'][ret['name_e']]
+        while True:
+            sha.update(str(random.randint(0, sys.maxint)))
+            guid = ''.join(['%x' % ord(v) for v in sha.digest()])
+            if guid not in province_map['data']:
+                province_map['data'][guid]=item
+                province_map['lookup'][province_name] = guid
+                print 'Province added: %s in %s' % (item['name_e'], country_name)
+                break
 
-    country_name = look_up(country_name, 1)['name_e']
-    country_guid = country_map['lookup'][country_name]
-    city_name = city_name.strip().upper()
-    if look_up(city_name, 3) is None:
-        item = {'country': country_guid, 'province': '', 'name_e': city_name, 'name_c': ''}
-        if province_name is not None:
-            # province_name = province_name.strip().upper()
-            ret = look_up(province_name, 2)
-            if ret is not None:
-                item['province'] = province_map['lookup'][ret['name_e']]
+    if city_name is not None and look_up(city_name, 3) is None:
+        item = {'country': '', 'province': '', 'name_e': city_name, 'name_c': ''}
+
+        ret= look_up(country_name, 1)
+        if ret is not None:
+            item['country']=country_map['lookup'][ret['name_e']]
+        ret = look_up(province_name, 2)
+        if ret is not None:
+            item['province']=province_map['lookup'][ret['name_e']]
         while True:
             sha.update(str(random.randint(0, sys.maxint)))
             guid = ''.join(['%x' % ord(v) for v in sha.digest()])
             if guid not in city_map['data']:
                 city_map['data'][guid] = item
-                city_map['lookup'][city_name] = [guid]
-                print 'City added: %s in %s' % (item['name_e'], country_name)
+                for alias in city_list:
+                    city_map['lookup'][alias] = [guid]
+                    if province_name is not None:
+                        print 'City added: %s in %s, %s' % (alias, province_name, country_name)
+                    else:
+                        print 'City added: %s in %s' % (alias, country_name)
+
                 break
 
 
 def geocode(city, retried):
-    metro_list=[]
+    metro_list = []
     js = cm.get_data('http://maps.googleapis.com/maps/api/geocode/json',
-                             {'address': city.encode('utf-8'), 'sensor': 'false'})
+                     {'address': city.encode('utf-8'), 'sensor': 'false'})
     entry = json.loads(js)
-    if entry['status']=='OVER_QUERY_LIMIT':
+    if entry['status'] == 'OVER_QUERY_LIMIT':
         if retried:
-            print 'Failed to geocode due to query limit: %s'%city
+            print 'Failed to geocode due to query limit: %s' % city
         else:
             print 'Cooling down...'
             time.sleep(5)
@@ -146,13 +174,14 @@ def geocode(city, retried):
     addr = entry['results'][0]['address_components']
     geo = entry['results'][0]['geometry']
 
-    item = {'name_e': addr[0]['long_name'], 'country':'',
+    item = {'name_e': addr[0]['long_name'], 'country': '',
             'lat': geo['location']['lat'], 'lng': geo['location']['lng']}
     if len(addr) > 1:
         item['country'] = addr[-1]['long_name']
 
     print 'Added: %s' % item
     metro_list.append(item)
+
 
 def load_geo():
     global continent_map
@@ -173,7 +202,44 @@ def load_geo():
 load_geo()
 
 
+def addr_sense(addr, country=None, province=None, city=None):
+    # 从地址信息中找出国家和城市
+    terms = addr.split(',')
 
+    if country is None:
+        for i in xrange(-1, -len(terms) - 1, -1):
+            tmp = look_up(terms[i].strip().upper(), 1)
+            if tmp is not None:
+                country = tmp['name_e']
+                break
+
+    if province is None:
+        for i in xrange(-1, -len(terms) - 1, -1):
+            tmp = look_up(re.sub(ur'\d+', '', terms[i]).strip().upper(), 2)
+            if tmp is not None:
+                if country is not None and country != tmp['country']['name_e']:
+                    continue
+                else:
+                    province = tmp['name_e']
+                    if country is None and tmp['country'] != '':
+                        country = tmp['country']['name_e']
+                    break
+
+    for i in xrange(-1, -len(terms) - 1, -1):
+        tmp = look_up(re.sub(ur'\d+', '', terms[i]).strip().upper(), 3)
+        if tmp is not None:
+            if country is not None and country != tmp['country']['name_e'] and tmp['name_e'] != 'HONG KONG' \
+                and tmp['name_e'] != 'MACAU':
+                continue
+            else:
+                city = tmp['name_e']
+                if country is None and tmp['country'] != '':
+                    country = tmp['country']['name_e']
+                if province is None and tmp['province'] != '':
+                    province = tmp['province']['name_e']
+                break
+
+    return country, province, city
 
 
 def field_sense(entry):
@@ -181,7 +247,10 @@ def field_sense(entry):
     country = entry[cm.country_e]
     city = entry[cm.city_e]
     ret = look_up(city, 3)
-    if ret is not None:
+    ret1 = look_up(country, 1)
+    if ret1 is not None:
+        country=ret1['name_e']
+    if ret is not None and ret['country']['name_e']== country:
         entry[cm.city_e] = ret['name_e']
         entry[cm.city_c] = ret['name_c']
 
@@ -195,8 +264,8 @@ def field_sense(entry):
     province = entry[cm.province_e]
     ret = look_up(province, 2)
     if ret is not None:
-        entry[cm.province_e]=ret['name_e']
-        entry[cm.province_c]=ret['name_c']
+        entry[cm.province_e] = ret['name_e']
+        entry[cm.province_c] = ret['name_c']
 
     ret = look_up(country, 1)
     if ret is not None:
