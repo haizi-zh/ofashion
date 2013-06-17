@@ -3,6 +3,7 @@ import json
 import re
 import time
 import adidas
+import balenciaga
 import baume
 import cerruti
 import christofle
@@ -23,6 +24,7 @@ import hamilton
 import hublot
 import jimmy_choo
 import kenzo
+import kipling
 import levis
 import louboutin
 import lukfook
@@ -57,24 +59,7 @@ def calc(val):
 
 
 def test():
-    country_info = gs.look_up('GERMANY', 1)
-
-    with open('sample.txt', 'r') as f:
-        for line in f.readlines():
-            line=line.decode('utf-8')
-            terms = line.split(',')
-            city = terms[1].strip().upper()
-            country = terms[2].strip().upper()
-
-            gs.update_city_map(city, country, 'EUROPE')
-
-    # s = json.dumps(gs.province_map).encode('utf-8')
-    # with open('data/province_map.dat', 'w') as f:
-    #     f.write(s)
-    #
-    s = json.dumps(gs.city_map).encode('utf-8')
-    with open('data/city_map.dat', 'w') as f:
-        f.write(s)
+    common.extract_tel('HAUPTSTRASSE 197, 3034, ANZBACH/ UNTEROBERNDORF, 0043 2772 52530')
 
 
 if __name__ == "__main__":
@@ -94,5 +79,5 @@ if __name__ == "__main__":
         # hublot.fetch(passwd=passwd)
         # escada.fetch(passwd=passwd)
         # esprit.fetch(passwd=passwd)
-        jimmy_choo.fetch(passwd=passwd)
+        balenciaga.fetch(passwd=passwd)
         print 'DONE!'

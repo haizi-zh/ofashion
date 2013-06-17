@@ -232,12 +232,12 @@ def proc_response(response):
         return html, cookie_map
 
 
-def get_data(url, data=None, timeout=timeout, retry=3, cookie=None):
+def get_data(url, data=None, timeout=timeout, retry=5, cookie=None):
     html, cookie = get_data_cookie(url, data, timeout, retry, cookie)
     return html
 
 
-def get_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None, proxy=None):
+def get_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None, proxy=None):
     """
     GET指定url的
     """
@@ -306,10 +306,15 @@ def extract_tel(text):
     """
     pat_tel = ur'[+ \.\d\-\(\)]{5,}' # ur'[+ \d\-]*\d{3,}[+ \d\-]*+'
     m_tel = re.findall(pat_tel, text)
-    if len(m_tel) > 0:
-        # 数字至少为6个：
-        if len(re.findall(ur'\d', m_tel[0])) >= 6:
-            return m_tel[0].strip()
+
+    for m in m_tel:
+        if len(re.findall(ur'\d', m)) >= 6:
+            return m.strip()
+
+    # if len(m_tel) > 0:
+    #     # 数字至少为6个：
+    #     if len(re.findall(ur'\d', m_tel[0])) >= 6:
+    #         return m_tel[0].strip()
 
     return ''
 
@@ -356,12 +361,12 @@ def write_log(msg, log_type='Error'):
         f.write((u'%s %s %s\n' % (timestr, log_type, msg)).encode('utf-8'))
 
 
-def post_data(url, data=None, timeout=timeout, retry=3, cookie=None):
+def post_data(url, data=None, timeout=timeout, retry=5, cookie=None):
     html, cookie = post_data_cookie(url, data, timeout, retry, cookie)
     return html
 
 
-def post_data_cookie(url, data=None, timeout=timeout, retry=3, cookie=None):
+def post_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None):
     """
     POST指定url
     """
