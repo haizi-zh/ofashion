@@ -5,10 +5,13 @@ import time
 import adidas
 import balenciaga
 import baume
+import benetton
+import canali
 import cerruti
 import christofle
 
 import common
+import debeers
 import donna_karan
 import escada
 import esprit
@@ -80,5 +83,5 @@ if __name__ == "__main__":
         # hublot.fetch(passwd=passwd)
         # escada.fetch(passwd=passwd)
         # esprit.fetch(passwd=passwd)
-        juicycouture.fetch(passwd=passwd)
+        debeers.fetch(passwd=passwd)
         print 'DONE!'

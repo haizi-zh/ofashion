@@ -288,13 +288,18 @@ def get_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None, proxy
                 continue
 
 
-def dump(data):
+def dump(data, filename='err_log.txt', is_json=False, to_console=True):
     """
-    发生错误，在日志中记录
+    在日志中记录
     :param data:
     """
-    f = open('err_log.txt', 'a+')
-    f.write(json.dumps(data) + '\n')
+    f = open(filename, 'a+')
+    if is_json:
+        f.write((u'%s : %s\n' % (format_time(), json.dumps(data))).encode('utf-8'))
+    else:
+        f.write((u'%s : %s\n' % (format_time(), data)).encode('utf-8'))
+    if to_console:
+        print(u'%s : %s' % (format_time(), data))
     f.close()
 
 
