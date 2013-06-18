@@ -10,7 +10,6 @@ __author__ = 'Zephyre'
 
 db = None
 url = 'http://storelocator.triumph.com/solr/api/v1/stores'
-# data = '?json.wrf=jQuery18304032145428952145_1370845106875&q=*%3A*&pt=48.856614%2C2.3522219000000177&d=50&start=0&rows=30&_=1370848037839'
 brand_id = 10359
 brandname_e = u'Triumph'
 brandname_c = u'黛安芬'
@@ -20,31 +19,31 @@ def fetch(level=1, data=None, user='root', passwd=''):
     tot = 0
     start = 0
     store_list = []
-    data = {'q': '*:*', 'pt': '0,0', 'd': 50000, 'start': 0, 'rows': 100}
+    data = {'q': '*:*', 'pt': '0,0', 'd': 100000, 'start': 0, 'rows': 100}
 
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
     db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
 
     while True:
-        print 'Fetching from %d' % start
+        cm.dump('Fetching from %d' % start, 'triumph_log.txt')
         try:
             data['start'] = start
             html = cm.get_data(url, data)
             raw_list = json.loads(html)
-            if tot==0:
+            if tot == 0:
                 tot = raw_list['response']['numFound']
+                cm.dump('Found: %d' % tot, 'triumph_log.txt')
             raw_list = raw_list['response']['docs']
-            # html = cm.post_data(url, {'country': -1, 'city': -1, 'recordit': -1})
         except Exception:
-            print 'Error occured: %s' % url
+            cm.dump('Error occured while fetching from %d' % data['start'], 'triumph_log.txt')
             dump_data = {'level': 1, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': brand_id}
             cm.dump(dump_data)
             return []
 
         idx = 0
         if len(raw_list) < data['rows'] and start + len(raw_list) < tot:
-            print 'Cooling down...'
+            cm.dump('Cooling down...', 'triumph_log.txt')
             time.sleep(5)
             continue
 
@@ -63,11 +62,13 @@ def fetch(level=1, data=None, user='root', passwd=''):
             ret = gs.look_up(v['country'], 1)
             if ret is not None:
                 entry[cm.country_e] = ret['name_e']
+            else:
+                cm.dump('Error in looking up country %s' % v['country'], 'triumph_log.txt')
             gs.field_sense(entry)
 
-            print '(%s / %d) Found store at %d: %s, %s (%s, %s)' % (
+            cm.dump('(%s / %d) Found store at %d: %s, %s (%s, %s)' % (
                 brandname_e, brand_id, start + idx, entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                entry[cm.continent_e])
+                entry[cm.continent_e]), 'triumph_log.txt')
             store_list.append(entry)
             db.insert_record(entry, 'stores')
             idx += 1
