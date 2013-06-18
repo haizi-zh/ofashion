@@ -43,9 +43,12 @@ import oris
 import paul_joe
 import paulshark
 import paulsmith
+import samsonite
 import sergio
 import shanghaitang
+import shanghaivive
 import triumph
+import tudor
 import viktor_rolf
 import y3
 import ysl
@@ -83,5 +86,5 @@ if __name__ == "__main__":
         # hublot.fetch(passwd=passwd)
         # escada.fetch(passwd=passwd)
         # esprit.fetch(passwd=passwd)
-        debeers.fetch(passwd=passwd)
+        tudor.fetch(passwd=passwd)
         print 'DONE!'
