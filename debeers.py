@@ -150,7 +150,7 @@ def fetch_store_list(data):
     body = cm.extract_closure(body[start:], ur'<ul\b', ur'</ul>')[0]
 
     results = []
-    for m in re.findall(ur'<li .*?>\s*<a href="(.+?)" title="(.+?)"', body):
+    for m in re.findall(ur'<li .*?>\s*<a href="(.+?)" title="(.+?)"', body, re.S):
         d = data.copy()
         d['url'] = data['host'] + m[0]
         d['name'] = m[1].strip()
