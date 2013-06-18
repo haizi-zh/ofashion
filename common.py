@@ -241,6 +241,7 @@ def get_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None, proxy
     """
     GET指定url的
     """
+    url = url.encode('utf-8')
     if proxy is not None:
         proxy_handler = urllib2.ProxyHandler({'http': proxy['url']})
         opener = urllib2.build_opener(proxy_handler)
@@ -375,7 +376,7 @@ def post_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None):
     """
     POST指定url
     """
-
+    url = url.encode('utf-8')
     headers = [("User-Agent",
                 "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
                 "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),

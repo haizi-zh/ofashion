@@ -49,6 +49,7 @@ import shanghaitang
 import shanghaivive
 import triumph
 import tudor
+import unode50
 import viktor_rolf
 import y3
 import ysl
@@ -86,5 +87,5 @@ if __name__ == "__main__":
         # hublot.fetch(passwd=passwd)
         # escada.fetch(passwd=passwd)
         # esprit.fetch(passwd=passwd)
-        tudor.fetch(passwd=passwd)
+        unode50.fetch(passwd=passwd)
         print 'DONE!'
