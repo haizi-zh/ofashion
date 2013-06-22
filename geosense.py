@@ -286,8 +286,7 @@ def field_sense(entry):
                 m = re.match(ur'.*\b(\d{3}\-\d{4})\b', entry[cm.addr_e])
             if m is not None:
                 entry[cm.zip_code] = m.group(1)
-    else:
-        print 'Error in looking up %s' % country
+
     cm.chn_check(entry)
 
     if entry[cm.zip_code] == '':

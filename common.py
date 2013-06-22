@@ -419,11 +419,11 @@ class StoresDb(object):
     def StoresDb(self):
         self.__brand_store_db = None
 
-    def connect_db(self, host='localhost', user='root', passwd='', db='brand_stores'):
+    def connect_db(self, host='localhost', port=3306, user='root', passwd='', db='brand_stores'):
         """
         Connect to the brand store database
         """
-        self.__brand_store_db = _mysql.connect(host=host, user=user, passwd=passwd, db=db)
+        self.__brand_store_db = _mysql.connect(host=host, port=port, user=user, passwd=passwd, db=db)
         self.__brand_store_db.query("SET NAMES 'utf8'")
 
     def disconnect_db(self):
