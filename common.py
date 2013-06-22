@@ -162,7 +162,7 @@ def html2plain(text):
         m = re.search(ur'&.+?;', text)
         if m is None:
             break
-        text = text[:m.start()] + unescape_hlp.unescape(m.group(0)) + text[m.end():]
+        text = text[:m.start()] + unescape_hlp.unescape(m.group(0).lower()) + text[m.end():]
 
     return text
 
@@ -259,23 +259,19 @@ def get_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None, proxy
         headers.append(('Cookie', cookie_str))
 
     opener.addheaders = headers
+    if data is not None:
+        if url[-1] == '/':
+            url = url[:-1]
+        for key in data:
+            if isinstance(data[key], unicode):
+                data[key] = data[key].encode('utf-8')
+        url += '?' + urllib.urlencode(data)
 
     i = -1
     while True:
         i += 1
         try:
-            if data is not None:
-                if url[-1] == '/':
-                    url = url[:-1]
-                for key in data:
-                    if isinstance(data[key], unicode):
-                        data[key] = data[key].encode('utf-8')
-                url += '?' + urllib.urlencode(data)
-                response = opener.open(url, timeout=timeout)
-            else:
-                response = opener.open(url, timeout=timeout)
-
-            return proc_response(response)
+            return proc_response(opener.open(url, timeout=timeout))
         except Exception, e:
             if isinstance(e, urllib2.HTTPError):
                 print 'http error: {0}'.format(e.code)

@@ -94,6 +94,7 @@ def fetch_stores(data):
             entry[cm.province_e] = ret[1]
         if ret[2] is not None and entry[cm.city_e] == '':
             entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
 
         entry[cm.tel] = s['phone']
         if s['lat'] is not None and s['lat'] != '':
