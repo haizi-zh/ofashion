@@ -15,14 +15,14 @@ brandname_e = u'Triumph'
 brandname_c = u'黛安芬'
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(level=1, data=None, host='127.0.0.1', port=1228, user='rose', passwd=''):
     tot = 0
     start = 0
     store_list = []
     data = {'q': '*:*', 'pt': '0,0', 'd': 100000, 'start': 0, 'rows': 100}
 
     db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
+    db.connect_db(host=host, port=port, user=user, passwd=passwd, db='rose')
     db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
 
     while True:
