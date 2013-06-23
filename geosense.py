@@ -4,6 +4,7 @@ import json
 import re
 import sys
 import time
+import urllib
 import common as cm
 
 __author__ = 'Zephyre'
@@ -90,7 +91,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
     sha = hashlib.sha1()
 
     if continent_name is not None:
-        continent_name=continent_name.strip().upper()
+        continent_name = continent_name.strip().upper()
     if country_name is not None:
         country_name = country_name.strip().upper()
     if province_name is not None:
@@ -98,7 +99,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
 
     city_list = city_name.split('/')
     for i in xrange(len(city_list)):
-        city_list[i]=city_list[i].strip().upper()
+        city_list[i] = city_list[i].strip().upper()
     city_name = city_list[0]
 
     if country_name is not None and look_up(country_name, 1) is None:
@@ -124,7 +125,7 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
             sha.update(str(random.randint(0, sys.maxint)))
             guid = ''.join(['%x' % ord(v) for v in sha.digest()])
             if guid not in province_map['data']:
-                province_map['data'][guid]=item
+                province_map['data'][guid] = item
                 province_map['lookup'][province_name] = guid
                 print 'Province added: %s in %s' % (item['name_e'], country_name)
                 break
@@ -132,12 +133,12 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
     if city_name is not None and look_up(city_name, 3) is None:
         item = {'country': '', 'province': '', 'name_e': city_name, 'name_c': ''}
 
-        ret= look_up(country_name, 1)
+        ret = look_up(country_name, 1)
         if ret is not None:
-            item['country']=country_map['lookup'][ret['name_e']]
+            item['country'] = country_map['lookup'][ret['name_e']]
         ret = look_up(province_name, 2)
         if ret is not None:
-            item['province']=province_map['lookup'][ret['name_e']]
+            item['province'] = province_map['lookup'][ret['name_e']]
         while True:
             sha.update(str(random.randint(0, sys.maxint)))
             guid = ''.join(['%x' % ord(v) for v in sha.digest()])
@@ -242,6 +243,56 @@ def addr_sense(addr, country=None, province=None, city=None):
     return country, province, city
 
 
+def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None):
+    # http://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&sensor=true_or_false
+    if addr is not None:
+        if isinstance(addr, unicode):
+            addr = addr.encode('utf-8')
+        else:
+            addr = str(addr)
+
+    if latlng is not None:
+        if isinstance(latlng, unicode):
+            latlng = latlng.encode('utf-8')
+        else:
+            latlng = str(latlng)
+
+    url = 'http://maps.googleapis.com/maps/api/geocode/json?'
+    param = {'sensor': 'false'}
+    if addr is not None:
+        param['address'] = addr
+    if latlng is not None:
+        param['latlng'] = latlng
+
+    url += urllib.urlencode(param)
+
+    cnt = 0
+    while True:
+        cool = True
+        try:
+            ret = json.loads(cm.get_data(url))
+            if ret['status'] == 'OK':
+                return ret['results']
+            elif ret['ZERO_RESULTS']:
+                return None
+            else:
+                cool = False
+                raise Exception()
+        except Exception, e:
+            cnt += 1
+            if cnt < retry:
+                if cool:
+                    time.sleep(cooling_time)
+                continue
+            else:
+                if log_name is None:
+                    cm.dump('Error in geocoding: %s' % url)
+                else:
+                    cm.dump('Error in geocoding: %s' % url, log_name)
+                return None
+    return
+
+
 def field_sense(entry):
     # Geo
     country = entry[cm.country_e]
@@ -249,8 +300,8 @@ def field_sense(entry):
     ret = look_up(city, 3)
     ret1 = look_up(country, 1)
     if ret1 is not None:
-        country=ret1['name_e']
-    if ret is not None and ret['country']['name_e']== country:
+        country = ret1['name_e']
+    if ret is not None and ret['country']['name_e'] == country:
         entry[cm.city_e] = ret['name_e']
         entry[cm.city_c] = ret['name_c']
 

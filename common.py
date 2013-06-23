@@ -232,12 +232,12 @@ def proc_response(response):
         return html, cookie_map
 
 
-def get_data(url, data=None, timeout=timeout, retry=5, cookie=None):
-    html, cookie = get_data_cookie(url, data, timeout, retry, cookie)
+def get_data(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
+    html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cookie)
     return html
 
 
-def get_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None, proxy=None):
+def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None):
     """
     GET指定url的
     """
@@ -253,11 +253,23 @@ def get_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None, proxy
                 "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
+    hdr_map=dict(headers)
+
+    if hdr is not None:
+        for key in hdr:
+            val = hdr[key]
+            if isinstance(val, unicode):
+                val=val.encode('utf-8')
+            hdr_map[key] = val
 
     if cookie is not None:
         cookie_str = '; '.join(['%s=%s' % (k, cookie[k]) for k in cookie.keys()])
         headers.append(('Cookie', cookie_str))
+        hdr_map['Cookie'] = cookie_str
 
+    headers=[]
+    for key in hdr_map:
+        headers.append((key, hdr_map[key]))
     opener.addheaders = headers
     if data is not None:
         if url[-1] == '/':
@@ -363,12 +375,12 @@ def write_log(msg, log_type='Error'):
         f.write((u'%s %s %s\n' % (timestr, log_type, msg)).encode('utf-8'))
 
 
-def post_data(url, data=None, timeout=timeout, retry=5, cookie=None):
-    html, cookie = post_data_cookie(url, data, timeout, retry, cookie)
+def post_data(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
+    html, cookie = post_data_cookie(url, data, hdr, timeout, retry, cookie)
     return html
 
 
-def post_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None):
+def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
     """
     POST指定url
     """
@@ -378,26 +390,35 @@ def post_data_cookie(url, data=None, timeout=timeout, retry=5, cookie=None):
                 "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
+    hdr_map=dict(headers)
+
+    if hdr is not None:
+        for key in hdr:
+            val = hdr[key]
+            if isinstance(val, unicode):
+                val=val.encode('utf-8')
+            hdr_map[key] = val
 
     if cookie is not None:
         cookie_str = '; '.join(['%s=%s' % (k, cookie[k]) for k in cookie.keys()])
         headers.append(('Cookie', cookie_str))
+        hdr_map['Cookie'] = cookie_str
+
+    req = urllib2.Request(url)
+    if data is not None:
+        for key in data:
+            if isinstance(data[key], unicode):
+                data[key] = data[key].encode('utf-8')
+        req.add_data(urllib.urlencode(data))
+
+    for key in hdr_map:
+        req.add_header(key, hdr_map[key])
 
     i = -1
     while True:
         i += 1
         try:
-            req = urllib2.Request(url)
-            for key in data:
-                if isinstance(data[key], unicode):
-                    data[key] = data[key].encode('utf-8')
-            if data is not None:
-                req.add_data(urllib.urlencode(data))
-            for pair in headers:
-                req.add_header(pair[0], pair[1])
-            response = urllib2.urlopen(req, timeout=timeout)
-
-            return proc_response(response)
+            return proc_response(urllib2.urlopen(req, timeout=timeout))
         except Exception, e:
             if isinstance(e, urllib2.HTTPError):
                 print 'http error: {0}'.format(e.code)
