@@ -290,7 +290,7 @@ def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None):
                 else:
                     cm.dump('Error in geocoding: %s' % url, log_name)
                 return None
-    return
+    return None
 
 
 def field_sense(entry):
