@@ -15,7 +15,7 @@ def fetch_countries(data):
     url = data['url']
     try:
         body = cm.get_data(url)
-    except Exception:
+    except Exception, e:
         cm.dump('Error in fetching countries: %s' % url, log_name)
         return []
 
@@ -43,7 +43,7 @@ def fetch_stores(data):
              'units': data['units'], 'store_type': ''}
     try:
         body = cm.get_data(url, param)
-    except Exception:
+    except Exception, e:
         cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
         return []
 
