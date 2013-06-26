@@ -253,13 +253,13 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=N
                 "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
-    hdr_map=dict(headers)
+    hdr_map = dict(headers)
 
     if hdr is not None:
         for key in hdr:
             val = hdr[key]
             if isinstance(val, unicode):
-                val=val.encode('utf-8')
+                val = val.encode('utf-8')
             hdr_map[key] = val
 
     if cookie is not None:
@@ -267,7 +267,7 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=N
         headers.append(('Cookie', cookie_str))
         hdr_map['Cookie'] = cookie_str
 
-    headers=[]
+    headers = []
     for key in hdr_map:
         headers.append((key, hdr_map[key]))
     opener.addheaders = headers
@@ -310,6 +310,16 @@ def dump(data, filename='err_log.txt', is_json=False, to_console=True):
     if to_console:
         print(u'%s : %s' % (format_time(), data))
     f.close()
+
+
+def extract_email(txt):
+    pat_email = re.compile(
+        r'(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])')
+    m = re.search(pat_email, txt)
+    if m is None:
+        return ''
+    else:
+        return m.group()
 
 
 def extract_tel(text):
@@ -390,13 +400,13 @@ def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=
                 "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
-    hdr_map=dict(headers)
+    hdr_map = dict(headers)
 
     if hdr is not None:
         for key in hdr:
             val = hdr[key]
             if isinstance(val, unicode):
-                val=val.encode('utf-8')
+                val = val.encode('utf-8')
             hdr_map[key] = val
 
     if cookie is not None:
