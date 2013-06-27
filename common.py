@@ -114,6 +114,33 @@ def update_entry(entry, data):
         entry[k] = data[k]
 
 
+def argument_parse(text):
+    arg_list = []
+    start = 0
+    s_opened = False
+    d_opened = False
+    escaped = False
+    for i in xrange(len(text)):
+        if text[i] == "'" and not d_opened and not escaped:
+            s_opened = not s_opened
+        elif text[i] == '"' and not s_opened and not escaped:
+            d_opened = not d_opened
+        elif text[i] == ',' and not s_opened and not d_opened and not escaped:
+            arg_list.append(text[start:i].strip())
+            start = i + 1
+
+        escaped = (text[i] == '\\' and not escaped)
+
+    last = text[start:].strip()
+    if last != '':
+        arg_list.append(last)
+
+    for i in xrange(len(arg_list)):
+        tmp = arg_list[i]
+        arg_list[i] = re.sub(ur'\\(.)', ur'\1', tmp)
+    return tuple(arg_list)
+
+
 def reformat_addr(addr):
     """
     格式化地址字符串，将多余的空格、换行、制表符等合并
@@ -330,16 +357,9 @@ def extract_tel(text):
     """
     pat_tel = ur'[+ \.\d\-\(\)]{5,}' # ur'[+ \d\-]*\d{3,}[+ \d\-]*+'
     m_tel = re.findall(pat_tel, text)
-
     for m in m_tel:
         if len(re.findall(ur'\d', m)) >= 6:
             return m.strip()
-
-    # if len(m_tel) > 0:
-    #     # 数字至少为6个：
-    #     if len(re.findall(ur'\d', m_tel[0])) >= 6:
-    #         return m_tel[0].strip()
-
     return ''
 
 
