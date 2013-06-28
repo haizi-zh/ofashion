@@ -34,7 +34,7 @@ def fetch_cities(data):
     # http://www.paulshark.it/StoreLocator/ajaxGetCitiesByCountry?country=UNITED%20STATES&lang=en&rnd=0.33586437113497525
     url = data['data_url']
     try:
-        html = cm.get_data(url, {'country': urllib.quote(data['country_e']), 'lang':'en',
+        html = cm.get_data(url, {'country': data['country_e'], 'lang':'en',
                                  'rnd':str(random.random())})
     except Exception:
         print 'Error occured: %s' % url
@@ -43,7 +43,7 @@ def fetch_cities(data):
         return []
 
     city_list = []
-    for m in re.findall(ur'<option value="([\w ]+?)">', html):
+    for m in re.findall(ur'<option value="([^"]+)"[^<>]*>', html):
         d = data.copy()
         d['city_e'] = m
         city_list.append(d)
@@ -53,8 +53,8 @@ def fetch_cities(data):
 def fetch_stores(data):
     url = data['store_url']
     try:
-        html = cm.get_data(url, {'nazione': urllib.quote(data['country_e']),
-                                 'citta': urllib.quote(data['city_e']),
+        html = cm.get_data(url, {'nazione': data['country_e'],
+                                 'citta': data['city_e'],
                                  'tipo':'tutti'})
     except Exception:
         print 'Error occured: %s' % url
@@ -114,6 +114,14 @@ def fetch_stores(data):
         if m1 is not None:
             entry[cm.lng]= string.atof(m1.group(1))
 
+        gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e])
+        if ret[0] is not None and entry[cm.country_e] == '':
+            entry[cm.country_e] = ret[0]
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
