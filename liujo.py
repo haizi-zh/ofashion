@@ -51,6 +51,20 @@ def fetch_cities(data):
 #action=getStoresFromAjax&country=AT&region=AUSTRIA&collection=
 
 
+def get_detail(data):
+    param = {'action': 'loadStoreFromAjax', 'id': data['store_id']}
+    url = data['url']
+    try:
+        body = cm.post_data(url, param)
+    except Exception:
+        cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
+        return ()
+
+    m=re.search(ur'<div class="lines">(.+?)</div>', body, re.S)
+    if m is None:
+        return ()
+    return tuple(term.strip() for term in re.findall(ur'<li>(.+?)</li>', m.group(1), re.S))
+
 
 def fetch_stores(data):
     param = {'action': 'getStoresFromAjax', 'country': data['country_code'],
@@ -65,22 +79,25 @@ def fetch_stores(data):
     store_list = []
     for m1 in re.finditer(ur'<div class="shop-type-container">', body):
         sub = cm.extract_closure(body[m1.start():], ur'<div\b', ur'</div>')[0]
-        store_type = ''
+        store_class = ''
         m2 = re.search(ur'<div class="shop-type-title">(.+?)</div>', sub, re.S)
         if m2 is not None:
-            store_type = cm.reformat_addr(m2.group(1))
+            store_class = cm.reformat_addr(m2.group(1))
 
         for m2 in re.finditer(ur'<div class="shop"', sub):
             store_sub = cm.extract_closure(sub[m2.start():], ur'<div\b', ur'</div>')[0]
             entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-            entry[cm.store_type] = store_type
+            entry[cm.store_class] = store_class
             entry[cm.country_e] = data['country_code']
             entry[cm.city_e] = data['city'].strip().upper()
 
-            m3 = re.search(ur'loadStore\(\d+\s*,\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\)', store_sub)
+            m3 = re.search(ur'loadStore\((\d+)\s*,\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\)', store_sub)
             if m3 is not None:
-                entry[cm.lat] = string.atof(m3.group(1))
-                entry[cm.lng] = string.atof(m3.group(2))
+                data['store_id'] = string.atoi(m3.group(1))
+                entry[cm.lat] = string.atof(m3.group(2))
+                entry[cm.lng] = string.atof(m3.group(3))
+                entry[cm.store_type] = ', '.join(get_detail(data))
+
             m3 = re.search(ur'<div class="shop-name shop-details shop-main-name">([^<>]+)</div>', store_sub)
             if m3 is not None:
                 entry[cm.name_e] = m3.group(1).strip()
