@@ -132,6 +132,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()
+    cm.dump('Done!', log_name)
 
     return results
 
