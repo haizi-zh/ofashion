@@ -9,6 +9,10 @@ __author__ = 'Zephyre'
 
 db = None
 log_name = 'issey_miyake_log.txt'
+brand_map = {"ME": "ISSEY MIYAKE MEN", "24": "24 ISSEY MIYAKE", "BB": "BAO BAO ISSEY MIYAKE",
+             "1325": "132 5. ISSEY MIYAKE", "MI": "me ISSEY MIYAKE / CAULIFLOWER", "MW": "ISSEY MIYAKE WATCH",
+             "IM": "ISSEY MIYAKE", "IN-EI": "132 5. ISSEY MIYAKE", "HM": "HIKARU MATSUMURA / THE UNIQUE-BAG",
+             "HA": "HaaT", "PL": "PLEATS PLEASE ISSEY MIYAKE", "MP": "ISSEY MIYAKE PARFUMS"}
 
 
 def fetch_stores(data):
@@ -41,7 +45,7 @@ def fetch_stores(data):
             for v in tmp:
                 if v.strip() != '':
                     brand_list.append(v)
-            entry[cm.store_type] = ', '.join(brand_list)
+            entry[cm.store_type] = ', '.join(brand_map[key] for key in brand_list)
         m1 = re.search(ur'<name>([^<>]+)</name>', sub)
         if m1 is not None:
             entry[cm.name_e] = m1.group(1).strip()
