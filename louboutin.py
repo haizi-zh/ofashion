@@ -7,7 +7,7 @@ import geosense as gs
 __author__ = 'Zephyre'
 
 db = None
-url = 'http://us.christianlouboutin.com/ot_cns/storelocator'
+url = 'http://us.christianlouboutin.com/us_en/storelocator'
 brand_id = 10084
 brandname_e = u'Christian Louboutin'
 brandname_c = u'克里斯提·鲁布托'
@@ -29,7 +29,7 @@ def get_continents(data):
         cm.dump(dump_data)
         return []
     return [{'name': m[1], 'url': m[0]} for m in
-            re.findall(ur'<a href="(http://us.christianlouboutin.com/ot_cns/storelocator/\S+)">(.+?)</a>', html)]
+            re.findall(ur'<a href="(http://us.christianlouboutin.com/us_en/storelocator/\S+)">(.+?)</a>', html)]
 
 
 def get_store_list(data):
@@ -59,7 +59,7 @@ def get_store_list(data):
             # 在同一个国家下寻找
             sub1 = sub[splits[i][0]:splits[i + 1][0]]
             country = splits[i][1].upper()
-            for m1 in re.findall(ur'<li>\s*?<a href="(http://us.christianlouboutin.com/ot_cns/storelocator/\S+?)">'
+            for m1 in re.findall(ur'<li>\s*?<a href="(http://us.christianlouboutin.com/us_en/storelocator/\S+?)">'
                                  ur'(.+?)</a>,(.+?)</li>', sub1):
                 store_list.append({'name': m1[1].strip(), 'url': m1[0], 'city': m1[2].strip().upper(),
                                    'country': country})
@@ -95,10 +95,29 @@ def get_store_details(data):
     if len(m) > 0:
         cm.update_entry(entry, {cm.lat: string.atof(m[0][0]), cm.lng: string.atof(m[0][1])})
 
+    m = re.search(ur'<div class="contact right">(.+?)</div>', html, re.S)
+    if m is not None:
+        contact_sub = m.group(1)
+        pat_tel = re.compile(ur'<p class="phone">(.+?)</p>')
+        m1 = re.search(pat_tel, contact_sub)
+        if m1:
+            entry[cm.tel] = cm.extract_tel(m1.group(1))
+            contact_sub = re.sub(pat_tel, '', contact_sub)
+        hours_list=[tmp.strip() for tmp in cm.reformat_addr(contact_sub).split(',')]
+        if 'opening hours' in hours_list[0].lower():
+            del hours_list[0]
+        entry[cm.hours] = ', '.join(hours_list)
+
     # Geo
     country = data['country']
     city = data['city']
     cm.update_entry(entry, {cm.country_e: country, cm.city_e: city})
+    gs.field_sense(entry)
+    ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+    if ret[1] is not None and entry[cm.province_e] == '':
+        entry[cm.province_e] = ret[1]
+    if ret[2] is not None and entry[cm.city_e] == '':
+        entry[cm.city_e] = ret[2]
     gs.field_sense(entry)
 
     print '(%s / %d) Found store: %s, %s (%s, %s)' % (
