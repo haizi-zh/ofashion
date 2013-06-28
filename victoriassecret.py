@@ -22,6 +22,24 @@ def fetch_countries(data):
     return results
 
 
+def get_store_hours(data):
+    url = data['store_url']
+    param = {'id': data['store_id']}
+    try:
+        s = json.loads(cm.get_data(url, param))['stores'][0]
+        workdays = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
+        open_days = dict((key, s['hoursOpenFlag%s' % key] == 'Y') for key in workdays)
+        workhours = []
+        for d in workdays:
+            if not open_days[d]:
+                continue
+            workhours.append('%s: %s - %s' % (d, s['hoursOpenTime%s' % d], s['hoursCloseTime%s' % d]))
+        return ', '.join(workhours)
+    except Exception, e:
+        cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
+        return ''
+
+
 def fetch_stores(data):
     url = data['url']
     param = {'state': data['country_code']}
@@ -52,6 +70,8 @@ def fetch_stores(data):
         if data['country'] == 'US':
             entry[cm.province_e] = state
         entry[cm.zip_code] = s['postalCode'].strip()
+        data['store_id'] = s['storeId']
+        entry[cm.hours] = get_store_hours(data)
 
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
@@ -81,6 +101,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': 'http://www.victoriassecret.com/store-locator/store-locator/stateSearch.action',
+                'store_url': 'http://www.victoriassecret.com/store-locator/store-locator/storeIdSearch.action',
                 'brand_id': 10376, 'brandname_e': u"Victoria's Secret", 'brandname_c': u'维多利亚的秘密'}
 
     global db
