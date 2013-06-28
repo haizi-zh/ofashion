@@ -76,16 +76,24 @@ def fetch_stores(data):
         gs.field_sense(entry)
 
         addr = cm.reformat_addr(item['address'].replace(u'\\', ''))
-        ret = gs.addr_sense(addr, entry[cm.country_e])
-        if ret[1] is not None:
-            entry[cm.province_e] = ret[1]
-        if ret[2] is not None:
-            entry[cm.city_e] = ret[2]
-        entry[cm.addr_e] = addr
+        addr_list = [tmp.strip() for tmp in addr.split(',')]
+        tel = cm.extract_tel(addr_list[-1])
+        if tel !='':
+            entry[cm.tel]=tel
+            del addr_list[-1]
+        entry[cm.addr_e]=', '.join(addr_list)
         entry[cm.store_type] = item['shop_type']
-        entry[cm.tel] = cm.extract_tel(addr)
 
         gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e])
+        if ret[0] is not None and entry[cm.country_e] == '':
+            entry[cm.country_e] = ret[0]
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
+
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                           entry[cm.continent_e])
