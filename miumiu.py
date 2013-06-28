@@ -37,6 +37,23 @@ def fetch_stores(data):
         cat = s['categories']
         if cat is not None:
             entry[cm.store_type] = ', '.join(cat)
+
+        store_url = 'http://www.miumiu.com/en/store-locator/%s.json' % s['id']
+        try:
+            details = json.loads(cm.get_data(store_url))
+            entry[cm.store_type] = ', '.join(item['name'] for item in details['categories'])
+            entry[cm.hours] = details['hours']
+            entry[cm.addr_e] = cm.reformat_addr(details['address'])
+            m = re.search(re.compile(ur'phone\s*[:\.]\s*(.+?)\s*(fax|$)', re.I), details['phone'])
+            if m is not None:
+                entry[cm.tel] = m.group(1)
+            m = re.search(re.compile(ur'fax\s*[:\.]\s*(.+?)\s*(phone|$)', re.I), details['phone'])
+            if m is not None:
+                entry[cm.fax] = m.group(1)
+        except Exception, e:
+            cm.dump('Error in fetching store details: %s' % url, log_name)
+            return []
+
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
         if ret[1] is not None and entry[cm.province_e] == '':
