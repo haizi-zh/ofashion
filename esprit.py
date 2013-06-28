@@ -20,17 +20,17 @@ def fetch_countries(data):
         cm.dump(dump_data)
         return []
 
-    start=body.find(u'<option value="0" selected="selected">Select a country</option>')
-    if start==-1:
+    start = body.find(u'<option value="0" selected="selected">Select a country</option>')
+    if start == -1:
         return []
     end = body.find(u'</select>', start)
 
-    country_list=[]
+    country_list = []
     for m in re.findall(ur'<option value="([A-Z]{2})"[^>]*>(.+?)</option>', body[start:end]):
-        d=data.copy()
+        d = data.copy()
         # ret=gs.look_up(m[0],1)
-        d['country']  = m[1].strip()
-        d['country_code']=m[0]
+        d['country'] = m[1].strip()
+        d['country_code'] = m[0]
         country_list.append(d)
     return country_list
 
@@ -38,8 +38,8 @@ def fetch_countries(data):
 def fetch_cities(data):
     url = data['url']
     try:
-        body = cm.post_data(url, {'searchtype':'normal','reiter_selected':'reiter1',
-                                  'country_id':data['country_code'],'city_id':0})
+        body = cm.post_data(url, {'searchtype': 'normal', 'reiter_selected': 'reiter1',
+                                  'country_id': data['country_code'], 'city_id': 0})
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
@@ -51,9 +51,9 @@ def fetch_cities(data):
         return []
     end = body.find(u'</select>', m.end())
 
-    city_list=[]
+    city_list = []
     for c in re.findall(ur'<option value="(.+?)"[^>]*>.+?</option>', body[m.end():end]):
-        d=data.copy()
+        d = data.copy()
         d['city'] = c
         city_list.append(d)
     return city_list
@@ -62,39 +62,45 @@ def fetch_cities(data):
 def fetch_stores(data):
     url = data['url']
     try:
-        body = cm.post_data(url, {'searchtype':'normal','reiter_selected':'reiter1',
-                                  'country_id':data['country_code'],'city_id':data['city']})
+        body = cm.post_data(url, {'searchtype': 'normal', 'reiter_selected': 'reiter1',
+                                  'country_id': data['country_code'], 'city_id': data['city']})
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
         cm.dump(dump_data)
         return []
 
-    store_list=[]
+    store_list = []
     while True:
+        entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         m = re.search(ur'<h4>\s*(.+?)\s*</h4>', body)
         if m is None:
             break
+        entry[cm.store_class] = m.group(1)
 
         end = body.find(u'</div>', m.end())
         sub = body[m.end():end]
         body = body[end:]
 
-        if ('Country' in m.group(1) and 'Language' in m.group(1))\
+        if ('Country' in m.group(1) and 'Language' in m.group(1)) \
             or 'href' in m.group(1) or 'products' in m.group(1):
             continue
 
-        entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-        tmp=cm.reformat_addr(sub).split(',')
-        addr_list=[]
+        tmp = cm.reformat_addr(sub).split(',')
+        addr_list = []
         for term in tmp:
             if u'Show on map' in term:
                 continue
             elif u'電話' in term or u'Phone' in term:
-                entry[cm.tel]=term.replace(u'電話', '').replace(u'Phone', '').strip()
+                entry[cm.tel] = term.replace(u'電話', '').replace(u'Phone', '').strip()
             else:
                 addr_list.append(term)
-        entry[cm.addr_e]=', '.join(addr_list)
+        entry[cm.addr_e] = ', '.join(addr_list)
+
+        m = re.search(re.compile(ur'<h4>(products|產品)</h4>', re.I), body)
+        if m is not None:
+            end = body.find(ur'</div>', m.end())
+            entry[cm.store_type] = cm.reformat_addr(body[m.end():end])
 
         # tmp = re.compile(ur'<h4>products</h4>', re.I)
         # m = re.search(tmp, body[end:])
@@ -105,8 +111,8 @@ def fetch_stores(data):
         #     prodend = body.find(u'</div>', prodstart)
         #     entry[cm.store_type] = cm.reformat_addr(body[prodstart:prodend])
 
-        entry[cm.country_e]=data['country_code']
-        entry[cm.city_e]= data['city']
+        entry[cm.country_e] = data['country_code']
+        entry[cm.city_e] = data['city']
         gs.field_sense(entry)
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
