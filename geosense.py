@@ -154,34 +154,34 @@ def update_city_map(city_name=None, country_name=None, continent_name=None, prov
                 break
 
 
-def geocode(city, retried):
-    metro_list = []
-    js = cm.get_data('http://maps.googleapis.com/maps/api/geocode/json',
-                     {'address': city.encode('utf-8'), 'sensor': 'false'})
-    entry = json.loads(js)
-    if entry['status'] == 'OVER_QUERY_LIMIT':
-        if retried:
-            print 'Failed to geocode due to query limit: %s' % city
-        else:
-            print 'Cooling down...'
-            time.sleep(5)
-            geocode(city, True)
-            return
-
-    if entry['status'] != u'OK' or len(entry['results']) < 1:
-        print 'Failed to geocode: %s, reason: %s' % (city, entry['status'])
-        return
-
-    addr = entry['results'][0]['address_components']
-    geo = entry['results'][0]['geometry']
-
-    item = {'name_e': addr[0]['long_name'], 'country': '',
-            'lat': geo['location']['lat'], 'lng': geo['location']['lng']}
-    if len(addr) > 1:
-        item['country'] = addr[-1]['long_name']
-
-    print 'Added: %s' % item
-    metro_list.append(item)
+# def geocode(city, retried):
+#     metro_list = []
+#     js = cm.get_data('http://maps.googleapis.com/maps/api/geocode/json',
+#                      {'address': city.encode('utf-8'), 'sensor': 'false'})
+#     entry = json.loads(js)
+#     if entry['status'] == 'OVER_QUERY_LIMIT':
+#         if retried:
+#             print 'Failed to geocode due to query limit: %s' % city
+#         else:
+#             print 'Cooling down...'
+#             time.sleep(5)
+#             geocode(city, True)
+#             return
+#
+#     if entry['status'] != u'OK' or len(entry['results']) < 1:
+#         print 'Failed to geocode: %s, reason: %s' % (city, entry['status'])
+#         return
+#
+#     addr = entry['results'][0]['address_components']
+#     geo = entry['results'][0]['geometry']
+#
+#     item = {'name_e': addr[0]['long_name'], 'country': '',
+#             'lat': geo['location']['lat'], 'lng': geo['location']['lng']}
+#     if len(addr) > 1:
+#         item['country'] = addr[-1]['long_name']
+#
+#     print 'Added: %s' % item
+#     metro_list.append(item)
 
 
 def load_geo():
@@ -286,9 +286,9 @@ def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None):
                 continue
             else:
                 if log_name is None:
-                    cm.dump('Error in geocoding: %s' % url)
+                    cm.dump('Error in geocoding: %s, status: %s' % (url, ret['status']))
                 else:
-                    cm.dump('Error in geocoding: %s' % url, log_name)
+                    cm.dump('Error in geocoding: %s, status: %s' % (url, ret['status']), log_name)
                 return None
     return None
 

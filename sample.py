@@ -17,7 +17,7 @@ def fetch_countries(data):
         body = cm.get_data(url)
     except Exception, e:
         cm.dump('Error in fetching countries: %s' % url, log_name)
-        return []
+        return ()
 
 
 def fetch_stores(data):
@@ -26,7 +26,7 @@ def fetch_stores(data):
         body = cm.get_data(url)
     except Exception, e:
         cm.dump('Error in fetching stores: %s' % url, log_name)
-        return []
+        return ()
 
     store_list = []
     for s in []:
@@ -45,7 +45,7 @@ def fetch_stores(data):
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 
-    return store_list
+    return tuple(store_list)
 
 
 def fetch(level=1, data=None, user='root', passwd=''):
@@ -61,7 +61,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
             # 商店
             return [{'func': None, 'data': s} for s in fetch_stores(data)]
         else:
-            return []
+            return ()
 
     # Walk from the root node, where level == 1.
     if data is None:
@@ -76,6 +76,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()
+    cm.dump('Done!', log_name)
 
     return results
 
