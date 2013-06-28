@@ -49,7 +49,7 @@ def fetch_store_list(data):
                 d['url'] = m3.group(1).strip()
                 d['store_id'] = string.atoi(m3.group(2))
                 d['store'] = cm.html2plain(m3.group(3).strip())
-                d['store_type'] = 'store'
+                # d['store_type'] = 'store'
                 results.append(d)
 
     for m1 in re.finditer(ur'<a [^<>]*data-id="([^"]+)"[^<>]*data-type="country">([^<>]+)</a>', outlet_sub):
@@ -84,6 +84,13 @@ def fetch_store_details(data):
         cm.dump('Error in fetching store details: %s' % url, log_name)
         return []
 
+    entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
+    start = body.find(ur'<h3>available in store</h3>')
+    if start != -1:
+        type_sub = cm.extract_closure(body[start:], ur'<ul\b', ur'</ul>')[0]
+        entry[cm.store_type] = ', '.join(
+            cm.html2plain(tmp).strip() for tmp in re.findall(ur'<li[^<>]*>(.+?)</li>', type_sub, re.S))
+
     start = body.find(ur"<div class='gmap_info_box'")
     if start == -1:
         cm.dump('Error in fetching store details: %s' % url, log_name)
@@ -91,11 +98,10 @@ def fetch_store_details(data):
     body = cm.extract_closure(body[start:], ur'<div\b', ur'</div>')[0]
 
     raw = json.loads(cm.extract_closure(body, ur'\{', ur'\}')[0])['table']
-    entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
     entry[cm.name_e] = cm.html2plain(raw['name'])
     entry[cm.city_e] = data['city'].strip().upper()
     entry[cm.country_e] = data['country'].strip().upper()
-    entry[cm.store_type] = data['store_type']
+    # entry[cm.store_type] = data['store_type']
     entry[cm.addr_e] = cm.reformat_addr(raw['address'])
     m = re.search(re.compile(ur'phone:(.*?)fax:(.*?)', re.I | re.S), raw['phone'])
     if m is not None:
