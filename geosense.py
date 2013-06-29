@@ -273,7 +273,7 @@ def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None):
             ret = json.loads(cm.get_data(url))
             if ret['status'] == 'OK':
                 return ret['results']
-            elif ret['ZERO_RESULTS']:
+            elif ret['status'] == 'ZERO_RESULTS':
                 return None
             else:
                 cool = False
