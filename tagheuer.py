@@ -182,7 +182,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
         data = {'store_url': 'http://www.tagheuer.cn/StoreLocator/SearchByLocation',
                 'url': 'http://www.tagheuer.cn/flashservice/json/CountryListService/filter/SelectAllForService/servicecode/' +
                        type_map[key], 'type_key': key,
-                'brand_id': 10345, 'brandname_e': u'Tagheuer', 'brandname_c': u'古驰',
+                'brand_id': 10345, 'brandname_e': u'Tagheuer', 'brandname_c': u'豪雅',
                 'city_map': gen_city_map()}
 
         results.extend(cm.walk_tree({'func': lambda data: func(data, 0), 'data': data}))
