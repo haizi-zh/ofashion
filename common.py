@@ -211,15 +211,21 @@ def proc_response(response):
 
     cookie_map = {}
     if 'set-cookie' in hd.keys():
-        for term in re.split(';', hd['set-cookie']):
-            if re.match('^\s*Expires=', term):
-                continue
-            pat = re.compile('^\s*Path=.*?[,/]+', re.I)
-            term = re.sub(pat, '', term)
+        for cookie in (tmp.split(';')[0] for tmp in re.split(re.compile(r'Path\s*=[^,]*,?\s*'), hd['set-cookie'])):
+            m = re.search(r'(.+)=(.+)', cookie)
+            if m:
+                cookie_map[m.group(1).strip()] = m.group(2).strip()
 
-            m = re.search('=', term)
-            if m is not None:
-                cookie_map[term[:m.start()].strip()] = term[m.end():].strip()
+
+                # for term in re.split(';', hd['set-cookie']):
+                #     if re.match('^\s*Expires=', term):
+                #         continue
+                #     pat = re.compile('^\s*Path=.*?[,/]+', re.I)
+                #     term = re.sub(pat, '', term)
+                #
+                #     m = re.search('=', term)
+                #     if m is not None:
+                #         cookie_map[term[:m.start()].strip()] = term[m.end():].strip()
 
     charset = 'utf-8'
     if 'content-type' in hd:
