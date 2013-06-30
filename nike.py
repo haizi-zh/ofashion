@@ -8,7 +8,7 @@ import geosense as gs
 __author__ = 'Zephyre'
 
 db = None
-log_name = 'xxxx_log.txt'
+log_name = 'nike_log.txt'
 store_map = {}
 
 
