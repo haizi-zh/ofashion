@@ -34,8 +34,8 @@ def fetch_cities(data):
     # http://www.paulshark.it/StoreLocator/ajaxGetCitiesByCountry?country=UNITED%20STATES&lang=en&rnd=0.33586437113497525
     url = data['data_url']
     try:
-        html = cm.get_data(url, {'country': data['country_e'], 'lang':'en',
-                                 'rnd':str(random.random())})
+        html = cm.get_data(url, {'country': data['country_e'], 'lang': 'en',
+                                 'rnd': str(random.random())})
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
@@ -55,65 +55,66 @@ def fetch_stores(data):
     try:
         html = cm.get_data(url, {'nazione': data['country_e'],
                                  'citta': data['city_e'],
-                                 'tipo':'tutti'})
+                                 'tipo': 'tutti'})
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
         cm.dump(dump_data)
         return []
 
-    store_list=[]
+    store_list = []
     for m in re.finditer(ur'<marker\b', html):
-        sub, start, end=cm.extract_closure(html[m.start():], ur'<marker\b', ur'</marker>')
-        if end==0:
+        sub, start, end = cm.extract_closure(html[m.start():], ur'<marker\b', ur'</marker>')
+        if end == 0:
             continue
 
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         m1 = re.search(ur'name\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.name_e]= cm.html2plain(m1.group(1)).strip()
+            entry[cm.name_e] = cm.html2plain(m1.group(1)).strip()
 
-        addr_list=[]
+        addr_list = []
         m1 = re.search(ur'address\s*=\s*"(.+?)"', sub)
-        if m1 is not None and cm.html2plain(m1.group(1)).strip()!='':
+        if m1 is not None and cm.html2plain(m1.group(1)).strip() != '':
             addr_list.append(cm.html2plain(m1.group(1)).strip())
         m1 = re.search(ur'addr2\s*=\s*"(.+?)"', sub)
-        if m1 is not None and cm.html2plain(m1.group(1)).strip()!='':
+        if m1 is not None and cm.html2plain(m1.group(1)).strip() != '':
             addr_list.append(cm.html2plain(m1.group(1)).strip())
-        entry[cm.addr_e]= ', '.join(addr_list)
+        entry[cm.addr_e] = ', '.join(addr_list)
 
         m1 = re.search(ur'city\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.city_e]= cm.html2plain(m1.group(1)).strip().upper()
+            entry[cm.city_e] = cm.html2plain(m1.group(1)).strip().upper()
 
         m1 = re.search(ur'country\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.country_e]= cm.html2plain(m1.group(1)).strip().upper()
+            entry[cm.country_e] = cm.html2plain(m1.group(1)).strip().upper()
 
         m1 = re.search(ur'zipcode\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.name_e]= cm.html2plain(m1.group(1)).strip()
+            entry[cm.name_e] = cm.html2plain(m1.group(1)).strip()
 
         m1 = re.search(ur'phone\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.tel]= cm.html2plain(m1.group(1)).strip()
+            entry[cm.tel] = cm.html2plain(m1.group(1)).strip()
 
         m1 = re.search(ur'email\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.email]= cm.html2plain(m1.group(1)).strip()
+            entry[cm.email] = cm.html2plain(m1.group(1)).strip()
 
         m1 = re.search(ur'website\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.url]= cm.html2plain(m1.group(1)).strip()
+            entry[cm.url] = cm.html2plain(m1.group(1)).strip()
 
         m1 = re.search(ur'lat\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.lat]= string.atof(m1.group(1))
+            entry[cm.lat] = string.atof(m1.group(1))
 
         m1 = re.search(ur'lng\s*=\s*"(.+?)"', sub)
         if m1 is not None:
-            entry[cm.lng]= string.atof(m1.group(1))
+            entry[cm.lng] = string.atof(m1.group(1))
 
+        entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e])
         if ret[0] is not None and entry[cm.country_e] == '':
@@ -144,7 +145,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
         elif level == 1:
             # 城市信息
             return [{'func': lambda data: func(data, 2), 'data': c} for c in fetch_cities(data)]
-        elif level==2:
+        elif level == 2:
             # 商店信息
             return [{'func': None, 'data': s} for s in fetch_stores(data)]
         else:

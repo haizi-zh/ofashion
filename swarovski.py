@@ -47,7 +47,12 @@ def fetch_store_details(data):
 
     entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
     entry[cm.country_e] = data['country_code']
-    entry[cm.city_e] = data['city']
+    if entry[cm.country_e]=='US':
+        tmp_list = tuple(tmp.strip() for tmp in cm.reformat_addr(data['city']).strip(','))
+        if len(tmp_list) == 2:
+            if re.search('[A-Z]{2}', tmp_list[1]) or tmp_list[1] == 'D.C.':
+                entry[cm.province_e] = tmp_list[1]
+    entry[cm.city_e] = cm.extract_city(data['city'])[0]
     entry[cm.province_e] = data['state'] if data['state_code'] else ''
 
     sub_list = re.findall(ur'<p>(.+?)</p>', m.group(1), re.S)

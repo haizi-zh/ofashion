@@ -80,7 +80,7 @@ def fetch_stores(data):
     for m in re.finditer(ur'<div class="store-info">', body):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']
-        entry[cm.city_e] = data['city'].strip().upper()
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
 
         sub = cm.extract_closure(body[m.start():], ur'<div\b', ur'</div>')[0]
         m1 = re.search(ur'<h2 class="store-name[^"]*">(.+?)</h2>', sub)
@@ -125,6 +125,8 @@ def fetch_stores(data):
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
         if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

@@ -80,7 +80,7 @@ def fetch_stores(data):
         addr = s['address']
         m = re.search(ur'<span class=\"locality\">([^<>]+?)</span>', addr)
         if m is not None:
-            entry[cm.city_e] = m.group(1).strip().upper()
+            entry[cm.city_e] = cm.extract_city(m.group(1))[0]
         m = re.search(ur'<span class=\"region\">([^<>]+?)</span>', addr)
         if m is not None:
             entry[cm.province_e] = m.group(1).strip().upper()
@@ -88,13 +88,6 @@ def fetch_stores(data):
         if m is not None:
             entry[cm.zip_code] = m.group(1).strip()
         entry[cm.addr_e] = cm.reformat_addr(addr)
-        gs.field_sense(entry)
-        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
-        if ret[1] is not None and entry[cm.province_e] == '':
-            entry[cm.province_e] = ret[1]
-        if ret[2] is not None and entry[cm.city_e] == '':
-            entry[cm.city_e] = ret[2]
-        gs.field_sense(entry)
 
         entry[cm.tel] = s['phone']
         if s['lat'] is not None and s['lat'] != '':
@@ -107,6 +100,13 @@ def fetch_stores(data):
         if s['additional'] != '':
             entry[cm.comments]=s['additional'].strip()
 
+        gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                             entry[cm.continent_e]), log_name)

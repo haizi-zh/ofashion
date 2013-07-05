@@ -58,7 +58,7 @@ def fetch_stores(data):
             if tmp2 != '':
                 addr_list.append(tmp2)
         entry[cm.addr_e] = ', '.join(addr_list)
-        entry[cm.city_e] = s['city']['name'].strip().upper()
+        entry[cm.city_e] = cm.extract_city(s['city']['name'])[0]
         entry[cm.country_e] = s['country']['countryCode']
         entry[cm.email] = s['email']
         entry[cm.fax] = s['fax']

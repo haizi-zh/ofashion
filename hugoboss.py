@@ -8,7 +8,7 @@ import geosense as gs
 __author__ = 'Zephyre'
 
 db = None
-log_name = 'gucci_log.txt'
+log_name = 'hugoboss_log.txt'
 
 
 def fetch_stores(data):
@@ -37,6 +37,7 @@ def fetch_stores(data):
                     entry[cm.province_e] = tmp[1].strip().upper()
             else:
                 entry[cm.city_e] = s['city'].strip().upper()
+            entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
 
         if s['zip'] is not None:
             entry[cm.zip_code] = s['zip'].strip()

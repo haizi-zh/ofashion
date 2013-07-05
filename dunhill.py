@@ -48,8 +48,16 @@ def get_cities(data):
         return []
     end = html.find(u'</select>', start)
     html = html[start:end]
-    city_list = [{'city_e': m, 'country_e': data['country_e'], 'country_code': data['country_code']}
-                 for m in re.findall(ur'<option value="(.+?)">', html)]
+    city_list = []
+    for m in re.findall(ur'<option value="(.+?)">', html):
+        if data['country_code'] == 'GB' and '2 davies street' in m.lower():
+            continue
+        elif data['country_code'] == 'RO' and '13 september street' in m.lower():
+            continue
+        elif 'b1603daq' in m.lower():
+            continue
+        else:
+            city_list.append({'city_e': m, 'country_e': data['country_e'], 'country_code': data['country_code']})
     return city_list
 
 
@@ -124,12 +132,12 @@ def get_stores(data):
             if len(m) > 0:
                 entry[common.lng] = string.atof(m[0])
 
-            entry[common.city_e] = data[common.city_e].strip().upper()
-            entry[common.country_e] = data[common.country_e].strip().upper()
+            entry[common.city_e] = common.extract_city(data[common.city_e])[0]
+            entry[common.country_e] = common.reformat_addr(data[common.country_e]).strip().upper()
             gs.field_sense(entry)
 
-            print '%s: Found store: %s, %s (%s, %s)' % (
-                brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
+            print '%s: Found store: %s, %s (%s, %s, %s)' % (
+                brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.city_e], entry[common.country_e],
                 entry[common.continent_e])
             db.insert_record(entry, 'stores')
             store_list.append(entry)

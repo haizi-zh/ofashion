@@ -6,7 +6,9 @@ import time
 import adidas
 import agnesb
 import alexander_mcqueen
-import armani
+import alexander_wang
+import giorgio_armani
+import armani_exchange
 import audemars
 import balenciaga
 import bally
@@ -16,23 +18,37 @@ import bershka
 import blancpain
 import bottega_veneta
 import boucheron
+import breguet
+import breitling
 import bulgari
 import burberry
 import canali
 import cartier
 import cartier_old
+import celine
 import cerruti
+import chanel
+import chaumet
+import chloe
+import chopard
 import christofle
+import coach
+import columbia
 
 import common
 import constantin
 import debeers
+import diesel
+import dior
 import dkny
+import dolce_gabbana
 import donna_karan
+import ecco
 import escada
 import esprit
 import etro
 import fcuk
+import fendi
 import ferragamo
 import folli
 import furla
@@ -42,10 +58,12 @@ import emiliopucci
 import gilsander
 import gucci
 import hamilton
+import hamilton_global
 import hermes
 import hm
 import hublot
 import hugoboss
+import hushpuppies
 import issey_miyake
 import iwc
 import jaeger_lecoultre
@@ -54,12 +72,17 @@ import juicycouture
 import kenzo
 import kipling
 import lacoste
-import langines
+import levis_eu
+import levis_us
+import longines
 import lanvin
+import lee
 import levis
 import liujo
 import loewe
 import louboutin
+import louis_vuitton
+import louis_vuitton_3rd
 import lukfook
 import mango
 import marc_jacobs
@@ -70,7 +93,7 @@ import maxmara
 import michael_kors
 import mido
 import missoni
-import misssixty
+import miss_sixty
 import miumiu
 import montblanc
 import movado
@@ -90,18 +113,25 @@ import rado
 import robertocavalli
 import rolex
 import samsonite
+import samsonite_global
 import sergio
 import shanghaitang
 import shanghaivive
+import sisley
 import stella_mccartney
+import swarovski
 import swatch
 import tagheuer
 import tiffany
 import tod
 import tommy
+import tommy_global
 import triumph
+import trussardi
+import tsl
 import tudor
 import unode50
+import us_postal
 import valentino
 import van_cleef
 import vera_wang
@@ -126,26 +156,7 @@ def calc(val):
 
 
 def test():
-    brand = '''<ul class="brand main">
-<li><a href="#/" title="ALL">ALL</a></li>
-<li ><a href="#/IM" title="ISSEY MIYAKE">ISSEY MIYAKE</a></li>
-<li><a href="#/ME" title="ISSEY MIYAKE MEN">ISSEY MIYAKE MEN</a></li>
-<li class="large"><a href="#/PL" title="PLEATS PLEASE ISSEY MIYAKE">PLEATS PLEASE<br> ISSEY MIYAKE</a></li>
-<li><a href="#/HA" title="HaaT">HaaT</a></li>
-<li class="large"><a href="#/MI" title="me ISSEY MIYAKE / CAULIFLOWER">me ISSEY MIYAKE /<br> CAULIFLOWER</a></li>
-<li><a href="#/BB" title="BAO BAO ISSEY MIYAKE">BAO BAO ISSEY MIYAKE</a></li>
-<li><a href="#/1325" title="132 5. ISSEY MIYAKE">132 5. ISSEY MIYAKE</a></li>
-<li class="large"><a href="#/HM" title="HIKARU MATSUMURA / THE UNIQUE-BAG">HIKARU MATSUMURA<br> THE UNIQUE-BAG</a></li>
-<li><a href="#/IN-EI" title="132 5. ISSEY MIYAKE">IN-EI ISSEY MIYAKE</a></li>
-<!--<li><a href="#/24" title="24 ISSEY MIYAKE">24 ISSEY MIYAKE</a></li>
-<li><a href="#/MW" title="ISSEY MIYAKE WATCH">ISSEY MIYAKE WATCH</a></li>
-<li><a href="#/MP" title="ISSEY MIYAKE PARFUMS">ISSEY MIYAKE PARFUMS</a></li>-->
-</ul>'''
-    ret = dict((m[0], m[1]) for m in re.findall(ur'<a href="#/([^"]+)" title="([^"]+)">', brand))
-    ret = json.dumps(ret)
-    return ret
-
-
+    pass
 
 
 if __name__ == "__main__":
@@ -155,5 +166,5 @@ if __name__ == "__main__":
     if test_flag:
         test()
     else:
-        zara.fetch(passwd=passwd)
+        louis_vuitton.fetch(passwd=passwd)
         # bershka.fetch(passwd=passwd)

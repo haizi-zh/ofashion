@@ -28,6 +28,7 @@ def fetch_countries(data):
     for m in re.findall(ur'<option value="([A-Z]{2})">', body):
         d = data.copy()
         d['country_code'] = m
+        # if m.upper() == 'GR':
         results.append(d)
     return results
 
@@ -60,7 +61,7 @@ def get_detail(data):
         cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
         return ()
 
-    m=re.search(ur'<div class="lines">(.+?)</div>', body, re.S)
+    m = re.search(ur'<div class="lines">(.+?)</div>', body, re.S)
     if m is None:
         return ()
     return tuple(term.strip() for term in re.findall(ur'<li>(.+?)</li>', m.group(1), re.S))
@@ -89,7 +90,7 @@ def fetch_stores(data):
             entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
             entry[cm.store_class] = store_class
             entry[cm.country_e] = data['country_code']
-            entry[cm.city_e] = data['city'].strip().upper()
+            entry[cm.city_e] = cm.extract_city(data['city'])[0]
 
             m3 = re.search(ur'loadStore\((\d+)\s*,\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\)', store_sub)
             if m3 is not None:
@@ -118,9 +119,11 @@ def fetch_stores(data):
             if ret[1] is not None and entry[cm.province_e] == '':
                 entry[cm.province_e] = ret[1]
             gs.field_sense(entry)
-            cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                                entry[cm.continent_e]), log_name)
+            cm.dump('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                    entry[cm.name_e], entry[cm.addr_e],
+                                                                    entry[cm.city_e],
+                                                                    entry[cm.country_e],
+                                                                    entry[cm.continent_e]), log_name)
             db.insert_record(entry, 'stores')
             store_list.append(entry)
     return store_list

@@ -34,7 +34,7 @@ def fetch_stores(data):
                 m4 = re.search(ur'<address>([^<>]+)</address>', m3)
                 entry[cm.addr_e] = cm.reformat_addr(m4.group(1)).strip() if m4 else ''
                 m4 = re.search(ur'<type>([^<>]+)</type>', m3)
-                entry[cm.name_e] = m4.group(1).strip() if m4 else ''
+                entry[cm.store_type] = m4.group(1).strip() if m4 else ''
 
                 m4 = re.search(ur'<openings>(.+?)</openings>', m3, re.S)
                 if m4:

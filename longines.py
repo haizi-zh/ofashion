@@ -29,7 +29,7 @@ def fetch_countries(data):
     for m in re.findall(ur'<a href="([^"]+)">([^"]+)</a>', body):
         d = data.copy()
         d['url'] = data['host'] + m[0]
-        d['country'] = m[1].strip().upper()
+        d['country'] = cm.html2plain(m[1]).strip().upper()
         if '/es' in d['url']:
             results.append(d)
     return results
@@ -128,7 +128,7 @@ def fetch_stores(data):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country']
         entry[cm.province_e] = data['state']
-        entry[cm.city_e] = data['city']
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
         if u'national' in m.group():
             entry[cm.store_type] = u'National Distributor'
         else:
@@ -171,6 +171,8 @@ def fetch_stores(data):
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
         if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
@@ -214,7 +216,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()

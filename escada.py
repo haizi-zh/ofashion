@@ -106,7 +106,7 @@ def fetch_stores(data):
             tmp = re.findall(ur'<li>\s*(.+?)\s*</li>', addr_sub)
             addr_list = []
 
-            if len(tmp)>=3:
+            if len(tmp) >= 3:
                 entry[cm.tel] = tmp[-1].strip()
                 del tmp[-1]
 
@@ -128,9 +128,17 @@ def fetch_stores(data):
             entry[cm.hours] = ', '.join(opening_list)
 
         cm.update_entry(entry, {cm.continent_e: data['continent'].strip().upper(),
-                                cm.country_e: data['country'].strip().upper(),
-                                cm.city_e: data['city'].strip().upper()})
+                                cm.country_e: data['country'].strip().upper()})
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
+
         gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
+
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                           entry[cm.continent_e])

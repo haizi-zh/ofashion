@@ -104,7 +104,7 @@ def fetch_stores(data):
         entry[cm.addr_e] = ', '.join(addr_list)
 
         val = store.getiterator('city')[0].text
-        entry[cm.city_e] = cm.html2plain(val).strip().upper() if val else ''
+        entry[cm.city_e] = cm.extract_city(val)[0] if val else ''
         val = store.getiterator('province')[0].text
         entry[cm.province_e] = cm.html2plain(val).strip().upper() if val else ''
         if entry[cm.province_e] == '':

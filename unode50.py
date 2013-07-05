@@ -66,12 +66,13 @@ def fetch_stores(data):
         if s['lng'] is not None:
             entry[cm.lng] = string.atof(str(s['lng']))
         entry[cm.addr_e] = s['address']
-        entry[cm.city_e] = s['city']
+        entry[cm.city_e] = cm.extract_city(s['city'])[0]
         entry[cm.tel] = s['phone']
         entry[cm.zip_code] = s['postal_code']
         gs.field_sense(entry)
-        cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+        cm.dump('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
+                                                            entry[cm.country_e],
                                                             entry[cm.continent_e]), 'unode50_log.txt')
         db.insert_record(entry, 'stores')
         store_list.append(entry)

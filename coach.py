@@ -72,7 +72,7 @@ def fetch_stores(data):
             entry[cm.addr_e] = cm.reformat_addr(addr_sub)
             m2 = re.search(ur'<span class="locality">([^<>?]+?),*\s*</span>', addr_sub)
             city = cm.html2plain(m2.group(1)).strip().upper() if m2 else ''
-            entry[cm.city_e] = city if city != ',' else ''
+            entry[cm.city_e] = cm.extract_city(city if city != ',' else '')[0]
             m2 = re.search(ur'<span\s+class="region"\s+title="([^"]+)"[^<>]*>', addr_sub)
             entry[cm.province_e] = cm.html2plain(m2.group(1)).strip().upper() if m2 else ''
             m2 = re.search(ur'<span\s+class="postal-code"[^<>]*>([^<>]+)', addr_sub)

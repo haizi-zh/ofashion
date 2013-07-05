@@ -118,7 +118,7 @@ def fetch_store_details(data):
         entry[cm.province_e] = state.strip().upper()
     entry[cm.zip_code] = raw['postcode']
     entry[cm.country_e] = data['country_e']
-    entry[cm.city_e] = data['city_e']
+    entry[cm.city_e] = cm.extract_city(data['city_e'])[0]
     entry[cm.lat] = string.atof(data['lat'])
     entry[cm.lng] = string.atof(data['lng'])
     entry[cm.tel] = raw['phone']

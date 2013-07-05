@@ -51,7 +51,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
             if tmp != '':
                 addr.append(tmp)
         entry[cm.addr_e] = ', '.join(addr)
-        entry[cm.city_e] = s['city']
+        entry[cm.city_e] = cm.extract_city(s['city'])[0]
 
         country = s['country']
         ret =  gs.look_up(country, 1)

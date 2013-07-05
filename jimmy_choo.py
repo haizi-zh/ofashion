@@ -66,11 +66,20 @@ def fetch_uk(body, data):
                 entry[cm.city_e] = ret['name_e']
             entry[cm.zip_code] = addr_list[-1].strip().upper()
         entry[cm.addr_e] = ', '.join(addr_list)
+        entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
 
         gs.field_sense(entry)
-        print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                          entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                          entry[cm.continent_e])
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
+
+        print '(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                              entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
+                                                              entry[cm.country_e], entry[cm.continent_e])
+
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 
@@ -117,11 +126,19 @@ def fetch_world(body, data):
             if ret[1] is not None:
                 entry[cm.province_e] = ret[1]
             entry[cm.addr_e] = ', '.join(addr_list)
+            entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
 
             gs.field_sense(entry)
-            print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                              entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                              entry[cm.continent_e])
+            ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+            if ret[1] is not None and entry[cm.province_e] == '':
+                entry[cm.province_e] = ret[1]
+            if ret[2] is not None and entry[cm.city_e] == '':
+                entry[cm.city_e] = ret[2]
+            gs.field_sense(entry)
+
+            print '(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                  entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
+                                                                  entry[cm.country_e], entry[cm.continent_e])
             db.insert_record(entry, 'stores')
             store_list.append(entry)
 

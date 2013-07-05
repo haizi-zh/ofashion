@@ -52,7 +52,14 @@ def fetch_stores(data):
     for m in re.findall(ur'<marker[^<>]+/\s*>', sub):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country']
-        entry[cm.city_e] = data['city']
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
+
+        ret = gs.look_up(entry[cm.country_e], 1)
+        if ret and ret['name_e'] == 'UNITED STATES':
+            tmp_list = tuple(tmp.strip() for tmp in cm.reformat_addr(data['city']).strip(','))
+            if len(tmp_list) == 2:
+                if re.search('[A-Z]{2}', tmp_list[1]):
+                    entry[cm.province_e] = tmp_list[1]
 
         # m1 = re.search(ur'name\s*=\s*"([^"]+)"', m)
         # entry[cm.name_e] = m1.group(1) if m1 else ''

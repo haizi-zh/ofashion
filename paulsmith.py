@@ -31,7 +31,7 @@ def fetch_countries(data):
 
     for m in re.finditer(ur'<h3>(.+?)</h3>', html):
         continent_e = m.group(1).strip().upper()
-        if continent_e == u'UK':
+        if continent_e == u'UK' and False:
             d = data.copy()
             d[cm.continent_e] = u'EUROPE'
             d[cm.country_e] = u'UNITED KINGDOM'
@@ -47,7 +47,8 @@ def fetch_countries(data):
                 d[cm.continent_e] = continent_e
                 d[cm.country_e] = m1[1].strip().upper()
                 d[cm.url] = data['host'] + m1[0]
-                country_list.append(d)
+                if d[cm.country_e]=='SINGAPORE':
+                    country_list.append(d)
 
     return country_list
 
@@ -100,7 +101,7 @@ def fetch_details(data):
         return []
     m1 = re.search(ur'<div  class="locality">(.+?)</div>', sub)
     if m1 is not None:
-        entry[cm.city_e] = cm.html2plain(m1.group(1)).strip().upper()
+        entry[cm.city_e] = cm.extract_city(m1.group(1))[0]
     m1 = re.search(ur'<div  class="postal-code">(.+?)</div>', sub)
     if m1 is not None:
         entry[cm.zip_code] = m1.group(1).strip()

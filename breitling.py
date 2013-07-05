@@ -27,6 +27,7 @@ def fetch_continents(data):
         d = data.copy()
         d['continent_id'] = raw[key]['id']
         d['continent'] = raw[key]['name'].strip().upper()
+        # if d['continent_id'] == 1199:
         results.append(d)
     return tuple(results)
 
@@ -36,7 +37,8 @@ def fetch_store_detail(s, data, isOfficial=False):
 
     entry[cm.name_e] = cm.html2plain(s['name']).strip()
     entry[cm.country_e] = data['country']
-    entry[cm.city_e] = data['city']
+    val = cm.html2plain(s['city']).strip().upper()
+    entry[cm.city_e] = cm.extract_city(val if val and val != '' else data['city'])[0]
     entry[cm.addr_e] = cm.html2plain(s['address']).strip()
     entry[cm.email] = s['email'].strip()
     entry[cm.tel] = s['phone'].strip()
@@ -77,9 +79,9 @@ def fetch_stores(data):
             continue
         entry = fetch_store_detail(raw['retailers'][key], data, False)
 
-        cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                            entry[cm.continent_e]), log_name)
+        cm.dump('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
+                                                                entry[cm.country_e], entry[cm.continent_e]), log_name)
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 
@@ -113,6 +115,7 @@ def fetch_countries(data):
         d = data.copy()
         d['country_id'] = raw[key]['id']
         d['country'] = raw[key]['name'].strip().upper()
+        # if d['country'] == 'USA':
         results.append(d)
     return tuple(results)
 

@@ -10,10 +10,11 @@ import urllib2
 import _mysql
 import time
 import HTMLParser
+import urlparse
 
 __author__ = 'Zephyre'
 
-timeout = 15
+timeout = 30
 
 # 字段名
 continent_c = 'continent_c'
@@ -48,6 +49,7 @@ district_c = 'district_c'
 district_e = 'district_e'
 comments = 'comments'
 store_class = 'store_class'
+native_id = 'native_id'
 
 # 中日韩Unicode字符区
 ucjk = ur'\u2E80-\u9FFF'
@@ -84,6 +86,36 @@ def chn_check(entry):
     return entry
 
 
+def extract_city(city):
+    zip_code = ''
+    val = html2plain(city).strip().upper()
+    pat = re.compile(ur'^[\d\-\. ]*')
+    m = re.search(pat, val)
+    if m:
+        zip_code = m.group().strip()
+        val = re.sub(pat, '', val)
+
+    pat = re.compile(ur'[\d\- ]*$')
+    m = re.search(pat, val)
+    if m:
+        zip_code = m.group().strip()
+        val = re.sub(pat, '', val)
+
+    m = re.search(ur'[\d,/]', val)
+    if m:
+        val = val[:m.start()]
+    m = re.search(ur'\s+-\s+', val)
+    if m:
+        val = val[:m.start()]
+    val = re.sub(ur'"*$', '', val).strip()
+    val = re.sub(ur"'*$", '', val).strip()
+    val = re.sub(ur'^"*', '', val).strip()
+    val = re.sub(ur"^'*", '', val).strip()
+    val = re.sub(ur'\([^\(\)]*\)', '', val).strip()
+
+    return val, zip_code
+
+
 def format_time(fmt='%Y-%m-%d %H:%M:%S'):
     """
     获得格式化的当前时间字符串
@@ -100,8 +132,8 @@ def init_store_entry(bn_id, bn_e='', bn_c=''):
     return {brand_id: bn_id, fetch_time: format_time(), brandname_e: bn_e, brandname_c: bn_c, continent_e: '',
             continent_c: '', country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '',
             district_c: '', district_e: '', name_l: '', name_e: '', name_c: '', addr_e: '', addr_c: '',
-            addr_l: '', tel: '', email: '', fax: '', store_class: '',
-            hotline: '', store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
+            addr_l: '', tel: '', email: '', fax: '', store_class: '', 'is_geocoded': 0, 'native_id': '',
+            comments: '', hotline: '', store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
 
 
 def update_entry(entry, data):
@@ -162,7 +194,17 @@ def reformat_addr(addr):
     new_addr = re.subn(ur'^,', ur'', new_addr)[0]
     new_addr = re.subn(ur',$', ur'', new_addr)[0]
     new_addr = re.subn(ur',', ur', ', new_addr)[0]
-    return new_addr
+    # 去掉多余引号
+    val = re.sub(ur'"*$', '', new_addr).strip()
+    val = re.sub(ur"'*$", '', val).strip()
+    val = re.sub(ur'^"*', '', val).strip()
+    val = re.sub(ur"^'*", '', val).strip()
+    val = re.sub(ur'"{2,}', ' ', val).strip()
+    val = re.sub(ur"'{2,}", ' ', val).strip()
+    val = re.sub(ur'^\.+', '', val).strip()
+    val = re.sub(ur'^\.{2,}', '.', val).strip()
+    val = '' if val == '.' else val
+    return val
 
 
 def is_chinese(text):
@@ -211,8 +253,8 @@ def proc_response(response):
 
     cookie_map = {}
     if 'set-cookie' in hd.keys():
-        for cookie in (tmp.split(';')[0] for tmp in re.split(re.compile(r'Path\s*=[^,]*,?\s*'), hd['set-cookie'])):
-            m = re.search(r'(.+)=(.+)', cookie)
+        for cookie in hd['set-cookie'].split(','):
+            m = re.search(r'(.+?)=(.+)[;$]', cookie)
             if m:
                 cookie_map[m.group(1).strip()] = m.group(2).strip()
 
@@ -259,34 +301,46 @@ def proc_response(response):
                 else:
                     continue
 
-    if len(cookie_map) == 0:
-        return html, None
-    else:
-        return html, cookie_map
+    # if len(cookie_map) == 0:
+    #     return html, None
+    # else:
+    return html, cookie_map
 
 
-def get_data(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
-    html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cookie)
+def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime=20, cookie=None, client='Desktop',
+             userAgent=''):
+    html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cooltime, cookie, client=client, userAgent=userAgent)
     return html
 
 
-def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None):
+def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime=20, cookie=None, proxy=None,
+                    client='Desktop', userAgent=''):
     """
     GET指定url的
     """
-    url = url.encode('utf-8')
+    if isinstance(url, unicode):
+        url = url.encode('utf-8')
+    url_components = [item for item in urlparse.urlsplit(url)]
+    url_components[2] = urllib.quote(urllib.unquote(url_components[2]))
+
     if proxy is not None:
         proxy_handler = urllib2.ProxyHandler({'http': proxy['url']})
         opener = urllib2.build_opener(proxy_handler)
     else:
         opener = urllib2.build_opener()
 
-    headers = [("User-Agent",
-                "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
-                "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
+    headers = [('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
     hdr_map = dict(headers)
+    if client == 'Desktop':
+        hdr_map[
+            "User-Agent"] = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.94 Safari/537.36"
+    elif client == 'iPad':
+        hdr_map[
+            'User-Agent'] = 'Mozilla/5.0(iPad; U; CPU iPhone OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B314 Safari/531.21.10'
+    else:
+        hdr_map['User-Agent'] = userAgent
 
     if hdr is not None:
         for key in hdr:
@@ -305,28 +359,36 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=N
         headers.append((key, hdr_map[key]))
     opener.addheaders = headers
     if data is not None:
-        if url[-1] == '/':
-            url = url[:-1]
         for key in data:
             if isinstance(data[key], unicode):
                 data[key] = data[key].encode('utf-8')
-        url += '?' + urllib.urlencode(data)
+        url_components[3] = '&'.join((url_components[3], urllib.urlencode(data))) \
+            if url_components[3] != '' else urllib.urlencode(data)
+
+    url = urlparse.SplitResult(*url_components).geturl()
 
     i = -1
     while True:
         i += 1
         try:
-            return proc_response(opener.open(url, timeout=timeout))
+            body, cookie_new = proc_response(opener.open(url, timeout=timeout))
+            if cookie:
+                for key in cookie:
+                    if key not in cookie_new:
+                        cookie_new[key] = cookie[key]
+            return body, cookie_new
         except Exception, e:
             if isinstance(e, urllib2.HTTPError):
-                print 'http error: {0}'.format(e.code)
+                print 'Http error: {0}'.format(e.code)
             elif isinstance(e, urllib2.URLError) and isinstance(e.reason, socket.timeout):
-                print 'url error: socket timeout {0}'.format(e.__str__())
+                print 'Url error: socket timeout {0}'.format(e.__str__())
             else:
-                print 'misc error: ' + e.__str__()
+                print 'Misc error: ' + e.__str__()
             if i >= retry:
                 raise e
             else:
+                print 'Cooling down for %fsec...' % cooltime
+                time.sleep(cooltime)
                 continue
 
 
@@ -416,17 +478,28 @@ def post_data(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
     return html
 
 
-def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
+def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None, client='Desktop',
+                     userAgent=''):
     """
     POST指定url
     """
     url = url.encode('utf-8')
-    headers = [("User-Agent",
-                "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)"
-                "Chrome/27.0.1453.94 Safari/537.36"), ('Accept-Encoding', 'gzip,deflate,sdch'),
+    url_components = [item for item in urlparse.urlsplit(url)]
+    url_components[2] = urllib.quote(urllib.unquote(url_components[2]))
+    url = urlparse.SplitResult(*url_components).geturl()
+
+    headers = [('Accept-Encoding', 'gzip,deflate,sdch'),
                ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
                ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
     hdr_map = dict(headers)
+    if client == 'Desktop':
+        hdr_map[
+            "User-Agent"] = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.94 Safari/537.36"
+    elif client == 'iPad':
+        hdr_map[
+            'User-Agent'] = 'Mozilla/5.0(iPad; U; CPU iPhone OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B314 Safari/531.21.10'
+    else:
+        hdr_map['User-Agent'] = userAgent
 
     if hdr is not None:
         for key in hdr:
@@ -470,27 +543,27 @@ def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=
 
 class StoresDb(object):
     def StoresDb(self):
-        self.__brand_store_db = None
+        self._store_db = None
 
     def connect_db(self, host='localhost', port=3306, user='root', passwd='', db='brand_stores'):
         """
         Connect to the brand store database
         """
-        self.__brand_store_db = _mysql.connect(host=host, port=port, user=user, passwd=passwd, db=db)
-        self.__brand_store_db.query("SET NAMES 'utf8'")
+        self._store_db = _mysql.connect(host=host, port=port, user=user, passwd=passwd, db=db)
+        self._store_db.query("SET NAMES 'utf8'")
 
     def disconnect_db(self):
         """
         Disconnect the database
         """
-        if self.__brand_store_db is not None:
-            self.__brand_store_db.close()
+        if self._store_db is not None:
+            self._store_db.close()
 
     def execute(self, statement):
         try:
             if isinstance(statement, unicode):
                 statement = statement.encode('utf-8')
-            self.__brand_store_db.query(statement)
+            self._store_db.query(statement)
         except Exception, e:
             print e.__str__()
 
@@ -522,11 +595,11 @@ class StoresDb(object):
         try:
             if isinstance(statement, unicode):
                 statement = statement.encode('utf-8')
-            self.__brand_store_db.query(statement)
-            self.__record_set = self.__brand_store_db.store_results()
-            return self.__record_set.num_rows()
+            self._store_db.query(statement)
+            self._record_set = self._store_db.store_results()
+            return self._record_set.num_rows()
         except Exception, e:
-            print e.__str__()
+            print e
             return 0
 
     def fetch_record(self):
@@ -534,7 +607,7 @@ class StoresDb(object):
         Fetch records once a time.
         :return:
         """
-        return self.__record_set.fetch_row()
+        return self._record_set.fetch_row()
 
     def query_all(self, statement):
         """
@@ -544,11 +617,11 @@ class StoresDb(object):
         """
         if isinstance(statement, unicode):
             statement = statement.encode('utf-8')
-        self.__brand_store_db.query(statement)
-        self.__record_set = self.__brand_store_db.store_result()
+        self._store_db.query(statement)
+        self._record_set = self._store_db.store_result()
         recordset = []
-        for i in xrange(self.__record_set.num_rows()):
-            recordset.append(self.__record_set.fetch_row())
+        for i in xrange(self._record_set.num_rows()):
+            recordset.append(self._record_set.fetch_row())
         return recordset
 
 

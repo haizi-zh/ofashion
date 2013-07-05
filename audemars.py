@@ -45,7 +45,7 @@ def fetch_stores(data):
     for m in re.finditer(ur'<div class="vcard storeListing">', body):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country']
-        entry[cm.city_e] = data['city']
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
 
         sub = cm.extract_closure(body[m.start():], ur'<div\b', ur'</div>')[0]
         m = re.search(ur'<h3 class="org">(.+)', sub)

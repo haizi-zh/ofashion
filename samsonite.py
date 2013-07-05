@@ -167,7 +167,7 @@ def fetch_stores(data):
         entry[cm.city_c] = data['city']
         ret = gs.look_up(data['city'], 3)
         if ret is not None:
-            entry[cm.city_e] = ret['name_e']
+            entry[cm.city_e] = cm.extract_city(ret['name_e'])[0]
             if ret['province'] != '':
                 entry[cm.province_e] = ret['province']['name_e']
         entry[cm.province_c] = data['province']
@@ -176,6 +176,12 @@ def fetch_stores(data):
             entry[cm.province_e] = ret['name_e']
         entry[cm.country_e] = u'CHINA'
 
+        gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

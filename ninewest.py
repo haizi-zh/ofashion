@@ -39,29 +39,6 @@ def fetch_stores(data):
 
 
     try:
-        # html = cm.post_data(url, {'dwfrm_storelocator_startaddress': 'dallas',
-        #                                  'dwfrm_storelocator_maxDistance': 30000.00,
-        #                                  'dwfrm_storelocator_outlet': 'true',
-        #                                  'dwfrm_storelocator_retail': 'true',
-        #                                  'dwfrm_storelocator_optical': 'true',
-        #                                  'dwfrm_storelocator_eyewear': 'true',
-        #                                  'dwfrm_storelocator_apparel': 'true',
-        #                                  'dwfrm_storelocator_attire': 'true',
-        #                                  'dwfrm_storelocator_department': 'true',
-        #                                  'dwfrm_storelocator_IsMensFootwear': 'true',
-        #                                  'dwfrm_storelocator_IsRRR': 'true',
-        #                                  'dwfrm_storelocator_IsRRNY': 'true',
-        #                                  'dwfrm_storelocator_IsRRS': 'true',
-        #                                  'dwfrm_storelocator_wholesale': 'true',
-        #                                  'dwfrm_storelocator_bba': 'true',
-        #                                  'dwfrm_storelocator_ba': 'true',
-        #                                  'dwfrm_storelocator_search.x': 0,
-        #                                  'dwfrm_storelocator_search.y': 0,
-        #                                  'dwfrm_storelocator_countryCode': 'US',
-        #                                  'dwfrm_storelocator_postalCode': '75202',
-        #                                  'dwfrm_storelocator_distanceUnit': 'mi',
-        #                                  'dwfrm_storelocator_long': -96.80045109999998,
-        #                                  'dwfrm_storelocator_lat': 32.7801399}, cookie=cookie_map)
         html = cm.post_data(url, {'dwfrm_storelocator_startaddress': 'kingman',
                                          'dwfrm_storelocator_maxDistance': 30.00,
                                          'dwfrm_storelocator_outlet': 'true',
@@ -137,7 +114,7 @@ def fetch_stores(data):
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                           entry[cm.continent_e])
         store_list.append(entry)
-        # db.insert_record(entry, 'stores')
+        db.insert_record(entry, 'stores')
 
     return store_list
 
@@ -162,7 +139,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()

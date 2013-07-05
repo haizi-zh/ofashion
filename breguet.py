@@ -50,7 +50,7 @@ def fetch_stores(data):
     for s in re.findall(ur'<td width="211">(.+?)</td>', body, re.S):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']
-        entry[cm.city_e] = data['city']
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
 
         addr_list = []
         pat_tel = re.compile(ur'phone\s*[:\.]?\s*', re.I)

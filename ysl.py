@@ -61,12 +61,19 @@ def get_store_details(html, opt):
             store_entry[cm.province_e] = opt[cm.province_e]
         else:
             store_entry[cm.province_e] = ''
+        store_entry[cm.city_e] = cm.extract_city(store_entry[cm.city_e])[0]
 
+        gs.field_sense(store_entry)
+        ret = gs.addr_sense(store_entry[cm.addr_e], store_entry[cm.country_e])
+        if ret[1] is not None and store_entry[cm.province_e] == '':
+            store_entry[cm.province_e] = ret[1]
+        if ret[2] is not None and store_entry[cm.city_e] == '':
+            store_entry[cm.city_e] = ret[2]
         gs.field_sense(store_entry)
 
         print '%s Found store: %s, %s (%s, %s)' % (
-                brandname_e, store_entry[cm.name_e], store_entry[cm.addr_e], store_entry[cm.country_e],
-                store_entry[cm.continent_e])
+            brandname_e, store_entry[cm.name_e], store_entry[cm.addr_e], store_entry[cm.country_e],
+            store_entry[cm.continent_e])
         db.insert_record(store_entry, 'stores')
 
         return store_entry

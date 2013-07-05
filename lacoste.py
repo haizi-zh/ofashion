@@ -91,7 +91,7 @@ def fetch_stores(data):
         entry[cm.country_e] = data['country_code']
         entry[cm.addr_e] = cm.html2plain(s['address']).strip()
         entry[cm.store_type] = s['category'].strip()
-        entry[cm.city_e] = cm.html2plain(s['city']).strip().upper()
+        entry[cm.city_e] = cm.extract_city(s['city'])[0]
         if s['email'] is not None:
             entry[cm.email] = s['email'].strip()
         if s['fax'] is not None:
@@ -106,10 +106,13 @@ def fetch_stores(data):
             entry[cm.tel] = s['phone'].strip()
         if s['postCode'] is not None:
             entry[cm.zip_code] = s['postCode'].strip()
+
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
         if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

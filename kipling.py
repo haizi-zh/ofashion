@@ -69,10 +69,11 @@ def fetch_stores(data):
     for item in raw['items']:
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country'].strip().upper()
+        tmp = cm.extract_city(data['city'])[0]
         if entry[cm.country_e] == 'USA':
-            entry[cm.province_e] = data['city'].strip().upper()
+            entry[cm.province_e] = tmp
         else:
-            entry[cm.city_e] = data['city'].strip().upper()
+            entry[cm.city_e] = tmp
         gs.field_sense(entry)
 
         addr = cm.reformat_addr(item['address'].replace(u'\\', ''))

@@ -49,7 +49,7 @@ def fetch_stores(data):
 
         entry[cm.store_type] = ', '.join(s['CategoryList']) if s['CategoryList'] else ''
         entry[cm.name_e] = cm.html2plain(s['Name']).strip().upper() if s['Name'] else ''
-        entry[cm.city_e] = cm.html2plain(s['City']).strip().upper() if s['City'] else data['city']
+        entry[cm.city_e] = cm.extract_city(s['City'] if s['City'] else data['city'])[0]
         entry[cm.country_e] = data['country']
         entry[cm.email] = s['Email'].strip() if s['Email'] else ''
         entry[cm.tel] = s['Phone'].strip() if s['Phone'] else ''

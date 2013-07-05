@@ -24,7 +24,7 @@ def fetch_stores(data):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
 
         entry[cm.addr_e] = cm.reformat_addr(s['address'])
-        entry[cm.city_e] = cm.html2plain(s['city']).strip().upper()
+        entry[cm.city_e] = cm.extract_city(s['city'])[0]
         entry[cm.country_e] = cm.html2plain(s['country']).strip().upper()
         entry[cm.name_e] = cm.html2plain(s['name']).strip().upper()
         entry[cm.hours] = cm.reformat_addr(s['hours'])

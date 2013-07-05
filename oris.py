@@ -165,7 +165,7 @@ def fetch_stores(data):
         else:
             entry[cm.name_e] = name
         entry[cm.addr_e] = cm.html2plain(s['Street'])
-        entry[cm.city_e] = data['city_e']
+        entry[cm.city_e] = cm.extract_city(data['city_e'])[0]
         entry[cm.country_e] = data['country_e']
         entry[cm.province_e] = data['province_e']
         pat = re.compile(ur'tel[\.: ]*', re.I)
@@ -180,7 +180,15 @@ def fetch_stores(data):
                 entry[cm.lat] = string.atof(coord[0])
             if coord[1] is not None:
                 entry[cm.lng] = string.atof(coord[1])
+
         gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
+
         print '(%s/%d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                         entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                         entry[cm.continent_e])

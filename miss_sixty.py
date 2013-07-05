@@ -8,7 +8,7 @@ import geosense as gs
 __author__ = 'Zephyre'
 
 db = None
-log_name = 'misssixty_log.txt'
+log_name = 'miss_sixty_log.txt'
 
 global tableid, queryUrlHead, queryUrlTail
 
@@ -98,7 +98,7 @@ def fetch_stores(data):
     for s in json.loads(cm.extract_closure(body, ur'\{', ur'\}')[0])['rows']:
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']
-        entry[cm.city_e] = data['city'].strip().upper()
+        entry[cm.city_e] =cm.extract_city(data['city'])[0]
         addr_list=[]
         for tmp in [s[5], s[1]]:
             if cm.html2plain(tmp).strip()!='':
@@ -113,6 +113,8 @@ def fetch_stores(data):
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
         if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

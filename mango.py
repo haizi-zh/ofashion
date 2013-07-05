@@ -44,7 +44,7 @@ def fetch_stores(data):
     for s in json.loads(body):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country']
-        entry[cm.city_e] = data['city']
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
         entry[cm.name_e] = cm.reformat_addr(s['title'])
 
         m = re.search(ur'(.+?)-\s*<', s['key'])
@@ -62,10 +62,15 @@ def fetch_stores(data):
                 entry[cm.zip_code] = m1.group()
             addr_list.append(tmp[0].strip())
         entry[cm.addr_e] = ', '.join(addr_list)
+
         gs.field_sense(entry)
-        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        ret = gs.addr_sense(entry[cm.addr_e])
+        if ret[0] is not None and entry[cm.country_e] == '':
+            entry[cm.country_e] = ret[0]
         if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

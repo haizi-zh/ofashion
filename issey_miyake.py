@@ -37,7 +37,13 @@ def fetch_stores(data):
                     break
         m1 = re.search(ur'<city>([^<>]+)</city>', sub)
         if m1 is not None:
-            entry[cm.city_e] = m1.group(1).strip().upper()
+            val = cm.reformat_addr(m1.group(1))
+            if entry[cm.country_e] == 'UNITED STATES':
+                tmp_list = tuple(tmp.strip() for tmp in cm.reformat_addr(val).strip(','))
+                if len(tmp_list) == 2:
+                    if re.search('[A-Z]{2}', tmp_list[1]):
+                        entry[cm.province_e] = tmp_list[1]
+            entry[cm.city_e] = cm.extract_city(m1.group(1))[0]
         m1 = re.search(ur'<brands>([^<>]+)</brands>', sub)
         if m1 is not None:
             tmp = m1.group(1).split('/')

@@ -30,6 +30,16 @@ def fetch_stores(data):
         print msg
         f.write('%s\n' % msg)
         try:
+            # html = cm.get_data(url, {'brand': 'adidas', 'geoengine': 'google', 'method': 'get',
+            #                          'category': 'store', 'latlng': '51.729663,5.310298,100',
+            #                          'page': '%d' % page, 'pagesize': page_size,
+            #                          'fields': 'name,street1,street2,addressline,buildingname,postal_code,city,'
+            #                                    'state,store_owner,country,storetype,longitude_google,'
+            #                                    'latitude_google,store_owner,state,performance,brand_store,'
+            #                                    'factory_outlet,originals,neo_label,y3,slvr,children,woman,'
+            #                                    'footwear,football,basketball,outdoor,porsche_design,miadidas,'
+            #                                    'miteam,stella_mccartney,eyewear,micoach,opening_ceremony',
+            #                          'format': 'json', 'storetype': ''})
             html = cm.get_data(url, {'brand': 'adidas', 'geoengine': 'google', 'method': 'get',
                                      'category': 'store', 'latlng': '31.22434895,121.47675279999999, 10000',
                                      'page': '%d' % page, 'pagesize': page_size,
@@ -59,7 +69,7 @@ def fetch_stores(data):
             start = html.find('{')
             if start != -1:
                 html = html[start:]
-            # 去掉控制字符
+                # 去掉控制字符
             pat = re.compile(u'[\r\n]')
             html = re.sub(pat, ' ', html)
             pat = re.compile(ur'\\.')
@@ -86,7 +96,8 @@ def fetch_stores(data):
                     map(lambda key: addr_func(addr_list, s, key), ['addressline', 'buildingname', 'street1',
                                                                    'street2'])
                     entry[cm.addr_e] = ', '.join(addr_list)
-                    entry[cm.city_e] = s['city'].split('-')[0].strip().upper()
+
+                    entry[cm.city_e] = cm.extract_city(s['city'])[0]
                     entry[cm.country_e] = s['country'].strip().upper()
                     if 'storetype' in s:
                         entry[cm.store_type] = s['storetype']
@@ -95,10 +106,10 @@ def fetch_stores(data):
                     entry[cm.store_class] = 'adidas'
 
                     gs.field_sense(entry)
-                    msg = '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                                      entry[cm.name_e], entry[cm.addr_e],
-                                                                      entry[cm.country_e],
-                                                                      entry[cm.continent_e])
+                    msg = '(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                          entry[cm.name_e], entry[cm.addr_e],
+                                                                          entry[cm.city_e], entry[cm.country_e],
+                                                                          entry[cm.continent_e])
                     print msg
                     f.write('%s\n' % msg.encode('utf-8'))
                     store_list.append(entry)
@@ -136,12 +147,12 @@ def fetch(level=1, data=None, user='root', passwd=''):
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'url': 'http://placesws.adidas-group.com/API/search',
-            'brand_id': 10004, 'brandname_e': u'Adidas SLVR Label', 'brandname_c': u'阿迪达斯'}
+                'brand_id': 10004, 'brandname_e': u'Adidas SLVR Label', 'brandname_c': u'阿迪达斯'}
 
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()

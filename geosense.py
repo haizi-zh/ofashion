@@ -243,28 +243,29 @@ def addr_sense(addr, country=None, province=None, city=None):
     return country, province, city
 
 
-def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None):
+def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None):
     # http://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&sensor=true_or_false
-    if addr is not None:
-        if isinstance(addr, unicode):
-            addr = addr.encode('utf-8')
-        else:
-            addr = str(addr)
+    if not url:
+        if addr is not None:
+            if isinstance(addr, unicode):
+                addr = addr.encode('utf-8')
+            else:
+                addr = str(addr)
 
-    if latlng is not None:
-        if isinstance(latlng, unicode):
-            latlng = latlng.encode('utf-8')
-        else:
-            latlng = str(latlng)
+        if latlng is not None:
+            if isinstance(latlng, unicode):
+                latlng = latlng.encode('utf-8')
+            else:
+                latlng = str(latlng)
 
-    url = 'http://maps.googleapis.com/maps/api/geocode/json?'
-    param = {'sensor': 'false'}
-    if addr is not None:
-        param['address'] = addr
-    if latlng is not None:
-        param['latlng'] = latlng
+        url = 'http://maps.googleapis.com/maps/api/geocode/json?'
+        param = {'sensor': 'false'}
+        if addr is not None:
+            param['address'] = addr
+        if latlng is not None:
+            param['latlng'] = latlng
 
-    url += urllib.urlencode(param)
+        url += urllib.urlencode(param)
 
     cnt = 0
     while True:
@@ -276,7 +277,9 @@ def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None):
             elif ret['status'] == 'ZERO_RESULTS':
                 return None
             else:
-                cool = False
+                if ret['status']=='OVER_QUERY_LIMIT':
+                    print 'OVER_QUERY_LIMIT'
+                # cool = False
                 raise Exception()
         except Exception, e:
             cnt += 1

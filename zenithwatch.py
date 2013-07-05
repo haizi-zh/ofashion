@@ -132,7 +132,7 @@ def fetch_store_details(url, data):
                 break
             for m1 in re.findall(ur'<span itemprop="addressLocality">(.*?)</span>', m):
                 if len(m1.strip()) > 0:
-                    city = m1
+                    city = cm.extract_city(m1)[0]
                 break
             for m1 in re.findall(ur'<span itemprop="addressCountry">(.*?)</span>', m):
                 if len(m1.strip()) > 0:
@@ -177,9 +177,9 @@ def fetch_store_details(url, data):
                 entry[cm.city_e] = city
                 gs.field_sense(entry)
 
-        print '%s Found store: %s, %s. (%s, %s)' % (brandname_e,
-                                                    entry[cm.name_e], entry[cm.addr_e], entry[cm.continent_e],
-                                                    entry[cm.country_e])
+        print '%s Found store: %s, %s. (%s, %s, %s)' % (brandname_e,
+                                                        entry[cm.name_e], entry[cm.addr_e], entry[cm.continent_e],
+                                                        entry[cm.country_e], entry[cm.city_e])
         db.insert_record(entry, 'stores')
         stores.append(entry)
     return stores

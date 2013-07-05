@@ -68,11 +68,21 @@ def fetch_stores(data):
             entry[cm.country_e] = data['country_e']
         if cm.country_c in data:
             entry[cm.country_e] = data['country_c']
+        if 'province_e' in data:
+            entry[cm.province_e] = data['province_e']
+
+        entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
+        gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
 
-        print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                          entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                          entry[cm.continent_e])
+        print '(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                              entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
+                                                              entry[cm.country_e], entry[cm.continent_e])
         store_list.append(entry)
         db.insert_record(entry, 'stores')
 
@@ -103,6 +113,11 @@ def fetch_cities(data):
             d['city_c'] = terms[-1].strip()
             terms = terms[:-1]
         d['city_e'] = ' '.join(terms)
+        if d['country_e'] == 'USA':
+            m1 = re.search(ur'([A-Z]{2})\s*-\s*(.+)', d['city_e'])
+            if m1:
+                d['city_e'] = m1.group(2).strip()
+                d['province_e'] = m1.group(1).strip()
         print 'Processing %s' % d['city_e']
         store_list.extend(fetch_stores(d))
 

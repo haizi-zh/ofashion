@@ -61,7 +61,7 @@ def fetch_stores(data):
         for s in raw['Stores']['Items']:
             entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
             entry[cm.country_e] = data['country_code'].upper()
-            entry[cm.city_e] = cm.html2plain(s['City']).strip().upper()
+            entry[cm.city_e] = cm.extract_city(s['City'])[0]
             entry[cm.name_e] = cm.html2plain(s['Name']).strip()
             entry[cm.addr_e] = cm.reformat_addr(s['Address'])
             entry[cm.tel] = s['Phone'].strip() if s['Phone'] else ''

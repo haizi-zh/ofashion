@@ -74,7 +74,7 @@ def fetch_stores(data):
 
         m = re.search(ur'datas\[%d\]\.City\s*=\s*"([^"]+)"' % store_id, store_sub)
         if m is not None:
-            entry[cm.city_e] = cm.html2plain(m.group(1)).split(',')[0].strip().upper()
+            entry[cm.city_e] = cm.extract_city(m.group(1))[0]
 
         m = re.search(ur'datas\[%d\]\.Country\s*=\s*"([^"]+)"' % store_id, store_sub)
         if m is not None:

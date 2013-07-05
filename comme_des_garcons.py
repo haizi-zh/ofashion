@@ -65,7 +65,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 entry[common.country_e]=ret['name_e']
                 m1 = re.findall(ur'(.+?)(\d{3}-\d{4})', addr_splits[-2])
                 if len(m1) > 0:
-                    common.update_entry(entry, {common.city_e: common.reformat_addr(m1[0][0]),
+                    common.update_entry(entry, {common.city_e: common.extract_city(m1[0][0])[0],
                                                 common.zip_code: m1[0][1]})
 
             # 联系方式

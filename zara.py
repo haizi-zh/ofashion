@@ -150,7 +150,7 @@ def fetch_stores(data):
                 ret = gs.geocode(latlng='%f,%f' % (entry[cm.lat], entry[cm.lng]))
             if ret is None:
                 location_valid = False
-                ret = gs.geocode('%s, %s, %s'%(entry[cm.addr_e], entry[cm.city_e], entry[cm.country_e]))
+                ret = gs.geocode('%s, %s, %s' % (entry[cm.addr_e], entry[cm.city_e], entry[cm.country_e]))
 
             if ret is not None:
                 city = ''
@@ -186,6 +186,7 @@ def fetch_stores(data):
                     entry[cm.city_e] = ret[2]
                 gs.field_sense(entry)
 
+        entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                             entry[cm.continent_e]), log_name)

@@ -44,9 +44,9 @@ def fetch_cn(data):
                 cm.update_entry(entry, {cm.city_c:city, cm.province_c:province, cm.country_c:u'中国',
                                         cm.country_e:u'CHINA', cm.continent_c:u'亚洲', cm.continent_e:u'ASIA'})
 
-                print '(%s/%d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                          entry[cm.name_c], entry[cm.addr_e], entry[cm.country_e],
-                                                          entry[cm.continent_e])
+                print '(%s/%d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                          entry[cm.name_c], entry[cm.addr_e], entry[cm.city_e],
+                                                          entry[cm.country_e], entry[cm.continent_e])
                 store_list.append(entry)
                 db.insert_record(entry, 'stores')
 

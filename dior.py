@@ -9,6 +9,7 @@ __author__ = 'Zephyre'
 
 db = None
 log_name = 'dior_log.txt'
+store_map = None
 
 
 def fetch_countries(data):
@@ -182,6 +183,92 @@ def fetch_cities(data):
     return tuple(results)
 
 
+def fetch_dior_beauty(data):
+    url = data['url']
+    store_list = []
+
+    with open('city_lite.dat', 'r') as f:
+        sub = f.readlines()
+    city_map = json.loads(sub[0])
+    country = 'CHINA'
+    for city in city_map[country]:
+        param = {'cityName': city}
+        cm.dump('Searching at %s, %s' % (city, country), log_name)
+        try:
+            body = cm.post_data(url, param)
+        except Exception, e:
+            cm.dump('Error in fetching states: %s, %s' % (url, param), log_name)
+            continue
+
+        m = re.search(ur'var\s+Json\s*=', body)
+        if not m:
+            continue
+        sub = cm.extract_closure(body[m.end():], ur'\{', ur'\}')[0]
+        for store in json.loads(sub)['content']['items']:
+            entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
+            entry[cm.country_e] = country
+            entry[cm.comments] = 'BEAUTY'
+
+            addr_list = []
+            val = store['addressLine1']
+            if val:
+                addr_list.append(cm.html2plain(val).strip())
+            val = store['addressLine2']
+            if val:
+                addr_list.append(cm.html2plain(val).strip())
+            entry[cm.addr_e] = ', '.join(addr_list)
+
+            val = store['name']
+            entry[cm.name_e] = cm.html2plain(val).strip() if val else ''
+            val = store['type']
+            entry[cm.store_class] = cm.html2plain(val).strip() if val else ''
+            val = store['url']
+            entry[cm.url] = cm.html2plain(val).strip() if val else ''
+            val = store['city']
+            entry[cm.city_e] = cm.html2plain(val).strip().upper() if val and val != '' else ''
+            val = store['zipcode']
+            entry[cm.zip_code] = cm.html2plain(val).strip() if val else ''
+            val = store['phone']
+            entry[cm.tel] = cm.html2plain(val).strip() if val else ''
+            val = store['fax']
+            entry[cm.fax] = cm.html2plain(val).strip() if val else ''
+
+            coords = store['coords']
+            if coords:
+                try:
+                    entry[cm.lat] = string.atof(str(coords['lat']))
+                except (ValueError, KeyError, TypeError) as e:
+                    cm.dump('Error in fetching lat: %s' % str(e), log_name)
+                try:
+                    entry[cm.lng] = string.atof(str(coords['lng']))
+                except (ValueError, KeyError, TypeError) as e:
+                    cm.dump('Error in fetching lng: %s' % str(e), log_name)
+
+            gs.field_sense(entry)
+            ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+            if ret[1] is not None and entry[cm.province_e] == '':
+                entry[cm.province_e] = ret[1]
+            if ret[2] is not None and entry[cm.city_e] == '':
+                entry[cm.city_e] = ret[2]
+            gs.field_sense(entry)
+
+            uid = u'%s|%s|%s|%s|%s,%s' % (
+                entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e], entry[cm.country_e], unicode(entry[cm.lat]),
+                unicode(entry[cm.lng]))
+            if uid in store_map:
+                cm.dump(u'%s already exists.' % uid)
+                continue
+            else:
+                store_map[uid] = entry
+                cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                    entry[cm.name_e], entry[cm.addr_e],
+                                                                    entry[cm.country_e],
+                                                                    entry[cm.continent_e]), log_name)
+                db.insert_record(entry, 'stores')
+                store_list.append(entry)
+    return store_list
+
+
 def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):
         """
@@ -213,12 +300,21 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 'url': 'http://www.dior.com/couture/en_us/content/view/store_locator_form/581',
                 'brand_id': 10106, 'brandname_e': u'Dior', 'brandname_c': u'迪奥'}
 
-    global db
+    global db, store_map
+    store_map = {}
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
-    results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
+    # results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
+    #
+    # data['url']='http://www.dior.com/beauty/gbr/en/actions/storelocator-search.ep'
+    # results.extend(fetch_dior_beauty(data))
+
+    results = []
+    data['url'] = 'http://www.dior.cn/beauty/chn/zh/actions/storelocator-search.ep'
+    results.extend(fetch_dior_beauty(data))
+
     db.disconnect_db()
     cm.dump('Done!', log_name)
 

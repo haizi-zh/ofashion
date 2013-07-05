@@ -180,7 +180,7 @@ def get_stores(html, cities):
         country_e = cities[city_id]['country']['name'].strip().upper()
         continent_e = cities[city_id]['country']['continent'].strip().upper()
         common.update_entry(entry,
-                            {common.city_e: city_e, common.country_e: country_e, common.continent_e: continent_e})
+                            {common.city_e: common.extract_city(city_e)[0], common.country_e: country_e, common.continent_e: continent_e})
         gs.field_sense(entry)
 
         # ret = common.geo_translate(country_e.strip())

@@ -52,6 +52,33 @@ def fetch_store_list(data):
     return tuple(results)
 
 
+def fetch_details(data, detail_url, entry):
+    entry = entry.copy()
+    try:
+        body = cm.get_data(detail_url)
+    except Exception, e:
+        cm.dump('Error in fetching countries: %s' % detail_url, log_name)
+        return entry
+
+    m = re.search(ur'<div class="top">(.+?)</div>', body, re.S)
+    pat_tel = re.compile(ur'(tel|telephone|phone)\s*[\.:]\s*(.+?)<', re.I)
+    pat_fax = re.compile(ur'fax\s*[\.:]\s*(.+?)<', re.I)
+    if m:
+        sub = m.group(1)
+        m1 = re.search(pat_tel, sub)
+        entry[cm.tel] = m1.group(1).strip() if m1 else ''
+        m1 = re.search(pat_fax, sub)
+        entry[cm.fax] = m1.group(1).strip() if m1 else ''
+        m1 = re.search(ur'class="type-produits-list"\s*>([^<>]+)</p>', sub)
+        entry[cm.store_type] = m1.group(1).strip() if m1 else ''
+        for m1 in re.findall(ur'<li[^<>]*>(.+?)</li>', sub):
+            if 'monday' in m1.lower():
+                entry[cm.hours] = m1.strip()
+                break
+
+    return entry
+
+
 def fetch_stores(data):
     entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
     code = data['country_code']
@@ -60,7 +87,7 @@ def fetch_stores(data):
     else:
         entry[cm.country_e] = code
     entry[cm.name_e] = data['store_name']
-    entry[cm.city_e] = cm.html2plain(data['city'])
+    entry[cm.city_e] = cm.extract_city(data['city'])[0]
     entry[cm.lat] = data['lat'] if data['lat'] is not None else ''
     entry[cm.lng] = data['lng'] if data['lng'] is not None else ''
 
@@ -77,8 +104,12 @@ def fetch_stores(data):
 
     m1 = re.search(ur'<li class="contacts[^<>]+>(.+?)</li>', sub, re.S)
     if m1 is not None:
+        m2 = re.search(ur'<a class="popupLaunch" href="([^"]+)"', m1.group(1))
+        if m2:
+            entry = fetch_details(data, m2.group(1), entry)
+
         m2 = re.search(ur'<p>(.+?)</p>', m1.group(1), re.S)
-        if m2 is not None:
+        if m2:
             ct_list = tuple(tmp.strip() for tmp in cm.reformat_addr(m2.group(1)).split(','))
             entry[cm.tel] = cm.extract_tel(ct_list[0])
             if len(ct_list) > 1:

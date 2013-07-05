@@ -44,7 +44,7 @@ def fetch_stores(data):
                 addr_list.append(cm.html2plain(s[tmp]).strip())
         entry[cm.addr_e] = ', '.join(addr_list)
         entry[cm.country_e] = s['country'].strip().upper()
-        entry[cm.city_e] = s['city'].strip().upper()
+        entry[cm.city_e] = cm.extract_city(s['city'])[0]
         region = cm.html2plain(s['region'])
         if re.search(ur'\d+', region) is None and '&' not in region and ';' not in region:
             entry[cm.province_e] = region.strip().upper()
@@ -65,10 +65,14 @@ def fetch_stores(data):
         if s['is_distribution']:
             store_type += u'distribution '
         entry[cm.store_type] = store_type.strip()
+
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
         if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
 
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

@@ -112,7 +112,7 @@ def fetch_stores(data):
         #     entry[cm.store_type] = cm.reformat_addr(body[prodstart:prodend])
 
         entry[cm.country_e] = data['country_code']
-        entry[cm.city_e] = data['city']
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
         gs.field_sense(entry)
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

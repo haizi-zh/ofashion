@@ -32,7 +32,7 @@ def fetch_stores(data):
             if m3 is None:
                 continue
             sub_city = m3.group(1)
-            store_subs = m3.group(1).split(ur'<h2>LANVIN BOUTIQUE</h2>')
+            store_subs = re.split(ur'<\s*h2\s*>\s*LANVIN BOUTIQUE\s*<\s*/h2\s*>', sub_city)
             for s in store_subs:
                 if s.strip() == '':
                     continue

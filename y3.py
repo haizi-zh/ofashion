@@ -47,7 +47,18 @@ def fetch_stores(data):
         cm.update_entry(store, {cm.continent_e: data[cm.continent_e].strip().upper(),
                                 cm.country_e: data[cm.country_e].strip().upper(),
                                 cm.city_e: data[cm.city_e].strip().upper()})
-        gs.field_sense(store)
+
+        entry = store
+        gs.field_sense(entry)
+        ret = gs.addr_sense(entry[cm.addr_e])
+        if ret[0] is not None and entry[cm.country_e] == '':
+            entry[cm.country_e] = ret[0]
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
+        entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
 
         print '%s: Found store: %s, %s (%s, %s)' % (
             brandname_e, store[cm.name_e], store[cm.addr_e], store[cm.country_e],

@@ -41,7 +41,7 @@ def fetch_countries(data):
 
 
 def gen_city_map():
-    with open('city_list.dat', 'r') as f:
+    with open('city_lite.dat', 'r') as f:
         sub = f.readlines()
     return json.loads(sub[0])
 

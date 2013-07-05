@@ -111,7 +111,7 @@ def get_stores(data):
         addr2 = raw['adress2']
         entry[cm.addr_e] = cm.reformat_addr(', '.join([addr1, addr2]))
         entry[cm.zip_code] = raw['postcode']
-        entry[cm.city_e] = raw['city']
+        entry[cm.city_e] = cm.extract_city(raw['city'])[0]
         entry[cm.province_e] = raw['region']
         entry[cm.tel] = raw['phone']
         entry[cm.fax] = raw['fax']

@@ -130,7 +130,7 @@ def fetch_stores(data):
 
     # <li><h6>Paris</h6><p>36 Avenue Montaigne<br />+33 1 47 20 04 45<br />France</p></li>
     stores = []
-    for m in re.finditer(r'<li><h6>([\w\s]+)</h6><p>(.*?)</p></li>', html):
+    for m in re.finditer(r'<li><h6>([^<>]+)</h6><p>(.*?)</p></li>', html):
         store_item = cm.init_store_entry(brand_id, brandname_e, brandname_c)
         # city = m.group(1)
         content = m.group(2) + r'<br />'

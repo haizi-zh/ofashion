@@ -92,6 +92,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
                         else:
                             entry[common.city_e] = city
 
+                entry[common.city_e] = common.extract_city(entry[common.city_e])[0]
+
                 if s['email'] is not None:
                     entry[common.email] = s['email']
                 if s['fax'] is not None:

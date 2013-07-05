@@ -66,7 +66,7 @@ def fetch_stores(data):
         m1 = re.search(ur'<span class="locality">(.+?)</span>', addr)
         if m1 is not None:
             tmp = cm.html2plain(m1.group(1)).strip()
-            entry[cm.city_e] = tmp.upper()
+            entry[cm.city_e] = cm.extract_city(tmp.upper())[0]
             if zip_code is None:
                 addr_list.append(tmp)
             else:

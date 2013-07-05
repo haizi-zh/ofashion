@@ -25,7 +25,7 @@ def fetch_stores(data):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
 
         entry[cm.country_e] = cm.html2plain(s['country']).strip().upper() if s['country'] else ''
-        entry[cm.city_e] = cm.html2plain(s['city']).strip().upper() if s['city'] else ''
+        entry[cm.city_e] = cm.extract_city(s['city'])[0] if s['city'] else ''
         entry[cm.province_e] = cm.html2plain(s['region']).strip().upper() if s['region'] else ''
         entry[cm.name_e] = cm.html2plain(s['name']) if s['name'] else ''
         entry[cm.hours] = s['opening_hours'] if s['opening_hours'] else ''

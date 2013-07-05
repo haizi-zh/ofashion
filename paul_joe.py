@@ -4,10 +4,13 @@ import string
 import re
 import common as cm
 import geosense as gs
+from pyquery import PyQuery as pq
+import traceback
 
 __author__ = 'Zephyre'
 
 db = None
+log_name = 'paul_joe_log.txt'
 
 
 def fetch_countries(data):
@@ -20,24 +23,16 @@ def fetch_countries(data):
         cm.dump(dump_data)
         return []
 
-    m = re.search('<select name="country" id="country"', html)
-    if m is None:
-        return []
-    sub, start, end = cm.extract_closure(html[m.start():], r'<select\b', r'</select>')
-    if end == 0:
-        return []
-
     country_list = []
-    for m in re.findall('<option value="(\d+)".*?>(.+?)</option>', sub):
+    for item in pq(html)('#country option[value!="reset"]'):
         d = data.copy()
-        d['country_id'] = string.atoi(m[0])
+        d['country_id'] = string.atoi(item.attrib['value'])
 
-        country_e = cm.html2plain(m[1]).strip().upper()
+        country_e = cm.html2plain(item.text).strip().upper()
         ret = gs.look_up(country_e, 1)
         if ret is not None:
             country_e = ret['name_e']
         d['country_e'] = country_e
-        # if country_e == u'SUISSE':
         country_list.append(d)
     return country_list
 
@@ -53,10 +48,9 @@ def fetch_cities(data):
         return []
 
     city_list = []
-    for m in re.findall('<option value="([^\d]+)">.+?</option>', html):
+    for item in pq(html)('#cities option[value!="0"]'):
         d = data.copy()
-
-        city_e = cm.html2plain(m).strip().upper()
+        city_e = cm.html2plain(item.text).strip().upper()
         ret = gs.look_up(city_e, 3)
         if ret is not None:
             city_e = ret['name_e']
@@ -68,9 +62,10 @@ def fetch_cities(data):
 
 def fetch_stores(data):
     url = data['post_shops']
+    param = {'city': data['city_e'], 'paulandjoe_women': 0, 'paulandjoe_man': 0,
+             'paulandjoe_sister': 0, 'paulandjoe_little': 0, 'paulandjoe_beauty': 0}
     try:
-        html = cm.post_data(url, {'city': data['city_e'], 'paulandjoe_women': 0, 'paulandjoe_man': 0,
-                                  'paulandjoe_sister': 0, 'paulandjoe_little': 0, 'paulandjoe_beauty': 0})
+        html = cm.post_data(url, param)
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
@@ -78,30 +73,44 @@ def fetch_stores(data):
         return []
 
     store_list = []
-    # for m in re.findall('<option value="([^\d]+)">.+?</option>', html):
-    for m in re.findall(ur'<li class="first">(.+?)</li>', html):
-        entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-        entry[cm.name_e] = cm.html2plain(m.strip())
+    try:
+        for store in (pq(tmp) for tmp in pq(html)('ul')):
+            try:
+                entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
+                entry[cm.name_e] = cm.html2plain(store('li.first')[0].text).strip()
+                entry[cm.country_e] = data[cm.country_e]
+                entry[cm.city_e] = data[cm.city_e]
 
-        addr_terms = []
-        for m1 in re.findall(ur'<li>(.+?)</li>', html):
-            tmp = cm.html2plain(m1).strip()
-            tel = cm.extract_tel(tmp)
-            if tel != '':
-                entry[cm.tel] = tmp
-            else:
-                tmp = re.sub(ur'<[^<>]+?>', '', tmp).strip()
-                if tmp != '':
-                    addr_terms.append(tmp)
-        entry[cm.addr_e] = ', '.join(addr_terms)
-        entry[cm.country_e] = data['country_e']
-        entry[cm.city_e] = data['city_e']
-        gs.field_sense(entry)
-        print '(%s/%d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                        entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                        entry[cm.continent_e])
-        store_list.append(entry)
-        db.insert_record(entry, 'stores')
+                addr_list = []
+                for term in (cm.reformat_addr(unicode(pq(tmp))) for tmp in store('li[class!="first"]')):
+                    if term != '':
+                        addr_list.append(term)
+                tel = cm.extract_tel(addr_list[-1])
+                if tel != '':
+                    entry[cm.tel] = tel
+                    del addr_list[-1]
+                entry[cm.addr_e] = ', '.join(addr_list)
+
+                gs.field_sense(entry)
+                ret = gs.addr_sense(entry[cm.addr_e])
+                if ret[0] is not None and entry[cm.country_e] == '':
+                    entry[cm.country_e] = ret[0]
+                if ret[1] is not None and entry[cm.province_e] == '':
+                    entry[cm.province_e] = ret[1]
+                if ret[2] is not None and entry[cm.city_e] == '':
+                    entry[cm.city_e] = ret[2]
+                gs.field_sense(entry)
+                print '(%s/%d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+                                                                entry[cm.continent_e])
+                store_list.append(entry)
+                db.insert_record(entry, 'stores')
+            except (IndexError, TypeError) as e:
+                cm.dump(u'Error in parsing %s, %s' % (url, param), log_name)
+                print traceback.format_exc()
+                continue
+    except Exception, e:
+        print traceback.format_exc()
 
     return store_list
 

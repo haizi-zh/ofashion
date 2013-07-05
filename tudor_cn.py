@@ -69,12 +69,12 @@ def fetch(level=1, data=None, user='root', passwd=''):
     if data is None:
         data = {'data_url': 'xxxxxxxxxx',
                 'url': 'xxxxx',
-                'brand_id': 0000, 'brandname_e': u'xxxxxx', 'brandname_c': u'xxxxxx'}
+                'brand_id': 10362, 'brandname_e': u'Tudor', 'brandname_c': u'帝舵'}
 
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()

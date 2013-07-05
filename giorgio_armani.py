@@ -8,7 +8,7 @@ import geosense as gs
 __author__ = 'Zephyre'
 
 db = None
-log_name = 'armani_log.txt'
+log_name = 'giorgio_armani_log.txt'
 
 
 def fetch_countries(data):
@@ -52,7 +52,7 @@ def fetch_stores(data):
             entry[cm.addr_e] = cm.reformat_addr(m1.group(1).strip())
         m1 = re.search(ur'<city>(.+)</city>', m)
         if m1 is not None:
-            entry[cm.city_e] = cm.html2plain(m1.group(1).strip().upper())
+            entry[cm.city_e] = cm.extract_city(m1.group(1))[0]
         m1 = re.search(ur'<zip>(.+?)</zip>', m)
         if m1 is not None:
             entry[cm.zip_code] = m1.group(1).strip()
@@ -68,10 +68,13 @@ def fetch_stores(data):
         m1 = re.search(ur'<link>(.+?)</link>', m)
         if m1 is not None:
             entry[cm.url] = m1.group(1).strip()
+
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
-        if ret[1] is not None:
+        if ret[1] is not None and entry[cm.province_e] == '':
             entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
 
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],

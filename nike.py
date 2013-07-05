@@ -12,6 +12,28 @@ log_name = 'nike_log.txt'
 store_map = {}
 
 
+def gen_city_map():
+    with open('city_lite.dat', 'r') as f:
+        sub = f.readlines()
+    return json.loads(sub[0])
+
+
+def fetch_cities_cn(data):
+    country = 'CHINA'
+    city_map = data['city_map']
+    results = []
+    if country in city_map:
+        for city in city_map[country]:
+            d = data.copy()
+            d['country'] = country
+            d['city'] = city
+            d['country_code'] = 'CN'
+            d['lat'] = city_map[country][city]['lat']
+            d['lng'] = city_map[country][city]['lng']
+            results.append(d)
+    return tuple(results)
+
+
 def fetch_countries(data):
     url = data['country_url']
     try:
@@ -86,6 +108,7 @@ def fetch_store_detail(data):
     entry[cm.addr_e] = ', '.join(addr_list)
     entry[cm.store_type] = ', '.join(item['code'] for item in s['categories'])
 
+    entry[cm.city_e] = cm.extract_city(entry[cm.city_e])[0]
     gs.field_sense(entry)
     ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
     if ret[1] is not None and entry[cm.province_e] == '':
@@ -94,11 +117,14 @@ def fetch_store_detail(data):
         entry[cm.city_e] = ret[2]
     gs.field_sense(entry)
 
-    cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                        entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                        entry[cm.continent_e]), log_name)
-    db.insert_record(entry, 'stores')
-    return entry
+    if '???' not in entry[cm.addr_e] and '???' not in entry[cm.name_e]:
+        cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+                                                            entry[cm.continent_e]), log_name)
+        db.insert_record(entry, 'stores')
+        return entry
+    else:
+        return None
 
 
 def fetch_stores(data):
@@ -110,6 +136,8 @@ def fetch_stores(data):
     except Exception, e:
         cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
         return ()
+    if not raw:
+        return ()
 
     store_list = []
     for s in raw:
@@ -119,6 +147,8 @@ def fetch_stores(data):
 
         data['store_id'] = store_id
         entry = fetch_store_detail(data)
+        if entry:
+            continue
         store_list.append(entry)
 
     return tuple(store_list)
@@ -163,11 +193,26 @@ def fetch(level=1, data=None, user='root', passwd=''):
         else:
             return ()
 
+    def func_cn(data, level):
+        """
+        :param data:
+        :param level: 0：国家；1：城市；2：商店列表
+        """
+        if level == 0:
+            # 城市列表
+            return [{'func': lambda data: func_cn(data, level + 1), 'data': s} for s in fetch_cities_cn(data)]
+        if level == 1:
+            # 商店
+            return [{'func': None, 'data': s} for s in fetch_stores(data)]
+        else:
+            return ()
+
     # Walk from the root node, where level == 1.
     if data is None:
         data = {'data_url': 'http://www.nike.com/store-locator/v2/locations',
                 'country_url': 'http://www.nike.com/us/en_us/sl/find-a-store',
-                'brand_id': 10277, 'brandname_e': u'Nike', 'brandname_c': u'耐克'}
+                'brand_id': 10277, 'brandname_e': u'Nike', 'brandname_c': u'耐克',
+                'city_map': gen_city_map()}
 
     global db
     db = cm.StoresDb()
@@ -175,6 +220,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
     db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
+    results.extend(cm.walk_tree({'func': lambda data: func_cn(data, 0), 'data': data}))
+
     db.disconnect_db()
     cm.dump('Done!', log_name)
 

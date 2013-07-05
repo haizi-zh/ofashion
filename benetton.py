@@ -86,7 +86,7 @@ def fetch_stores(data):
             entry[cm.lng] = string.atof(m1.group(1))
 
         entry[cm.country_e] = data['country'].strip().upper()
-        entry[cm.city_e] = data['city'].strip().upper()
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],

@@ -35,7 +35,7 @@ def fetch_stores(data):
             entry[cm.lat] = string.atof(s['Lat'])
         if s['Long'] is not None and s['Long'] != '':
             entry[cm.lng] = string.atof(s['Long'])
-        entry[cm.city_e] = s['City'].strip().upper()
+        entry[cm.city_e] = cm.extract_city(s['City'])[0]
         entry[cm.province_e] = s['State']
         entry[cm.zip_code] = s['Zip']
         entry[cm.country_e] = s['Country']
@@ -46,12 +46,12 @@ def fetch_stores(data):
         entry[cm.store_type] = s['StorePriorityTypeDisplayName']
 
         gs.field_sense(entry)
-        if entry[cm.province_e] == '':
-            ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
-            if ret[1] is not None:
-                entry[cm.province_e] = ret[1]
-                gs.field_sense(entry)
-
+        ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+        if ret[1] is not None and entry[cm.province_e] == '':
+            entry[cm.province_e] = ret[1]
+        if ret[2] is not None and entry[cm.city_e] == '':
+            entry[cm.city_e] = ret[2]
+        gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                             entry[cm.continent_e]), log_name)
