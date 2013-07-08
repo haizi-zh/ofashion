@@ -621,8 +621,8 @@ class StoresDb(object):
         self._record_set = self._store_db.store_result()
         recordset = []
         for i in xrange(self._record_set.num_rows()):
-            recordset.append(self._record_set.fetch_row())
-        return recordset
+            recordset.extend(self._record_set.fetch_row())
+        return tuple(recordset)
 
 
 # rev_char = {}

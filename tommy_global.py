@@ -319,7 +319,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
     rs = db.query_all(
         'SELECT native_id FROM stores WHERE brand_id=%d and not native_id=""' % data['brand_id'])
-    id_set = [tmp[0] for tmp in ([tmp[0] for tmp in rs])]
+    id_set = [tmp[0] for tmp in rs]
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()

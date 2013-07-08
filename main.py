@@ -2,7 +2,9 @@
 import json
 import random
 import re
+import string
 import time
+import traceback
 import adidas
 import agnesb
 import alexander_mcqueen
@@ -155,16 +157,63 @@ def calc(val):
     return sum(tot)
 
 
+def dump_geo():
+    db = common.StoresDb()
+    db.connect_db(passwd='123456')
+
+    print('Clearing data table...')
+    db.execute('DELETE FROM country')
+
+    # print('Writing continent records...')
+    #
+    # print('Writing country records...')
+    # for val in gs.country_map['data'].values():
+    #     try:
+    #         name_e = val['name_e']
+    #         name_c = val['name_c']
+    #         code = val['code']
+    #         iso3_code = val['iso3'] if 'iso3' in val else None
+    #
+    #         guid = val['continent']
+    #         continent = gs.continent_map['data'][guid]['name_e']
+    #         ret = db.query_all("SELECT idcontinent FROM continent WHERE name_e='%s'" % continent)
+    #         if len(ret) != 1:
+    #             print('Error in fetching continent %s' % continent)
+    #             continue
+    #         idcontinent = string.atoi(ret[0][0])
+    #
+    #         if iso3_code:
+    #             statement = "INSERT INTO country (idcontinent, continent, code, iso3_code, name_e, name_c) VALUES (%d, '%s', '%s', '%s', '%s', '%s')" % (
+    #                 idcontinent, continent, code, iso3_code, name_e, name_c)
+    #         else:
+    #             statement = "INSERT INTO country (idcontinent, continent, code, name_e, name_c) VALUES (%d, '%s', '%s', '%s', '%s')" % (
+    #                 idcontinent, continent, code, name_e, name_c)
+    #
+    #         if code == '':
+    #             print('\n%s' % statement)
+    #             continue
+    #
+    #         db.execute(statement)
+    #     except KeyError as e:
+    #         print traceback.format_exc()
+    #         continue
+
+    print('Writing city records...')
+
+    print('Done!')
+    db.disconnect_db()
+
+
 def test():
-    pass
+    dump_geo()
 
 
 if __name__ == "__main__":
-    test_flag = False
+    test_flag = True
     # passwd = 'rose123'
     passwd = '123456'
     if test_flag:
         test()
     else:
-        louis_vuitton.fetch(passwd=passwd)
+        tommy_global.fetch(passwd=passwd)
         # bershka.fetch(passwd=passwd)
