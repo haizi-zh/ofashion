@@ -222,14 +222,18 @@ def sense_cities(lower_bound='a', upper_bound='b'):
                 common.dump(u'City info does not exist: %s' % admin_info)
                 continue
 
-            # 检验一致性，至少国家信息必须一致
+            # 检验一致性，国家或城市信息必须一致
             ret1 = gs.look_up(country_e, 1)
             ret2 = gs.look_up(admin_info['country'], 1)
             if not ret1 or not ret2:
                 common.dump(u'Failed in country test: %s vs %s.' % (country_e, admin_info['country']), log_name)
-            elif ret1['name_e'] != ret2['name_e']:
-                common.dump(u'Countries does not match. Record: %s, geocoded: %s' % (ret1['name_e'], ret2['name_e']))
                 continue
+            elif ret1['name_e'] != ret2['name_e']:
+                ret3 = gs.look_up(city_e, 1)
+                ret4 = gs.look_up(city, 1)
+                if (ret3['name_e'] if ret3 else city_e) != (ret4['name_e'] if ret4 else city):
+                    common.dump(u'Countries or cities does not match.', log_name)
+                    continue
 
             # 登记城市标准化信息
             std_info = {'city_e': city, 'country_e': admin_info['country']}
@@ -317,7 +321,8 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             else:
                 for lat, lng, addr, idstores in query_result:
                     # 使用地址进行查询
-                    tmp = gs.geocode(u'%s,%s,%s,%s' % (addr, city_e, province_e, country_e))
+                    # tmp = gs.geocode(u'%s,%s,%s,%s' % (addr, city_e, province_e, country_e))
+                    tmp = gs.geocode(addr)
                     if not tmp:
                         continue
                     geo_success = register_city(tmp)
