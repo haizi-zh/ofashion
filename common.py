@@ -545,11 +545,12 @@ class StoresDb(object):
     def StoresDb(self):
         self._store_db = None
 
-    def connect_db(self, host='localhost', port=3306, user='root', passwd='', db='brand_stores'):
+    def connect_db(self, host='localhost', port=3306, user='root', passwd='', db='brand_stores', autocommit=True):
         """
         Connect to the brand store database
         """
         self._store_db = _mysql.connect(host=host, port=port, user=user, passwd=passwd, db=db)
+        self._store_db.autocommit(autocommit)
         self._store_db.query("SET NAMES 'utf8'")
 
     def disconnect_db(self):
@@ -557,6 +558,7 @@ class StoresDb(object):
         Disconnect the database
         """
         if self._store_db is not None:
+            self._store_db.commit()
             self._store_db.close()
 
     def execute(self, statement):
