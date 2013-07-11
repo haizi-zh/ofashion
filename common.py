@@ -358,7 +358,7 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime
     for key in hdr_map:
         headers.append((key, hdr_map[key]))
     opener.addheaders = headers
-    if data is not None:
+    if data:
         for key in data:
             if isinstance(data[key], unicode):
                 data[key] = data[key].encode('utf-8')
@@ -620,9 +620,15 @@ class StoresDb(object):
         self._store_db.query(statement)
         self._record_set = self._store_db.store_result()
         recordset = []
+        tmp = []
         for i in xrange(self._record_set.num_rows()):
-            recordset.extend(self._record_set.fetch_row())
-        return tuple(recordset)
+            tmp.append(self._record_set.fetch_row()[0])
+
+            # recordset.append(tuple(tmp.decode('utf-8') for tmp in ))
+            # recordset.extend(self._record_set.fetch_row())
+        return tuple(tuple(term.decode('utf-8') if term and isinstance(term, str) else term for term in item) for item in tmp)
+        # return tuple(tuple(term.decode('utf-8') for term in item) for item in tmp)
+        # return tuple(recordset)
 
 
 # rev_char = {}

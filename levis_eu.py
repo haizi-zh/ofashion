@@ -105,6 +105,9 @@ def fetch_countries(data):
         if not m:
             continue
 
+        if code!='PL':
+            continue
+
         val['baseUrl'] = m.group(1)
         d = data.copy()
         d['key'] = key
@@ -183,7 +186,7 @@ def fetch_stores(data):
                                                                     entry[cm.city_e],
                                                                     entry[cm.country_e], entry[cm.continent_e]),
                     log_name)
-            db.insert_record(entry, 'stores')
+            # db.insert_record(entry, 'stores')
             store_list.append(entry)
             store_map[uid] = entry
         except (IndexError, TypeError) as e:
@@ -213,8 +216,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     # Walk from the root node, where level == 1.
     if data is None:
-        data = {'data_url': 'xxxxxxxxxx',
-                'url': 'http://www.levi.com/GB/en_GB/findAStore',
+        data = {'url': 'http://www.levi.com/GB/en_GB/findAStore',
                 'brand_id': 10215, 'brandname_e': u"Levi's", 'brandname_c': u"Levi's",
                 'city_map': gen_city_map()}
 

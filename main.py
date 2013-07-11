@@ -151,12 +151,6 @@ import comme_des_garcons
 __author__ = 'Zephyre'
 
 
-def calc(val):
-    a = (0.1, 0.15, 0.4, 0.1, 0.15, 0.1)
-    tot = map(lambda x, y: x * y, a, val)
-    return sum(tot)
-
-
 def dump_geo():
     db = common.StoresDb()
     db.connect_db(passwd='123456')
@@ -204,8 +198,220 @@ def dump_geo():
     db.disconnect_db()
 
 
+def sense_cities(lower_bound='a', upper_bound='b'):
+    """
+    规则化城市字段
+    """
+
+    def register_city(geocoded_info):
+        for geo_info in geocoded_info:
+            admin_info = geo_info['administrative_info']
+            if 'country' not in admin_info:
+                common.dump(u'Country info does not exist: %s' % admin_info)
+                continue
+
+            if 'locality' in admin_info:
+                city = admin_info['locality']
+            elif 'sublocality' in admin_info:
+                city = admin_info['sublocality']
+            elif 'administrative_area_level_3' in admin_info:
+                city = admin_info['administrative_area_level_3']
+            elif 'administrative_area_level_2' in admin_info:
+                city = admin_info['administrative_area_level_2']
+            else:
+                common.dump(u'City info does not exist: %s' % admin_info)
+                continue
+
+            # 检验一致性，至少国家信息必须一致
+            ret1 = gs.look_up(country_e, 1)
+            ret2 = gs.look_up(admin_info['country'], 1)
+            if not ret1 or not ret2:
+                common.dump(u'Failed in country test: %s vs %s.' % (country_e, admin_info['country']), log_name)
+            elif ret1['name_e'] != ret2['name_e']:
+                common.dump(u'Countries does not match. Record: %s, geocoded: %s' % (ret1['name_e'], ret2['name_e']))
+                continue
+
+            # 登记城市标准化信息
+            std_info = {'city_e': city, 'country_e': admin_info['country']}
+            if 'administrative_area_level_1' in admin_info:
+                std_info['region_e'] = admin_info['administrative_area_level_1']
+            else:
+                std_info['region_e'] = ''
+
+            # 获得中文信息
+            std_info['country_c'] = ''
+            std_info['region_c'] = ''
+            std_info['city_c'] = ''
+            geocoded_info_zh = gs.geocode(addr=geo_info['formatted_address'], lang='zh')
+            if geocoded_info_zh:
+                admin_info_zh = geocoded_info_zh[0]['administrative_info']
+                if 'country' in admin_info_zh:
+                    std_info['country_c'] = admin_info_zh['country']
+                if 'locality' in admin_info_zh:
+                    std_info['city_c'] = admin_info_zh['locality']
+                elif 'sublocality' in admin_info_zh:
+                    std_info['city_c'] = admin_info_zh['sublocality']
+                elif 'administrative_area_level_3' in admin_info_zh:
+                    std_info['city_c'] = admin_info_zh['administrative_area_level_3']
+                elif 'administrative_area_level_2' in admin_info_zh:
+                    std_info['city_c'] = admin_info_zh['administrative_area_level_2']
+                if 'administrative_area_level_1' in admin_info_zh:
+                    std_info['region_c'] = admin_info_zh['administrative_area_level_1']
+
+            std_sig = u'|'.join((std_info['city_e'], std_info['region_e'], std_info['country_e']))
+            city_std[sig] = {'std_sig': std_sig}
+            if 'std_sig' not in city_std:
+                city_std[std_sig] = {'std_info': std_info, 'geo_info': geo_info}
+
+            # common.dump(u'Standard: %s' % std_info)
+            common.dump(u'%s => %s' % (sig, std_sig))
+            return True
+        return False
+
+    city_std = {}
+    log_name = u'sense_cities.log'
+    try:
+        with open('data/city_std.dat', 'r') as f:
+            # {'city|region|country':{'std_info':{'city':...,'region':...,'country':...}, 'geo_result': result}}
+            # 城市的标准化映射信息
+            city_std = json.loads(f.readlines()[0])
+    except IOError:
+        common.dump(u'Failed to load data/city_std.dat', log_name)
+
+    db = common.StoresDb()
+    db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
+    tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND is_geocoded!=4 AND is_geocoded!=5 AND is_geocoded!=6 ORDER BY city_e, province_e, country_e LIMIT 99999"
+    tpl_pos = "SELECT lat, lng, addr_e, idstores FROM stores WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
+    tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE country_e='%s' AND province_e='%s' AND city_e='%s' LIMIT 99999"
+
+    statement = tpl_entity % (lower_bound, upper_bound)
+    common.dump(u"Processing cities from '%s' to '%s'..." % (lower_bound, upper_bound), log_name)
+    for item in db.query_all(statement):
+        try:
+            sig = u'|'.join(item[i] for i in xrange(3))
+            if sig in city_std:
+                common.dump(u'Geo item %s already processed.' % sig, log_name)
+                continue
+            common.dump(u'Processing %s...' % sig, log_name)
+
+            city_e, province_e, country_e = item
+            geo_success = False
+            statement = tpl_pos % tuple(tmp.replace("'", r"\'") for tmp in item)
+            query_result = db.query_all(statement)
+            for lat, lng, addr, idstores in query_result:
+                if not lat or not lng or (string.atof(lat) == 0 and string.atof(lng) == 0):
+                    continue
+                    # 使用经纬度进行查询
+                tmp = gs.geocode(latlng='%s,%s' % (lat, lng))
+                if not tmp:
+                    continue
+                geo_success = register_city(tmp)
+                if geo_success:
+                    break
+            if geo_success:
+                # 通过经纬度获得
+                tmp1 = [4]
+                tmp1.extend(tmp.replace("'", r"\'") for tmp in item)
+                statement = tpl_geocoded % tuple(tmp1)
+                db.execute(statement)
+            else:
+                for lat, lng, addr, idstores in query_result:
+                    # 使用地址进行查询
+                    tmp = gs.geocode(u'%s,%s,%s,%s' % (addr, city_e, province_e, country_e))
+                    if not tmp:
+                        continue
+                    geo_success = register_city(tmp)
+                    if geo_success:
+                        break
+                if geo_success:
+                    # 通过地址成功获得
+                    tmp1 = [5]
+                    tmp1.extend(tmp.replace("'", r"\'") for tmp in item)
+                    statement = tpl_geocoded % tuple(tmp1)
+                    db.execute(statement)
+                else:
+                    # 未能获得
+                    tmp1 = [6]
+                    tmp1.extend(tmp.replace("'", r"\'") for tmp in item)
+                    statement = tpl_geocoded % tuple(tmp1)
+                    db.execute(statement)
+
+            with open(u'data/city_std.dat', 'w') as f:
+                f.write(json.dumps(city_std).encode('utf-8'))
+        except Exception as e:
+            common.dump(traceback.format_exc(), log_name)
+
+    common.dump(u'Done!', log_name)
+
+
+def geo_translate():
+    """
+    将国家字段进行中英文翻译，并加入坐标信息
+    """
+    db = common.StoresDb()
+    db.connect_db(passwd='123456')
+    for item in db.query_all("SELECT * FROM country WHERE name_c=''"):
+        idcountry = string.atoi(item[0])
+        name_e, name_c, code = (tmp.upper() for tmp in item[3:6])
+
+        raw = json.loads(
+            common.get_data(r'http://maps.googleapis.com/maps/api/geocode/json',
+                            data={'address': name_e, 'sensor': 'false'},
+                            hdr={'Accept-Language': 'en-us,en;q=0.8,zh-cn;q=0.5,zh;q=0.3'}))
+        if raw['status'] != 'OK':
+            print('Error in %s, reason: %s' % (name_e, raw['status']))
+            continue
+
+        info = raw['results'][0]
+        # 确保geocode类型为国家
+        if 'country' in info['types']:
+            name_e = info['address_components'][0]['long_name']
+            code = info['address_components'][0]['short_name']
+        new_info = {'name_e': name_e, 'code': code,
+                    'lat': info['geometry']['location']['lat'], 'lng': info['geometry']['location']['lng']}
+        if 'bounds' in info['geometry']:
+            bounds = info['geometry']['bounds']
+            new_info['lat_ne'] = bounds['northeast']['lat']
+            new_info['lng_ne'] = bounds['northeast']['lng']
+            new_info['lat_sw'] = bounds['southwest']['lat']
+            new_info['lng_sw'] = bounds['southwest']['lng']
+        else:
+            for key in ('lat_ne', 'lng_ne', 'lat_sw', 'lng_sw'):
+                new_info[key] = None
+
+        raw = json.loads(
+            common.get_data(r'http://maps.googleapis.com/maps/api/geocode/json',
+                            data={'address': name_e, 'sensor': 'false'},
+                            hdr={'Accept-Language': 'zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3'}))
+        if raw['status'] != 'OK':
+            print('Error in %s, reason: %s' % (name_e, raw['status']))
+            continue
+
+        info = raw['results'][0]
+        # 确保geocode类型为国家
+        if 'country' in info['types']:
+            name_c = info['address_components'][0]['long_name']
+        new_info['name_c'] = name_c
+
+        if new_info['lat_ne']:
+            statement = "UPDATE country SET name_e='%s', name_c='%s', code='%s', lat=%f, lng=%f, lat_ne=%f, " \
+                        "lng_ne=%f, lat_sw=%f, lng_sw=%f WHERE idcountry=%d" % (
+                            new_info['name_e'].upper(), new_info['name_c'].upper(), new_info['code'],
+                            new_info['lat'], new_info['lng'], new_info['lat_ne'],
+                            new_info['lng_ne'], new_info['lat_sw'], new_info['lng_sw'], idcountry)
+        else:
+            statement = "UPDATE country SET name_e='%s', name_c='%s', code='%s', lat=%f, lng=%f " \
+                        "WHERE idcountry=%d" % (
+                            new_info['name_e'].upper(), new_info['name_c'].upper(), new_info['code'],
+                            new_info['lat'], new_info['lng'], idcountry)
+        print(statement)
+        db.execute(statement)
+
+
 def test():
-    dump_geo()
+    sense_cities('a', 'b')
+    # geo_translate()
+    # dump_geo()
 
 
 if __name__ == "__main__":
@@ -215,5 +421,5 @@ if __name__ == "__main__":
     if test_flag:
         test()
     else:
-        tommy_global.fetch(passwd=passwd)
+        levis_eu.fetch(passwd=passwd)
         # bershka.fetch(passwd=passwd)

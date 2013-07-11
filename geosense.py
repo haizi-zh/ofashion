@@ -4,6 +4,7 @@ import json
 import re
 import sys
 import time
+import traceback
 import urllib
 import common as cm
 
@@ -243,57 +244,62 @@ def addr_sense(addr, country=None, province=None, city=None):
     return country, province, city
 
 
-def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None):
+def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None, lang='en'):
+    def parse_result(raw):
+        """
+        解析原始结果
+        :param raw:
+        """
+        for item in raw:
+            info = {}
+            for addr in item['address_components']:
+                if len(addr['types']) == 0:
+                    continue
+                info[addr['types'][0]] = addr['long_name'].upper()
+            item['administrative_info'] = info
+        return raw
+
     # http://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&sensor=true_or_false
     if not url:
-        if addr is not None:
-            if isinstance(addr, unicode):
-                addr = addr.encode('utf-8')
-            else:
-                addr = str(addr)
-
-        if latlng is not None:
-            if isinstance(latlng, unicode):
-                latlng = latlng.encode('utf-8')
-            else:
-                latlng = str(latlng)
-
-        url = 'http://maps.googleapis.com/maps/api/geocode/json?'
+        url = 'http://maps.googleapis.com/maps/api/geocode/json'
         param = {'sensor': 'false'}
-        if addr is not None:
+        if addr:
             param['address'] = addr
-        if latlng is not None:
+        if latlng:
             param['latlng'] = latlng
+    else:
+        param = None
 
-        url += urllib.urlencode(param)
-
+    if lang == 'en':
+        hdr = {'Accept-Language': 'en-us,en;q=0.8,zh-cn;q=0.5,zh;q=0.3'}
+    elif lang == 'zh':
+        hdr = {'Accept-Language': 'zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3'}
+    else:
+        hdr = {'Accept-Language': 'en-us,en;q=0.8,zh-cn;q=0.5,zh;q=0.3'}
     cnt = 0
     while True:
-        cool = True
         try:
-            ret = json.loads(cm.get_data(url))
+            ret = json.loads(cm.get_data(url, param, hdr))
             if ret['status'] == 'OK':
-                return ret['results']
+                return parse_result(ret['results'])
             elif ret['status'] == 'ZERO_RESULTS':
                 return None
+            elif ret['status'] == 'OVER_QUERY_LIMIT':
+                print 'OVER_QUERY_LIMIT'
+                raise Exception()
             else:
-                if ret['status']=='OVER_QUERY_LIMIT':
-                    print 'OVER_QUERY_LIMIT'
-                # cool = False
                 raise Exception()
         except Exception, e:
             cnt += 1
             if cnt < retry:
-                if cool:
-                    time.sleep(cooling_time)
+                time.sleep(cooling_time)
                 continue
             else:
                 if log_name is None:
-                    cm.dump('Error in geocoding: %s, status: %s' % (url, ret['status']))
+                    cm.dump('Error in geocoding: status: %s, %s' % (ret['status'], traceback.format_exc()))
                 else:
-                    cm.dump('Error in geocoding: %s, status: %s' % (url, ret['status']), log_name)
+                    cm.dump('Error in geocoding: status: %s, %s' % (ret['status'], traceback.format_exc()), log_name)
                 return None
-    return None
 
 
 def field_sense(entry):
