@@ -204,6 +204,7 @@ def sense_cities(lower_bound='a', upper_bound='b'):
     """
 
     def register_city(geocoded_info):
+        candidate_geo = None
         for geo_info in geocoded_info:
             admin_info = geo_info['administrative_info']
             if 'country' not in admin_info:
@@ -222,55 +223,63 @@ def sense_cities(lower_bound='a', upper_bound='b'):
                 common.dump(u'City info does not exist: %s' % admin_info)
                 continue
 
-            # 检验一致性，国家或城市信息必须一致
+            tmp_geo = {'city_e': city, 'country_e': admin_info['country']}
+            if 'administrative_area_level_1' in admin_info:
+                tmp_geo['region_e'] = admin_info['administrative_area_level_1']
+            else:
+                tmp_geo['region_e'] = ''
+            tmp_geo['formatted_address'] = geo_info['formatted_address']
+
+            if not candidate_geo:
+                candidate_geo = tmp_geo
+                # 检验一致性，国家或城市信息必须一致
             ret1 = gs.look_up(country_e, 1)
             ret2 = gs.look_up(admin_info['country'], 1)
-            if not ret1 or not ret2:
-                common.dump(u'Failed in country test: %s vs %s.' % (country_e, admin_info['country']), log_name)
-                continue
-            elif ret1['name_e'] != ret2['name_e']:
+            if (ret1['name_e'] if ret1 else country_e) != (ret2['name_e'] if ret2 else admin_info['country']):
+                common.dump(u'Countries does not match.', log_name)
                 ret3 = gs.look_up(city_e, 1)
                 ret4 = gs.look_up(city, 1)
                 if (ret3['name_e'] if ret3 else city_e) != (ret4['name_e'] if ret4 else city):
-                    common.dump(u'Countries or cities does not match.', log_name)
+                    common.dump(u'Cities does not match.', log_name)
                     continue
 
-            # 登记城市标准化信息
-            std_info = {'city_e': city, 'country_e': admin_info['country']}
-            if 'administrative_area_level_1' in admin_info:
-                std_info['region_e'] = admin_info['administrative_area_level_1']
-            else:
-                std_info['region_e'] = ''
+            # 如果走到这一步，说明geo_info通过了上述检验，可以使用
+            candidate_geo = tmp_geo
+            break
 
-            # 获得中文信息
-            std_info['country_c'] = ''
-            std_info['region_c'] = ''
-            std_info['city_c'] = ''
-            geocoded_info_zh = gs.geocode(addr=geo_info['formatted_address'], lang='zh')
-            if geocoded_info_zh:
-                admin_info_zh = geocoded_info_zh[0]['administrative_info']
-                if 'country' in admin_info_zh:
-                    std_info['country_c'] = admin_info_zh['country']
-                if 'locality' in admin_info_zh:
-                    std_info['city_c'] = admin_info_zh['locality']
-                elif 'sublocality' in admin_info_zh:
-                    std_info['city_c'] = admin_info_zh['sublocality']
-                elif 'administrative_area_level_3' in admin_info_zh:
-                    std_info['city_c'] = admin_info_zh['administrative_area_level_3']
-                elif 'administrative_area_level_2' in admin_info_zh:
-                    std_info['city_c'] = admin_info_zh['administrative_area_level_2']
-                if 'administrative_area_level_1' in admin_info_zh:
-                    std_info['region_c'] = admin_info_zh['administrative_area_level_1']
+        # candidate_geo是正确的地理信息
+        if not candidate_geo:
+            return False
 
-            std_sig = u'|'.join((std_info['city_e'], std_info['region_e'], std_info['country_e']))
-            city_std[sig] = {'std_sig': std_sig}
-            if 'std_sig' not in city_std:
-                city_std[std_sig] = {'std_info': std_info, 'geo_info': geo_info}
+        # 登记城市标准化信息
+        std_info = candidate_geo
 
-            # common.dump(u'Standard: %s' % std_info)
-            common.dump(u'%s => %s' % (sig, std_sig))
-            return True
-        return False
+        # 获得中文信息
+        std_info['country_c'] = ''
+        std_info['region_c'] = ''
+        std_info['city_c'] = ''
+        geocoded_info_zh = gs.geocode(addr=candidate_geo['formatted_address'], lang='zh')
+        if geocoded_info_zh:
+            admin_info_zh = geocoded_info_zh[0]['administrative_info']
+            if 'country' in admin_info_zh:
+                std_info['country_c'] = admin_info_zh['country']
+            if 'locality' in admin_info_zh:
+                std_info['city_c'] = admin_info_zh['locality']
+            elif 'sublocality' in admin_info_zh:
+                std_info['city_c'] = admin_info_zh['sublocality']
+            elif 'administrative_area_level_3' in admin_info_zh:
+                std_info['city_c'] = admin_info_zh['administrative_area_level_3']
+            elif 'administrative_area_level_2' in admin_info_zh:
+                std_info['city_c'] = admin_info_zh['administrative_area_level_2']
+            if 'administrative_area_level_1' in admin_info_zh:
+                std_info['region_c'] = admin_info_zh['administrative_area_level_1']
+
+        std_sig = u'|'.join((std_info['city_e'], std_info['region_e'], std_info['country_e']))
+        city_std[sig] = {'std_sig': std_sig}
+        if 'std_sig' not in city_std:
+            city_std[std_sig] = {'std_info': std_info, 'geo_info': geo_info}
+        common.dump(u'%s => %s' % (sig, std_sig))
+        return True
 
     city_std = {}
     log_name = u'sense_cities.log'
@@ -285,6 +294,7 @@ def sense_cities(lower_bound='a', upper_bound='b'):
     db = common.StoresDb()
     db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
     tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND (is_geocoded<4 OR is_geocoded>7) ORDER BY city_e, province_e, country_e LIMIT 99999"
+    # tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND is_geocoded=6 ORDER BY city_e, province_e, country_e LIMIT 99999"
     tpl_pos = "SELECT lat, lng, addr_e, idstores FROM stores WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
     tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE city_e='%s' AND province_e='%s' AND country_e='%s'"
 
@@ -424,7 +434,7 @@ def geo_translate():
 
 
 def test():
-    sense_cities('a', 'b')
+    sense_cities('y', 'z')
     # geo_translate()
     # dump_geo()
 
