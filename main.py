@@ -321,14 +321,14 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             else:
                 for lat, lng, addr, idstores in query_result:
                     # 使用地址进行查询
-                    tmp = gs.geocode(addr)
+                    tmp = gs.geocode(u'%s,%s,%s' % (city_e, province_e, country_e))
                     if not tmp:
                         continue
                     geo_success = register_city(tmp)
                     if geo_success:
                         break
 
-                    tmp = gs.geocode(u'%s,%s,%s' % (city_e, province_e, country_e))
+                    tmp = gs.geocode(addr)
                     if not tmp:
                         continue
                     geo_success = register_city(tmp)
