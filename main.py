@@ -303,7 +303,7 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             statement = tpl_pos % tuple(tmp.replace("'", r"\'") for tmp in item)
             query_result = db.query_all(statement)
             for lat, lng, addr, idstores in query_result:
-                if not lat or not lng or (string.atof(lat) == 0 and string.atof(lng) == 0):
+                if not lat or not lng or lat == '' or lng == '' or (string.atof(lat) == 0 and string.atof(lng) == 0):
                     continue
                     # 使用经纬度进行查询
                 tmp = gs.geocode(latlng='%s,%s' % (lat, lng))
