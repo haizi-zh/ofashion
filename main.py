@@ -284,9 +284,9 @@ def sense_cities(lower_bound='a', upper_bound='b'):
 
     db = common.StoresDb()
     db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
-    tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND is_geocoded!=4 AND is_geocoded!=5 AND is_geocoded!=6 ORDER BY city_e, province_e, country_e LIMIT 99999"
+    tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND (is_geocoded<4 OR is_geocoded>7) ORDER BY city_e, province_e, country_e LIMIT 99999"
     tpl_pos = "SELECT lat, lng, addr_e, idstores FROM stores WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
-    tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
+    tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE city_e='%s' AND province_e='%s' AND country_e='%s'"
 
     statement = tpl_entity % (lower_bound, upper_bound)
     common.dump(u"Processing cities from '%s' to '%s'..." % (lower_bound, upper_bound), log_name)
@@ -295,6 +295,10 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             sig = u'|'.join(item[i] for i in xrange(3))
             if sig in city_std:
                 common.dump(u'Geo item %s already processed.' % sig, log_name)
+                tmp1 = [7]
+                tmp1.extend(tmp.replace("'", r"\'") for tmp in (item[i] for i in xrange(3)))
+                statement = tpl_geocoded % tuple(tmp1)
+                db.execute(statement)
                 continue
             common.dump(u'Processing %s...' % sig, log_name)
 
