@@ -286,7 +286,7 @@ def sense_cities(lower_bound='a', upper_bound='b'):
     db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
     tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND is_geocoded!=4 AND is_geocoded!=5 AND is_geocoded!=6 ORDER BY city_e, province_e, country_e LIMIT 99999"
     tpl_pos = "SELECT lat, lng, addr_e, idstores FROM stores WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
-    tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE country_e='%s' AND province_e='%s' AND city_e='%s' LIMIT 99999"
+    tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
 
     statement = tpl_entity % (lower_bound, upper_bound)
     common.dump(u"Processing cities from '%s' to '%s'..." % (lower_bound, upper_bound), log_name)
@@ -321,8 +321,14 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             else:
                 for lat, lng, addr, idstores in query_result:
                     # 使用地址进行查询
-                    # tmp = gs.geocode(u'%s,%s,%s,%s' % (addr, city_e, province_e, country_e))
                     tmp = gs.geocode(addr)
+                    if not tmp:
+                        continue
+                    geo_success = register_city(tmp)
+                    if geo_success:
+                        break
+
+                    tmp = gs.geocode(u'%s,%s,%s' % (city_e, province_e, country_e))
                     if not tmp:
                         continue
                     geo_success = register_city(tmp)
