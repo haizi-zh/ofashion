@@ -203,6 +203,41 @@ def sense_cities(lower_bound='a', upper_bound='b'):
     规则化城市字段
     """
 
+    def get_unique_latlng(latlng_list, tol_lat=0.5, tol_lng=1):
+        """
+        从一组经纬度数据点中，去掉距离过远的数据点，取得集中的坐标。
+        :param latlng_list:
+        :param tol_lat: 纬度的容忍度。
+        :param tol_lng: 经度的容忍度。
+        """
+
+        def get_avg(l):
+            return float(sum(l)) / len(l) if len(l) > 0 else None
+
+        def func(vals, tol):
+            vals = list(vals)
+            avg = None
+            while True:
+                avg = get_avg(vals)
+                if not avg:
+                    break
+                max_dist = sorted(tuple({'idx': idx, 'dist': abs(vals[idx] - avg)} for idx in xrange(len(vals))),
+                                  key=lambda arg: arg['dist'])[-1]
+                if max_dist['dist'] < tol:
+                    break
+                elif len(vals) == 2:
+                    # 如果只有两个数据点，且相互离散，则该方法失效
+                    avg = None
+                    break
+                else:
+                    del vals[max_dist['idx']]
+            return avg
+
+        lat = func((tmp[0] for tmp in latlng_list), tol_lat)
+        lng = func((tmp[1] for tmp in latlng_list), tol_lng)
+        return (lat, lng)
+
+
     def register_city(geocoded_info):
         candidate_geo = None
         for geo_info in geocoded_info:
@@ -316,16 +351,18 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             geo_success = False
             statement = tpl_pos % tuple(tmp.replace("'", r"\'") for tmp in item)
             query_result = db.query_all(statement)
+            # 使用经纬度进行查询
+            latlng_list = []
             for lat, lng, addr, idstores in query_result:
-                if not lat or not lng or lat == '' or lng == '' or (string.atof(lat) == 0 and string.atof(lng) == 0):
+                if not lat or not lng or lat == '' or lng == '':
                     continue
-                    # 使用经纬度进行查询
-                tmp = gs.geocode(latlng='%s,%s' % (lat, lng))
-                if not tmp:
-                    continue
-                geo_success = register_city(tmp)
-                if geo_success:
-                    break
+                latlng_list.append(tuple(map(string.atof, (lat, lng))))
+
+            lat, lng = get_unique_latlng(latlng_list)
+            if lat and lng:
+                tmp = gs.geocode(latlng='%f,%f' % (lat, lng))
+                if tmp:
+                    geo_success = register_city(tmp)
             if geo_success:
                 # 通过经纬度获得
                 tmp1 = [4]
@@ -434,7 +471,7 @@ def geo_translate():
 
 
 def test():
-    sense_cities('y', 'z')
+    sense_cities('z', '[')
     # geo_translate()
     # dump_geo()
 
