@@ -5,7 +5,6 @@ import re
 import sys
 import time
 import traceback
-import urllib
 import common as cm
 
 __author__ = 'Zephyre'
@@ -244,7 +243,7 @@ def addr_sense(addr, country=None, province=None, city=None):
     return country, province, city
 
 
-def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None, lang='en'):
+def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None, lang='en', logger=None):
     def parse_result(raw):
         """
         解析原始结果
@@ -278,15 +277,15 @@ def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=
         hdr = {'Accept-Language': 'en-us,en;q=0.8,zh-cn;q=0.5,zh;q=0.3'}
     cnt = 0
     while True:
+        ret = None
         try:
             ret = json.loads(cm.get_data(url, param, hdr))
             if ret['status'] == 'OK':
                 return parse_result(ret['results'])
             elif ret['status'] == 'ZERO_RESULTS':
                 return None
-            elif ret['status'] == 'OVER_QUERY_LIMIT':
-                print 'OVER_QUERY_LIMIT'
-                raise Exception()
+            elif ret['status'] == 'INVALID_REQUEST':
+                return None
             else:
                 raise Exception()
         except Exception, e:
@@ -295,11 +294,10 @@ def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=
                 time.sleep(cooling_time)
                 continue
             else:
-                if log_name is None:
-                    cm.dump('Error in geocoding: status: %s, %s' % (ret['status'], traceback.format_exc()))
-                else:
-                    cm.dump('Error in geocoding: status: %s, %s' % (ret['status'], traceback.format_exc()), log_name)
-                return None
+                if logger and ret and u'status' in ret:
+                    logger.error(unicode.format(u'Error in geocoding. Status: {0}', ret[u'status']))
+                raw_input(u'Press ENTER to continue...')
+                continue
 
 
 def field_sense(entry):

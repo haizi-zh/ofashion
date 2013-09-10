@@ -1,16 +1,17 @@
 # coding=utf-8
+import logging
 import StringIO
 import gzip
 import json
 import re
 import socket
-import string
 import urllib
 import urllib2
 import _mysql
 import time
 import HTMLParser
 import urlparse
+
 
 __author__ = 'Zephyre'
 
@@ -307,17 +308,36 @@ def proc_response(response):
     return html, cookie_map
 
 
-def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime=20, cookie=None, client='Desktop',
-             userAgent=''):
-    html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cooltime, cookie, client=client, userAgent=userAgent)
+def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=20, cookie=None, client='Desktop',
+             userAgent='', logger=None, verbose=False):
+    """
+    Fetch data from a URL via HTTP GET method, ignoring all the cookies. See get_data_cookie.
+    """
+    html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cool_time, cookie, client=client,
+                                   userAgent=userAgent, logger=logger, verbose=verbose)
     return html
 
 
-def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime=20, cookie=None, proxy=None,
-                    client='Desktop', userAgent=''):
+def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=20, cookie=None, proxy=None,
+                    client='Desktop', userAgent='', logger=None, verbose=False):
     """
-    GET指定url的
+    Fetch data from a URL via HTTP GET method, with cookies provided.
+    :param url:
+    :param data: parameters provided in the form of key/value pairs.
+    :param hdr: user defined additional HTTP headers.
+    :param timeout:
+    :param retry:
+    :param cool_time:
+    :param cookie:
+    :param proxy:
+    :param client: predefined clients are 'Desktop' and 'iPad', or userAgent will be used.
+    :param userAgent:
+    :param logger:
+    :param verbose:
+    :return: :raise:
     """
+    if not logger:
+        logger=logging.getLogger('root')
     if isinstance(url, unicode):
         url = url.encode('utf-8')
     url_components = [item for item in urlparse.urlsplit(url)]
@@ -329,14 +349,13 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime
     else:
         opener = urllib2.build_opener()
 
-    headers = [('Accept-Encoding', 'gzip,deflate,sdch'),
-               ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
-               ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')]
-    hdr_map = dict(headers)
-    if client == 'Desktop':
+    hdr_map = dict([('Accept-Encoding', 'gzip,deflate,sdch'),
+                    ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
+                    ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')])
+    if client.lower() == 'desktop':
         hdr_map[
             "User-Agent"] = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.94 Safari/537.36"
-    elif client == 'iPad':
+    elif client.lower() == 'ipad':
         hdr_map[
             'User-Agent'] = 'Mozilla/5.0(iPad; U; CPU iPhone OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B314 Safari/531.21.10'
     else:
@@ -345,19 +364,13 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime
     if hdr is not None:
         for key in hdr:
             val = hdr[key]
-            if isinstance(val, unicode):
-                val = val.encode('utf-8')
-            hdr_map[key] = val
+            hdr_map[key] = val.encode('utf-8') if isinstance(val, unicode) else val
 
-    if cookie is not None:
+    if cookie:
         cookie_str = '; '.join(['%s=%s' % (k, cookie[k]) for k in cookie.keys()])
-        headers.append(('Cookie', cookie_str))
         hdr_map['Cookie'] = cookie_str
 
-    headers = []
-    for key in hdr_map:
-        headers.append((key, hdr_map[key]))
-    opener.addheaders = headers
+    opener.addheaders = [(k, hdr_map[k]) for k in hdr_map]
     if data:
         for key in data:
             if isinstance(data[key], unicode):
@@ -377,6 +390,8 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime
                     if key not in cookie_new:
                         cookie_new[key] = cookie[key]
             return body, cookie_new
+        except urllib2.HTTPError:
+            pass
         except Exception, e:
             if isinstance(e, urllib2.HTTPError):
                 print 'Http error: {0}'.format(e.code)
@@ -387,12 +402,12 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cooltime
             if i >= retry:
                 raise e
             else:
-                print 'Cooling down for %fsec...' % cooltime
-                time.sleep(cooltime)
+                print 'Cooling down for %fsec...' % cool_time
+                time.sleep(cool_time)
                 continue
 
 
-def dump(data, filename='err_log.txt', is_json=False, to_console=True):
+def dump(data, filename, is_json=False, to_console=True):
     """
     在日志中记录
     :param data:
@@ -598,7 +613,7 @@ class StoresDb(object):
             if isinstance(statement, unicode):
                 statement = statement.encode('utf-8')
             self._store_db.query(statement)
-            self._record_set = self._store_db.store_results()
+            self._record_set = self._store_db.store_result()
             return self._record_set.num_rows()
         except Exception, e:
             print e
@@ -628,7 +643,8 @@ class StoresDb(object):
 
             # recordset.append(tuple(tmp.decode('utf-8') for tmp in ))
             # recordset.extend(self._record_set.fetch_row())
-        return tuple(tuple(term.decode('utf-8') if term and isinstance(term, str) else term for term in item) for item in tmp)
+        return tuple(
+            tuple(term.decode('utf-8') if term and isinstance(term, str) else term for term in item) for item in tmp)
         # return tuple(tuple(term.decode('utf-8') for term in item) for item in tmp)
         # return tuple(recordset)
 
@@ -651,6 +667,18 @@ continent_map = None
 country_map = None
 city_map = None
 province_map = None
+
+
+def get_time_str(seconds):
+    """
+    将秒换算成时间字符串
+    :param seconds:
+    """
+    seconds = int(seconds)
+    est_hr = seconds / 3600
+    est_min = (seconds % 3600) / 60
+    est_sec = (seconds % 3600) % 60
+    return u'%02d:%02d:%02d' % (est_hr, est_min, est_sec)
 
 
 def load_geo():

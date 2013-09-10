@@ -4,6 +4,7 @@ import string
 import re
 import common as cm
 import geosense as gs
+from pyquery import PyQuery as pq
 
 __author__ = 'Zephyre'
 
@@ -58,38 +59,42 @@ def fetch_stores(data):
         return ()
 
     store_list = []
-    for m in re.finditer(ur'<div class="vcard"\s*>', body):
+    for item in (pq(tmp) for tmp in pq(body)('div.vcard')):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']
-        sub = cm.extract_closure(body[m.start():], ur'<div\b', ur'</div>')[0]
+        tmp = item('div.resultsHeader a b')
+        if len(tmp) > 0 and tmp[0].text:
+            entry[cm.name_e] = cm.html2plain(tmp[0].text)
+        tmp = item('div.adr')
+        if len(tmp) > 0:
+            tmp = pq(tmp[0])
+            entry[cm.addr_e] = cm.reformat_addr(unicode(tmp))
+            tmp1 = tmp('.locality')
+            if len(tmp1) > 0 and tmp1[0].text:
+                entry[cm.city_e] = cm.extract_city(tmp1[0].text)[0]
+            tmp1 = tmp('.region')
+            if len(tmp1) > 0 and tmp1[0].text:
+                entry[cm.province_e] = cm.html2plain(tmp1[0].text).strip().upper()
+            tmp1 = tmp('.postal-code')
+            if len(tmp1) > 0 and tmp1[0].text:
+                entry[cm.zip_code] = tmp1[0].text
 
-        m1 = re.search(ur'<div class="fn org">(.+?)</div>', sub, re.S)
-        entry[cm.name_e] = cm.reformat_addr(m1.group(1)) if m1 else ''
+        tmp = item('div.tel')
+        if len(tmp) > 0:
+            entry[cm.tel] = tmp[0].text if tmp[0].text else ''
 
-        m1 = re.search(ur'<div class="adr">', sub, re.S)
-        if m1:
-            addr_sub = cm.extract_closure(sub[m1.start():], ur'<div\b', ur'</div>')[0]
-            entry[cm.addr_e] = cm.reformat_addr(addr_sub)
-            m2 = re.search(ur'<span class="locality">([^<>?]+?),*\s*</span>', addr_sub)
-            city = cm.html2plain(m2.group(1)).strip().upper() if m2 else ''
-            entry[cm.city_e] = cm.extract_city(city if city != ',' else '')[0]
-            m2 = re.search(ur'<span\s+class="region"\s+title="([^"]+)"[^<>]*>', addr_sub)
-            entry[cm.province_e] = cm.html2plain(m2.group(1)).strip().upper() if m2 else ''
-            m2 = re.search(ur'<span\s+class="postal-code"[^<>]*>([^<>]+)', addr_sub)
-            entry[cm.zip_code] = m2.group(1).strip() if m2 else ''
+        tmp = item('div.store_hours')
+        if len(tmp) > 0:
+            entry[cm.hours] = cm.reformat_addr(unicode(pq(tmp[0])))
 
-        m1 = re.search(ur'<div class="tel">([^<>]+)</div>', sub, re.S)
-        entry[cm.tel] = m1.group(1).strip() if m1 else ''
-
-        m1 = re.search(ur'<div class="hours_wrapper">', sub)
-        if m1:
-            hours_sub = cm.extract_closure(sub[m1.start():], ur'<div\b', ur'</div>')[0]
-            hours_list = []
-            for term in (tmp.strip() for tmp in cm.reformat_addr(hours_sub).split(',')):
-                term = re.sub(re.compile(ur'store hours\s*:', re.I), '', term).strip()
-                if term != '':
-                    hours_list.append(term)
-            entry[cm.hours] = ', '.join(hours_list)
+        tmp = item('#map')
+        if len(tmp) > 0:
+            m = re.search(ur'Lat=(-?\d+\.\d+)', unicode(pq(tmp[0])))
+            if m:
+                entry[cm.lat] = string.atof(m.group(1))
+            m = re.search(ur'Lng=(-?\d+\.\d+)', unicode(pq(tmp[0])))
+            if m:
+                entry[cm.lng] = string.atof(m.group(1))
 
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
@@ -98,7 +103,6 @@ def fetch_stores(data):
         if ret[2] is not None and entry[cm.city_e] == '':
             entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
-
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                             entry[cm.continent_e]), log_name)

@@ -5,7 +5,6 @@ import re
 import common as cm
 import geosense as gs
 from pyquery import PyQuery as pq
-import xml.etree.ElementTree as et
 
 __author__ = 'Zephyre'
 

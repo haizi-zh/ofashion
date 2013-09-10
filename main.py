@@ -1,152 +1,15 @@
 # coding=utf-8
+import glob
 import json
-import random
+import logging
 import re
 import string
 import time
 import traceback
-import adidas
-import agnesb
-import alexander_mcqueen
-import alexander_wang
-import giorgio_armani
-import armani_exchange
-import audemars
-import balenciaga
-import bally
-import baume
-import benetton
-import bershka
-import blancpain
-import bottega_veneta
-import boucheron
-import breguet
-import breitling
-import bulgari
-import burberry
-import canali
-import cartier
-import cartier_old
-import celine
-import cerruti
-import chanel
-import chaumet
-import chloe
-import chopard
-import christofle
-import coach
-import columbia
+import itertools
 
 import common
-import constantin
-import debeers
-import diesel
-import dior
-import dkny
-import dolce_gabbana
-import donna_karan
-import ecco
-import escada
-import esprit
-import etro
-import fcuk
-import fendi
-import ferragamo
-import folli
-import furla
 import geosense as gs
-import dunhill
-import emiliopucci
-import gilsander
-import gucci
-import hamilton
-import hamilton_global
-import hermes
-import hm
-import hublot
-import hugoboss
-import hushpuppies
-import issey_miyake
-import iwc
-import jaeger_lecoultre
-import jimmy_choo
-import juicycouture
-import kenzo
-import kipling
-import lacoste
-import levis_eu
-import levis_us
-import longines
-import lanvin
-import lee
-import levis
-import liujo
-import loewe
-import louboutin
-import louis_vuitton
-import louis_vuitton_3rd
-import lukfook
-import mango
-import marc_jacobs
-import marni
-import maurice_lacroix
-import max_co
-import maxmara
-import michael_kors
-import mido
-import missoni
-import miss_sixty
-import miumiu
-import montblanc
-import movado
-import movado_cn
-import mulberry
-import nike
-import ninewest
-import oasis
-import omega
-import oris
-import patek
-import paul_joe
-import paulshark
-import paulsmith
-import prada
-import rado
-import robertocavalli
-import rolex
-import samsonite
-import samsonite_global
-import sergio
-import shanghaitang
-import shanghaivive
-import sisley
-import stella_mccartney
-import swarovski
-import swatch
-import tagheuer
-import tiffany
-import tod
-import tommy
-import tommy_global
-import triumph
-import trussardi
-import tsl
-import tudor
-import unode50
-import us_postal
-import valentino
-import van_cleef
-import vera_wang
-import versace
-import victoriassecret
-import viktor_rolf
-import vivienne
-import y3
-import ysl
-import zara
-import zegna
-import zenithwatch
-import comme_des_garcons
 
 __author__ = 'Zephyre'
 
@@ -198,9 +61,12 @@ def dump_geo():
     db.disconnect_db()
 
 
-def sense_cities(lower_bound='a', upper_bound='b'):
+def sense_cities(lower_bound='a', upper_bound='b', others=0):
     """
     规则化城市字段
+    :param lower_bound:
+    :param upper_bound:
+    :param others: -1：所有；0：从lower扫描到upper；1：扫描lower和upper以外的特殊字符；2：扫描city_e为空的记录
     """
 
     def get_unique_latlng(latlng_list, tol_lat=0.5, tol_lng=1):
@@ -235,6 +101,9 @@ def sense_cities(lower_bound='a', upper_bound='b'):
 
         lat = func((tmp[0] for tmp in latlng_list), tol_lat)
         lng = func((tmp[1] for tmp in latlng_list), tol_lng)
+        # 有时候经纬度会颠倒
+        if lat is not None and lng is not None and abs(lat) > 90:
+            lat, lng = lng, lat
         return (lat, lng)
 
 
@@ -243,7 +112,7 @@ def sense_cities(lower_bound='a', upper_bound='b'):
         for geo_info in geocoded_info:
             admin_info = geo_info['administrative_info']
             if 'country' not in admin_info:
-                common.dump(u'Country info does not exist: %s' % admin_info)
+                common.dump(u'Country info does not exist: %s' % admin_info, log_name)
                 continue
 
             if 'locality' in admin_info:
@@ -255,7 +124,7 @@ def sense_cities(lower_bound='a', upper_bound='b'):
             elif 'administrative_area_level_2' in admin_info:
                 city = admin_info['administrative_area_level_2']
             else:
-                common.dump(u'City info does not exist: %s' % admin_info)
+                common.dump(u'City info does not exist: %s' % admin_info, log_name)
                 continue
 
             tmp_geo = {'city_e': city, 'country_e': admin_info['country']}
@@ -310,50 +179,81 @@ def sense_cities(lower_bound='a', upper_bound='b'):
                 std_info['region_c'] = admin_info_zh['administrative_area_level_1']
 
         std_sig = u'|'.join((std_info['city_e'], std_info['region_e'], std_info['country_e']))
-        city_std[sig] = {'std_sig': std_sig}
+        if others == 2:
+            city_std[idstores] = {'std_sig': std_sig}
+        else:
+            city_std[sig] = {'std_sig': std_sig}
         if 'std_sig' not in city_std:
             city_std[std_sig] = {'std_info': std_info, 'geo_info': geo_info}
-        common.dump(u'%s => %s' % (sig, std_sig))
+        common.dump(u'%s => %s' % (sig, std_sig), log_name)
         return True
 
     city_std = {}
-    log_name = u'sense_cities.log'
+    if others == -1:
+        log_name = u'sense_cities_all.log'
+        file_name = u'data/city_std_all.dat'
+    elif others == 1:
+        log_name = u'sense_cities_others.log'
+        file_name = u'data/city_std_others.dat'
+    elif others == 2:
+        log_name = u'sense_cities_null.log'
+        file_name = u'data/city_std_null.dat'
+    else:
+        log_name = u'sense_cities_%s_%s.log' % (lower_bound, upper_bound)
+        file_name = u'data/city_std_%s_%s.dat' % (lower_bound, upper_bound)
     try:
-        with open('data/city_std.dat', 'r') as f:
+        with open(file_name, 'r') as f:
             # {'city|region|country':{'std_info':{'city':...,'region':...,'country':...}, 'geo_result': result}}
             # 城市的标准化映射信息
-            city_std = json.loads(f.readlines()[0])
+            city_std = json.load(f, 'utf-8')
     except IOError:
         common.dump(u'Failed to load data/city_std.dat', log_name)
 
     db = common.StoresDb()
     db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
-    tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND (is_geocoded<4 OR is_geocoded>7) ORDER BY city_e, province_e, country_e LIMIT 99999"
-    # tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND is_geocoded=6 ORDER BY city_e, province_e, country_e LIMIT 99999"
+    if others == -1:
+        tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e!='' AND (is_geocoded<4 OR is_geocoded>7) AND is_geocoded!=100 ORDER BY city_e, province_e, country_e LIMIT 99999"
+        tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e!='' AND is_geocoded=0 ORDER BY city_e, province_e, country_e LIMIT 99999"
+    elif others == 1:
+        tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE (city_e<'a' OR city_e>'}') AND city_e!='' AND (is_geocoded<4 OR is_geocoded>7) AND is_geocoded!=100 ORDER BY city_e, province_e, country_e LIMIT 99999"
+        # tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE (city_e<'a' OR city_e>'}') AND city_e!='' AND is_geocoded=6 ORDER BY city_e, province_e, country_e LIMIT 99999"
+    elif others == 2:
+        tpl_entity = "SELECT city_e, province_e, country_e, idstores FROM stores WHERE city_e='' AND (is_geocoded<4 OR is_geocoded>7) AND is_geocoded!=100 ORDER BY city_e, province_e, country_e LIMIT 99999"
+        # tpl_entity = "SELECT city_e, province_e, country_e, idstores FROM stores WHERE city_e='' ORDER BY city_e, province_e, country_e LIMIT 99999"
+    else:
+        tpl_entity = "SELECT DISTINCT city_e, province_e, country_e FROM stores WHERE city_e>'%s' AND city_e<'%s' AND (is_geocoded<4 OR is_geocoded>7) ORDER BY city_e, province_e, country_e LIMIT 99999"
     tpl_pos = "SELECT lat, lng, addr_e, idstores FROM stores WHERE city_e='%s' AND province_e='%s' AND country_e='%s' LIMIT 99999"
     tpl_geocoded = "UPDATE stores SET is_geocoded=%d WHERE city_e='%s' AND province_e='%s' AND country_e='%s'"
 
-    statement = tpl_entity % (lower_bound, upper_bound)
+    if others == 0:
+        statement = tpl_entity if others else tpl_entity % (lower_bound, upper_bound)
+    else:
+        statement = tpl_entity
     common.dump(u"Processing cities from '%s' to '%s'..." % (lower_bound, upper_bound), log_name)
     for item in db.query_all(statement):
         try:
-            sig = u'|'.join(item[i] for i in xrange(3))
-            if sig in city_std:
-                common.dump(u'Geo item %s already processed.' % sig, log_name)
-                tmp1 = [7]
-                tmp1.extend(tmp.replace("'", r"\'") for tmp in (item[i] for i in xrange(3)))
-                statement = tpl_geocoded % tuple(tmp1)
-                db.execute(statement)
-                continue
+            sig = u'|'.join(item[i].upper() for i in xrange(3))
+            if others != 2:
+                if sig in city_std:
+                    common.dump(u'Geo item %s already processed.' % sig, log_name)
+                    tmp1 = [7]
+                    tmp1.extend(tmp.replace("'", r"\'") for tmp in (item[i] for i in xrange(3)))
+                    statement = tpl_geocoded % tuple(tmp1)
+                    db.execute(statement)
+                    continue
             common.dump(u'Processing %s...' % sig, log_name)
 
-            city_e, province_e, country_e = item
+            city_e, province_e, country_e = item[:3]
             geo_success = False
-            statement = tpl_pos % tuple(tmp.replace("'", r"\'") for tmp in item)
+            if others == 2:
+                idstores = item[3]
+                statement = "SELECT lat, lng, addr_e, idstores FROM stores WHERE idstores=%s LIMIT 99999" % item[3]
+            else:
+                statement = tpl_pos % tuple(tmp.replace("'", r"\'") for tmp in item)
             query_result = db.query_all(statement)
             # 使用经纬度进行查询
             latlng_list = []
-            for lat, lng, addr, idstores in query_result:
+            for lat, lng, addr, tmp in query_result:
                 if not lat or not lng or lat == '' or lng == '':
                     continue
                 latlng_list.append(tuple(map(string.atof, (lat, lng))))
@@ -367,12 +267,17 @@ def sense_cities(lower_bound='a', upper_bound='b'):
                 # 通过经纬度获得
                 tmp1 = [4]
                 tmp1.extend(tmp.replace("'", r"\'") for tmp in item)
-                statement = tpl_geocoded % tuple(tmp1)
+                if others == 2:
+                    statement = "UPDATE stores SET is_geocoded=4 WHERE idstores=%s" % idstores
+                else:
+                    statement = tpl_geocoded % tuple(tmp1)
                 db.execute(statement)
             else:
                 for lat, lng, addr, idstores in query_result:
-                    # 使用地址进行查询
-                    tmp = gs.geocode(u'%s,%s,%s' % (city_e, province_e, country_e))
+                    if city_e == '' and province_e == '' and country_e == '':
+                        continue
+                        # 使用地址进行查询
+                    tmp = gs.geocode(u'%s,%s,%s,%s' % (addr, city_e, province_e, country_e))
                     if not tmp:
                         continue
                     geo_success = register_city(tmp)
@@ -389,19 +294,42 @@ def sense_cities(lower_bound='a', upper_bound='b'):
                     # 通过地址成功获得
                     tmp1 = [5]
                     tmp1.extend(tmp.replace("'", r"\'") for tmp in item)
-                    statement = tpl_geocoded % tuple(tmp1)
+                    if others == 2:
+                        statement = "UPDATE stores SET is_geocoded=5 WHERE idstores=%s" % idstores
+                    else:
+                        statement = tpl_geocoded % tuple(tmp1)
                     db.execute(statement)
                 else:
                     # 未能获得
                     tmp1 = [6]
                     tmp1.extend(tmp.replace("'", r"\'") for tmp in item)
-                    statement = tpl_geocoded % tuple(tmp1)
+                    if others == 2:
+                        statement = "UPDATE stores SET is_geocoded=6 WHERE idstores=%s" % idstores
+                    else:
+                        statement = tpl_geocoded % tuple(tmp1)
                     db.execute(statement)
 
-            with open(u'data/city_std.dat', 'w') as f:
-                f.write(json.dumps(city_std).encode('utf-8'))
-        except Exception as e:
+            # 如果city_e为空，更新
+            if others == 2 and geo_success:
+                std_info = city_std[city_std[idstores]['std_sig']]['std_info']
+                ret = db.query_all("SELECT idcontinent FROM country WHERE name_e='%s'" % std_info['country_e'])
+                if len(ret) == 0:
+                    common.dump(u'Failed to lookup continent for %s' % std_info['country_e'])
+                else:
+                    ret = db.query_all("SELECT name_e, name_c FROM continent WHERE idcontinent='%s'" % ret[0][0])
+                    continent_e = ret[0][0]
+                    continent_c = ret[0][1]
+                    statement = 'UPDATE stores SET continent_e="%s", continent_c="%s", country_e="%s", country_c="%s", province_e="%s", province_c="%s", city_e="%s", city_c="%s" where idstores=%s' % (
+                        continent_e, continent_c, std_info['country_e'], std_info['country_c'],
+                        std_info['region_e'], std_info['region_c'],
+                        std_info['city_e'], std_info['city_c'], idstores)
+                    db.execute(statement)
+
+        except Exception:
             common.dump(traceback.format_exc(), log_name)
+
+    with open(file_name, 'w') as f:
+        json.dump(city_std, f)
 
     common.dump(u'Done!', log_name)
 
@@ -470,18 +398,402 @@ def geo_translate():
         db.execute(statement)
 
 
+def merge_city_std(dump=False):
+    """
+    合并城市标准化信息
+    """
+    city_std = {}
+    for file_name in glob.iglob(u'data/city_std*.dat'):
+        if u'city_std_all.dat' in file_name:
+            continue
+
+        print(u'Processing %s...' % file_name)
+        with open(file_name, 'r') as f:
+            raw = json.load(f, u'utf-8')
+        for key in raw.keys():
+            if key not in city_std:
+                city_std[key] = raw[key]
+
+    if dump:
+        print(u'Dumping the whole info...')
+        with open(u'data/city_std_all.dat', 'w') as f:
+            json.dump(city_std, f, ensure_ascii=True)
+
+    print(u'Done!')
+
+
+def decode_city():
+    """
+    解析Unicode escape
+    """
+    log_name = u'decode_city.log'
+    db = common.StoresDb()
+    db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
+
+    ret = db.query_all('SELECT idstores, city_e FROM stores WHERE locate("u00", city_e)')
+    pat = re.compile(ur'u00.{2}', re.I)
+    for idstores, city_e in ret:
+        term_list = re.findall(pat, city_e)
+        term_c = re.split(pat, city_e)
+        new_term_list = [(u'\\' + tmp).lower().decode('unicode_escape').upper() for tmp in term_list]
+        new_term_list.append('')
+        tmp_list = []
+        for i in xrange(len(new_term_list)):
+            tmp_list.append(term_c[i])
+            tmp_list.append(new_term_list[i])
+        new_city_e = ''.join(tmp_list)
+        common.dump(u'%s => %s' % (city_e, new_city_e), log_name)
+        db.execute('UPDATE stores SET city_e="%s" WHERE idstores=%s' % (new_city_e, idstores))
+
+    ret = db.query_all('SELECT idstores, country_e FROM stores WHERE locate("u00", country_e)')
+    for idstores, country_e in ret:
+        term_list = re.findall(pat, country_e)
+        term_c = re.split(pat, country_e)
+        new_term_list = [(u'\\' + tmp).lower().decode('unicode_escape').upper() for tmp in term_list]
+        new_term_list.append('')
+        tmp_list = []
+        for i in xrange(len(new_term_list)):
+            tmp_list.append(term_c[i])
+            tmp_list.append(new_term_list[i])
+        new_country_e = ''.join(tmp_list)
+        common.dump(u'%s => %s' % (country_e, new_country_e), log_name)
+        db.execute('UPDATE stores SET country_e="%s" WHERE idstores=%s' % (new_country_e, idstores))
+
+    pass
+
+
+def proc_city_std():
+    """
+    更新数据库的city, region等字段
+    """
+    with open(u'data/city_std_all.dat', 'r') as f:
+        city_std = json.load(f, encoding='utf-8')
+
+    db = common.StoresDb()
+    db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
+
+    log_name = u'proc_city.log'
+
+    # 已经更新的字段，形式为region|country|或者
+    processed_country = set([])
+    # 检查country字段
+    for key in itertools.ifilter(lambda key: u'std_info' in city_std[key], city_std):
+        common.dump(u'Processing %s' % key, log_name)
+        city, region, country = (city_std[key]['std_info'][tmp_key] for tmp_key in ('city_e', 'region_e', 'country_e'))
+        if country in processed_country:
+            continue
+        ret = db.query_all('SELECT * FROM country WHERE name_e="%s"' % country)
+        if len(ret) == 1:
+            common.dump(u'Country hit: %s' % country, log_name)
+            processed_country.add(country)
+        else:
+            if len(db.query_all('SELECT * FROM country WHERE locate("%s", alias)' % country)) > 0:
+                common.dump(u'Country hit: %s' % country, log_name)
+                continue
+
+            # 将新国家添加到数据库中
+            try:
+                ret = gs.geocode(addr='%s' % country)[0]
+                admin_info = ret['administrative_info']
+                admin_info['country_code'] = ''
+                for component in ret['address_components']:
+                    if 'country' in component['types']:
+                        admin_info['country_code'] = component['short_name']
+                        break
+                geo_info = ret['geometry']
+                ret = gs.geocode(addr='%s' % country, lang='zh')[0]
+                admin_info_zh = ret['administrative_info']
+
+                # 如果已存在，则添加到alias字段中
+                ret = db.query_all('SELECT idcountry, alias FROM country WHERE code="%s"' % admin_info['country_code'])
+                if len(ret) > 0:
+                    idcountry, alias = ret[0]
+                    common.dump(u'Adding %s to the alias: %s' % (country, alias), log_name)
+                    alias = u'%s|%s' % (alias, country) if alias != '' else country
+                    db.execute('UPDATE country SET alias="%s" WHERE idcountry=%s' % (alias, idcountry))
+                    continue
+
+                common.dump(u'Failed to look up country: %s, now adding to the database...' % country, log_name)
+                statement = ('INSERT INTO country (idcontinent, continent, name_e, name_c, code, lat, lng, '
+                             'lat_ne, lng_ne, lat_sw, lng_sw) VALUES (%d, "%s", "%s", "%s", "%s", %f, %f, %f, %f, '
+                             '%f, %f)') % (0, 'UNKNOWN', admin_info['country'], admin_info_zh['country'],
+                                           admin_info['country_code'], geo_info['location']['lat'],
+                                           geo_info['location']['lng'],
+                                           geo_info['bounds']['northeast']['lat'],
+                                           geo_info['bounds']['northeast']['lng'],
+                                           geo_info['bounds']['southwest']['lat'],
+                                           geo_info['bounds']['southwest']['lng'])
+                common.dump(statement, log_name)
+                db.execute(statement)
+                processed_country.add(country)
+            except (IndexError, TypeError):
+                common.dump(traceback.format_exc(), log_name)
+
+    # 更新数据库的region和city字段
+    for key in itertools.ifilter(lambda key: u'std_info' in city_std[key], city_std):
+        try:
+            common.dump(u'Processing %s...' % key, log_name)
+            pos_info = city_std[key]['geo_info']['geometry']
+            std_info = city_std[key]['std_info']
+
+            # 省/州信息
+            ret = db.query_all(u'SELECT * FROM region WHERE country="%s" AND name_e="%s"' % (
+                std_info['country_e'], std_info['region_e']))
+            if len(ret) == 0:
+                common.dump(u'Adding new region in %s: %s(%s)' % tuple(std_info[tmp] for tmp in
+                                                                       ('country_e', 'region_e', 'region_c')), log_name)
+                country_hit = False
+                ret1 = db.query_all(u'SELECT idcountry FROM country WHERE name_e="%s"' % std_info['country_e'])
+                if len(ret1) == 0:
+                    ret1 = db.query_all(
+                        u'SELECT idcountry FROM country WHERE locate("%s", alias)' % std_info['country_e'])
+                    if len(ret1) == 0:
+                        common.dump(u'Failed to lookup the country %s' % std_info['country_e'], log_name)
+                    else:
+                        country_hit = True
+                else:
+                    country_hit = True
+
+                if country_hit:
+                    statement = u'INSERT INTO region (idcountry, country, name_e, name_c) VALUES ' \
+                                u'("%s", "%s", "%s", "%s")' % (ret1[0][0], std_info['country_e'],
+                                                               std_info['region_e'], std_info['region_c'])
+                    common.dump(statement, log_name)
+                    db.execute(statement)
+
+            # 城市信息
+            ret = db.query_all(u'SELECT * FROM city WHERE country="%s" AND region="%s" AND name_e="%s"' % (
+                std_info['country_e'], std_info['region_e'], std_info['city_e']))
+            if len(ret) == 0:
+                common.dump(u'Adding new city in %s: %s(%s)' % tuple(std_info[tmp] for tmp in
+                                                                     ('country_e', 'city_e', 'city_c')), log_name)
+                country_hit = False
+                ret1 = db.query_all(u'SELECT idcountry FROM country WHERE name_e="%s"' % std_info['country_e'])
+                if len(ret1) == 0:
+                    ret1 = db.query_all(
+                        u'SELECT idcountry FROM country WHERE locate("%s", alias)' % std_info['country_e'])
+                    if len(ret1) == 0:
+                        common.dump(u'Failed to lookup the country %s' % std_info['country_e'], log_name)
+                    else:
+                        country_hit = True
+                else:
+                    country_hit = True
+
+                if country_hit:
+                    if 'bounds' in pos_info:
+                        bounds = pos_info['bounds']
+                    elif 'viewpoint' in pos_info:
+                        bounds = pos_info['viewpoint']
+                    else:
+                        bounds = None
+                    if bounds:
+                        statement = u'INSERT INTO city (idcountry, country, region, name_e, name_c, lat, lng, ' \
+                                    u'lat_ne, lng_ne, lat_sw, lng_sw) VALUES ("%s", "%s", "%s", "%s", "%s", ' \
+                                    u'%f, %f, %f, %f, %f, %f)' % (
+                                        ret1[0][0], std_info['country_e'], std_info['region_e'], std_info['city_e'],
+                                        std_info['city_c'], pos_info['location']['lat'], pos_info['location']['lng'],
+                                        pos_info['bounds']['northeast']['lat'], pos_info['bounds']['northeast']['lng'],
+                                        pos_info['bounds']['southwest']['lat'], pos_info['bounds']['southwest']['lng'])
+                    else:
+                        statement = u'INSERT INTO city (idcountry, country, region, name_e, name_c, lat, lng) ' \
+                                    u'VALUES ("%s", "%s", "%s", "%s", "%s", %f, %f)' % \
+                                    (ret1[0][0], std_info['country_e'], std_info['region_e'], std_info['city_e'],
+                                     std_info['city_c'], pos_info['location']['lat'], pos_info['location']['lng'])
+                    common.dump(statement, log_name)
+                    db.execute(statement)
+        except (KeyError, IndexError, TypeError):
+            common.dump(traceback.format_exc(), log_name)
+
+
+def update_city_std(delta_lat=2, delta_lng=4, lower=None, upper=None, null_city=False):
+    """
+    将stores记录中的地理信息字段标准化
+    :param delta_lat: 如果原始记录和标准记录之间的经纬度差异超过该数值，说明原始记录有误。
+    :param delta_lng:
+    """
+    with open(u'data/city_std_all.dat', 'r') as f:
+        city_std = json.load(f, encoding='utf-8')
+
+    db = common.StoresDb()
+    db.connect_db(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
+    if null_city:
+        log_name = u'update_city_std_null.log'
+    else:
+        log_name = u'update_city_std_%s_%s.log' % (lower, upper) if lower and upper else u'update_city_std.log'
+
+    if null_city:
+        # 处理city_e为空的数据
+        query_results = filter(lambda key: re.search(ur'^\d+$', key), city_std.keys())
+        tot_cnt = len(query_results)
+        cnt = 0
+        for idstores in query_results:
+            cnt += 1
+            common.dump(
+                u'%d/%d(%.1f%%) Processing idstores=%s...' % (cnt, tot_cnt, float(cnt) / tot_cnt * 100, idstores),
+                log_name)
+            try:
+                info = city_std[city_std[idstores]['std_sig']]
+                while True:
+                    if 'geo_info' in info:
+                        break
+                    elif 'std_sig' in info:
+                        info = city_std[info['std_sig']]
+                    else:
+                        break
+                loc = info['geo_info']['geometry']['location']
+                admin = info['std_info']
+                # 原始数据的经纬度信息
+                try:
+                    lat_o, lng_o = map(string.atof,
+                                       db.query_all('SELECT lat, lng FROM stores WHERE idstores=%s' % idstores)[0])
+                    if abs(lat_o) > 90:
+                        lat_o, lng_o = lng_o, lat_o
+                    if abs(lat_o - loc['lat']) > delta_lat or abs(lng_o - loc['lng']) > delta_lng:
+                        common.dump(
+                            u'Lat-lng mismatch. Original: (%f, %f), std: (%f, %f)' % (
+                                lat_o, lng_o, loc['lat'], loc['lng']),
+                            log_name)
+                        lat, lng = loc['lat'], loc['lng']
+                    else:
+                        lat, lng = lat_o, lng_o
+                except (ValueError, TypeError):
+                    lat, lng = loc['lat'], loc['lng']
+                param = map(lambda key: admin[key].replace(u'"', u'\\"'),
+                            ('country_e', 'country_c', 'region_e', 'region_c', 'city_e', 'city_c'))
+                param.extend((lat, lng, 100, idstores))
+                statement = 'UPDATE stores SET country_e="%s", country_c="%s", province_e="%s", province_c="%s", ' \
+                            'city_e="%s", city_c="%s", lat=%f, lng=%f, is_geocoded=%d WHERE idstores=%s' % tuple(param)
+                common.dump(statement, log_name)
+                db.execute(statement)
+            except (KeyError, IndexError, TypeError):
+                common.dump(traceback.format_exc(), log_name)
+    else:
+        # 处理city_e非空的数据
+        if lower and upper:
+            query_results = db.query_all(
+                'SELECT DISTINCT city_e,province_e,country_e FROM stores WHERE city_e!="" AND city_e>"%s" '
+                'AND city_e<"%s" AND is_geocoded!=6 '
+                'AND is_geocoded!=100 LIMIT 999999' % (lower, upper))
+        else:
+            query_results = db.query_all(
+                'SELECT DISTINCT city_e,province_e,country_e FROM stores WHERE city_e!="" AND '
+                'is_geocoded!=6 AND is_geocoded!=100 LIMIT 999999')
+        tot_cnt = len(query_results)
+        cnt = 0
+        # 计时
+        ts_start = time.time()
+        ts_list = []
+        max_sample = 30
+        for city, region, country in query_results:
+            cnt += 1
+            sig = u'|'.join((city.upper(), region.upper(), country.upper()))
+            if len(ts_list) == max_sample:
+                del ts_list[0]
+            ts_list.append(time.time())
+            # 剩余时间估计
+            est_time = (tot_cnt - cnt) * ((ts_list[-1] - ts_list[0]) / (len(ts_list) - 1)) if len(ts_list) > 1 else None
+
+            common.dump(u'%d/%d(%.1f%%) Processing %s... Elapsed time: %s, Estimated time left: %s' % (
+                cnt, tot_cnt, float(cnt) / tot_cnt * 100, sig, common.get_time_str(time.time() - ts_start),
+                common.get_time_str(est_time) if est_time else u'N/A',), log_name)
+            try:
+                info = city_std[sig]
+                while True:
+                    if 'geo_info' in info:
+                        break
+                    elif 'std_sig' in info:
+                        info = city_std[info['std_sig']]
+                    else:
+                        break
+
+                loc = info['geo_info']['geometry']['location']
+                admin = info['std_info']
+                for store in db.query_all('SELECT idstores, lat, lng FROM stores WHERE city_e="%s" AND '
+                                          'province_e="%s" AND country_e="%s" AND is_geocoded!=6 AND '
+                                          'is_geocoded!=100' % (
+                    city.replace(u'"', u'\\"'), region.replace(u'"', u'\\"'), country.replace(u'"', u'\\"'))):
+                    idstores = store[0]
+                    # 原始数据的经纬度信息
+                    try:
+                        lat_o, lng_o = map(string.atof, store[1:])
+                        if abs(lat_o) > 90:
+                            lat_o, lng_o = lng_o, lat_o
+                        if abs(lat_o - loc['lat']) > delta_lat or abs(lng_o - loc['lng']) > delta_lng:
+                            common.dump(
+                                u'Lat-lng mismatch. Original: (%f, %f), std: (%f, %f)' % (
+                                    lat_o, lng_o, loc['lat'], loc['lng']),
+                                log_name)
+                            lat, lng = loc['lat'], loc['lng']
+                        else:
+                            lat, lng = lat_o, lng_o
+                    except (ValueError, TypeError):
+                        lat, lng = loc['lat'], loc['lng']
+
+                    param = map(lambda key: admin[key].replace(u'"', u'\\"'),
+                                ('country_e', 'country_c', 'region_e', 'region_c', 'city_e', 'city_c'))
+                    param.extend((lat, lng, idstores))
+                    statement = 'UPDATE stores SET country_e="%s", country_c="%s", province_e="%s", province_c="%s", ' \
+                                'city_e="%s", city_c="%s", lat=%f, lng=%f, is_geocoded=100 WHERE idstores=%s' % tuple(
+                        param)
+                    common.dump(statement, log_name)
+                    db.execute(statement)
+            except (KeyError, IndexError, TypeError) as e:
+                if isinstance(e, KeyError):
+                    statement = 'UPDATE stores SET is_geocoded=0 WHERE city_e="%s" AND province_e="%s" AND country_e="%s"' % (
+                        city.replace(u'"', u'\\"'), region.replace(u'"', u'\\"'), country.replace(u'"', u'\\"'))
+                    common.dump(u'%s not exist. Reset is_geocoded to 0: %s' % (sig, statement), log_name)
+                    db.execute(statement)
+                else:
+                    common.dump(traceback.format_exc(), log_name)
+    common.dump(u'Done!', log_name)
+
+
+def set_city_id():
+    """
+    设置idcity
+    """
+    db = common.StoresDb()
+    db.connect_db(host='localhost', port=3306, user='rose', passwd='rose123', db='rose')
+    log_name = u'set_city_id.log'
+    query_results = db.query_all('SELECT idcity, name_e, region, country FROM city')
+    tot_cnt = len(query_results)
+    cnt = 0
+    for idcity, city, region, country in query_results:
+        cnt += 1
+        common.dump(
+            u'%d/%d(%.1f%%) Updating: %s|%s|%s' % (cnt, tot_cnt, float(cnt) / tot_cnt * 100, city, region, country),
+            log_name)
+        city = city.replace(u'"', u'\\"')
+        region = region.replace(u'"', u'\\"')
+        country = country.replace(u'"', u'\\"')
+        db.execute('UPDATE stores SET idcity=%s WHERE city_e="%s" AND province_e="%s" AND country_e="%s"' % (
+            idcity, city, region, country))
+
+    common.dump(u'Done', log_name)
+
+
 def test():
-    sense_cities('z', '[')
+    # decode_city()
+    # merge_city_std(True)
+    # sense_cities('a', 'b', others=-1)
     # geo_translate()
     # dump_geo()
+    # proc_city_std()
+    # update_city_std(null_city=True)
+    # update_city_std()
+    set_city_id()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(filename=str.format('{1}.log', 'test'), format='%(asctime)s:%(levelname)s:\t%(message)s\t%(filename)s:%(lineno)d', level=logging.INFO)
+
+
     test_flag = True
     # passwd = 'rose123'
     passwd = '123456'
     if test_flag:
         test()
     else:
-        levis_eu.fetch(passwd=passwd)
+        pass
+        # longchamp.fetch(passwd=passwd)
         # bershka.fetch(passwd=passwd)
