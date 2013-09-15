@@ -1,6 +1,7 @@
 # coding=utf-8
 import json
 import logging
+import logging.config
 import string
 import re
 import traceback
@@ -90,17 +91,8 @@ def fetch_stores(db, data, logger):
                            *(entry[key] for key in
                              (cm.name_e, cm.addr_e, cm.city_e, cm.country_e, cm.continent_e))))
 
-        # ('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
-        #                                                  entry[cm.name_e], entry[cm.addr_e],
-        #                                                  entry[cm.city_e],
-        #                                                  entry[cm.country_e], entry[cm.continent_e]),
-        #  log_name)
-        cm.insert_record(db, entry, 'stores')
+        cm.insert_record(db, entry, 'spider_stores.stores')
         store_list.append(entry)
-
-        # except Exception as e:
-        #     logger.error(traceback.format_exc())
-        #     continue
 
     return tuple(store_list)
 
@@ -126,7 +118,6 @@ def fetch(db, data=None, user='root', passwd=''):
                 'brand_id': 10510, 'brandname_e': u'Longchamp', 'brandname_c': u'Longchamp'}
 
     db.query(str.format('DELETE FROM spider_stores.stores WHERE brand_id={0}', data['brand_id']))
-
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     logger.info(u'Done')
 

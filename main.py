@@ -17,6 +17,7 @@ import prada2
 import geocode_fetch
 import logging.config
 import viktor_rolf
+import viviennetam
 
 __author__ = 'Zephyre'
 
@@ -805,7 +806,7 @@ if __name__ == "__main__":
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
 
-        longchamp.fetch(db,passwd=passwd)
+        viviennetam.fetch(db,passwd=passwd)
 
         db.close()
 
