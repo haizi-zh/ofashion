@@ -1,4 +1,5 @@
 # coding=utf-8
+import inspect
 import logging
 import StringIO
 import gzip
@@ -11,6 +12,7 @@ import _mysql
 import time
 import HTMLParser
 import urlparse
+import datetime
 
 
 __author__ = 'Zephyre'
@@ -56,6 +58,13 @@ native_id = 'native_id'
 ucjk = ur'\u2E80-\u9FFF'
 # 全角空格
 ucjk_whitespace = ur'\u3000'
+
+
+class MStoreFileHandler(logging.FileHandler):
+    def __init__(self, path=u'.', filename=u'MStore', prefix=u'', postfix=u'', mode='a'):
+        filename = unicode.format(u'{0}/{1}{2}{3}_{4}.log', path, prefix, filename, postfix,
+                                  datetime.datetime.now().strftime('%Y%m%d'))
+        super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
 
 
 def chn_check(entry):
@@ -337,7 +346,7 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_tim
     :return: :raise:
     """
     if not logger:
-        logger=logging.getLogger('root')
+        logger = logging.getLogger('root')
     if isinstance(url, unicode):
         url = url.encode('utf-8')
     url_components = [item for item in urlparse.urlsplit(url)]

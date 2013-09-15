@@ -243,6 +243,49 @@ def addr_sense(addr, country=None, province=None, city=None):
     return country, province, city
 
 
+def geocode2(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None, lang='en', logger=None):
+    # http://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&sensor=true_or_false
+    if not url:
+        url = 'http://maps.googleapis.com/maps/api/geocode/json'
+        param = {'sensor': 'false'}
+        if addr:
+            param['address'] = addr
+        if latlng:
+            param['latlng'] = latlng
+    else:
+        param = None
+
+    if lang == 'en':
+        hdr = {'Accept-Language': 'en-us,en;q=0.8,zh-cn;q=0.5,zh;q=0.3'}
+    elif lang == 'zh':
+        hdr = {'Accept-Language': 'zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3'}
+    else:
+        hdr = {'Accept-Language': 'en-us,en;q=0.8,zh-cn;q=0.5,zh;q=0.3'}
+    cnt = 0
+    while True:
+        ret = None
+        try:
+            ret = json.loads(cm.get_data(url, param, hdr))
+            if ret['status'] == 'OK':
+                return ret['results']
+            elif ret['status'] == 'ZERO_RESULTS':
+                return ()
+            elif ret['status'] == 'INVALID_REQUEST':
+                return ()
+            else:
+                raise Exception()
+        except Exception, e:
+            cnt += 1
+            if cnt < retry:
+                time.sleep(cooling_time)
+                continue
+            else:
+                if logger and ret and u'status' in ret:
+                    logger.error(unicode.format(u'Error in geocoding. Status: {0}', ret[u'status']))
+                raw_input(u'Press ENTER to continue...')
+                continue
+
+
 def geocode(addr=None, latlng=None, retry=3, cooling_time=2, log_name=None, url=None, lang='en', logger=None):
     def parse_result(raw):
         """

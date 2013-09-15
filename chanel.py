@@ -1,5 +1,6 @@
 # coding=utf-8
 import json
+import logging
 import string
 import re
 import traceback
@@ -19,13 +20,19 @@ def gen_city_map():
     return json.loads(sub[0])
 
 
-def fetch_countries(data):
+def fetch_countries(data, logging=None):
     url = data['url']
-    try:
-        body = cm.get_data(url)
-    except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
-        return ()
+    cm.get_data(url=url, data='')
+    body = pq(url=url)
+    body = body('#lstCountry option')
+    results=[]
+    for item1 in body:
+        code=item1.attrib['value'].decode('utf-8')
+        country=item1.text.decode('utf-8')
+        ret=gs.lookup(code,1)
+    return body
+
+
 
     results = []
     for m1 in re.finditer(ur'<ul class="countries">', body):
@@ -119,7 +126,7 @@ def fetch_stores(data):
             cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                                 entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                                 entry[cm.continent_e]), log_name)
-            db.insert_record(entry, 'stores')
+            # db.insert_record(entry, 'stores')
             store_list.append(entry)
 
     return tuple(store_list)
@@ -294,7 +301,7 @@ def fetch_stores_beauty(data):
             cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                                 entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                                 entry[cm.continent_e]), log_name)
-            db.insert_record(entry, 'stores')
+            # db.insert_record(entry, 'stores')
             store_list.append(entry)
         except Exception, e:
             print traceback.format_exc()
@@ -303,15 +310,16 @@ def fetch_stores_beauty(data):
     return tuple(store_list)
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
-    def func(data, level):
+def fetch(level=1, data=None, user='root', passwd='', logger=None):
+    def func(data, level, logging=None):
         """
         :param data:
         :param level: 0：国家；1：城市；2：商店列表
         """
         if level == 0:
             # 国家列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data)]
+            return [{'func': lambda data: func(data, level + 1, logging), 'data': s} for s in
+                    fetch_countries(data, logging)]
         if level == 1:
             # 商店
             return [{'func': None, 'data': s} for s in fetch_stores(data)]
@@ -339,6 +347,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 'url': 'http://www-cn.chanel.com/fashion/storelocator/11-1',
                 'brand_id': 10074, 'brandname_e': u'Chanel', 'brandname_c': u'香奈儿'}
 
+    logger = logger if logger else logging.getLogger()
+
     global db
     results = []
     db = cm.StoresDb()
@@ -353,7 +363,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
             'brand_id': 10074, 'brandname_e': u'Chanel', 'brandname_c': u'香奈儿',
             'city_map': gen_city_map()}
 
-    results.extend(cm.walk_tree({'func': lambda data: func_beauty(data, 0), 'data': data}))
+    results.extend(cm.walk_tree({'func': lambda data: func(data, 0), 'data': data}))
     db.disconnect_db()
     cm.dump('Done!', log_name)
 

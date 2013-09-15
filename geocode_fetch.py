@@ -10,26 +10,117 @@ import sys
 import common as cm
 from pyquery import PyQuery as pq
 import geosense
+import codecs
 
 __author__ = 'Zephyre'
 # Fetch the geocode information for every store record, based on its address and location.
 
-logging.config.fileConfig('geocode_fetch.cfg')
-logger = logging.getLogger('firenzeLogger')
+def calc_distance(p1, p2):
+    """
+    Calculate the distance between two coordinates in kilometers
+    :param p1:
+    :param p2:
+    """
+    lat1, lng1, lat2, lng2 = tuple(v / 180.0 * 3.14 for v in tuple(p1) + tuple(p2))
+    R = 6373
+    v = cos(lat1) * cos(lat2) * (cos(lng1) * cos(lng2) + sin(lng1) * sin(lng2)) + sin(lat1) * sin(lat2)
+    return R * acos(v if v <= 1.0 else 1.0)
+
+
+def load_city_aggr(db, filename):
+    db.query('SET AUTOCOMMIT=0')
+    rules = {}
+    with open(filename, 'r') as f:
+        idx = 0
+        for line in f.readlines():
+            idx += 1
+            data = tuple(int(val) for val in re.findall(ur'(\d+):', line))
+            if len(data) <= 2:
+                print(unicode.format(u'Something wrong in line {0}', idx))
+                continue
+
+            target_id = data[data[0]]
+            id_changed = list(filter(lambda val: val != target_id, data[1:]))
+            if target_id in rules:
+                rules[target_id] += id_changed
+            else:
+                rules[target_id] = id_changed
+
+    for target_id in rules:
+        print(
+        unicode.format(u'Aggregates: {0} <= [{1}]', target_id, u'|'.join(unicode(temp) for temp in rules[target_id])))
+        for idcity in rules[target_id]:
+            db.query(str.format('UPDATE stores SET idcity={0} WHERE idcity={1}', target_id, idcity))
+        db.query(str.format('DELETE FROM city WHERE {0}',
+                            ' || '.join(str.format('idcity={0}', val) for val in rules[target_id])))
+        db.commit()
+
+    print(u'Done')
+
+
+def detect_city_aggr(db, threshold=0, threshold2=0.1, filename=u'city_aggr.txt'):
+    def get_pairs(vals):
+        vals = tuple(vals)
+        cnt = len(vals)
+        pairs = []
+        for i1 in xrange(cnt):
+            for i2 in xrange(i1 + 1, cnt):
+                pairs.append({vals[i1], vals[i2]})
+        return pairs
+
+    db.query('SELECT DISTINCT country_e FROM city')
+    country_list = tuple(temp[0].decode('utf-8') for temp in db.store_result().fetch_row(maxrows=0))
+    with codecs.open(filename, 'wb', 'utf-8') as output:
+        for c in country_list:
+            db.query(unicode.format(
+                u'SELECT idcity, lat, lng FROM city WHERE country_e="{0}" && lat IS NOT NULL && lng IS NOT NULL',
+                c).encode('utf-8'))
+            results = db.store_result().fetch_row(maxrows=0, how=1)
+
+            city_list = tuple((int(temp['idcity']), float(temp['lat']), float(temp['lng'])) for temp in results)
+            city_pairs = get_pairs(city_list)
+            candidates = []
+            for pair in city_pairs:
+                c1, c2 = pair
+                p1 = [c1[1], c1[2]]
+                p2 = [c2[1], c2[2]]
+                dist = calc_distance(p1, p2)
+                if dist < threshold2:
+                    p2[0], p2[1] = p1[0], p1[1]
+                    dist = 0
+                if dist <= threshold:
+                    candidates.append({u'dist': dist, u'pair': pair})
+
+            s_candidates = sorted(candidates, key=lambda temp: temp[u'dist'])
+
+            identicals = {}
+            for val in s_candidates:
+                temp = tuple(val[u'pair'])[0]
+                loc = (temp[1], temp[2])
+                if loc not in identicals:
+                    identicals[loc] = set({})
+                identicals[loc].add(temp[0])
+                identicals[loc].add(tuple(val[u'pair'])[1][0])
+
+            if len(identicals) > 0:
+                for loc in identicals:
+                    idcity_list = identicals[loc]
+                    city_list = []
+                    for idcity in idcity_list:
+                        db.query(str.format(
+                            'SELECT city_e,region_e,country_e,city_c,region_c,country_c FROM city WHERE idcity={0}',
+                            idcity))
+                        record = db.store_result().fetch_row(how=1)[0]
+                        city_list.append(unicode(idcity) + u':' + u'|'.join(
+                            (record[key].decode('utf-8') if record[key] else u'') for key in
+                            ('city_e', 'region_e', 'country_e', 'city_c', 'region_c', 'country_c')))
+
+                    msg = unicode.format(u',\t\t'.join(city_list))
+                    output.write(u':\t\t' + msg + u'\n')
+                    print(msg)
 
 
 def update_geo_shift(db, id_range=None, overwrite=False, extra_condition=None, block_size=500):
-    def calc_distance(p1, p2):
-        """
-        Calculate the distance between two coordinates in kilometers
-        :param p1:
-        :param p2:
-        """
-        lat1, lng1, lat2, lng2 = tuple(v / 180.0 * 3.14 for v in tuple(p1) + tuple(p2))
-        R = 6373
-        v = cos(lat1) * cos(lat2) * (cos(lng1) * cos(lng2) + sin(lng1) * sin(lng2)) + sin(lat1) * sin(lat2)
-        return R * acos(v if v <= 1.0 else 1.0)
-
     cond = 'WHERE (lat IS NOT NULL AND lng IS NOT NULL AND geo_location_lat IS NOT ' \
            'NULL AND geo_location_lng IS NOT NULL AND flag=1)'
     if not extra_condition:
@@ -107,40 +198,17 @@ def results_stats(terms_list):
     return tuple(map(parse_search_result, terms_list))
 
 
-def get_idstores_list(db, skip_existing=True, id_range=None, extra_condition=None):
-    """
-    Get the list of all idstores.
-    :param db:
-    :param excluded: ids of excluded brands, iterable.
-    :param skip_existing: skip records which already have geocode data?
-    :param id_range:
-    """
-    if not extra_condition:
-        extra_condition = []
-    statement = 'SELECT idstores FROM stores'
-    cond_list = ['flag=1']
-    if skip_existing:
-        cond_list.append('geo_queried="N/A"')
-    if id_range:
-        cond_list.append(str.format('idstores>={0} AND idstores<{1}', id_range[0], id_range[1]))
-    if extra_condition:
-        cond_list += extra_condition
-    if cond_list:
-        cond = str.format(' WHERE {0}', ' AND '.join(cond_list))
-    else:
-        cond = ''
-    statement += cond + ' ORDER BY idstores'
-
-    db.query(statement)
-    recordset = db.store_result()
-    result = recordset.fetch_row(maxrows=0)
-    store_list = tuple(int(row[0]) for row in result)
-    logger.info(str.format('{0} records fetched: {1}...', len(store_list),
-                           ', '.join((str(brand_id) for brand_id in store_list[:10]))))
-    return store_list
+def unicodize(record):
+    new_record = {}
+    for k in record:
+        v = record[k]
+        k1 = k.decode('utf-8') if isinstance(k, str) else k
+        v1 = v.decode('utf-8') if isinstance(v, str) else v
+        new_record[k1] = v1
+    return new_record
 
 
-def geocode_query(db, id_range=None, extra_condition=None):
+def geocode_query(db, id_range=None, extra_condition=None, overwrite=False, logger=logging.getLogger()):
     """
     Perform the geocode_query with the address data.
     :param db:
@@ -148,84 +216,121 @@ def geocode_query(db, id_range=None, extra_condition=None):
     :raise:
     """
 
+    def get_idstores_list(db, overwrite=False, id_range=None, extra_condition=None):
+        """
+        Get the list of all idstores.
+        :param db:
+        :param excluded: ids of excluded brands, iterable.
+        :param skip_existing: skip records which already have geocode data?
+        :param id_range:
+        """
+        extra_condition = list(extra_condition) if extra_condition else []
+        extra_condition.append('flag=1')
+        if not overwrite:
+            extra_condition.append('geo_queried="N/A"')
+        if id_range:
+            extra_condition.append(str.format('(idstores BETWEEN {0} AND {1})', *id_range))
+
+        statement = 'SELECT idstores FROM stores'
+        if len(extra_condition) > 0:
+            statement = str.format('{0} WHERE {1}', statement, ' && '.join(extra_condition))
+        statement += ' ORDER BY idstores'
+        db.query(statement)
+        result = db.store_result().fetch_row(maxrows=0)
+        store_list = tuple(int(v[0]) for v in result)
+        logger.info(str.format('{0} records fetched: {1}...', len(store_list),
+                               ', '.join((str(brand_id) for brand_id in store_list[:10]))))
+        return store_list
+
     def gen_search_list(result):
         """
         Generate search terms in the following formats: addr,region,country
         :param result:
         """
-        country = result['country_e']
-        if not country or not country.strip():
-            country = u''
+        country, province, city = (result[key] for key in ('country_e', 'province_e', 'city_e'))
+        if result['addr_e']:
+            addr = result['addr_e']
+        elif result['addr_c']:
+            addr = result['addr_c']
+        elif result['addr_l']:
+            addr = result['addr_l']
         else:
-            country = country.decode('utf-8').strip()
-
-        province = result['province_e']
-        if not province or not province.strip():
-            province = u''
-        else:
-            province = province.decode('utf-8').strip()
-
-        city = result['city_e']
-        if not city or not city.strip():
-            city = u''
-        else:
-            city = city.decode('utf-8').strip()
-
-        if result['addr_e'] and result['addr_e'].strip():
-            addr = result['addr_e'].decode('utf-8').strip()
-        elif result['addr_c'] and result['addr_c'].strip():
-            addr = result['addr_c'].decode('utf-8').strip()
-        elif result['addr_l'] and result['addr_l'].strip():
-            addr = result['addr_l'].decode('utf-8').strip()
-        else:
-            logger.error(unicode.format(u'Address missing for {0}: {1}', idstore, result))
-            db.query(unicode.format(u'UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}',
-                                    idstore).encode('utf-8'))
+            logger.error(unicode.format(u'Address missing for idstores={0}', idstores))
+            db.query(str.format('UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}', idstores))
             return ()
-            # Remove postal codes from the address
+
+        # Remove postal codes from the address
         addr = re.sub(ur'\d{4,}', u'', addr)
         return (','.join((addr, city, country)), addr)
 
 
-    # The following brands are excluded from the fetch.
-    # excluded_brand = {10004, 10095, 10123, 10170, 10196, 10227, 10277, 10279, 10318, 10359, 10361, 10363, 10017, 10309,
-    #                   10371}
+    def filter_geo_results(results, loc_o):
+        """
+        Find the nearest result to loc_o
+        :param results:
+        """
+        distances = tuple(map(lambda r: calc_distance(loc_o, tuple(float(r['geometry']['location'][k])
+                                                                   for k in ('lat', 'lng'))), results))
 
-    # Overwrite existing geocode data?
-    overwrite = False
-    idstores_list = get_idstores_list(db, id_range=id_range, extra_condition=extra_condition)
+        return dict((idx, distances[idx]) for idx in xrange(len(results)))
+
+
+    extra_condition = list(extra_condition) if extra_condition else []
+    db.query('SET AUTOCOMMIT=1')
+    idstores_list = get_idstores_list(db, id_range=id_range, extra_condition=extra_condition, overwrite=overwrite)
     total_cnt = len(idstores_list)
     for i in xrange(total_cnt):
-        idstore = idstores_list[i]
-        db.query(str.format(
-            'SELECT * FROM stores WHERE idstores={0}',
-            idstore))
-        record_set = db.store_result()
-        result = record_set.fetch_row(how=1, maxrows=1)[0]
+        idstores = idstores_list[i]
+        db.query(str.format('SELECT * FROM stores WHERE idstores={0}', idstores))
+        result = unicodize(db.store_result().fetch_row(how=1)[0])
 
-        geo_result = None
-        search_term = u''
-        for search_term in gen_search_list(result):
-            geo_result = geosense.geocode(addr=search_term, retry=5, logger=logger)
-            if geo_result and len(geo_result) >= 1:
+        if result['lat'] and result['lng']:
+            loc_o = tuple(float(result[key]) for key in ('lat', 'lng'))
+        else:
+            loc_o = None
+
+        geo_result_list = []
+        search_term_list = []
+        for term in gen_search_list(result):
+            temp = geosense.geocode2(addr=term, retry=5, logger=logger)
+            geo_result_list += temp
+            search_term_list += [term] * len(temp)
+            # If loc_o doesn't exist, there's no need to get all the geo_results
+            if len(geo_result_list) >= 1 and not loc_o:
                 break
+
+        if len(geo_result_list) == 0:
+            geo_result = None
+        elif loc_o:
+            distances = filter_geo_results(geo_result_list, loc_o)
+            sorted_distances = sorted(distances, key=lambda key: distances[key])
+            dist_threshold = 100
+            if sorted_distances[0] < dist_threshold:
+                geo_result = geo_result_list[sorted_distances[0]]
+                search_term = search_term_list[sorted_distances[0]]
+            else:
+                geo_result = geo_result_list[0]
+                search_term = search_term_list[0]
+        else:
+            geo_result = geo_result_list[0]
+            search_term = search_term_list[0]
+
         if not geo_result:
-            logger.error(unicode.format(u'No geocode result returned for {0} / address={1}', idstore, search_term))
-            db.query(unicode.format(u'UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}',
-                                    idstore).encode('utf-8'))
+            logger.error(unicode.format(u'No geocode result returned for {0}', idstores))
+            db.query(str.format('UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}', idstores))
             continue
-        geo_result = geo_result[0]
+
         geo_keys = {u'locality', u'sublocality', u'street_number', u'country', u'postal_code', u'establishment',
                     u'neighborhood', u'postal_town'}
         for j in xrange(1, 4):
             geo_keys.add(unicode.format(u'administrative_area_level_{0}', j))
-        geo_dict = dict((unicode.format(u'geo_{0}', v), u'') for v in geo_keys)
+        geo_dict = dict((unicode.format(u'geo_{0}', v), None) for v in geo_keys)
         for k in geo_keys:
-            geo_dict[unicode.format(u'geo_{0}_short', k)] = u''
+            geo_dict[unicode.format(u'geo_{0}_short', k)] = None
         geo_keys = {u'formatted_address', u'query_param'}
         for k in geo_keys:
-            geo_dict[unicode.format(u'geo_{0}', k)] = u''
-        geo_dict[u'addr_hash'] = u''
+            geo_dict[unicode.format(u'geo_{0}', k)] = None
+        geo_dict[u'addr_hash'] = None
         geo_keys = ((u'bounds', u'viewport'), (u'ne', u'sw'), (u'lat', u'lng'))
         for k in (unicode.format(u'geo_{0}_{1}_{2}', k0, k1, k2) for k0 in geo_keys[0] for k1 in geo_keys[1]
                   for k2 in geo_keys[2]):
@@ -239,13 +344,12 @@ def geocode_query(db, id_range=None, extra_condition=None):
                                                                      'geometry', 'partial_match', 'types',
                                                                      'postcode_localities'}):
             raise LookupError(unicode.format(u'Unknown fields {0} for {1} / address={2}', set(geo_result.keys()),
-                                             idstore, search_term))
+                                             idstores, search_term))
 
         # Parse the geocode result which is in JSON format.
         if 'address_components' not in geo_result:
-            logger.error(unicode.format(u'No address_components found for {0} / address={1}', idstore, search_term))
-            db.query(unicode.format(u'UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}',
-                                    idstore).encode('utf-8'))
+            logger.error(unicode.format(u'No address_components found for {0} / address={1}', idstores, search_term))
+            db.query(str.format('UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}', idstores))
             continue
         for item in geo_result['address_components']:
             # type = ['political']
@@ -261,7 +365,7 @@ def geocode_query(db, id_range=None, extra_condition=None):
                                          'premise', 'subpremise', 'establishment', 'neighborhood',
                                          'postal_town', 'colloquial_area', 'post_box', 'street_address'}) == 0:
                 raise LookupError(unicode.format(u'Unknown type: {0} for {1} / address={2}', item['types'],
-                                                 idstore, search_term))
+                                                 idstores, search_term))
             if 'street_number' in item['types']:
                 geo_dict['geo_street_number'], geo_dict['geo_street_number_short'] = item['long_name'], item[
                     'short_name']
@@ -313,21 +417,19 @@ def geocode_query(db, id_range=None, extra_condition=None):
                 continue
 
         if 'geometry' not in geo_result:
-            logger.error(unicode.format(u'No geometry found for {0} / address={1}', idstore, search_term))
-            db.query(unicode.format(u'UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}',
-                                    idstore).encode('utf-8'))
+            logger.error(unicode.format(u'No geometry found for {0} / address={1}', idstores, search_term))
+            db.query(str.format('UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}', idstores))
             continue
         geometry = geo_result['geometry']
         if 'location' not in geometry:
-            logger.error(unicode.format(u'No location data found for {0} / address={1}', idstore, search_term))
-            db.query(unicode.format(u'UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}',
-                                    idstore).encode('utf-8'))
+            logger.error(unicode.format(u'No location data found for {0} / address={1}', idstores, search_term))
+            db.query(str.format(u'UPDATE stores SET geo_queried="FAIL" WHERE idstores={0}', idstores))
             continue
 
         # Make sure all keys in geometry are registered
         if not (set(geometry.keys()) <= {'bounds', 'viewport', 'location_type', 'location'}):
             raise LookupError(unicode.format(u'Unknown fields {0} for {1} / address={2}', geometry.keys(),
-                                             idstore, search_term))
+                                             idstores, search_term))
         geo_dict['geo_location_lat'] = float(geometry['location']['lat'])
         geo_dict['geo_location_lng'] = float(geometry['location']['lng'])
         if 'bounds' in geometry:
@@ -367,15 +469,11 @@ def geocode_query(db, id_range=None, extra_condition=None):
                 v = re.sub(ur'(?<!\\)"', ur'\\"', unicode(v))
                 term_list.append(unicode.format(u'{0}="{1}"', k, v))
 
-        # FIXME If certain keys are not present in term_list, e.g. geo_locality, the generated update_str
-        # will leave corresponding fields alone instead of modifying them. If these fields happen to have old values,
-        # they will be kept untouched.
         update_str = unicode.format(u'UPDATE stores SET ') + u', '.join(term_list) + \
-                     unicode.format(u' WHERE idstores={0}', idstore)
+                     unicode.format(u' WHERE idstores={0}', idstores)
         db.query(update_str.encode('utf-8'))
-        db.commit()
         logger.info(unicode.format(u'{0}/{1} completed({2:.2%}): idstores={3}', i, total_cnt,
-                                   float(i) / total_cnt, idstore))
+                                   float(i) / total_cnt, idstores))
 
     logger.info('Done.')
 
@@ -400,8 +498,27 @@ def insert_new_city(db, result, ratio_threshold=10, big_cities=None):
     city_key = []
     # Determine the city: if any of the following fields appears in the predefined city list,
     # if will be set as the city name.
-    for k in (u'geo_locality', u'geo_administrative_area_level_2', u'geo_administrative_area_level_3',
-              u'geo_sublocality', u'geo_administrative_area_level_1'):
+    admin_candidates = [u'geo_locality', u'geo_administrative_area_level_2', u'geo_administrative_area_level_3',
+                        u'geo_sublocality']
+    if result[u'geo_administrative_area_level_1'] and \
+                    result[u'geo_administrative_area_level_1'].upper().strip() in \
+                    {u'TOKYO', u'SHANGHAI', u'BEIJING', u'CHONGQING', u'TIANJIN'}:
+        admin_candidates.insert(0, u'geo_administrative_area_level_1')
+        temp = result[u'geo_administrative_area_level_1'].upper().strip()
+        city_set.add(temp)
+        city_info[u'region'] = temp
+    if result[u'geo_country'] and result[u'geo_country'].upper().strip() in {u'HONG KONG', u'MACAU'}:
+        admin_candidates.insert(0, u'geo_country')
+        temp = result[u'geo_country'].upper().strip()
+        city_set.add(temp)
+        city_info[u'region'] = temp
+        city_info[u'country'] = u'CHINA'
+        city_info[u'Code2'] = u'CN'
+    elif result[u'geo_country'] and result[u'geo_country'].upper().strip() == u'TAIWAN':
+        city_info[u'region'] = result[u'geo_country'].upper().strip()
+        city_info[u'country'] = u'CHINA'
+        city_info[u'Code2'] = u'CN'
+    for k in admin_candidates:
         if not result[k]:
             continue
         elif re.search(u'\d+', result[k].strip()):
@@ -411,20 +528,23 @@ def insert_new_city(db, result, ratio_threshold=10, big_cities=None):
             city_info[u'city'] = result[k].upper()
             city_key.append(k)
             break
+        elif re.search(ur'city\s*$', result[k], flags=re.I):
+            city_info[u'city'] = result[k].upper()
+            city_set.add(city_info[u'city'])
+            city_key.append(k)
+            break
         else:
-            db.query(str.format('SELECT * FROM city WHERE city_e="{0}" AND region_e="{1}" AND country_e="{2}"',
-                                result[k].encode('utf-8'), city_info[u'region'].encode('utf-8'),
-                                city_info[u'country'].encode('utf-8')))
+            db.query(unicode.format(u'SELECT * FROM city WHERE city_e="{0}" AND region_e="{1}" AND country_e="{2}"',
+                                    result[k], city_info[u'region'], city_info[u'country']).encode('utf-8'))
             record_set = db.store_result()
             if record_set.num_rows() > 0:
                 city_info[u'city'] = result[k].upper()
+                city_set.add(city_info[u'city'])
                 city_key.append(k)
                 break
             else:
-                # Remove level-1 records from the Bing search list, because they are prone to false positive.
-                if k != u'geo_administrative_area_level_1':
-                    term_list.append(result[k].upper())
-                    city_key.append(k)
+                term_list.append(result[k].upper())
+                city_key.append(k)
 
     is_default = False
     # term_list = tuple(set(term_list))
@@ -438,7 +558,6 @@ def insert_new_city(db, result, ratio_threshold=10, big_cities=None):
             # Determine the city name via Google Search
             # term_list = tuple(set(term_list))
             cnt_list = results_stats(term_list)
-            # time.sleep(0.5)
             d = dict((term_list[i], (cnt_list[i], city_key[i])) for i in xrange(len(cnt_list)))
             temp = tuple((term_list[i], cnt_list[i], city_key[i]) for i in xrange(len(cnt_list)))
             sorted_key = sorted(temp, key=lambda k: d[k[0]][0], reverse=True)
@@ -459,36 +578,39 @@ def insert_new_city(db, result, ratio_threshold=10, big_cities=None):
     if u'city' not in city_info:
         return None
 
-
     # Check whether the city exists
     db.query(str.format('SELECT idcity FROM city WHERE city_e="{0}" AND region_e="{1}" AND country_e="{2}"',
                         *map(lambda k: city_info[k].encode('utf-8'), (u'city', u'region', u'country'))))
     record_set = db.store_result()
     if record_set.num_rows() == 0:
-        # Get the chinese version
-        geo_result = geosense.geocode(addr=result[u'geo_formatted_address'], lang='zh')
-        city_info[u'city_c'] = u''
-        city_info[u'region_c'] = u''
-        city_info[u'country_c'] = u''
-        city_key = city_key[0][4:]
-        if geo_result and len(geo_result) > 0:
-            geo_result = geo_result[0][u'address_components']
-            for item in geo_result:
-                if city_key in item[u'types']:
-                    city_info[u'city_c'] = remove_geo_suffix(item[u'long_name'])
-                    continue
-                elif u'administrative_area_level_1' in item[u'types']:
-                    city_info[u'region_c'] = remove_geo_suffix(item[u'long_name'])
-                elif u'country' in item[u'types']:
-                    city_info[u'country_c'] = item[u'long_name']
-                    # INSERT
-        db.query(str.format('INSERT INTO city (city_e, region_e, country_e, city_c, region_c, country_c) '
-                            'VALUES ("{0}","{1}","{2}","{3}","{4}","{5}")',
-                            *map(lambda k: city_info[k].encode('utf-8'), (u'city', u'region', u'country', u'city_c',
-                                                                          u'region_c', u'country_c'))))
-        db.commit()
+        # # Get the chinese version
+        # geo_result = geosense.geocode(addr=result[u'geo_formatted_address'], lang='zh')
+        # city_info[u'city_c'] = u''
+        # city_info[u'region_c'] = u''
+        # city_info[u'country_c'] = u''
+        # city_key = city_key[0][4:]
+        # if geo_result and len(geo_result) > 0:
+        #     geo_result = geo_result[0][u'address_components']
+        #     for item in geo_result:
+        #         if city_key in item[u'types']:
+        #             city_info[u'city_c'] = remove_geo_suffix(item[u'long_name'])
+        #             continue
+        #         elif u'administrative_area_level_1' in item[u'types']:
+        #             city_info[u'region_c'] = remove_geo_suffix(item[u'long_name'])
+        #         elif u'country' in item[u'types']:
+        #             city_info[u'country_c'] = item[u'long_name']
+        #             # INSERT
+        # db.query(str.format('INSERT INTO city (city_e, region_e, country_e, city_c, region_c, country_c) '
+        #                     'VALUES ("{0}","{1}","{2}","{3}","{4}","{5}")',
+        #                     *map(lambda k: city_info[k].encode('utf-8'), (u'city', u'region', u'country', u'city_c',
+        #                                                                   u'region_c', u'country_c'))))
+
+        db.query(str.format('INSERT INTO city (city_e, region_e, country_e) '
+                            'VALUES ("{0}","{1}","{2}")',
+                            *map(lambda k: city_info[k].encode('utf-8'), (u'city', u'region', u'country'))))
         # Get idcity
-        db.query('SELECT MAX(idcity) FROM city')
+        db.query(str.format('SELECT idcity FROM city WHERE city_e="{0}" && region_e="{1}" && country_e="{2}"',
+                            *map(lambda k: city_info[k].encode('utf-8'), (u'city', u'region', u'country'))))
         record_set = db.store_result()
         if record_set.num_rows() == 0:
             return None
@@ -500,8 +622,7 @@ def insert_new_city(db, result, ratio_threshold=10, big_cities=None):
 
 def get_addr_hash(db):
     db.query('SELECT DISTINCT addr_hash, idcity FROM stores')
-    record_set = db.store_result()
-    results = db.store_result().fetch_row(maxrows=0)
+    results = db.store_result().fetch_row(maxrows=0, how=1)
     addr_hash = {}
     for item in results:
         if not item['addr_hash']:
@@ -514,6 +635,7 @@ def process_geocode_data(db, id_range=None, refine=False, extra_condition=None, 
     """
     Deduct city information from the geocode data
     """
+    db.query('SET AUTOCOMMIT=1')
     if not db_local:
         db_local = db
     db_local.query('SELECT DISTINCT Code2 FROM world.country')
@@ -582,10 +704,10 @@ def process_geocode_data(db, id_range=None, refine=False, extra_condition=None, 
             if len(result) == 0:
                 break
             else:
-                result = result[0]
+                result = unicodize(result[0])
             idx += 1
 
-            result = dict((k.decode('utf-8'), result[k].decode('utf-8') if result[k] else None) for k in result.keys())
+            result = dict((k, result[k] if result[k] else None) for k in result.keys())
             result[u'idstores'] = int(result[u'idstores'])
             idstores = result[u'idstores']
             max_idstores = result[u'idstores']
@@ -610,11 +732,8 @@ def process_geocode_data(db, id_range=None, refine=False, extra_condition=None, 
                 idcity, is_default = temp
                 addr_hash_dict[fingerprint] = idcity
 
-                db.query(str.format('INSERT INTO city_fingerprints (fingerprint, idcity, is_default) VALUES '
-                                    '("{0}", {1}, {2})', fingerprint, idcity, is_default))
-
             db.query(
-                str.format('UPDATE stores SET idcity={0}, geo_locality_default={1}, addr_hash={3} WHERE idstores={2}',
+                str.format('UPDATE stores SET idcity={0}, geo_locality_default={1}, addr_hash="{3}" WHERE idstores={2}',
                            idcity, is_default, idstores, fingerprint))
             logger.info(unicode.format(u'{0}/{1} ({2:.2%}): idstores={3}, idcity={4}, is_default={5}',
                                        idx, total_cnt, float(idx) / total_cnt, idstores, idcity, is_default))
@@ -734,7 +853,7 @@ def remove_geo_suffix(term):
     #     new_term = term[:-3]
     if re.search(u'自治', term):
         pass
-    elif term[-1] in (u'省', u'市', u'区', u'州', u'镇', u'县') and len(term) > 2:
+    elif term[-1] in (u'省', u'市') and len(term) > 2:
         new_term = term[:-1]
     return new_term
 
@@ -794,27 +913,27 @@ def import_manual_records(db, filename):
     logger.info(u'Done.')
 
 
-def update_city_info(db, id_range=None, extra_condition=None):
-    if not extra_condition:
-        extra_condition = []
-    cond = list(extra_condition)
+def update_city_info(db, id_range=None, extra_condition=None, overwrite=False):
+    db.query('SET AUTOCOMMIT=1')
+    extra_condition = list(extra_condition) if extra_condition else []
+    if not overwrite:
+        extra_condition.append('(lat IS NULL || lng IS NULL)')
     if id_range:
-        cond.append(str.format('(idcity>={0} AND idcity<{1})', *id_range))
+        extra_condition.append(str.format('(idcity BETWEEN {0} AND {1})', *id_range))
 
-    statement = 'SELECT * FROM city WHERE (lat IS NULL OR lng IS NULL)'
-    if len(cond) > 0:
-        statement = ' AND '.join([statement, ] + cond)
+    statement = str.format('SELECT * FROM city WHERE {0}', ' && '.join(extra_condition))
     db.query(statement)
     record_set = db.store_result()
     total_cnt = record_set.num_rows()
     logger.info(unicode.format(u'{0} cities found', total_cnt))
     for i in xrange(total_cnt):
-        record = record_set.fetch_row(how=1)[0]
-        addr = (','.join(map(lambda k: record[k], ('city_e', 'region_e', 'country_e')))).decode('utf-8')
+        record = unicodize(record_set.fetch_row(how=1)[0])
+        addr = u','.join(map(lambda k: record[k], ('city_e', 'region_e', 'country_e')))
         idcity = int(record['idcity'])
-        geo_result = geosense.geocode(addr)
-        if not geo_result:
+        geo_result = geosense.geocode2(addr)
+        if len(geo_result) == 0:
             continue
+        addr_en = geo_result[0]['address_components']
         geo_result = geo_result[0]['geometry']
         loc_map = {}
         if 'location' in geo_result:
@@ -835,10 +954,42 @@ def update_city_info(db, id_range=None, extra_condition=None):
         for k in loc_map:
             loc_map[k] = float(loc_map[k])
 
+        # Chinese version
+        addr_zh_map = {}
+        geo_result_zh = geosense.geocode2(addr, lang='zh')
+        if len(geo_result_zh) > 0:
+            addr_zh = geo_result_zh[0]['address_components']
+            city_key = None
+            region_key = None
+            country_key = None
+            for addr in addr_en:
+                if record[u'city_e'] in (addr[key].upper() for key in ('long_name', 'short_name')):
+                    city_key = addr['types'][0]
+                    break
+
+            for addr in addr_zh:
+                if u'country' in addr[u'types']:
+                    addr_zh_map[u'country_c'] = addr[u'long_name']
+                    addr_zh_map[u'country_c_short'] = addr[u'short_name']
+                elif u'administrative_area_level_1' in addr[u'types']:
+                    addr_zh_map[u'region_c'] = remove_geo_suffix(addr[u'long_name'])
+                    addr_zh_map[u'region_c_short'] = remove_geo_suffix(addr[u'short_name'])
+
+                if city_key in addr[u'types']:
+                    addr_zh_map[u'city_c'] = remove_geo_suffix(addr[u'long_name'])
+                    addr_zh_map[u'city_c_short'] = remove_geo_suffix(addr[u'short_name'])
+
+            if u'country_c' in addr_zh_map and addr_zh_map[u'country_c'] in {u'台灣', u'澳門', u'香港', u'澳门', u'台湾'}:
+                addr_zh_map[u'country_c'] = u'中国'
+                addr_zh_map[u'country_c_short'] = u'CN'
+
         statement = ', '.join(str.format('{0}={1}', k, loc_map[k]) for k in loc_map.keys())
+        statement += (
+            u', ' + u', '.join(
+                unicode.format(u'{0}="{1}"', k, addr_zh_map[k].upper().strip()) for k in addr_zh_map.keys())).encode(
+            'utf-8')
         statement = 'UPDATE city SET ' + statement + str.format(' WHERE idcity={0}', idcity)
         db.query(statement)
-        db.commit()
         logger.info(
             unicode.format(u'{0}/{1} ({2:.2%}) completed: idcity={3}', i, total_cnt, float(i) / total_cnt, idcity))
 
@@ -995,6 +1146,9 @@ def proc_tokyo(db):
 
 
 if __name__ == "__main__":
+    logging.config.fileConfig('geocode_fetch.cfg')
+    logger = logging.getLogger('firenzeLogger')
+
     host, database, user, passwd, port = '127.0.0.1', 'brand_stores', 'root', '', 3306
     for i in xrange(1, len(sys.argv), 2):
         token = sys.argv[i]
@@ -1014,17 +1168,12 @@ if __name__ == "__main__":
         elif cmd == 'h':
             host = value
 
-    # geocode_query()
-    # update_geo_shift(
-    #     excluded_brand={10004, 10095, 10123, 10170, 10196, 10227, 10277, 10279, 10318, 10359, 10361, 10363})
-
-    # update_city_info()
-
-    # db_local = _mysql.connect(host='localhost', port=3306, user='root', passwd='123456', db='brand_stores')
-    # db_local.query("SET NAMES 'utf8'")
-
     db = _mysql.connect(host=host, port=port, user=user, passwd=passwd, db=database)
     db.query("SET NAMES 'utf8'")
+
+    detect_city_aggr(db, threshold2=5)
+    # load_city_aggr(db, u'city_mapping.txt')
+
     # db.query("SET AUTOCOMMIT=0")
 
     # tel_formatter(db, extra_condition='(brand_id in (10062, 10127))', logger=logger)
@@ -1032,21 +1181,19 @@ if __name__ == "__main__":
     # gen_addr_hash(db)
     # clean_up(db)
 
-    # geocode_query(db, extra_condition=('country_e="JAPAN"',))
+    # geocode_query(db, extra_condition=('(country_e="hong kong" || geo_country="hong kong")',),
+    #               overwrite=False, logger=logger)
     # proc_tokyo(db)
-    # process_geocode_data(db, refine=False, extra_condition=('geo_country="CHINA"',), db_local=db)
-    # process_geocode_data(db, refine=True, extra_condition=('(brand_id in (10062, 10127))',))
-    # update_city_info(db, extra_condition=('(country_e="CHINA")',))
+    # process_geocode_data(db, refine=True, extra_condition=('geo_country="taiwan"',), db_local=db)
+    # update_city_info(db, extra_condition=('(region_e="taiwan")',), overwrite=False)
+    # update_city_info(db)
 
 
     # set_stores_city(db, extra_condition=('(country_e="CHINA")',))
-    update_geo_shift(db, overwrite=True, extra_condition=('(geo_country="CHINA" AND flag=1)',))
+    # update_geo_shift(db, overwrite=False, extra_condition=('(geo_country="CHINA" AND flag=1)',))
 
     # import_manual_records(db, u'10237-Maison Martin Margiela.csv')
     # func(db)
 
-    # db.commit()
     db.close()
     # db_local.close()
-
-    # results_stats(('Beijing,China',))

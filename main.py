@@ -7,9 +7,14 @@ import string
 import time
 import traceback
 import itertools
+import chanel
 
 import common
 import geosense as gs
+import prada2
+import geocode_fetch
+import logging.config
+import viktor_rolf
 
 __author__ = 'Zephyre'
 
@@ -785,15 +790,17 @@ def test():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(filename=str.format('{1}.log', 'test'), format='%(asctime)s:%(levelname)s:\t%(message)s\t%(filename)s:%(lineno)d', level=logging.INFO)
-
-
-    test_flag = True
+    test_flag = False
     # passwd = 'rose123'
     passwd = '123456'
+
+    logging.config.fileConfig('geocode_fetch.cfg')
+    logger = logging.getLogger('firenzeLogger')
+
     if test_flag:
-        test()
+        print(geocode_fetch.calc_distance((-70.3, 35.2), (-4.1, 44.2)))
     else:
-        pass
         # longchamp.fetch(passwd=passwd)
         # bershka.fetch(passwd=passwd)
+        # chanel.fetch(passwd=passwd,logger=logger)
+        viktor_rolf.fetch(None, passwd=passwd, logger=logger)

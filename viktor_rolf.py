@@ -1,246 +1,154 @@
 # coding=utf-8
-import re
+
+import json
+import logging
 import string
-import common
+import re
+import traceback
+import common as cm
 import geosense as gs
+from pyquery import PyQuery as pq
 
 __author__ = 'Zephyre'
 
-brand_id = 10377
-brandname_e = 'Viktor & Rolf'
-brandname_c = u'维果罗夫'
-url_fashion = 'http://www.viktor-rolf.com/storelocator/fashion/'
-url_fragrance = 'http://www.viktor-rolf.com/storelocator/fragrances/'
+db = None
 
 
-def fetch_stores(data):
-    """
-    获得门店信息
-    :param data:
-    :return:
-    """
-    url = data['url']
-    try:
-        html = common.get_data(data['url'])
-    except Exception:
-        print 'Error occured: %s' % url
-        dump_data = {'level': 1, 'time': common.format_time(), 'data': {'url': url}, 'brand_id': brand_id}
-        common.dump(dump_data)
-        return []
-
-    # 第二个<ul>...</ul>
-    start = 0
-    for i in xrange(2):
-        start = html.find('<ul>', start)
-        if start == -1:
-            return []
-        start += len('<ul>')
-    end = html.find('</ul>', start)
-    html = html[start:end]
+def fetch_fashion(data):
+    url = data['url_fashion']
+    raw_body = pq(url=url)
+    body = raw_body('#content li')
 
     store_list = []
-    for m in re.findall(ur'<li>(.+?)</li>', html, re.S):
-        entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
-        entry[common.store_type] = 'FASHION'
-        m1 = re.findall(ur'<h2>(.+?)</h2>', m)
-        if len(m1) > 0:
-            entry[common.name_e] = common.reformat_addr(m1[0])
+    for store in (pq(temp) for temp in raw_body):
+        entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
 
-        # Google Maps网址
-        m1 = re.findall(ur'href="(https://maps.google.com/maps[^\s]+?)"', m)
-        if len(m1) > 0:
-            entry[common.url] = m1[0]
+        temp = store('h2')
+        if len(temp) > 0:
+            entry[cm.name_e] = temp[0].text.decode('utf-8')
 
-        addr = common.reformat_addr('\n\r'.join([m1 for m1 in re.findall(ur'<p>(.+?)</p>', m)]))
-        entry[common.addr_e] = addr
-        terms = addr.split(',')
-
-        # 是否所有的geosensing都未命中？
-        hit_flag = False
-
-        # 最后一项是否为国家
-        country = ''
-        ret = gs.look_up(terms[-1], 1)
-        if ret is not None:
-            entry[common.country_e] = ret['name_e']
-            country = ret['name_e']
-            terms = terms[:-1]
-            hit_flag = True
-
-        # 查找州和城市
-        m = re.match(ur'.*(\d{5,})', terms[-1])
-        zip_cdt = ''
-        if m is not None:
-            zip_cdt = m.group(1)
-        tmp = re.sub(ur'\d{5,}', '', terms[-1]).strip().upper()
-        ret = gs.look_up(terms[-1], 2)
-        if ret is not None:
-            entry[common.province_e] = ret['name_e']
-            entry[common.zip_code] = zip_cdt
-            terms = terms[:-1]
-            hit_flag = True
-
-        ret = gs.look_up(terms[-1], 3)
-        if ret is not None:
-            entry[common.city_e] = ret['name_e']
-            entry[common.zip_code] = zip_cdt
-            hit_flag = True
-
-        if not hit_flag:
-            # 所有都未命中，输出：
-            common.write_log('Failed in geosensing: %s' % addr)
-
-        gs.field_sense(entry)
-
-        print '%s Found store: %s, %s (%s, %s)' % (
-            brandname_e, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
-            entry[common.continent_e])
-        db.insert_record(entry, 'stores')
-        store_list.append(entry)
-
-    return store_list
+        temp = store('p')
+        if len(temp) > 0:
+            term_list = []
+            for term in temp:
+                term_list.append(cm.reformat_addr(unicode(pq(term))))
+            entry[cm.addr_e] = u', '.join(term_list).strip()
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
-    global db
-    db = common.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
 
-    fetch_fashion(level, data, user, passwd)
-    fetch_fragrance(level, data, user, passwd)
-
-    db.disconnect_db()
-
-
-def get_frag_countries(url):
-    # 获得国家代码
-    """
-    获得国家的名字和代码
-    :rtype : [{'id':**, 'country':**}, ...]
-    :param url:
-    :return:
-    """
-    try:
-        html = common.get_data(url)
-    except Exception:
-        print 'Error occured: %s' % url_fragrance
-        dump_data = {'level': 1, 'time': common.format_time(), 'data': {'url': url_fragrance},
-                     'brand_id': brand_id}
-        common.dump(dump_data)
-        return [], False
-
-    start = html.find('<select name="country" id="id_country">')
-    if start == -1:
-        return [], False
-    sub, s, e = common.extract_closure(html[start:], ur'<select\b', ur'</select>')
-    if e == 0:
-        return [], False
-    return [{'id': string.atoi(m[0]), 'country': m[1].strip().upper()}
-            for m in re.findall(ur'<option value="(\d+)".*?>(.+?)</option>', sub)]
-
-
-def get_frag_stores(data):
-    try:
-        html = common.get_data(data['url'], {'country': data['country'], 'city_postal': '', 'page': data['page']})
-    except Exception:
-        print 'Error occured: %s' % url_fragrance
-        dump_data = {'level': 1, 'time': common.format_time(), 'data': {'url': url_fragrance},
-                     'brand_id': brand_id}
-        common.dump(dump_data)
-        return [], False
-
-    print 'PARSING PAGE: %d' % data['page']
-    start = html.find('<section id="content" class="content">')
-    if start == -1:
-        return [], False
-    html, start, end = common.extract_closure(html[start:], ur'<section\b', ur'</section>')
-    if end == 0:
-        return [], False
-
-    # 找到总页面数量
-    tot_page = 0
-    start = html.find('<div class="pagination">')
-    if start != -1:
-        pagination, start, end = common.extract_closure(html[start:], ur'<div\b', ur'</div>')
-        m = re.findall(ur'<a href=".*?" class="page">(\d+)</a>', pagination)
-        if len(m) > 0:
-            tot_page = string.atoi(m[-1])
-
-    # 开始寻找门店
-    store_list = []
-    for m in re.findall(ur'<li>(.*?)</li>', html, re.S):
-        entry = common.init_store_entry(brand_id, brandname_e, brandname_c)
-        entry[common.store_type] = 'FRAGRANCE'
-        m1 = re.findall(ur'<h2>(.+?)</h2>', m)
-        if len(m1) > 0:
-            entry[common.name_e] = common.html2plain(m1[0].strip())
-
-        m1 = re.findall(ur'href="(.+?)"', m)
-        if len(m1) > 0:
-            entry[common.url] = m1[0]
-
-        addr = common.reformat_addr(','.join(re.findall(ur'<p>(.+?)</p>', m)))
-        entry[common.addr_e] = addr
-        terms = addr.split(', ')
-        ret = gs.look_up(terms[-1], 1)
-        if ret is not None:
-            entry[common.country_e] = ret['name_e']
-
-        if len(terms)>=2:
-            m1 = re.match(ur'.*?(\d+)\s+(.*)', terms[-2])
-            if m1 is not None:
-                ret = gs.look_up(m1.group(2).strip().upper(), 3)
-                if ret is not None:
-                    entry[common.city_e] = ret['name_e']
-                else:
-                    if len(re.findall('(\S+)', m1.group(2).strip().upper()))==1 and \
-                                    len(re.findall('(\d+)', m1.group(2).strip().upper()))==0:
-                        entry[common.city_e] = m1.group(2).strip().upper()
-                        entry[common.zip_code] = m1.group(1).strip()
-
-        gs.field_sense(entry)
-        print '(%s / %d) Found store: %s, %s (%s, %s)' % (
-            brandname_e, brand_id, entry[common.name_e], entry[common.addr_e], entry[common.country_e],
-            entry[common.continent_e])
-        db.insert_record(entry, 'stores')
-        store_list.append(entry)
-
-    if tot_page > data['page']:
-        # more
-        d = dict(data)
-        d['page'] = data['page'] + 1
-        store_list.extend(get_frag_stores(d))
-        return store_list
-    else:
-        return store_list
+            # try:
+            #     body = cm.get_data(url)
+            # except Exception, e:
+            #     cm.dump('Error in fetching stores: %s' % url, log_name)
+            #     return ()
+            #
+            # m1 = re.search(ur'var\s+markers\s*=\s*\[', body)
+            # if not m1:
+            #     cm.dump('Error in fetching stores: %s' % url, log_name)
+            #     return ()
+            # body = body[m1.end() - 1:]
+            # m2 = re.search(ur'\]\s*;', body)
+            # if not m2:
+            #     cm.dump('Error in fetching stores: %s' % url, log_name)
+            #     return ()
+            # raw = json.loads(body[:m2.end() - 1])
+            #
+            # store_list = []
+            # for s in raw:
+            #     entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
+            #
+            #     try:
+            #         try:
+            #             entry[cm.lat] = string.atof(str(s['location'][0]))
+            #             entry[cm.lng] = string.atof(str(s['location'][1]))
+            #         except (KeyError, IndexError, ValueError, TypeError):
+            #             pass
+            #
+            #         s = s['content']
+            #         try:
+            #             entry[cm.name_e] = cm.html2plain(s['title']).strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #
+            #         tmp_list = s['analytics_label'].split('-')
+            #         entry[cm.country_e] = tmp_list[0]
+            #         entry[cm.city_e] = cm.extract_city(tmp_list[1])[0]
+            #
+            #         try:
+            #             entry[cm.addr_e] = cm.reformat_addr(s['address']).strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #
+            #         try:
+            #             entry[cm.fax] = s['fax'].strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #         try:
+            #             entry[cm.tel] = s['phone'].strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #         try:
+            #             entry[cm.email] = s['mail'].strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #         try:
+            #             entry[cm.url] = u'http://en.longchamp.com/store/map' + s['url'].strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #         try:
+            #             entry[cm.zip_code] = cm.html2plain(s['zipcode_town']).replace(tmp_list[1], '').strip()
+            #         except (KeyError, TypeError):
+            #             pass
+            #
+            #         gs.field_sense(entry)
+            #         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+            #         if ret[1] is not None and entry[cm.province_e] == '':
+            #             entry[cm.province_e] = ret[1]
+            #         if ret[2] is not None and entry[cm.city_e] == '':
+            #             entry[cm.city_e] = ret[2]
+            #         gs.field_sense(entry)
+            #
+            #         cm.dump('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+            #                                                                 entry[cm.name_e], entry[cm.addr_e],
+            #                                                                 entry[cm.city_e],
+            #                                                                 entry[cm.country_e], entry[cm.continent_e]),
+            #                 log_name)
+            #         db.insert_record(entry, 'stores')
+            #         store_list.append(entry)
+            #
+            #     except Exception as e:
+            #         cm.dump(traceback.format_exc(), log_name)
+            #         continue
+            #
+            # return tuple(store_list)
 
 
-def fetch_fragrance(level=1, data=None, user='root', passwd=''):
-    country_list = get_frag_countries(url_fragrance)
-    # country_list = [{'id': 2, 'country': 'Netherlands'},
-    #                 {'id':4,'country':'Luxembourg'}]
-    store_list = []
-    for c in country_list:
-        print 'Fetching %s' % c['country']
-        stores = get_frag_stores({'page': 1, 'country': c['id'], 'url': url_fragrance})
-        store_list.extend(stores)
-
-    return store_list
-
-
-def fetch_fashion(level=1, data=None, user='root', passwd=''):
-    def func(data, level):
+def fetch(db, level=0, data=None, user='root', passwd='', logger=None):
+    def func_fashion(db, data, level):
         """
         :param data:
-        :param level: 1: 洲；2：国家；3：城市；4：商店
+        :param level: 0：国家；1：城市；2：商店列表
         """
-        stores = fetch_stores(data)
-        return [{'func': None, 'data': s} for s in stores]
+        if level == 0:
+            # Stores
+            return [{'func': None, 'data': s} for s in fetch_fashion(data)]
+        else:
+            return ()
+
+    if not logger:
+        logger = logging.getLogger()
 
     # Walk from the root node, where level == 1.
     if data is None:
-        data = {'url': url_fashion}
-    results = common.walk_tree({'func': lambda data: func(data, 1), 'data': data})
+        data = {'url_fashion': 'http://www.viktor-rolf.com/storelocator/fashion/',
+                'brand_id': 10377, 'brandname_e': u'Viktor Rolf', 'brandname_c': u'维果罗夫'}
+
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+
+    results = cm.walk_tree({'func': lambda v: func_fashion(db, v, 0), 'data': data})
+    # db.disconnect_db()
 
     return results
+
+
+
