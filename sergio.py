@@ -31,7 +31,7 @@ def fetch_continents(data, logger):
     for item in body('option[value!="0"]'):
         d = data.copy()
         d['continent_id'] = int(item.attrib['value'])
-        d['continent_e'] = item.text.upper().strip().decode('utf-8')
+        d['continent_e'] = item.text.upper().strip()
         continents_list.append(d)
     return continents_list
 
@@ -55,7 +55,7 @@ def fetch_countries(data, logger):
     for item in body('option[value!="0"]'):
         d = data.copy()
         d['country_id'] = int(item.attrib['value'])
-        d['country_e'] = item.text.upper().strip().decode('utf-8')
+        d['country_e'] = item.text.upper().strip()
         country_list.append(d)
     return country_list
 
@@ -79,7 +79,7 @@ def fetch_cities(data, logger):
     for item in body('option[value!="0"]'):
         d = data.copy()
         d['city_id'] = int(item.attrib['value'])
-        d['city_e'] = item.text.upper().strip().decode('utf-8')
+        d['city_e'] = item.text.upper().strip()
         city_list.append(d)
 
     return city_list
@@ -107,7 +107,7 @@ def fetch_stores(db, data, logger):
     for item in (pq(temp) for temp in body('a[href]')):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.url] = item[0].attrib['href']
-        entry[cm.name_e] = item('h3.titleShop')[0].text.strip().decode('utf-8')
+        entry[cm.name_e] = item('h3.titleShop')[0].text.strip()
 
         # terms = cm.reformat_addr(item('div.txtBoxSingleStore p.lineHeight14')[0].text).split(',')
         terms = cm.reformat_addr(unicode(item('div.txtBoxSingleStore p.lineHeight14'))).split(',')

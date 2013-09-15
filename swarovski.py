@@ -1,43 +1,42 @@
 # coding=utf-8
 import json
+import logging
+import logging.config
 import string
 import re
 import common as cm
 import geosense as gs
+from pyquery import PyQuery as pq
 
 __author__ = 'Zephyre'
 
-db = None
-log_name = 'swarovski_log.txt'
 
-
-def fetch_countries(data):
+def fetch_countries(data, logger):
     url = data['url']
     try:
         body, data['cookie'] = cm.get_data_cookie(url)
-    except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        q = pq(body)
+    except Exception as e:
+        logger.error(unicode.format(u'Error in fetching countries: {0}', url))
         return ()
 
-    m = re.search(ur'<select id="bfselect-country" name="CurrentCountryID"[^<>]+>(.+?)</select>', body, re.S)
-    if not m:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
-        return ()
-    sub = m.group(1).strip()
     results = []
-    for m in re.findall(ur'<option value="([A-Z]{2})"', sub):
+    for item in q('#bfselect-country option[value!=""]'):
         d = data.copy()
-        d['country_code'] = m
+        d['country_code'] = item.attrib['value']
+        temp = item.text.strip().upper()
+        d['country'] = temp.decode('utf-8') if isinstance(temp, str) else temp
         results.append(d)
     return tuple(results)
 
 
-def fetch_store_details(data):
+def fetch_store_details(db, data, logger):
     url = data['url']
     try:
         body, data['cookie'] = cm.get_data_cookie(url, cookie=data['cookie'])
+        q = pq(body)
     except Exception, e:
-        cm.dump('Error in fetching stores: %s' % url, log_name)
+        # cm.dump('Error in fetching stores: %s' % url, log_name)
         return ()
 
     m = re.search(ur'<div class="col">\s*<h3>Boutique</h3>\s*<div class="content">(.+?)</div>', body, re.S)
@@ -47,7 +46,7 @@ def fetch_store_details(data):
 
     entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
     entry[cm.country_e] = data['country_code']
-    if entry[cm.country_e]=='US':
+    if entry[cm.country_e] == 'US':
         tmp_list = tuple(tmp.strip() for tmp in cm.reformat_addr(data['city']).strip(','))
         if len(tmp_list) == 2:
             if re.search('[A-Z]{2}', tmp_list[1]) or tmp_list[1] == 'D.C.':
@@ -85,107 +84,148 @@ def fetch_store_details(data):
         entry[cm.city_e] = ret[2]
     gs.field_sense(entry)
 
-    cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                        entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                        entry[cm.continent_e]), log_name)
-    db.insert_record(entry, 'stores')
+    logger.info('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+                                                            entry[cm.continent_e]))
+    cm.insert_record(db, entry, 'spider_stores.stores')
 
     return (entry,)
 
 
-def fetch_cities(data):
+def fetch_cities(data, logger):
     url = data['url']
     param = {'IsFooterForm': 'true', 'CurrentCountryID': data['country_code']}
     if data['state_code']:
         param['CurrentRegionID'] = data['state_code']
     try:
         body, data['cookie'] = cm.get_data_cookie(url, param, cookie=data['cookie'])
+        q = pq(body)
     except Exception, e:
-        cm.dump('Error in fetching cities: %s, %s' % (url, param), log_name)
+        # cm.dump('Error in fetching cities: %s, %s' % (url, param), log_name)
         return ()
 
-    m = re.search(ur'<select id="bfselect-city-footer" name="CurrentCityID"[^<>]+>(.+?)</select>', body, re.S)
-    if not m:
-        cm.dump('Error in fetching cities: %s' % url, log_name)
-        return ()
-    sub = m.group(1).strip()
     results = []
-    for m in re.findall(ur'<option value="([^"]+)"\s*>([^<>]+)', sub):
-        if m[0].strip().lower() == 'all':
+    for item in q('#bfselect-city-footer option[value!=""]'):
+        city_code = item.attrib['value'].strip().lower()
+        if city_code == 'all':
             continue
         d = data.copy()
-        d['city_code'] = m[0]
-        d['city'] = cm.html2plain(m[1]).strip().upper()
+        d['city_code'] = city_code
+        temp = item.text.strip().upper()
+        d['city'] = temp.decode('utf-8') if isinstance(temp, str) else temp
         results.append(d)
     return tuple(results)
 
 
-def fetch_states(data):
+def fetch_states(data, logger):
     url = data['url']
     param = {'IsFooterForm': 'true', 'CurrentCountryID': data['country_code']}
     try:
         body, data['cookie'] = cm.get_data_cookie(url, param, cookie=data['cookie'])
+        q = pq(body)
     except Exception, e:
-        cm.dump('Error in fetching states: %s, %s' % (url, param), log_name)
+        # cm.dump('Error in fetching states: %s, %s' % (url, param), log_name)
         return ()
 
-    m = re.search(ur'<select id="bfselect-region-footer" name="CurrentRegionID"[^<>]+>(.+?)</select>', body, re.S)
-    if not m:
-        cm.dump('Error in fetching states: %s' % url, log_name)
-        return ()
-    sub = m.group(1).strip()
     results = []
-    for m in re.findall(ur'<option value="([^"]+)"\s*>([^<>]+)', sub):
+    for item in q('#bfselect-region-footer option[value!=""]'):
         d = data.copy()
-        d['state_code'] = m[0].strip()
-        d['state'] = cm.html2plain(m[1]).strip().upper()
+        d['state_code'] = item.attrib['value']
+        temp = item.text.strip().upper()
+        d['state'] = temp.decode('utf-8') if isinstance(temp, str) else temp
         results.append(d)
     if len(results) == 0:
         d = data.copy()
         d['state_code'] = None
-        return (d,)
+        return d,
     return tuple(results)
 
 
-def fetch_store_list(data):
+def fetch_store_list(data, logger):
     url = data['store_url']
     param = {'CurrentCountryID': data['country_code'], 'CurrentCityID': ('    %s' % data['city_code'])[-5:]}
     if data['state_code']:
         param['CurrentRegionID'] = data['state_code']
     try:
         body, data['cookie'] = cm.get_data_cookie(url, param, cookie=data['cookie'])
+        q = pq(body)
     except Exception, e:
-        cm.dump('Error in fetching store list: %s, %s' % (url, param), log_name)
+        # cm.dump('Error in fetching store list: %s, %s' % (url, param), log_name)
         return ()
 
-    m = re.search(ur'<div class="paging"\s*>(.+?)</div>', body, re.S)
-    if m:
-        pages = re.findall(ur'<li>\s*<a href="([^"]+)"', m.group(1), re.S)
-    else:
-        pages = []
+    def func(content):
+        for store in content('tr td.col-desc a[href].dotted'):
+            d = data.copy()
+            d['url'] = store.attrib['href']
+            results.append(d)
 
+    pages = (temp.attrib['href'] for temp in q('div.paging li a[href]'))
     results = []
-    page_idx = -1
-    while True:
-        for m in re.findall(ur'<!--\s*Result Row Start\s*-->(.+?)<!--\s*Result Rown End\s*-->', body, re.S):
-            m1 = re.search(ur'<td class="col-desc"\s*>\s*<a href="([^"]+)"', m, re.S)
-            if m1:
-                d = data.copy()
-                d['url'] = m1.group(1)
-                results.append(d)
-
-        page_idx += 1
-        if page_idx >= len(pages):
-            break
-
+    func(q)
+    for p in pages:
         try:
-            body, data['cookie'] = cm.get_data(url, cookie=data['cookie'])
+            body, data['cookie'] = cm.get_data_cookie(p, param, cookie=data['cookie'])
+            q = pq(body)
         except Exception, e:
-            cm.dump('Error in fetching store list for page: %s' % url, log_name)
+            # cm.dump('Error in fetching store list: %s, %s' % (url, param), log_name)
+            return ()
+        func(q)
+
     return tuple(results)
 
+    # page_idx = -1
+    # while True:
+    #     for m in re.findall(ur'<!--\s*Result Row Start\s*-->(.+?)<!--\s*Result Rown End\s*-->', body, re.S):
+    #         m1 = re.search(ur'<td class="col-desc"\s*>\s*<a href="([^"]+)"', m, re.S)
+    #         if m1:
+    #             d = data.copy()
+    #             d['url'] = m1.group(1)
+    #             results.append(d)
+    #
+    #     page_idx += 1
+    #     if page_idx >= len(pages):
+    #         break
+    #
+    #     try:
+    #         body, data['cookie'] = cm.get_data(url, cookie=data['cookie'])
+    #     except Exception, e:
+    #         pass
+    #         # cm.dump('Error in fetching store list for page: %s' % url, log_name)
+    # return tuple(results)
+    #
+    #
+    # m = re.search(ur'<div class="paging"\s*>(.+?)</div>', body, re.S)
+    # if m:
+    #     pages = re.findall(ur'<li>\s*<a href="([^"]+)"', m.group(1), re.S)
+    # else:
+    #     pages = []
+    #
+    # results = []
+    # page_idx = -1
+    # while True:
+    #     for m in re.findall(ur'<!--\s*Result Row Start\s*-->(.+?)<!--\s*Result Rown End\s*-->', body, re.S):
+    #         m1 = re.search(ur'<td class="col-desc"\s*>\s*<a href="([^"]+)"', m, re.S)
+    #         if m1:
+    #             d = data.copy()
+    #             d['url'] = m1.group(1)
+    #             results.append(d)
+    #
+    #     page_idx += 1
+    #     if page_idx >= len(pages):
+    #         break
+    #
+    #     try:
+    #         body, data['cookie'] = cm.get_data(url, cookie=data['cookie'])
+    #     except Exception, e:
+    #         pass
+    #         # cm.dump('Error in fetching store list for page: %s' % url, log_name)
+    # return tuple(results)
 
-def fetch(level=1, data=None, user='root', passwd=''):
+
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('swarovski.cfg')
+    logger = logging.getLogger('firenzeLogger')
+
     def func(data, level):
         """
         :param data:
@@ -193,19 +233,19 @@ def fetch(level=1, data=None, user='root', passwd=''):
         """
         if level == 0:
             # 国家列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data, logger)]
         if level == 1:
             # 州列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_states(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_states(data, logger)]
         if level == 2:
             # 城市列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_cities(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_cities(data, logger)]
         if level == 3:
             # 城市列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_store_list(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_store_list(data, logger)]
         if level == 4:
             # 商店
-            return [{'func': None, 'data': s} for s in fetch_store_details(data)]
+            return [{'func': None, 'data': s} for s in fetch_store_details(db, data, logger)]
         else:
             return ()
 
@@ -216,14 +256,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
             'store_url': 'http://www.swarovski.com.cn/Web_CN/en/boutique_search',
             'brand_id': 10339, 'brandname_e': u'Swarovski', 'brandname_c': u'施华洛世奇'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    db.query(str.format('DELETE FROM spider_stores.stores WHERE brand_id={0}', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
-    cm.dump('Done!', log_name)
+    logger.info('Done')
 
     return results
 

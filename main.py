@@ -16,6 +16,7 @@ import prada2
 import geocode_fetch
 import logging.config
 import sergio
+import swarovski
 import viktor_rolf
 import viviennetam
 
@@ -806,7 +807,7 @@ if __name__ == "__main__":
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
 
-        sergio.fetch(db, passwd=passwd)
+        swarovski.fetch(db, passwd=passwd)
 
         db.close()
 
