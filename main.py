@@ -13,6 +13,7 @@ import chanel
 import common
 import geosense as gs
 import longchamp
+import prada
 import prada2
 import geocode_fetch
 import logging.config
@@ -806,7 +807,7 @@ if __name__ == "__main__":
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
 
-        viviennetam.fetch(db,passwd=passwd)
+        prada.fetch(db,passwd=passwd)
 
         db.close()
 
