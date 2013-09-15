@@ -61,9 +61,8 @@ ucjk_whitespace = ur'\u3000'
 
 
 class MStoreFileHandler(logging.FileHandler):
-    def __init__(self, path=u'.', filename=u'MStore', prefix=u'', postfix=u'', mode='a'):
-        filename = unicode.format(u'{0}/{1}{2}{3}_{4}.log', path, prefix, filename, postfix,
-                                  datetime.datetime.now().strftime('%Y%m%d'))
+    def __init__(self, path=u'.', filename=u'MStore', mode='a'):
+        filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
         super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
 
 
@@ -71,18 +70,21 @@ def chn_check(entry):
     # 检查是否为台湾、香港和澳门
     cc = entry[country_c]
     ce = entry[country_e]
+    if not cc and not ce:
+        return entry
+
     flag = False
-    if u'台灣' in cc or u'台湾' in cc or u'TAIWAN' in ce:
+    if (cc and (u'台灣' in cc or u'台湾' in cc)) or (ce and u'TAIWAN' in ce):
         entry[province_c] = u'台湾'
         entry[province_e] = u'TAIWAN'
         flag = True
-    elif u'香港' in cc or 'HONG KONG' in ce or 'HONGKONG' in ce:
+    elif (cc and u'香港' in cc) or (ce and ('HONG KONG' in ce or 'HONGKONG' in ce)):
         entry[province_c] = u'香港'
         entry[province_e] = u'HONG KONG'
         entry[city_c] = u'香港'
         entry[city_e] = u'HONG KONG'
         flag = True
-    elif u'澳門' in cc or u'澳门' in cc or 'MACAU' in ce:
+    elif (cc and (u'澳門' in cc or u'澳门' in cc)) or (ce and ('MACAU' in ce or 'MACAO' in ce)):
         entry[province_c] = u'澳门'
         entry[province_e] = u'MACAU'
         entry[city_c] = u'澳门'
@@ -139,11 +141,12 @@ def init_store_entry(bn_id, bn_e='', bn_c=''):
     根据字段定义，返回一个初始化的门店结构
 
     """
-    return {brand_id: bn_id, fetch_time: format_time(), brandname_e: bn_e, brandname_c: bn_c, continent_e: '',
-            continent_c: '', country_e: '', country_c: '', province_e: '', province_c: '', city_e: '', city_c: '',
-            district_c: '', district_e: '', name_l: '', name_e: '', name_c: '', addr_e: '', addr_c: '',
-            addr_l: '', tel: '', email: '', fax: '', store_class: '', 'is_geocoded': 0, 'native_id': '',
-            comments: '', hotline: '', store_type: '', hours: '', lat: '', lng: '', url: '', zip_code: ''}
+    return {brand_id: bn_id, 'update_time': format_time(), fetch_time: format_time(), brandname_e: bn_e,
+            brandname_c: bn_c, continent_e: None,
+            continent_c: None, country_e: None, country_c: None, province_e: None, province_c: None, city_e: None,
+            city_c: None, name_l: None, name_e: None, name_c: None, addr_e: None, addr_c: None,
+            addr_l: None, tel: None, email: None, fax: None, store_class: None, comments: None, hotline: None,
+            store_type: None, hours: None, lat: None, lng: None, url: None, zip_code: None}
 
 
 def update_entry(entry, data):
@@ -569,7 +572,7 @@ class StoresDb(object):
     def StoresDb(self):
         self._store_db = None
 
-    def connect_db(self, host='localhost', port=3306, user='root', passwd='', db='brand_stores', autocommit=True):
+    def connect_db(self, host='localhost', port=3306, user='root', passwd='', db='spider_stores', autocommit=True):
         """
         Connect to the brand store database
         """
@@ -762,6 +765,35 @@ def load_geo2():
     f = open('geo_data.dat', 'r')
     jobj = json.load(f)
     f.close()
+
+
+def insert_record(db, entry, tbl):
+    # INSERT INTO tbl (...) VALUES (...)
+    fields = '(' + ', '.join(entry.keys()) + ')'
+
+    def get_value_term(key, value):
+        if not value:
+            ret = u'NULL'
+        elif key == 'lng' or key == 'lat':
+            # if value == '':
+            #     ret = u'NULL'
+            # else:
+            ret = float(value)
+        else:
+            if isinstance(value, str):
+                value = value.decode('utf-8')
+            value = unicode(value)
+            ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
+            # re.sub(ur'(?<!\\)"', value, ur'\\"')
+            # ret = u'"%s"' % unicode(value).replace('"', '\\"')
+            # ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\', '')
+        return unicode(ret).encode('utf-8')
+
+    values = '(' + ', '.join(get_value_term(k, entry[k]) for k in entry.keys()) + ')'
+    statement = str.format('INSERT INTO {0} {1} VALUES {2}', tbl, fields,
+                           values) # u'INSERT INTO %s %s VALUES %s' % (tbl, fields, values)
+    db.query(statement)
+    # self.execute(statement)
 
 
 # def geo_translate(c, level=-1):

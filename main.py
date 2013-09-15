@@ -7,10 +7,12 @@ import string
 import time
 import traceback
 import itertools
+import _mysql
 import chanel
 
 import common
 import geosense as gs
+import longchamp
 import prada2
 import geocode_fetch
 import logging.config
@@ -800,7 +802,13 @@ if __name__ == "__main__":
     if test_flag:
         print(geocode_fetch.calc_distance((-70.3, 35.2), (-4.1, 44.2)))
     else:
-        # longchamp.fetch(passwd=passwd)
+        db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
+        db.query("SET NAMES 'utf8'")
+
+        longchamp.fetch(db,passwd=passwd)
+
+        db.close()
+
         # bershka.fetch(passwd=passwd)
         # chanel.fetch(passwd=passwd,logger=logger)
-        viktor_rolf.fetch(None, passwd=passwd, logger=logger)
+        # longchamp.fetch(None, passwd=passwd, logger=logger)
