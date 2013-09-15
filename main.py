@@ -8,8 +8,6 @@ import time
 import traceback
 import itertools
 import _mysql
-import chanel
-
 import common
 import geosense as gs
 import longchamp
@@ -17,6 +15,7 @@ import prada
 import prada2
 import geocode_fetch
 import logging.config
+import sergio
 import viktor_rolf
 import viviennetam
 
@@ -807,7 +806,7 @@ if __name__ == "__main__":
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
 
-        prada.fetch(db,passwd=passwd)
+        sergio.fetch(db, passwd=passwd)
 
         db.close()
 
