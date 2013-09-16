@@ -17,6 +17,7 @@ def fetch_stores(db, data, logger):
 
     # try:
     body = cm.get_data(url)
+    q=pq(body)
     # except Exception, e:
     #     logger.error(unicode.format(u'Error in fetching contents for {0}', url))
     #     return ()
@@ -100,6 +101,7 @@ def fetch_stores(db, data, logger):
 def fetch(db, data=None, user='root', passwd=''):
     logging.config.fileConfig('longchamp.cfg')
     logger = logging.getLogger('firenzeLogger')
+    logger.info(u'Longchamp STARTED')
 
     def func(data, level):
         """
