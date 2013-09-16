@@ -13,7 +13,8 @@ import time
 import HTMLParser
 import urlparse
 import datetime
-
+import os
+import sys
 
 __author__ = 'Zephyre'
 
@@ -61,7 +62,9 @@ ucjk_whitespace = ur'\u3000'
 
 
 class MStoreFileHandler(logging.FileHandler):
-    def __init__(self, path=u'.', filename=u'MStore', mode='a'):
+    def __init__(self, path=u'.', filename=None, mode='a'):
+        if not filename:
+            filename='.'.join(os.path.basename(sys.modules['__main__'].__file__).split('.')[:-1]).decode('utf-8')
         filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
         super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
 

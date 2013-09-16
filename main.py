@@ -8,6 +8,7 @@ import time
 import traceback
 import itertools
 import _mysql
+import ca
 import common
 import geosense as gs
 import longchamp
@@ -798,16 +799,13 @@ if __name__ == "__main__":
     # passwd = 'rose123'
     passwd = '123456'
 
-    logging.config.fileConfig('geocode_fetch.cfg')
-    logger = logging.getLogger('firenzeLogger')
-
     if test_flag:
         print(geocode_fetch.calc_distance((-70.3, 35.2), (-4.1, 44.2)))
     else:
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
 
-        swarovski.fetch(db, passwd=passwd)
+        ca.fetch(db, passwd=passwd)
 
         db.close()
 

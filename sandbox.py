@@ -1,3 +1,4 @@
+# coding=utf-8
 import logging
 import logging.config
 import _mysql
@@ -8,25 +9,20 @@ from pyquery import PyQuery as pq
 __author__ = 'Zephyre'
 
 
-def sandbox_logging():
-    logging.config.fileConfig('geocode_fetch.cfg')
-    logger = logging.getLogger('firenzeLogger')
-
-    logger.debug('debug message')
-    logger.info('info message')
-    logger.warn('warn message')
-    logger.error('error message')
-    logger.critical('critical message')
-
-
-def sandbox_sql():
-    pass
-
-
-def proc(brand_id, db_now, db_bkp):
-    db_bkp.query(
-        str.format('SELECT idstores, continent_e, country_e, province_e, city_e, addr_e, continent_c, country_c, '
-                   'province_c, city_c, addr_c, addr_l FROM stores WHERE brand_id'))
+def get_modified(db, logger):
+    """
+    读取modified_idstores.csv，获得修改过的品牌
+    :param logger:
+    """
+    filename = u'../modified_idstores.csv'
+    with open(filename) as f:
+        id_list = tuple(int(re.search(r'\d+', temp).group().strip()) for temp in f.readlines())
+        txt = ','.join(str(temp) for temp in id_list)
+        db.query(
+            str.format('SELECT DISTINCT brand_id, brandname_e FROM spider_stores.stores WHERE idstores IN ({0})', txt))
+        results = db.store_result().fetch_row(maxrows=0)
+        for r in results:
+            logger.info(str.format('{0} {1}', *r))
     pass
 
 
@@ -104,7 +100,7 @@ def merge_bkp(dbn, dbb, extra_condition=None, logger=None):
 
 
 if __name__ == "__main__":
-    logging.config.fileConfig('geocode_fetch.cfg')
+    logging.config.fileConfig('sandbox.cfg')
     logger = logging.getLogger('firenzeLogger')
     logger.info(u'PROCESS STARTED')
 
@@ -113,13 +109,16 @@ if __name__ == "__main__":
     db_bkp = _mysql.connect(db='backup_stores', user='root', passwd='123456')
     db_bkp.query("SET NAMES 'utf8'")
 
-    db_now.query('SELECT DISTINCT brand_id FROM stores')
-    brands_now = tuple(int(temp[0]) for temp in db_now.store_result().fetch_row(maxrows=0))
-    db_bkp.query('SELECT DISTINCT brand_id FROM stores')
-    brands_bkp = tuple(int(temp[0]) for temp in db_bkp.store_result().fetch_row(maxrows=0))
-    logger.info(unicode.format(u'# of brands: {0} for db_bkp, {1} for db_now', len(brands_bkp), len(brands_now)))
+    get_modified(db_bkp, logger)
 
-    merge_bkp(db_now, db_bkp, logger=logger, extra_condition=(u'brand_id BETWEEN 10359 AND 10510',))
+    # db_now.query('SELECT DISTINCT brand_id FROM stores')
+    # brands_now = tuple(int(temp[0]) for temp in db_now.store_result().fetch_row(maxrows=0))
+    # db_bkp.query('SELECT DISTINCT brand_id FROM stores')
+    # brands_bkp = tuple(int(temp[0]) for temp in db_bkp.store_result().fetch_row(maxrows=0))
+    # logger.info(unicode.format(u'# of brands: {0} for db_bkp, {1} for db_now', len(brands_bkp), len(brands_now)))
+    #
+    # merge_bkp(db_now, db_bkp, logger=logger, extra_condition=(u'brand_id BETWEEN 10359 AND 10510',))
 
+    logger.warn(u'COMPLETED')
     db_now.close()
     db_bkp.close()

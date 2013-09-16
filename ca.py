@@ -1,37 +1,34 @@
 # coding=utf-8
 import json
+import logging
 import string
 import re
 import traceback
 import common as cm
 import geosense as gs
 from pyquery import PyQuery as pq
+import logging.config
 
 __author__ = 'Zephyre'
 
-db = None
-log_name = 'ca_log.txt'
 
-
-def fetch_countries(data):
+def fetch_countries(data, logger):
     url = data['url']
     try:
         body = cm.get_data(url)
-    except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+    except Exception as e:
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return ()
 
     results = []
-    for country in pq(body)('select#country option[value]'):
+    for country in pq(body)('select#country option[value!="0"]'):
         d = data.copy()
-        if country.attrib['value'] == '0':
-            continue
         d['country_code'] = country.attrib['value']
         results.append(d)
     return tuple(results)
 
 
-def fetch_stores(data):
+def fetch_stores(db, data, logger):
     url = data['data_url']
     param = {'tx_iostorefinder_pi1[__referrer][extensionName]': 'IoStorefinder',
              'tx_iostorefinder_pi1[__referrer][controllerName]': 'Store',
@@ -52,7 +49,8 @@ def fetch_stores(data):
         if not m:
             continue
 
-        store = pq(cm.get_data('http://www.c-and-a.com/uk/en/corporate/company/stores/filialen-ajax/?no_cache=1&%s' % m.group()))
+        store = pq(cm.get_data(
+            'http://www.c-and-a.com/uk/en/corporate/company/stores/filialen-ajax/?no_cache=1&%s' % m.group()))
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']
 
@@ -102,29 +100,33 @@ def fetch_stores(data):
             entry[cm.hours] = ', '.join(hours_list)
 
             gs.field_sense(entry)
-            ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
-            if ret[1] is not None and entry[cm.province_e] == '':
-                entry[cm.province_e] = ret[1]
-            if ret[2] is not None and entry[cm.city_e] == '':
-                entry[cm.city_e] = ret[2]
-            gs.field_sense(entry)
+            if entry[cm.addr_e]:
+                ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
+                if ret[1] is not None and entry[cm.province_e] == '':
+                    entry[cm.province_e] = ret[1]
+                if ret[2] is not None and entry[cm.city_e] == '':
+                    entry[cm.city_e] = ret[2]
+                gs.field_sense(entry)
 
-            cm.dump('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
+            logger.info('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
                                                                     entry[cm.name_e], entry[cm.addr_e],
                                                                     entry[cm.city_e],
-                                                                    entry[cm.country_e], entry[cm.continent_e]),
-                    log_name)
-            db.insert_record(entry, 'stores')
+                                                                    entry[cm.country_e], entry[cm.continent_e]))
+            cm.insert_record(db, entry, 'spider_stores.stores')
             store_list.append(entry)
 
         except (IndexError, TypeError) as e:
-            cm.dump(traceback.format_exc(), log_name)
+            logger.error(traceback.format_exc())
             continue
 
     return tuple(store_list)
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('ca.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'ca STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -132,10 +134,10 @@ def fetch(level=1, data=None, user='root', passwd=''):
         """
         if level == 0:
             # 国家列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data, logger)]
         if level == 1:
             # 商店
-            return [{'func': None, 'data': s} for s in fetch_stores(data)]
+            return [{'func': None, 'data': s} for s in fetch_stores(db, data, logger)]
         else:
             return ()
 
@@ -146,14 +148,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
             'url': 'http://www.c-and-a.com/uk/en/corporate/fashion/stores/',
             'brand_id': 10059, 'brandname_e': u'C&A', 'brandname_c': u'C&A'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    db.query(str.format('DELETE FROM spider_stores.stores WHERE brand_id={0}', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
-    cm.dump('Done!', log_name)
+    logger.info(u'DONE')
 
     return results
 
