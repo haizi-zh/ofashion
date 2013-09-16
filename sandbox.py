@@ -104,21 +104,29 @@ if __name__ == "__main__":
     logger = logging.getLogger('firenzeLogger')
     logger.info(u'PROCESS STARTED')
 
-    db_now = _mysql.connect(db='spider_stores', user='root', passwd='123456')
-    db_now.query("SET NAMES 'utf8'")
-    db_bkp = _mysql.connect(db='backup_stores', user='root', passwd='123456')
-    db_bkp.query("SET NAMES 'utf8'")
+    with open('city_mapping_round_1.txt') as f:
+        with open('city_choice.txt', 'w') as f2:
+            for text in f.readlines():
+                id_list = re.findall(r'(\d+):', text)
+                id_choice = int(id_list[int(id_list[0])])
+                f2.write(str.format('{0}\n', id_choice))
+                print(id_choice)
 
-    get_modified(db_bkp, logger)
-
-    # db_now.query('SELECT DISTINCT brand_id FROM stores')
-    # brands_now = tuple(int(temp[0]) for temp in db_now.store_result().fetch_row(maxrows=0))
-    # db_bkp.query('SELECT DISTINCT brand_id FROM stores')
-    # brands_bkp = tuple(int(temp[0]) for temp in db_bkp.store_result().fetch_row(maxrows=0))
-    # logger.info(unicode.format(u'# of brands: {0} for db_bkp, {1} for db_now', len(brands_bkp), len(brands_now)))
-    #
-    # merge_bkp(db_now, db_bkp, logger=logger, extra_condition=(u'brand_id BETWEEN 10359 AND 10510',))
-
-    logger.warn(u'COMPLETED')
-    db_now.close()
-    db_bkp.close()
+                # db_now = _mysql.connect(db='spider_stores', user='root', passwd='123456')
+                # db_now.query("SET NAMES 'utf8'")
+                # db_bkp = _mysql.connect(db='backup_stores', user='root', passwd='123456')
+                # db_bkp.query("SET NAMES 'utf8'")
+                #
+                # get_modified(db_bkp, logger)
+                #
+                # # db_now.query('SELECT DISTINCT brand_id FROM stores')
+                # # brands_now = tuple(int(temp[0]) for temp in db_now.store_result().fetch_row(maxrows=0))
+                # # db_bkp.query('SELECT DISTINCT brand_id FROM stores')
+                # # brands_bkp = tuple(int(temp[0]) for temp in db_bkp.store_result().fetch_row(maxrows=0))
+                # # logger.info(unicode.format(u'# of brands: {0} for db_bkp, {1} for db_now', len(brands_bkp), len(brands_now)))
+                # #
+                # # merge_bkp(db_now, db_bkp, logger=logger, extra_condition=(u'brand_id BETWEEN 10359 AND 10510',))
+                #
+                # logger.warn(u'COMPLETED')
+                # db_now.close()
+                # db_bkp.close()

@@ -1,5 +1,7 @@
 # coding=utf-8
 import json
+import logging
+import logging.config
 import string
 import re
 import urllib
@@ -8,10 +10,8 @@ import geosense as gs
 
 __author__ = 'Zephyre'
 
-db = None
 
-
-def fetch_continents(data):
+def fetch_continents(data, logger):
     url = data['store_url']
     try:
         html = cm.get_data(url)
@@ -34,7 +34,7 @@ def fetch_continents(data):
     return continent_list
 
 
-def fetch_countries(data):
+def fetch_countries(data, logger):
     url = data['sel_url']
     try:
         body = cm.post_data(url, {'continent': data['continent'],
@@ -54,7 +54,7 @@ def fetch_countries(data):
     return country_list
 
 
-def fetch_cities(data):
+def fetch_cities(data, logger):
     url = data['sel_url']
     try:
         body = cm.post_data(url, {'continent': data['continent'],
@@ -74,7 +74,7 @@ def fetch_cities(data):
     return city_list
 
 
-def fetch_stores(data):
+def fetch_stores(db, data, logger):
     url = data['store_url']
     try:
         body = cm.post_data(url, {'continent': data['continent'],
@@ -143,11 +143,15 @@ def fetch_stores(data):
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                           entry[cm.continent_e])
         store_list.append(entry)
-        db.insert_record(entry, 'stores')
+        cm.insert_record(db, entry, 'spider_stores.stores')
     return store_list
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('escada.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'escada STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -155,16 +159,16 @@ def fetch(level=1, data=None, user='root', passwd=''):
         """
         if level == 0:
             # 洲列表
-            return [{'func': lambda data: func(data, 1), 'data': s} for s in fetch_continents(data)]
+            return [{'func': lambda data: func(data, 1), 'data': s} for s in fetch_continents(data, logger)]
         if level == 1:
             # 国家列表
-            return [{'func': lambda data: func(data, 2), 'data': s} for s in fetch_countries(data)]
+            return [{'func': lambda data: func(data, 2), 'data': s} for s in fetch_countries(data, logger)]
         if level == 2:
             # 城市列表
-            return [{'func': lambda data: func(data, 3), 'data': s} for s in fetch_cities(data)]
+            return [{'func': lambda data: func(data, 3), 'data': s} for s in fetch_cities(data, logger)]
         if level == 3:
-            # 洲列表
-            return [{'func': None, 'data': s} for s in fetch_stores(data)]
+            # 商店列表
+            return [{'func': None, 'data': s} for s in fetch_stores(db, data, logger)]
         else:
             return []
 
@@ -174,12 +178,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 'store_url': 'http://de.escada.com/en/dynamiccontent/storefinder/',
                 'brand_id': 10122, 'brandname_e': u'Escada', 'brandname_c': u'爱斯卡达'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    db.query(u'DELETE FROM %s WHERE brand_id=%d' % ('spider_stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
+    logger.info(u'DONE')
 
     return results

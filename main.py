@@ -10,8 +10,11 @@ import itertools
 import _mysql
 import ca
 import common
+import escada
+import fendi
 import geosense as gs
 import longchamp
+import paul_joe
 import prada
 import prada2
 import geocode_fetch
@@ -805,7 +808,7 @@ if __name__ == "__main__":
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
 
-        ca.fetch(db, passwd=passwd)
+        fendi.fetch(db, passwd=passwd)
 
         db.close()
 

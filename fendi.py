@@ -1,9 +1,12 @@
 # coding=utf-8
 import json
+import logging
+import logging.config
 import string
 import re
 import common as cm
 import geosense as gs
+from pyquery import PyQuery as pq
 
 __author__ = 'Zephyre'
 
@@ -18,7 +21,7 @@ def gen_city_map():
     return json.loads(sub[0])
 
 
-def fetch_countries(data):
+def fetch_countries(data, logger):
     url = data['host']
     try:
         body = cm.get_data(url)
@@ -35,7 +38,7 @@ def fetch_countries(data):
     return tuple(results)
 
 
-def fetch_cities(data):
+def fetch_cities(data, logger):
     ret = gs.look_up(data['country_code'].upper(), 1)
     if ret is None:
         return ()
@@ -54,7 +57,7 @@ def fetch_cities(data):
     return tuple(results)
 
 
-def fetch_store_details(data):
+def fetch_store_details(db, data, logger):
     url = data['url']
     try:
         body = cm.get_data(url, hdr={'X-Requested-With': ''})
@@ -108,11 +111,11 @@ def fetch_store_details(data):
     cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                         entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                         entry[cm.continent_e]), log_name)
-    db.insert_record(entry, 'stores')
+    # db.insert_record(entry, 'stores')
     return (entry, )
 
 
-def fetch_store_list(data):
+def fetch_store_list(data, logger):
     url = data['data_url']
     param = {'country': data['country_code'], 'query': data['city']}
     try:
@@ -134,7 +137,11 @@ def fetch_store_list(data):
     return tuple(results)
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('escada.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'escada STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -142,16 +149,16 @@ def fetch(level=1, data=None, user='root', passwd=''):
         """
         if level == 0:
             # 国家列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_countries(data, logger)]
         if level == 1:
             # 城市列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_cities(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_cities(data, logger)]
         if level == 2:
             # 商店列表
-            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_store_list(data)]
+            return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_store_list(data, logger)]
         if level == 3:
             # 商店
-            return [{'func': None, 'data': s} for s in fetch_store_details(data)]
+            return [{'func': None, 'data': s} for s in fetch_store_details(db, data, logger)]
         else:
             return ()
 
@@ -162,14 +169,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 'brand_id': 10135, 'brandname_e': u'Fendi', 'brandname_c': u'芬迪',
                 'city_map': gen_city_map()}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    # db.query(u'DELETE FROM %s WHERE brand_id=%d' % ('spider_stores', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
-    cm.dump('Done!', log_name)
+    logger.info(u'DONE')
 
     return results
 
