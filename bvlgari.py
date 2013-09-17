@@ -17,6 +17,7 @@ def fetch_continents(db, data, logger):
     url = data['host'] + data['geo_url']
     param = {'lang': 'EN_US', 'geo_id': 1}
 
+    logger.info(u'FETCHING CONTINENTS...')
     # try:
     body = cm.get_data(url, param)
     # except Exception, e:
@@ -27,6 +28,7 @@ def fetch_continents(db, data, logger):
     for c in json.loads(body)['geoEntityLocaleList']:
         d = data.copy()
         d['continent_id'] = string.atoi(c['geoEntity']['id'])
+        d['node_id'] = str.format('continent_id:{0}', d['continent_id'])
         d['continent'] = c['geoEntity']['name'].strip()
         results.append(d)
     return tuple(results)
@@ -35,6 +37,7 @@ def fetch_continents(db, data, logger):
 def fetch_countries(db, data, logger):
     url = data['host'] + data['geo_url']
     param = {'lang': 'EN_US', 'geo_id': data['continent_id']}
+    logging.info(unicode.format(u'FETCHING COUNTRIES AT {0}', data['continent']))
 
     # try:
     body = cm.get_data(url, param)
@@ -46,6 +49,7 @@ def fetch_countries(db, data, logger):
     for c in json.loads(body)['geoEntityLocaleList']:
         d = data.copy()
         d['country_id'] = string.atoi(c['geoEntity']['id'])
+        d['node_id'] = str.format('country_id:{0}', d['country_id'])
         d['country'] = cm.html2plain(c['geoEntity']['name']).strip()
         results.append(d)
 
@@ -58,6 +62,7 @@ def fetch_countries(db, data, logger):
 def fetch_states(db, data, logger):
     url = data['host'] + data['geo_url']
     param = {'lang': 'EN_US', 'geo_id': data['country_id']}
+    logging.info(unicode.format(u'FETCHING STATES AT {0}', data['country']))
 
     # try:
     body = cm.get_data(url, param)
@@ -71,14 +76,15 @@ def fetch_states(db, data, logger):
         return ()
     for c in raw['geoEntityLocaleList']:
         d = data.copy()
-        if 'geoAccurayId' not in c['geoEntity']:# or c['geoEntity']['geoAccurayId'] != '2':
+        if c['geoEntity']['type']['name'] == 'CITY':
             d['state_id'] = data['country_id']
             d['state'] = ''
-            results.append(d)
-            # return [d]
+            d['node_id'] = str.format('state_id:{0}', d['state_id'])
+            return d,
         else:
             d['state_id'] = string.atoi(c['geoEntity']['id'])
             d['state'] = cm.html2plain(c['geoEntity']['name']).strip()
+            d['node_id'] = str.format('state_id:{0}', d['state_id'])
             results.append(d)
     return tuple(results)
 
@@ -86,6 +92,7 @@ def fetch_states(db, data, logger):
 def fetch_cities(db, data, logger):
     url = data['host'] + data['geo_url']
     param = {'lang': 'EN_US', 'geo_id': data['state_id']}
+    logging.info(unicode.format(u'FETCHING CITIES AT {0}', data['state']))
 
     # try:
     body = cm.get_data(url, param)
@@ -97,7 +104,7 @@ def fetch_cities(db, data, logger):
     try:
         raw = json.loads(body)
     except ValueError as e:
-        logger.error(unicode.format(u'Error in fetching {0} / {1}', url,param))
+        logger.error(unicode.format(u'Error in fetching {0} / {1}', url, param))
         return ()
 
     if 'geoEntityLocaleList' not in raw:
@@ -105,6 +112,7 @@ def fetch_cities(db, data, logger):
     for c in raw['geoEntityLocaleList']:
         d = data.copy()
         d['city_id'] = string.atoi(c['geoEntity']['id'])
+        d['node_id'] = str.format('city_id:{0}', d['city_id'])
         d['city'] = cm.html2plain(c['geoEntity']['name']).strip()
         results.append(d)
     return tuple(results)
@@ -113,6 +121,7 @@ def fetch_cities(db, data, logger):
 def fetch_stores(db, data, logger):
     url = data['host'] + data['store_url']
     param = {'lang': 'EN_US', 'geo_id': data['city_id']}
+    logging.info(unicode.format(u'FETCHING STORES AT {0}', data['city']))
 
     # try:
     body = cm.get_data(url, param)
@@ -132,6 +141,7 @@ def fetch_stores(db, data, logger):
         entry[cm.store_class] = s['type']['name']
         entry[cm.store_type] = ', '.join(type_map[item['name']] for item in s['categories'])
         entry[cm.name_e] = s['name'].strip()
+        entry[cm.native_id] = int(s['id'])
 
         loc = s['location']
         entry[cm.addr_e] = cm.reformat_addr(loc['address'])
@@ -160,7 +170,7 @@ def fetch_stores(db, data, logger):
 
         store_list.append(entry)
 
-    return store_list
+    return ()
 
 
 def get_logger():
@@ -176,7 +186,7 @@ def get_func_chain():
 def get_data():
     return {'host': 'http://stores.bulgari.com', 'geo_url': '/blgsl/js-geoentities.html',
             'store_url': '/blgsl/js-stores.html', 'brand_id': 10058, 'brandname_e': u'BVLGARI',
-            'brandname_c': u'宝格丽'}
+            'brandname_c': u'宝格丽', 'node_id': 0}
 
 
 def merge(db, data, logger):
@@ -184,9 +194,10 @@ def merge(db, data, logger):
 
 
 def init(db, data, logger=None):
-    db.query(str.format('DELETE FROM {0} WHERE brand_id={1}',
-                        data['update_table'] if data['update'] else data['table'],
-                        data['brand_id']))
+    # db.query(str.format('DELETE FROM {0} WHERE brand_id={1}',
+    #                     data['update_table'] if data['update'] else data['table'],
+    #                     data['brand_id']))
+    pass
 
 
 # def fetch(db, data=None, user='root', passwd='', table='spider_stores', update=True, update_table='update_temp'):

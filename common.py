@@ -149,7 +149,7 @@ def init_store_entry(bn_id, bn_e='', bn_c=''):
             continent_c: None, country_e: None, country_c: None, province_e: None, province_c: None, city_e: None,
             city_c: None, name_l: None, name_e: None, name_c: None, addr_e: None, addr_c: None,
             addr_l: None, tel: None, email: None, fax: None, store_class: None, comments: None, hotline: None,
-            store_type: None, hours: None, lat: None, lng: None, url: None, zip_code: None}
+            store_type: None, hours: None, lat: None, lng: None, url: None, zip_code: None, native_id: None}
 
 
 def update_entry(entry, data):
@@ -825,7 +825,7 @@ def insert_record(db, entry, tbl):
 #     return result
 
 
-def walk_tree(node):
+def walk_tree(node, node_tracker=None):
     """
     从根节点出发，遍历
     """
