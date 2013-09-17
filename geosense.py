@@ -54,13 +54,17 @@ def look_up(term, level=0):
 
     term = term.strip().upper()
     g_map = [continent_map, country_map, province_map, city_map]
-    if term in g_map[level]['lookup']:
-        guid = g_map[level]['lookup'][term]
-        if isinstance(guid, list):
-            guid = guid[0]
-        entry = deref_guid(g_map[level]['data'][guid])
-        return entry
-    else:
+
+    try:
+        if term in g_map[level]['lookup']:
+            guid = g_map[level]['lookup'][term]
+            if isinstance(guid, list):
+                guid = guid[0]
+            entry = deref_guid(g_map[level]['data'][guid])
+            return entry
+        else:
+            return None
+    except KeyError as e:
         return None
 
 

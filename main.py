@@ -8,12 +8,19 @@ import time
 import traceback
 import itertools
 import _mysql
+import bvlgari
 import ca
+import cartier
 import common
 import escada
 import fendi
 import geosense as gs
+import lacoste
 import longchamp
+import marc_jacobs
+import marni
+import maurice_lacroix
+import miss_sixty
 import paul_joe
 import prada
 import prada2
@@ -785,33 +792,55 @@ def set_city_id():
     common.dump(u'Done', log_name)
 
 
-def test():
-    # decode_city()
-    # merge_city_std(True)
-    # sense_cities('a', 'b', others=-1)
-    # geo_translate()
-    # dump_geo()
-    # proc_city_std()
-    # update_city_std(null_city=True)
-    # update_city_std()
-    set_city_id()
+def fetch_stores(db, data, func_chain, level=0, logger=None):
+    """
+    :param data:
+    :param func_chain:
+    :param level: 0：国家；1：城市；2：商店列表
+    """
+    return [
+        {'func': (lambda v: fetch_stores(db, v, func_chain, level + 1, logger)) if level < len(func_chain) - 1 else None,
+         'data': s} for s in func_chain[level](db, data, logger)]
+
+
+def merge(db, brand_id, columns, logger=None):
+    """
+    将update_stores中的数据和stores中的数据合并
+    :param db:
+    :param columns: 需要更新的字段
+    :param logger:
+    """
+    # db.query(str.format('SELECT * FROM update_stores WHERE brand_id={0}',brand_id))
+    # record_set=db.store_result()
+
+    pass
 
 
 if __name__ == "__main__":
     test_flag = False
-    # passwd = 'rose123'
-    passwd = '123456'
 
     if test_flag:
         print(geocode_fetch.calc_distance((-70.3, 35.2), (-4.1, 44.2)))
     else:
         db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
         db.query("SET NAMES 'utf8'")
+        module = bvlgari
+        logger = module.get_logger()
+        logger.info(unicode.format(u'{0} STARTED', module.__name__.upper()))
+        logger.info(u'================')
+        data = module.get_data()
+        data['update'] = False
+        data['table'] = 'spider_stores.stores'
+        data['update_table'] = 'spider_stores.update_stores'
+        module.init(db, data, logger)
+        results = common.walk_tree({'func': lambda v: fetch_stores(
+            db, v, module.get_func_chain(), logger=logger), 'data': data})
 
-        fendi.fetch(db, passwd=passwd)
+        #         如果为UPDATE模式，则还需要做merge操作
+        if data['update']:
+            module.merge(db, data, logger)
 
+        fetch_stores(db, module.get_data(), module.get_func_chain(), logger)
         db.close()
-
-        # bershka.fetch(passwd=passwd)
-        # chanel.fetch(passwd=passwd,logger=logger)
-        # longchamp.fetch(None, passwd=passwd, logger=logger)
+        logger.info(u'================')
+        logger.info(unicode.format(u'{0} STOPPED', module.__name__.upper()))

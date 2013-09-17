@@ -4,10 +4,10 @@ import string
 import re
 import common as cm
 import geosense as gs
+import logging
+import logging.config
 
 __author__ = 'Zephyre'
-
-db = None
 
 
 def fetch_countries(data):
@@ -91,12 +91,16 @@ def fetch_stores(data):
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                           entry[cm.continent_e])
         store_list.append(entry)
-        db.insert_record(entry, 'stores')
+        # db.insert_record(entry, 'stores')
 
     return store_list
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('maurice_lacroix.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'maurice_lacroix STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -126,12 +130,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 'post_url': 'http://www.mauricelacroix.com/RetailAndService/FinderJson.sls',
                 'brand_id': 10245, 'brandname_e': u'Maurice Lacroix', 'brandname_c': u'艾美'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
+    logger.info(u'DONE')
 
     return results

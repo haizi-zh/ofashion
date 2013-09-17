@@ -1,14 +1,13 @@
 # coding=utf-8
 import json
+import logging
 import string
 import re
 import common as cm
 import geosense as gs
+import logging.config
 
 __author__ = 'Zephyre'
-
-db = None
-log_name = 'miss_sixty_log.txt'
 
 global tableid, queryUrlHead, queryUrlTail
 
@@ -39,7 +38,7 @@ def fetch_countries(data):
     try:
         body = cm.get_data(url)
     except Exception:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return []
 
     global tableid, queryUrlHead, queryUrlTail
@@ -72,8 +71,8 @@ def fetch_cities(data):
     url = (u'%s?sql=%s&key=%s' % (data['data_url'], sql, queryUrlTail)).replace(u' ', u'%20')
     try:
         body = cm.get_data(url)
-    except Exception:
-        cm.dump('Error in fetching cities: %s' % url, log_name)
+    except Exception as e:
+        # cm.dump('Error in fetching cities: %s' % url, log_name)
         return []
 
     results = []
@@ -84,24 +83,24 @@ def fetch_cities(data):
     return results
 
 
-def fetch_stores(data):
+def fetch_stores(db, data, logger):
     sql = "SELECT CityUP,Address,Telephone,Email,StoreName,AddressDescription,OutletStore " \
           "FROM %s WHERE CityUP='%s'" % (tableid, data['city'])
     url = (u'%s?sql=%s&key=%s' % (data['data_url'], sql, queryUrlTail)).replace(u' ', u'%20')
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching stores: %s' % url, log_name)
+        # cm.dump('Error in fetching stores: %s' % url, log_name)
         return []
 
     store_list = []
     for s in json.loads(cm.extract_closure(body, ur'\{', ur'\}')[0])['rows']:
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']
-        entry[cm.city_e] =cm.extract_city(data['city'])[0]
-        addr_list=[]
+        entry[cm.city_e] = cm.extract_city(data['city'])[0]
+        addr_list = []
         for tmp in [s[5], s[1]]:
-            if cm.html2plain(tmp).strip()!='':
+            if cm.html2plain(tmp).strip() != '':
                 addr_list.append(cm.html2plain(tmp).strip())
         entry[cm.addr_e] = ', '.join(addr_list)
         entry[cm.tel] = s[2].strip()
@@ -116,16 +115,20 @@ def fetch_stores(data):
         if ret[2] is not None and entry[cm.city_e] == '':
             entry[cm.city_e] = ret[2]
         gs.field_sense(entry)
-        cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                            entry[cm.continent_e]), log_name)
-        db.insert_record(entry, 'stores')
+        logger.info('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+                                                                entry[cm.continent_e]), log_name)
+        # db.insert_record(entry, 'stores')
         store_list.append(entry)
 
     return store_list
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('maurice_lacroix.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'maurice_lacroix STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -139,7 +142,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
             return [{'func': lambda data: func(data, level + 1), 'data': s} for s in fetch_cities(data)]
         if level == 2:
             # 商店
-            return [{'func': None, 'data': s} for s in fetch_stores(data)]
+            return [{'func': None, 'data': s} for s in fetch_stores(db, data, logger)]
         else:
             return []
 
@@ -149,13 +152,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
                 'url': 'http://www.misssixty.com/ITA/en-GB/CMS/Index/stores',
                 'brand_id': 10262, 'brandname_e': u'Miss Sixty', 'brandname_c': u'Miss Sixty'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
+    logging.info(u'DONE')
 
     return results
 

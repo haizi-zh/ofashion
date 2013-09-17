@@ -1,14 +1,13 @@
 # coding=utf-8
 import json
+import logging
 import string
 import re
 import common as cm
 import geosense as gs
+import logging.config
 
 __author__ = 'Zephyre'
-
-db = None
-log_name = 'cartier_log.txt'
 
 
 def fetch_countries(data):
@@ -16,12 +15,12 @@ def fetch_countries(data):
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return []
 
     start = body.find(ur'<list id="country_list">')
     if start == -1:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return []
     body = cm.extract_closure(body[start:], ur'<list\b', ur'</list>')[0]
     results = []
@@ -46,7 +45,7 @@ def fetch_cities(data):
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching cities: %s' % url, log_name)
+        # cm.dump('Error in fetching cities: %s' % url, log_name)
         return []
 
     states_map = {}
@@ -66,7 +65,7 @@ def fetch_cities(data):
 
     start = body.find(ur'<list id="city_list">')
     if start == -1:
-        cm.dump('Error in fetching cities: %s' % url, log_name)
+        # cm.dump('Error in fetching cities: %s' % url, log_name)
         return []
     city_sub = cm.extract_closure(body[start:], ur'<list\b', ur'</list>')[0]
     results = []
@@ -87,8 +86,8 @@ def fetch_cities(data):
         d['city_name'] = cm.html2plain(m1.group(1)).strip().upper()
         results.append(d)
 
-    if len(results) == 0:
-        cm.dump('Error in fetching cities: %s' % url, log_name)
+    # if len(results) == 0:
+    #     cm.dump('Error in fetching cities: %s' % url, log_name)
     return results
 
 
@@ -112,12 +111,12 @@ def fetch_stores(data):
         try:
             body = cm.get_data(url, param)
         except Exception, e:
-            cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
+            # cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
             break
 
         m = re.search(ur'<list id="WS_boutique_list" nbBoutique="(\d+)">', body)
         if m is None:
-            cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
+            # cm.dump('Error in fetching stores: %s, %s' % (url, param), log_name)
             break
         totStore = string.atoi(m.group(1))
 
@@ -166,16 +165,21 @@ def fetch_stores(data):
             if ret[2] is not None and entry[cm.city_e] == '':
                 entry[cm.city_e] = ret[2]
             gs.field_sense(entry)
-            cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                                entry[cm.continent_e]), log_name)
-            db.insert_record(entry, 'stores')
+            logger.info('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                    entry[cm.name_e], entry[cm.addr_e],
+                                                                    entry[cm.country_e],
+                                                                    entry[cm.continent_e]))
+            # db.insert_record(entry, 'stores')
             store_list.append(entry)
 
     return store_list
 
 
-def fetch(level=1, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('cartier.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'cartier STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -198,12 +202,8 @@ def fetch(level=1, data=None, user='root', passwd=''):
         data = {'host': 'http://www.cartier.com/layout/set/flash/',
                 'brand_id': 10066, 'brandname_e': u'Cartier', 'brandname_c': u'卡地亚'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
+    logging.info(u'DONE')
 
     return results

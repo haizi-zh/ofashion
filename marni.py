@@ -4,10 +4,10 @@ import string
 import re
 import common as cm
 import geosense as gs
+import logging
+import logging.config
 
 __author__ = 'Zephyre'
-
-db = None
 
 
 def fetch_countries(data):
@@ -83,13 +83,16 @@ def fetch_stores(data):
                                                           entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                           entry[cm.continent_e])
         store_list.append(entry)
-        db.insert_record(entry, 'stores')
-        store_list.append(entry)
+        # db.insert_record(entry, 'stores')
 
     return store_list
 
 
-def fetch(level=0, data=None, user='root', passwd=''):
+def fetch(db, data=None, user='root', passwd=''):
+    logging.config.fileConfig('marni.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    logger.info(u'marni STARTED')
+
     def func(data, level):
         """
         :param data:
@@ -110,12 +113,8 @@ def fetch(level=0, data=None, user='root', passwd=''):
                 'host': 'http://www.marni.cn',
                 'key_term': 'A444F5AB', 'brand_id': 10241, 'brandname_e': u'Marni', 'brandname_c': u'玛尼'}
 
-    global db
-    db = cm.StoresDb()
-    db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
-
+    # db.query('DELETE FROM %s WHERE brand_id=%d' % ('spider_stores.stores', data['brand_id']))
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
-    db.disconnect_db()
+    logging.info(u'DONE')
 
     return results

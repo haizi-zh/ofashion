@@ -131,7 +131,7 @@ def fetch_stores(data):
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
                                                             entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
                                                             entry[cm.continent_e]), log_name)
-        db.insert_record(entry, 'stores')
+        # db.insert_record(entry, 'stores')
         store_list.append(entry)
 
     return store_list
@@ -165,7 +165,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
     global db
     db = cm.StoresDb()
     db.connect_db(user=user, passwd=passwd)
-    db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
+    # db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', data['brand_id']))
 
     results = cm.walk_tree({'func': lambda data: func(data, 0), 'data': data})
     db.disconnect_db()

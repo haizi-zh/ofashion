@@ -138,9 +138,9 @@ def fetch_store_list(data, logger):
 
 
 def fetch(db, data=None, user='root', passwd=''):
-    logging.config.fileConfig('escada.cfg')
+    logging.config.fileConfig('fendi.cfg')
     logger = logging.getLogger('firenzeLogger')
-    logger.info(u'escada STARTED')
+    logger.info(u'fendi STARTED')
 
     def func(data, level):
         """
