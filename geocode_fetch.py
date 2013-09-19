@@ -51,6 +51,9 @@ def load_city_aggr(db, filename):
                 print(text)
                 fo.write(unicode.format(u'{0}\n', text))
 
+                db.query(str.format('UPDATE spider_stores.stores SET idcity={0} WHERE idcity IN {1}',
+                                    target_id, str.format('({0})', ', '.join(str(temp) for temp in id_changed))))
+
     # for target_id in rules:
     #     print(
     #         unicode.format(u'Aggregates: {0} <= [{1}]', target_id,
@@ -649,7 +652,7 @@ def get_addr_hash(db):
     return addr_hash
 
 
-def process_geocode_data(db, id_range=None, refine=False, extra_condition=None, block_size=500, db_local=None):
+def process_geocode_data(db, id_range=None, refine=False, overwrite=False, extra_condition=None, block_size=500, db_local=None):
     """
     Deduct city information from the geocode data
     """
@@ -691,17 +694,16 @@ def process_geocode_data(db, id_range=None, refine=False, extra_condition=None, 
 
     if not extra_condition:
         extra_condition = []
+    if not overwrite:
+        extra_condition.append('idcity=0')
     if refine:
-        cond_st = 'WHERE flag=1 AND geo_country IS NOT NULL AND idcity=0 AND ' \
-                  'geo_queried="PASS"'
+        cond_st = 'WHERE flag=1 AND geo_country IS NOT NULL AND geo_queried="PASS"'
     else:
-        cond_st = 'WHERE flag=1 AND geo_locality IS NOT NULL AND geo_country IS NOT NULL AND idcity=0 AND ' \
-                  'geo_queried="PASS"'
-    cond = list(extra_condition)
+        cond_st = 'WHERE flag=1 AND geo_locality IS NOT NULL AND geo_country IS NOT NULL AND geo_queried="PASS"'
     if id_range:
-        cond.append(str.format('idstores>={0} AND idstores<{1}', *id_range))
-    if len(cond) > 0:
-        cond_st = ' AND '.join((cond_st, ' AND '.join(cond)))
+        extra_condition.append(str.format('(idstores BETWEEN {0} AND {1})', *id_range))
+    if len(extra_condition) > 0:
+        cond_st = ' AND '.join((cond_st, ' AND '.join(extra_condition)))
 
     db.query('SELECT COUNT(idstores) FROM stores ' + cond_st)
     total_cnt = int(db.store_result().fetch_row()[0][0])
@@ -949,7 +951,7 @@ def update_city_info(db, id_range=None, extra_condition=None, overwrite=False):
         record = unicodize(record_set.fetch_row(how=1)[0])
         addr = u','.join(map(lambda k: record[k], ('city_e', 'region_e', 'country_e')))
         idcity = int(record['idcity'])
-        geo_result = geosense.geocode2(addr)
+        geo_result = geosense.geocode2(addr, logger=logger)
         if len(geo_result) == 0:
             continue
         addr_en = geo_result[0]['address_components']
@@ -1200,12 +1202,12 @@ if __name__ == "__main__":
     # gen_addr_hash(db)
     # clean_up(db)
 
-    # geocode_query(db, extra_condition=('brand_id in (10059, 10297)',), overwrite=True, logger=logger)
+    geocode_query(db, extra_condition=('(brand_id=10302 && idstores>706483)',), overwrite=True, logger=logger)
     # proc_tokyo(db)
-    process_geocode_data(db, refine=True, extra_condition=('(brand_id in (10400, 10300, 10510, 10059, 10297))',),
-                         db_local=db)
-    # update_city_info(db, extra_condition=('(region_e="taiwan")',), overwrite=False)
-    # update_city_info(db)
+    # process_geocode_data(db, refine=True, extra_condition=('(brand_id in (10059,10062,10084,10105,10127))',),
+    #                      db_local=db, overwrite=True)
+
+    # update_city_info(db, extra_condition=(), overwrite=False)
 
 
     # set_stores_city(db, extra_condition=('(country_e="CHINA")',))

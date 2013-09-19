@@ -5,6 +5,7 @@ import _mysql
 import re
 import datetime
 from pyquery import PyQuery as pq
+import geosense
 
 __author__ = 'Zephyre'
 
@@ -99,34 +100,69 @@ def merge_bkp(dbn, dbb, extra_condition=None, logger=None):
     logger.info(u'Done')
 
 
+def gen_big_cities():
+    dbs = _mysql.connect(db='spider_stores', user='root', passwd='123456')
+    dbc = _mysql.connect(db='world', user='root', passwd='123456')
+
+    dbc.query('SELECT * FROM country')
+    results = dbc.store_result().fetch_row(maxrows=0, how=1)
+    country_map = dict((temp['Code'], (temp['Code2'], temp['Name'].upper())) for temp in results)
+
+    dbc.query('SELECT * FROM city')
+    results = dbc.store_result().fetch_row(maxrows=0, how=1)
+    for item in results:
+        city, region = (item[key].upper() for key in ('Name', 'District'))
+        country_code = item['CountryCode']
+        country_code2, country = country_map[country_code]
+        print(str.format('PROCESSING {0}:{1}', item['ID'], city))
+
+        ret = geosense.geocode2(addr=','.join((city, region, country)))
+        if not ret:
+            continue
+        lat, lng = (ret[0]['geometry']['location'][key] for key in ('lat', 'lng'))
+
+        value_list = [(str.format('"{0}"', temp) if temp else 'NULL') for temp in (city, region, country,
+                                                                                   country_code, country_code2)]
+        value_list.extend(str(temp) for temp in (lat, lng))
+
+        dbs.query(str.format('INSERT INTO big_cities (city, region, country, country_code, country_code2, lat, lng)'
+                             ' VALUES ({0})', ', '.join(value_list)))
+
+    dbs.close()
+    dbc.close()
+    pass
+
+
 if __name__ == "__main__":
-    logging.config.fileConfig('sandbox.cfg')
-    logger = logging.getLogger('firenzeLogger')
-    logger.info(u'PROCESS STARTED')
+    gen_big_cities()
 
-    with open('city_mapping_round_1.txt') as f:
-        with open('city_choice.txt', 'w') as f2:
-            for text in f.readlines():
-                id_list = re.findall(r'(\d+):', text)
-                id_choice = int(id_list[int(id_list[0])])
-                f2.write(str.format('{0}\n', id_choice))
-                print(id_choice)
-
-                # db_now = _mysql.connect(db='spider_stores', user='root', passwd='123456')
-                # db_now.query("SET NAMES 'utf8'")
-                # db_bkp = _mysql.connect(db='backup_stores', user='root', passwd='123456')
-                # db_bkp.query("SET NAMES 'utf8'")
-                #
-                # get_modified(db_bkp, logger)
-                #
-                # # db_now.query('SELECT DISTINCT brand_id FROM stores')
-                # # brands_now = tuple(int(temp[0]) for temp in db_now.store_result().fetch_row(maxrows=0))
-                # # db_bkp.query('SELECT DISTINCT brand_id FROM stores')
-                # # brands_bkp = tuple(int(temp[0]) for temp in db_bkp.store_result().fetch_row(maxrows=0))
-                # # logger.info(unicode.format(u'# of brands: {0} for db_bkp, {1} for db_now', len(brands_bkp), len(brands_now)))
-                # #
-                # # merge_bkp(db_now, db_bkp, logger=logger, extra_condition=(u'brand_id BETWEEN 10359 AND 10510',))
-                #
-                # logger.warn(u'COMPLETED')
-                # db_now.close()
-                # db_bkp.close()
+    # logging.config.fileConfig('sandbox.cfg')
+    # logger = logging.getLogger('firenzeLogger')
+    # logger.info(u'PROCESS STARTED')
+    #
+    # with open('city_mapping_round_1.txt') as f:
+    #     with open('city_choice.txt', 'w') as f2:
+    #         for text in f.readlines():
+    #             id_list = re.findall(r'(\d+):', text)
+    #             id_choice = int(id_list[int(id_list[0])])
+    #             f2.write(str.format('{0}\n', id_choice))
+    #             print(id_choice)
+    #
+    #             # db_now = _mysql.connect(db='spider_stores', user='root', passwd='123456')
+    #             # db_now.query("SET NAMES 'utf8'")
+    #             # db_bkp = _mysql.connect(db='backup_stores', user='root', passwd='123456')
+    #             # db_bkp.query("SET NAMES 'utf8'")
+    #             #
+    #             # get_modified(db_bkp, logger)
+    #             #
+    #             # # db_now.query('SELECT DISTINCT brand_id FROM stores')
+    #             # # brands_now = tuple(int(temp[0]) for temp in db_now.store_result().fetch_row(maxrows=0))
+    #             # # db_bkp.query('SELECT DISTINCT brand_id FROM stores')
+    #             # # brands_bkp = tuple(int(temp[0]) for temp in db_bkp.store_result().fetch_row(maxrows=0))
+    #             # # logger.info(unicode.format(u'# of brands: {0} for db_bkp, {1} for db_now', len(brands_bkp), len(brands_now)))
+    #             # #
+    #             # # merge_bkp(db_now, db_bkp, logger=logger, extra_condition=(u'brand_id BETWEEN 10359 AND 10510',))
+    #             #
+    #             # logger.warn(u'COMPLETED')
+    #             # db_now.close()
+    #             # db_bkp.close()
