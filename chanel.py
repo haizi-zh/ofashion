@@ -1,6 +1,7 @@
 # coding=utf-8
 import json
 import logging
+import logging.config
 import string
 import re
 import traceback
@@ -10,9 +11,6 @@ from pyquery import PyQuery as pq
 
 __author__ = 'Zephyre'
 
-db = None
-log_name = 'chanel_log.txt'
-
 
 def gen_city_map():
     with open('city_lite.dat', 'r') as f:
@@ -20,48 +18,47 @@ def gen_city_map():
     return json.loads(sub[0])
 
 
-def fetch_countries(data, logging=None):
+
+def fetch_countries(db, data, logger):
     url = data['url']
     cm.get_data(url=url, data='')
     body = pq(url=url)
     body = body('#lstCountry option')
-    results=[]
+    results = []
     for item1 in body:
-        code=item1.attrib['value'].decode('utf-8')
-        country=item1.text.decode('utf-8')
-        ret=gs.lookup(code,1)
+        code = item1.attrib['value'].decode('utf-8')
+        country = item1.text.decode('utf-8')
+        ret = gs.lookup(code, 1)
     return body
 
+    # results = []
+    # for m1 in re.finditer(ur'<ul class="countries">', body):
+    #     sub = cm.extract_closure(body[m1.start():], ur'<ul\b', ur'</ul>')[0]
+    #     for m2 in re.finditer(ur'<li>\s*<div class="value">', sub, re.S):
+    #         country_sub = cm.extract_closure(sub[m2.start():], ur'<li\b', ur'</li>')[0]
+    #         m3 = re.search(ur'<div class="value">\s*<a href="([^"]+)"[^<>]*>([^<>]+)', country_sub, re.S)
+    #         if not m3:
+    #             continue
+    #         country = cm.html2plain(m3.group(2)).strip().upper()
+    #         for m3 in re.findall(ur'<li><a href="([^"]+)"[^<>]*>([^<>]+)', country_sub):
+    #             city = cm.html2plain(m3[1]).strip().upper()
+    #             d = data.copy()
+    #             d['country'], d['city'], d['url'] = country, city, m3[0]
+    #             results.append(d)
+    # return tuple(results)
 
 
-    results = []
-    for m1 in re.finditer(ur'<ul class="countries">', body):
-        sub = cm.extract_closure(body[m1.start():], ur'<ul\b', ur'</ul>')[0]
-        for m2 in re.finditer(ur'<li>\s*<div class="value">', sub, re.S):
-            country_sub = cm.extract_closure(sub[m2.start():], ur'<li\b', ur'</li>')[0]
-            m3 = re.search(ur'<div class="value">\s*<a href="([^"]+)"[^<>]*>([^<>]+)', country_sub, re.S)
-            if not m3:
-                continue
-            country = cm.html2plain(m3.group(2)).strip().upper()
-            for m3 in re.findall(ur'<li><a href="([^"]+)"[^<>]*>([^<>]+)', country_sub):
-                city = cm.html2plain(m3[1]).strip().upper()
-                d = data.copy()
-                d['country'], d['city'], d['url'] = country, city, m3[0]
-                results.append(d)
-    return tuple(results)
-
-
-def fetch_stores(data):
+def fetch_stores(db, data, logger):
     url = data['url']
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching stores: %s' % url, log_name)
+        # cm.dump('Error in fetching stores: %s' % url, log_name)
         return ()
 
     start = body.find(ur'<div id="boutiques">')
     if start == -1:
-        cm.dump('Error in fetching stores: %s' % url, log_name)
+        # cm.dump('Error in fetching stores: %s' % url, log_name)
         return ()
     body = cm.extract_closure(body[start:], ur'<div\b', ur'</div>')[0]
 
@@ -102,18 +99,20 @@ def fetch_stores(data):
                 m3 = re.search(ur'<div class="latitude">([^<>]+)', m2)
                 entry[cm.lat] = string.atof(m3.group(1)) if m3 else ''
             except (ValueError, KeyError, TypeError) as e:
-                cm.dump('Error in fetching lat: %s' % str(e), log_name)
+                # cm.dump('Error in fetching lat: %s' % str(e), log_name)
+                pass
             try:
                 m3 = re.search(ur'<div class="longitude">([^<>]+)', m2)
                 entry[cm.lng] = string.atof(m3.group(1)) if m3 else ''
             except (ValueError, KeyError, TypeError) as e:
-                cm.dump('Error in fetching lng: %s' % str(e), log_name)
+                # cm.dump('Error in fetching lng: %s' % str(e), log_name)
+                pass
 
             m3 = re.search(ur'<a href="([^"]+)"\s*>DETAILS', m2)
             if m3:
                 d = data.copy()
                 d['url'] = m3.group(1)
-                entry = fetch_store_details(d, entry)
+                entry = fetch_store_details(db, d, entry, logger)
 
             gs.field_sense(entry)
             ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])
@@ -123,27 +122,28 @@ def fetch_stores(data):
                 entry[cm.city_e] = ret[2]
             gs.field_sense(entry)
 
-            cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                                entry[cm.continent_e]), log_name)
-            # db.insert_record(entry, 'stores')
+            logger.info('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                    entry[cm.name_e], entry[cm.addr_e],
+                                                                    entry[cm.country_e],
+                                                                    entry[cm.continent_e]))
+            cm.insert_record(db, entry, data['update_table'] if data['update'] else data['table'])
             store_list.append(entry)
 
     return tuple(store_list)
 
 
-def fetch_store_details(data, entry):
+def fetch_store_details(db, data, entry, logger):
     entry = entry.copy()
     url = data['url']
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching stores: %s' % url, log_name)
+        # cm.dump('Error in fetching stores: %s' % url, log_name)
         return entry
 
     start = body.find(ur'<div id="boutique">')
     if start == -1:
-        cm.dump('Error in fetching stores: %s' % url, log_name)
+        # cm.dump('Error in fetching stores: %s' % url, log_name)
         return entry
     body = cm.extract_closure(body[start:], ur'<div\b', ur'</div>')[0]
 
@@ -198,7 +198,7 @@ def fetch_countries_beauty(data):
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return ()
 
     results = []
@@ -214,7 +214,7 @@ def fetch_cities_beauty(data):
     try:
         body = cm.get_data(url)
     except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return ()
 
     results = []
@@ -247,14 +247,14 @@ def fetch_cities_beauty(data):
         return tuple(results)
 
 
-def fetch_stores_beauty(data):
+def fetch_stores_beauty(db, data, logger):
     url = data['lst_url']
     param = {'chkCat[0]': 'FRG', 'chkCat[1]': 'MKP', 'chkCat[2]': 'PRE', 'chkCat[3]': 'EXC', 'div': 'fnb',
              'lstCountry': data['country_code'], 'lstCity': data['city']}
     try:
         body = cm.post_data(url, param)
     except Exception, e:
-        cm.dump('Error in fetching countries: %s' % url, log_name)
+        # cm.dump('Error in fetching countries: %s' % url, log_name)
         return ()
 
     store_list = []
@@ -298,16 +298,56 @@ def fetch_stores_beauty(data):
             gs.field_sense(entry)
             entry[cm.comments] = 'BEAUTY'
 
-            cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                                entry[cm.continent_e]), log_name)
+            logger.info('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
+                                                                    entry[cm.name_e], entry[cm.addr_e],
+                                                                    entry[cm.country_e],
+                                                                    entry[cm.continent_e]))
             # db.insert_record(entry, 'stores')
+            cm.insert_record(db, entry, data['update_table'] if data['update'] else data['table'])
             store_list.append(entry)
         except Exception, e:
             print traceback.format_exc()
             continue
 
     return tuple(store_list)
+
+
+def get_logger():
+    logging.config.fileConfig('chanel.cfg')
+    logger = logging.getLogger('firenzeLogger')
+    return logger
+
+
+def get_func_chain():
+    return fetch_countries, fetch_stores
+
+
+def get_data():
+    return {'url':'http://webservices.back.chanel.com/storelocator/stores/full/en_WW/',
+            'brand_id': 10074, 'brandname_e': u'Chanel', 'brandname_c': u'香奈儿',
+            'city_map': gen_city_map(), 'node_id': 0, 'country_map':{}}
+    # return {'city_url': 'http://www-cn.chanel.com/store-finder/en_GB/store-locator/searchaddressform/fnb',
+    #         'lst_url': 'http://www-cn.chanel.com/en_GB/store-locator/searchaddress/fnb/',
+    #         'url': 'http://www-cn.chanel.com/store-finder/en_GB/store-locator/countrylist/GB/fnb',
+    #         'brand_id': 10074, 'brandname_e': u'Chanel', 'brandname_c': u'香奈儿',
+    #         'city_map': gen_city_map(), 'node_id': 0}
+
+    # return {'url': 'http://www-cn.chanel.com/fashion/storelocator/11-1',
+    #         'brand_id': 110074, 'brandname_e': u'Chanel', 'brandname_c': u'香奈儿', 'node_id': 0}
+    # return {'host': 'http://stores.bulgari.com', 'geo_url': '/blgsl/js-geoentities.html',
+    #         'store_url': '/blgsl/js-stores.html', 'brand_id': 10058, 'brandname_e': u'BVLGARI',
+    #         'brandname_c': u'宝格丽', 'node_id': 0}
+
+
+def merge(db, data, logger):
+    pass
+
+
+def init(db, data, logger=None):
+    db.query(str.format('DELETE FROM {0} WHERE brand_id={1}',
+                        data['update_table'] if data['update'] else data['table'],
+                        data['brand_id']))
+    pass
 
 
 def fetch(level=1, data=None, user='root', passwd='', logger=None):
