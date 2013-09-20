@@ -9,6 +9,8 @@ import time
 import traceback
 import itertools
 import _mysql
+import sys
+import geocode_fetch as gf
 import bvlgari
 import ca
 import cartier
@@ -30,6 +32,7 @@ import geocode_fetch
 import logging.config
 import sergio
 import swarovski
+import valentino
 import viktor_rolf
 import viviennetam
 
@@ -783,22 +786,23 @@ def fetch_stores2(db, data, func_chain, level=0, node_tracker=None, node_dump=No
             node_tracker[unicode(level)] = {}
 
         # 该节点已经全部完成
-        if data['node_id'] in node_tracker[unicode(level)] and node_tracker[unicode(level)][data['node_id']]:
+        if data['node_id'] not in node_tracker[unicode(level)]:
+            node_tracker[unicode(level)][data['node_id']] = False
+        if node_tracker[unicode(level)][data['node_id']]:
             return
-        node_tracker[unicode(level)][data['node_id']] = False
+
         if node_dump:
             with open(node_dump, 'w') as fpickle:
-                json.dump(node_tracker, fpickle)
+                fpickle.write(json.dumps(node_tracker, fpickle, ensure_ascii=False, encoding='utf-8').encode('utf-8'))
 
-    ret = func_chain[level](db, data, logger)
-    for s in ret:
+    for s in func_chain[level](db, data, logger):
         fetch_stores2(db, s, func_chain, level + 1, node_tracker, node_dump=node_dump, logger=logger)
 
     if node_tracker is not None and level <= max_dep:
         node_tracker[unicode(level)][data['node_id']] = True
         if node_dump:
             with open(node_dump, 'w') as fpickle:
-                json.dump(node_tracker, fpickle)
+                fpickle.write(json.dumps(node_tracker, fpickle, ensure_ascii=False, encoding='utf-8').encode('utf-8'))
 
 
 def merge(db, brand_id, columns, logger=None):
@@ -815,43 +819,101 @@ def merge(db, brand_id, columns, logger=None):
 
 
 if __name__ == "__main__":
-    test_flag = False
+    logging.config.fileConfig('geocode_fetch.cfg')
+    logger = logging.getLogger('firenzeLogger')
 
-    if test_flag:
-        print(geocode_fetch.calc_distance((-70.3, 35.2), (-4.1, 44.2)))
-    else:
-        db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
-        db.query("SET NAMES 'utf8'")
-        module = chanel
-        logger = module.get_logger()
-        logger.info(unicode.format(u'{0} STARTED', module.__name__.upper()))
-        logger.info(u'================')
-        data = module.get_data()
-        data['update'] = True
-        data['table'] = 'spider_stores.stores'
-        data['update_table'] = 'spider_stores.update_stores'
-        module.init(db, data, logger)
+    host, database, user, passwd, port = '127.0.0.1', 'spider_stores', 'root', '', 3306
+    for i in xrange(1, len(sys.argv), 2):
+        token = sys.argv[i]
+        if token[0] != '-':
+            logger.error(unicode.format(u'Invalid parameter: {0}', token))
+            exit(-1)
+        cmd = token[1:]
+        value = sys.argv[i + 1]
+        if cmd == 'u':
+            user = value
+        elif cmd == 'P':
+            port = int(value)
+        elif cmd == 'p':
+            passwd = value
+        elif cmd == 'd':
+            database = value
+        elif cmd == 'h':
+            host = value
 
-        node_tracker = {}
-        pickle_name = str.format('../log/{0}.p', module.__name__)
-        try:
-            with open(pickle_name, 'r') as fpickle:
-                node_tracker = json.load(fpickle)
-        except IOError as e:
-            pass
+    module = valentino
+    logger = module.get_logger()
+    logger.info(unicode.format(u'{0} STARTED', module.__name__.upper()))
+    logger.info(u'================')
 
-        fetch_stores2(db, data, module.get_func_chain(), logger=logger, node_tracker=node_tracker,
-                      node_dump=pickle_name)
+    db = _mysql.connect(host=host, port=port, user=user, passwd=passwd, db=database)
+    db.query("SET NAMES 'utf8'")
+
+    # gf.geocode_query(db, extra_condition=('(brand_id=10074)',), overwrite=True, logger=logger)
+
+    update = True
+    data = module.get_data(db, 'update_stores' if update else 'stores', logger)
+    module.init(db, data, logger)
+
+    node_tracker = {}
+    pickle_name = str.format('../log/{0}.p', module.__name__)
+    try:
+        with open(pickle_name, 'r') as fpickle:
+            node_tracker = json.load(fpickle, encoding='utf-8')
+    except IOError as e:
+        pass
+
+    # # Unicodize
+    # u_func = lambda v:v if isinstance(v,unicode) else v.encode('utf-8')
+    # dict((u_func(key), u_func(node_tracker) ))
+
+    fetch_stores2(db, data, module.get_func_chain(), logger=logger, node_tracker=node_tracker,
+                  node_dump=pickle_name)
+
+    db.close()
 
 
-        # results = common.walk_tree({'func': lambda v: fetch_stores(
-        #     db, v, module.get_func_chain(), logger=logger), 'data': data})
-
-        # #         如果为UPDATE模式，则还需要做merge操作
-        # if data['update']:
-        #     module.merge(db, data, logger)
-
-        # fetch_stores(db, module.get_data(), module.get_func_chain(), logger)
-        db.close()
-        logger.info(u'================')
-        logger.info(unicode.format(u'{0} STOPPED', module.__name__.upper()))
+    # test_flag = False
+    #
+    # if test_flag:
+    #     data = common.get_data(url='http://www.baidu.com', extra_url='')
+    #     print(geocode_fetch.calc_distance((-70.3, 35.2), (-4.1, 44.2)))
+    # else:
+    #     db = _mysql.connect(db='spider_stores', user='root', passwd='123456')
+    #     db.query("SET NAMES 'utf8'")
+    #     module = chanel
+    #     logger = module.get_logger()
+    #     logger.info(unicode.format(u'{0} STARTED', module.__name__.upper()))
+    #     logger.info(u'================')
+    #     data = module.get_data(db, logger)
+    #     data['update'] = False
+    #     data['table'] = 'spider_stores.stores'
+    #     data['update_table'] = 'spider_stores.update_stores'
+    #     module.init(db, data, logger)
+    #
+    #     node_tracker = {}
+    #     pickle_name = str.format('../log/{0}.p', module.__name__)
+    #     try:
+    #         with open(pickle_name, 'r') as fpickle:
+    #             node_tracker = json.load(fpickle, encoding='utf-8')
+    #     except IOError as e:
+    #         pass
+    #
+    #     # # Unicodize
+    #     # u_func = lambda v:v if isinstance(v,unicode) else v.encode('utf-8')
+    #     # dict((u_func(key), u_func(node_tracker) ))
+    #
+    #     fetch_stores2(db, data, module.get_func_chain(), logger=logger, node_tracker=node_tracker,
+    #                   node_dump=pickle_name)
+    #
+    #     # results = common.walk_tree({'func': lambda v: fetch_stores(
+    #     #     db, v, module.get_func_chain(), logger=logger), 'data': data})
+    #
+    #     # #         如果为UPDATE模式，则还需要做merge操作
+    #     # if data['update']:
+    #     #     module.merge(db, data, logger)
+    #
+    #     # fetch_stores(db, module.get_data(), module.get_func_chain(), logger)
+    #     db.close()
+    #     logger.info(u'================')
+    #     logger.info(unicode.format(u'{0} STOPPED', module.__name__.upper()))

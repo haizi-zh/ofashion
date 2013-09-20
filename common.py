@@ -64,7 +64,7 @@ ucjk_whitespace = ur'\u3000'
 class MStoreFileHandler(logging.FileHandler):
     def __init__(self, path=u'.', filename=None, mode='a'):
         if not filename:
-            filename='.'.join(os.path.basename(sys.modules['__main__'].__file__).split('.')[:-1]).decode('utf-8')
+            filename = '.'.join(os.path.basename(sys.modules['__main__'].__file__).split('.')[:-1]).decode('utf-8')
         filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
         super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
 
@@ -324,17 +324,17 @@ def proc_response(response):
 
 
 def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=20, cookie=None, client='Desktop',
-             userAgent='', logger=None, verbose=False):
+             userAgent='', logger=None, verbose=False, extra_url=None):
     """
     Fetch data from a URL via HTTP GET method, ignoring all the cookies. See get_data_cookie.
     """
     html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cool_time, cookie, client=client,
-                                   userAgent=userAgent, logger=logger, verbose=verbose)
+                                   userAgent=userAgent, logger=logger, verbose=verbose, extra_url=extra_url)
     return html
 
 
-def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=20, cookie=None, proxy=None,
-                    client='Desktop', userAgent='', logger=None, verbose=False):
+def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=5, cookie=None, proxy=None,
+                    client='Desktop', userAgent='', logger=None, verbose=False, extra_url=None):
     """
     Fetch data from a URL via HTTP GET method, with cookies provided.
     :param url:
@@ -394,6 +394,8 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_tim
             if url_components[3] != '' else urllib.urlencode(data)
 
     url = urlparse.SplitResult(*url_components).geturl()
+    if extra_url:
+        url += extra_url
 
     i = -1
     while True:
