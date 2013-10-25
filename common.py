@@ -15,6 +15,7 @@ import urlparse
 import datetime
 import os
 import sys
+import errno
 
 __author__ = 'Zephyre'
 
@@ -220,7 +221,33 @@ def reformat_addr(addr):
     val = re.sub(ur'^\.+', '', val).strip()
     val = re.sub(ur'^\.{2,}', '.', val).strip()
     val = '' if val == '.' else val
-    return val
+
+    # 以,分割，去掉重复的项，比如：XXX, DUBAI, DUBAI, UAE => XXX, DUBAI, UAE
+    term_list = []
+    for term in val.split(u','):
+        v = term.strip()
+        if len(term_list) == 0 or term_list[-1] != v:
+            term_list.append(v)
+    return u', '.join(term_list)
+
+
+def fetch_brand_by_id(brand_id):
+    """
+    根据brand_id查找品牌信息。
+    :param brand_id:
+    :return:
+    """
+    data = {10226: {'brandname_e':'Louis Vuitton'}}
+    return data.get(brand_id)
+
+
+def norm_brand_name(brand_name):
+    """
+    将品牌名称转换为文件名格式。比如：louis_vuitton
+    :param brand_name:
+    :return:
+    """
+    return re.sub(r'\s+', '_', brand_name).lower()
 
 
 def is_chinese(text):
@@ -245,9 +272,14 @@ def html2plain(text):
     """
     while True:
         m = re.search(ur'&.+?;', text)
-        if m is None:
+        if not m:
             break
-        text = text[:m.start()] + unescape_hlp.unescape(m.group(0).lower()) + text[m.end():]
+        escapee = re.sub(ur'&0+(\d+);', ur'&\1', m.group(0).lower())
+        new_text = text[:m.start()] + unescape_hlp.unescape(escapee.lower()) + text[m.end():]
+        if new_text == text:
+            break
+        else:
+            text = new_text
 
     return text
 
@@ -261,7 +293,7 @@ def decode_data(data):
     return gzipper.read()
 
 
-def proc_response(response):
+def proc_response(response, binary_data=False):
     """
     对response作处理，比如gzip，决定编码信息等
     """
@@ -293,6 +325,9 @@ def proc_response(response):
             charset = m[0].lower()
 
     data = response.read()
+    if binary_data:
+        return {'code': response.code, 'headers': hd, 'body': data, 'cookie': cookie_map}
+
     if 'content-encoding' in hd and hd['content-encoding'].lower().__eq__('gzip'):
         html = decode_data(data)
     else:
@@ -317,24 +352,46 @@ def proc_response(response):
                 else:
                     continue
 
-    # if len(cookie_map) == 0:
-    #     return html, None
-    # else:
-    return html, cookie_map
+    return {'code': response.code, 'headers': hd, 'body': html, 'cookie': cookie_map}
 
 
-def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=20, cookie=None, client='Desktop',
-             userAgent='', logger=None, verbose=False, extra_url=None):
+def product_merge(from_data, to_data):
+    """
+    to_data是products的某一条记录，需要把from_data中的字段合并到其中。
+    :param from_data:
+    :param to_data:
+    """
+    modified = False
+    for k in from_data.keys():
+        v = from_data[k]
+        if k not in to_data.keys():
+            continue
+        to_v = to_data[k]
+        if to_v != v:
+            modified = True
+            if to_v is None:
+                to_v = v
+            else:
+                temp = set(to_v.split('|'))
+                temp.add(v)
+                to_v = '|'.join(temp)
+            to_data[k] = to_v
+    return modified
+
+
+def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=5, cookie=None, proxy=None, client='Desktop',
+             userAgent='', logger=None, verbose=False, binary_data=False, extra_url=None):
     """
     Fetch data from a URL via HTTP GET method, ignoring all the cookies. See get_data_cookie.
     """
-    html, cookie = get_data_cookie(url, data, hdr, timeout, retry, cool_time, cookie, client=client,
-                                   userAgent=userAgent, logger=logger, verbose=verbose, extra_url=extra_url)
-    return html
+    response = get_data_cookie(url, data, hdr, timeout, retry, cool_time, cookie, proxy=proxy, client=client,
+                               userAgent=userAgent, logger=logger, verbose=verbose, binary_data=binary_data,
+                               extra_url=extra_url)
+    return response
 
 
 def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=5, cookie=None, proxy=None,
-                    client='Desktop', userAgent='', logger=None, verbose=False, extra_url=None):
+                    client='Desktop', userAgent='', logger=None, verbose=False, binary_data=False, extra_url=None):
     """
     Fetch data from a URL via HTTP GET method, with cookies provided.
     :param url:
@@ -364,9 +421,10 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_tim
     else:
         opener = urllib2.build_opener()
 
-    hdr_map = dict([('Accept-Encoding', 'gzip,deflate,sdch'),
-                    ('Accept-Language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
-                    ('Accept', '*/*'), ('X-Requested-With', 'XMLHttpRequest'), ('Connection', 'keep-alive')])
+    hdr_map = dict([('accept-language', 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4,zh-TW;q=0.2'),
+                    # ('accept-encoding', 'gzip,deflate,sdch'),
+                    # ('accept', '*/*'), ('x-requested-with', 'XMLHttpRequest'),
+                    ('connection', 'keep-alive')])
     if client.lower() == 'desktop':
         hdr_map[
             "User-Agent"] = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.94 Safari/537.36"
@@ -379,7 +437,7 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_tim
     if hdr is not None:
         for key in hdr:
             val = hdr[key]
-            hdr_map[key] = val.encode('utf-8') if isinstance(val, unicode) else val
+            hdr_map[key.lower()] = val.encode('utf-8') if isinstance(val, unicode) else val
 
     if cookie:
         cookie_str = '; '.join(['%s=%s' % (k, cookie[k]) for k in cookie.keys()])
@@ -401,14 +459,15 @@ def get_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=3, cool_tim
     while True:
         i += 1
         try:
-            body, cookie_new = proc_response(opener.open(url, timeout=timeout))
+            response = proc_response(opener.open(url, timeout=timeout), binary_data=binary_data)
+            cookie_new = response['cookie']
             if cookie:
                 for key in cookie:
                     if key not in cookie_new:
                         cookie_new[key] = cookie[key]
-            return body, cookie_new
+            return response
         except urllib2.HTTPError:
-            pass
+            raise
         except Exception, e:
             if isinstance(e, urllib2.HTTPError):
                 print 'Http error: {0}'.format(e.code)
@@ -498,6 +557,40 @@ def extract_closure(html, start_tag, end_tag):
     return [html[start:end], start, end]
 
 
+def unicodize(record):
+    """
+    将record的key和value unicode化。
+    :param record:
+    :return:
+    """
+    func = lambda x: x.decode('utf-8') if isinstance(x, str) else x
+    return dict((func(item[0]), func(item[1])) for item in record.items())
+
+
+def reset_geo(db, table=u'stores', extra=None, logger=None):
+    """
+    重置数据的geo数据
+    :param db:
+    :param table:
+    :param extra:
+    :param logger:
+    """
+    extra = tuple(u'true', ) if extra is None else extra
+    logger = logging.getLogger() if logger is None else logger
+
+    db.query(unicode.format(u'SELECT * FROM {0} WHERE {1}', table, u' && '.join(extra)))
+    for record in (unicodize(temp) for temp in db.store_result().fetch_row(maxrows=0, how=1)):
+        idstores = int(record[u'idstores'])
+        for k in record.keys():
+            if re.search(ur'^geo_', k):
+                record[k] = None
+        record[u'idcity'] = 0
+        record[u'geo_locality_default'] = 0
+        record[u'geo_queried'] = u'N/A'
+        record[u'addr_hash'] = None
+        update_record(db, (unicode.format(u'idstores={0}', idstores),), table, record)
+
+
 def write_log(msg, log_type='Error'):
     log_name = format_time('%Y%m%d_%H%M%S') + '.log'
     timestr = format_time()
@@ -505,9 +598,60 @@ def write_log(msg, log_type='Error'):
         f.write((u'%s %s %s\n' % (timestr, log_type, msg)).encode('utf-8'))
 
 
-def post_data(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None):
-    html, cookie = post_data_cookie(url, data, hdr, timeout, retry, cookie)
-    return html
+def post_data(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None, client='Desktop'):
+    return post_data_cookie(url, data, hdr, timeout, retry, cookie, proxy, client)
+
+
+def retry_helper(func, param=None, logger=None, except_class=Exception, retry=5, retry_delay=5, skip=False,
+                 retry_message=u'FAIL', abort_message=u'ABORT'):
+    """
+    执行func函数体。如果失败，将重复多次，或终止并抛出异常。
+    :rtype : 函数执行结果。如果多次重复后依然失败，则返回None。
+    :param func:
+    :param param:
+    :param except_class:
+    :param retry:
+    :param retry_delay:
+    :param retry_message:
+    :param abort_message:
+    """
+    try:
+        iter(except_class)
+    except TypeError:
+        except_class = (except_class,)
+
+    i = -1
+    while True:
+        i += 1
+        try:
+            return func(param)
+        except Exception as e:
+            if reduce(lambda a, b: a or isinstance(e, b), except_class, False):
+                if i < retry:
+                    if logger is not None:
+                        logger.warn(
+                            unicode.format(u'#{0}: {1} ERROR MESSAGE: {2}({3}', i, retry_message, e.message, type(e)))
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    if skip:
+                        if logger is not None:
+                            logger.error(unicode.format(u'{0} ERROR MESSAGE: {1}{2}', abort_message, e.message, type(e)))
+                        break
+                    else:
+                        raw_input('PRESS ENTER TO CONTINUE')
+                        continue
+            else:
+                raise
+    return None
+
+
+def currency_lookup(symbol):
+    """
+    货币符号到货币代码的转换
+    """
+    currency_map = {u'￥': u'CNY', u'Ұ': u'CNY', u'$': u'USD', u'€': u'EUR', u'₩': u'KRW'}
+    return currency_map[symbol]
 
 
 def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None, client='Desktop',
@@ -772,8 +916,87 @@ def load_geo2():
     f.close()
 
 
+def update_record(db, cond, tbl, record):
+    """
+    UPDATE操作
+    :param db:
+    :param tbl:
+    :param record:
+    """
+
+    def func(k, v):
+        if v is None:
+            return unicode.format(u'{0}={1}', k, u'NULL')
+
+        if isinstance(v, unicode):
+            v = unicode.format(u'"{0}"',
+                               re.sub(ur'"', ur'\"', re.sub(ur'\\', ur'\\\\', (u'NULL' if v is None else v))))
+        return unicode.format(u'{0}={1}', k, v)
+
+    record[u'update_time'] = unicode(datetime.datetime.now())
+    record[u'modified'] = 1
+    update_entries = map(lambda item: apply(func, item), unicodize(record).items())
+    db.query(
+        unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl, u', '.join(update_entries), u' && '.join(cond)).encode(
+            'utf-8'))
+
+
+def format_price_text(body, region=None):
+    """
+    格式化价格字段，需要处理多种格式
+    """
+    val = re.sub(ur'\s', u'', body if isinstance(body, unicode) else body.decode('utf-8'), flags=re.U)
+    term_list = re.split(u'[\s\.,]', val, flags=re.U)
+    if len(term_list) > 1:
+        part1 = term_list[:-1]
+        part2 = term_list[-1]
+    else:
+        part1 = term_list
+        part2 = u''
+
+    try:
+        val = float(u'.'.join((u''.join(re.sub(ur'[\s\.,]', u'', temp) for temp in part1),
+                               re.sub(ur'[\s\.,]', u'', part2))))
+    except ValueError:
+        val = None
+
+    return val
+
+
+def make_sure_path_exists(path):
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
+
+def update_record(db, entry, tbl, where):
+    # INSERT INTO tbl (...) VALUES (...)
+    entry[u'update_time'] = unicode(datetime.datetime.now())
+    entry[u'modified'] = 1
+    fields = '(' + ', '.join(entry.keys()) + ')'
+
+    def get_value_term(key, value):
+        if value is None:
+            ret = u'NULL'
+        else:
+            if isinstance(value, str):
+                value = value.decode('utf-8')
+            value = unicode(value)
+            ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
+
+        return unicode.format(u'{0}={1}', key, ret)
+
+    statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl,
+                               u', '.join(get_value_term(k, entry[k]) for k in entry.keys()), where).encode('utf-8')
+    db.query(statement)
+
+
 def insert_record(db, entry, tbl):
     # INSERT INTO tbl (...) VALUES (...)
+    entry[u'update_time'] = unicode(datetime.datetime.now())
+    entry[u'modified'] = 1
     fields = '(' + ', '.join(entry.keys()) + ')'
 
     def get_value_term(key, value):
@@ -798,7 +1021,6 @@ def insert_record(db, entry, tbl):
     statement = str.format('INSERT INTO {0} {1} VALUES {2}', tbl, fields,
                            values) # u'INSERT INTO %s %s VALUES %s' % (tbl, fields, values)
     db.query(statement)
-    # self.execute(statement)
 
 
 # def geo_translate(c, level=-1):
