@@ -237,7 +237,7 @@ def fetch_brand_by_id(brand_id):
     :param brand_id:
     :return:
     """
-    data = {10226: {'brandname_e':'Louis Vuitton'}}
+    data = {10226: {'brandname_e': 'Louis Vuitton'}}
     return data.get(brand_id)
 
 
@@ -365,16 +365,21 @@ def product_merge(from_data, to_data):
     for k in from_data.keys():
         v = from_data[k]
         if k not in to_data.keys():
+            to_data[k] = v
+            modified = True
             continue
+
         to_v = to_data[k]
+        if isinstance(to_v, str):
+            to_v = to_v.decode('utf-8')
         if to_v != v:
             modified = True
             if to_v is None:
                 to_v = v
             else:
-                temp = set(to_v.split('|'))
+                temp = set(to_v.split(u'|'))
                 temp.add(v)
-                to_v = '|'.join(temp)
+                to_v = u'|'.join(temp)
             to_data[k] = to_v
     return modified
 
@@ -636,7 +641,8 @@ def retry_helper(func, param=None, logger=None, except_class=Exception, retry=5,
                 else:
                     if skip:
                         if logger is not None:
-                            logger.error(unicode.format(u'{0} ERROR MESSAGE: {1}{2}', abort_message, e.message, type(e)))
+                            logger.error(
+                                unicode.format(u'{0} ERROR MESSAGE: {1}{2}', abort_message, e.message, type(e)))
                         break
                     else:
                         raw_input('PRESS ENTER TO CONTINUE')
@@ -971,6 +977,17 @@ def make_sure_path_exists(path):
             raise
 
 
+def unicodify(val):
+    if isinstance(val, str):
+        return val.decode('utf-8')
+    else:
+        return val
+
+
+def simplify_brand_name(val):
+    return re.sub(ur'\s+', u'_', unicodify(val).lower().strip(), flags=re.U)
+
+
 def update_record(db, entry, tbl, where):
     # INSERT INTO tbl (...) VALUES (...)
     entry[u'update_time'] = unicode(datetime.datetime.now())
@@ -993,10 +1010,14 @@ def update_record(db, entry, tbl, where):
     db.query(statement)
 
 
-def insert_record(db, entry, tbl):
+def insert_record(db, entry, tbl, update_time=True, modified=True):
     # INSERT INTO tbl (...) VALUES (...)
-    entry[u'update_time'] = unicode(datetime.datetime.now())
-    entry[u'modified'] = 1
+    if update_time:
+        entry[u'update_time'] = unicode(datetime.datetime.now())
+
+    if modified:
+        entry[u'modified'] = 1
+
     fields = '(' + ', '.join(entry.keys()) + ')'
 
     def get_value_term(key, value):
@@ -1008,9 +1029,7 @@ def insert_record(db, entry, tbl):
             # else:
             ret = float(value)
         else:
-            if isinstance(value, str):
-                value = value.decode('utf-8')
-            value = unicode(value)
+            value = unicode(unicodify(value))
             ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
             # re.sub(ur'(?<!\\)"', value, ur'\\"')
             # ret = u'"%s"' % unicode(value).replace('"', '\\"')
