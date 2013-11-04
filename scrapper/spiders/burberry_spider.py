@@ -7,10 +7,11 @@ import datetime
 from scrapy import log
 from scrapy.contrib.spiders import CrawlSpider
 from scrapy.http import Request
+from scrapy.mail import MailSender
 from scrapy.selector import HtmlXPathSelector
 from scrapper import utils
 from scrapper.items import ProductItem
-import global_settings
+import global_settings as glob
 import copy
 
 __author__ = 'Zephyre'
@@ -22,26 +23,33 @@ burberry_data = {'host': {'cn': 'http://cn.burberry.com',
                           'hk': 'http://hk.burberry.com',
                           'jp': 'http://jp.burberry.com',
                           'it': 'http://it.burberry.com',
-
+                          'sg': 'http://sg.burberry.com',
+                          'tw': 'http://sg.burberry.com',
+                          'mo': 'http://mo.burberry.com',
+                          'au': 'http://au.burberry.com',
+                          'ae': 'http://ae.burberry.com',
+                          'de': 'http://de.burberry.com',
+                          'ca': 'http://ca.burberry.com',
+                          'es': 'http://es.burberry.com',
+                          'ru': 'http://ru.burberry.com',
+                          'br': 'http://br.burberry.com',
+                          'kr': 'http://kr.burberry.com',
+                          'my': 'http://my.burberry.com',
 },
                  'brand_id': 10057, 'brandname_e': 'Burberry', 'brandname_c': u'博柏丽', 'bn_short': 'burberry'}
 
 
-def creat_spider():
+def create_spider():
     return BurberrySpider()
-
-
-def get_image_path():
-    return os.path.normpath(os.path.join(global_settings.HOME_PATH, u'products/images'))
 
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(global_settings.HOME_PATH, unicode.format(u'products/crawl/{0}', burberry_data['bn_short'])))
+        os.path.join(glob.STORAGE_PATH, unicode.format(u'products/crawl/{0}', burberry_data['bn_short'])))
 
 
 def get_log_path():
-    return os.path.normpath(os.path.join(global_settings.HOME_PATH, u'products/log',
+    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
                                          unicode.format(u'{0}_{1}_{2}.log', burberry_data['brand_id'],
                                                         burberry_data['bn_short'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))
@@ -49,58 +57,46 @@ def get_log_path():
 
 class BurberrySpider(CrawlSpider):
     name = 'burberry'
-    allowed_domains = ['burberry.com']
-
-    def __init__(self, region=None):
-        self.region = region
+    # allowed_domains = ['burberry.com']
 
     def start_requests(self):
-        if self.region:
-            return Request(url=burberry_data['host'][self.region])
+        region = self.crawler.settings['REGION']
+        self.log(str.format('Fetching data for {0}', region), log.INFO)
+        if region in burberry_data['host']:
+            return [Request(url=burberry_data['host'][region])]
         else:
-            return [Request(url=burberry_data['host'][r]) for r in self.crawler.settings.get('REGION_LIST')]
+            self.log(str.format('No data for {0}', region), log.WARNING)
+            return []
 
     def parse(self, response):
         self.log(unicode.format(u'PARSE_HOME: URL={0}', response.url), level=log.DEBUG)
-        if 'cn.burberry.com' in response.url:
-            metadata = {'region': 'cn'}
-        elif 'us.burberry.com' in response.url:
-            metadata = {'region': 'us'}
-        elif 'fr.burberry.com' in response.url:
-            metadata = {'region': 'fr'}
-        elif 'uk.burberry.com' in response.url:
-            metadata = {'region': 'uk'}
-        elif 'hk.burberry.com' in response.url:
-            metadata = {'region': 'hk'}
-        elif 'it.burberry.com' in response.url:
-            metadata = {'region': 'it'}
-        elif 'jp.burberry.com' in response.url:
-            metadata = {'region': 'jp'}
-        else:
-            metadata = {'region': None}
-        metadata['tags_mapping'] = {}
-        metadata['extra'] = {}
+        m = re.search(r'([a-zA-Z]{2})\.burberry\.com', response.url)
+        if m:
+            metadata = {'region': m.group(1)}
 
-        region = metadata['region']
+            metadata['tags_mapping'] = {}
+            metadata['extra'] = {}
 
-        hxs = HtmlXPathSelector(response)
-        for item in hxs.select(
-                "//div[@id='shared_sidebar']//div[@id='nav']//ul[@class='l-1-set']//li[@class='l-1-link l-1-link-open']"
-                "//li/a[@href]"):
-            href = item._root.attrib['href']
-            cat = utils.unicodify(re.sub(r'/', '', href))
-            title = utils.unicodify(item._root.attrib['title'])
-            m = copy.deepcopy(metadata)
-            m['extra']['category-1'] = cat
-            m['tags_mapping']['category-1'] = [{'name': cat, 'title': title}]
-            if cat in {'women', 'femme', 'donna'}:
-                m['gender'] = [u'female']
-            elif cat in {'men', 'homme', 'uomo'}:
-                m['gender'] = [u'male']
-            else:
-                m['gender'] = []
-            url = burberry_data['host'][region] + href
-            yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_1)
+            region = metadata['region']
+
+            hxs = HtmlXPathSelector(response)
+            for item in hxs.select(
+                    "//div[@id='shared_sidebar']//div[@id='nav']//ul[@class='l-1-set']//li[@class='l-1-link l-1-link-open']"
+                    "//li/a[@href]"):
+                href = item._root.attrib['href']
+                cat = utils.unicodify(re.sub(r'/', '', href))
+                title = utils.unicodify(item._root.attrib['title'])
+                m = copy.deepcopy(metadata)
+                m['extra']['category-1'] = [cat]
+                m['tags_mapping']['category-1'] = [{'name': cat, 'title': title}]
+                if cat in {'women', 'femme', 'donna'}:
+                    m['gender'] = [u'female']
+                elif cat in {'men', 'homme', 'uomo'}:
+                    m['gender'] = [u'male']
+                else:
+                    m['gender'] = []
+                url = burberry_data['host'][region] + href
+                yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_1)
 
     def parse_category_1(self, response):
         self.log(unicode.format(u'PARSE_CAT_1: URL={0}', response.url), level=log.DEBUG)
@@ -115,7 +111,7 @@ class BurberrySpider(CrawlSpider):
             cat = utils.unicodify(re.sub(r'/', '', href))
             title = utils.unicodify(item._root.attrib['title'])
             m = copy.deepcopy(metadata)
-            m['extra']['category-2'] = cat
+            m['extra']['category-2'] = [cat]
             m['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
             m['category'] = [cat]
             url = burberry_data['host'][region] + href
@@ -135,7 +131,7 @@ class BurberrySpider(CrawlSpider):
             cat = utils.unicodify(re.sub(r'/', '', href))
             title = utils.unicodify(item._root.attrib['title'])
             m = copy.deepcopy(metadata)
-            m['extra']['category-3'] = cat
+            m['extra']['category-3'] = [cat]
             m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
             url = burberry_data['host'][region] + href
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_3)

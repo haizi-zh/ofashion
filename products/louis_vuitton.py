@@ -4,10 +4,12 @@ import logging.config
 import re
 import os
 import socket
+import types
 import urllib
 import datetime
 import _mysql
 from urllib2 import HTTPError, URLError
+from lxml.etree import ParserError
 import common as cm
 from pyquery import PyQuery as pq
 import json
@@ -20,10 +22,52 @@ __author__ = 'Zephyre'
 def get_logger():
     logging.config.fileConfig('products/louis_vuitton.cfg')
     return logging.getLogger('firenzeLogger')
+    # return logging.getLogger()
+
+
+def product_tags_merge(src, dest):
+    """
+    合并两个tag列表：把src中的内容合并到dest中
+    :param src:
+    :param dest:
+    """
+
+    def iterable(val):
+        """
+        val是否iterable。注意：val为str的话，返回False。
+        :param val:
+        """
+        if isinstance(val, types.StringTypes):
+            return False
+        else:
+            try:
+                iter(val)
+                return True
+            except TypeError:
+                return False
+
+    def to_set(val):
+        """
+        如果val是iterable，则转为set，否则……
+        :param val:
+        :return:
+        """
+        return set(val) if iterable(val) else set([val])
+
+    dest = dict((k, to_set(dest[k])) for k in dest if dest[k])
+    src = dict((k, to_set(src[k])) for k in src if src[k])
+
+    for k in src:
+        if k not in dest:
+            dest[k] = src[k]
+        else:
+            dest[k] = dest[k].union(src[k])
+
+    # 整理
+    return dict((k, list(dest[k])) for k in dest)
 
 
 logger = get_logger()
-
 post_keys = ("_dyncharset",
              "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.findProductsSuccessUrl",
              "_D:/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.findProductsSuccessUrl",
@@ -101,21 +145,42 @@ basic_query = {"_dyncharset": "UTF-8",
 hosts = {'url_host': {'cn': 'http://m.louisvuitton.cn',
                       'us': 'http://m.louisvuitton.com',
                       'fr': 'http://m.louisvuitton.fr',
+                      'uk': 'http://m.louisvuitton.co.uk',
                       'de': 'http://m.louisvuitton.de',
                       'es': 'http://m.louisvuitton.es',
-                      'it': 'http://m.louisvuitton.it'},
+                      'it': 'http://m.louisvuitton.it',
+                      'ca': 'http://m.louisvuitton.ca',
+                      'au': 'http://m.louisvuitton.com.au',
+                      'jp': 'http://m.louisvuitton.jp',
+                      'ru': 'http://m.louisvuitton.ru',
+                      'br': 'http://m.louisvuitton.com.br',
+                      'kr': 'http://m.louisvuitton.kr',
+                      'tw': 'http://m.louisvuitton.tw'},
          'image_host': 'http://images.louisvuitton.com/content/dam/lv/online/picture/',
          'data_host': {
              'cn': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=zhs_CN&cache=Medium&category=',
              'us': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=eng_US&cache=Medium&category=',
              'fr': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=fra_FR&cache=Medium&category=',
+             'uk': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=eng_GB&cache=Medium&category=',
              'de': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=deu_DE&cache=Medium&category=',
              'es': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=esp_ES&cache=Medium&category=',
-             'it': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=ita_IT&cache=Medium&category='}}
+             'it': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=ita_IT&cache=Medium&category=',
+             'ca': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=eng_CA&cache=Medium&category=',
+             'au': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=eng_AU&cache=Medium&category=',
+             'jp': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=jpn_JP&cache=Medium&category=',
+             'ru': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=rus_RU&cache=Medium&category=',
+             'br': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=por_BR&cache=Medium&category=',
+             'kr': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=kor_KR&cache=Medium&category=',
+             'tw': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=zht_TW&cache=Medium&category=',
+         }}
 
 details_pattern = {'model_pattern': {'cn': r'产品编号\s*([a-zA-Z0-9]+)', 'us': r'sku\s*([a-zA-Z0-9]+)',
                                      'fr': r'sku\s*([a-zA-Z0-9]+)', 'de': r'REF\s*([a-zA-Z0-9]+)',
-                                     'es': r'REFERENCIA\s*([a-zA-Z0-9]+)', 'it': r'CODE\s*([a-zA-Z0-9]+)'}}
+                                     'es': r'REFERENCIA\s*([a-zA-Z0-9]+)', 'it': r'CODICE\s*([a-zA-Z0-9]+)',
+                                     'uk': r'sku\s*([a-zA-Z0-9]+)', 'ca': r'sku\s*([a-zA-Z0-9]+)',
+                                     'au': r'sku\s*([a-zA-Z0-9]+)', 'jp': ur'製品番号\s*([a-zA-Z0-9]+)',
+                                     'ru': r'sku\s*([a-zA-Z0-9]+)', 'br': r'sku\s*([a-zA-Z0-9]+)',
+                                     'kr': ur'제품\s*번호\s*([a-zA-Z0-9]+)', 'tw': r'sku\s*([a-zA-Z0-9]+)'}}
 
 brand_id = 10226
 
@@ -125,7 +190,7 @@ categories = {'books--stationery', 'handbags', 'travel', 'watches', 'timepieces'
               'accessories/belts', 'accessories/sunglasses', 'accessories/fashion-jewelry',
               'accessories/key-holders-bag-charms-and-more', 'accessories/scarves-ties-and-more',
               'accessories/key-holders-and-other-accessories'}
-db = _mysql.connect(host='127.0.0.1', port=3306, user='root', passwd='123456', db='spider_stores')
+db = _mysql.connect(host='127.0.0.1', port=3306, user='rose', passwd='rose123', db='spider_stores')
 db.query("SET NAMES 'utf8'")
 
 
@@ -180,8 +245,8 @@ def fetch_filter(region, category, gender, idx, data):
             k = pq(temp)('input')[0].attrib['name']
             v = pq(temp)('input')[0].attrib['value']
             # 查看过滤器的label：
-            label = unicode(pq(temp)('label')[0].text_content()).strip().encode('utf-8')
-            utils.update_tags_mapping(brand_id, region, v, label)
+            # label = unicode(pq(temp)('label')[0].text_content()).strip().encode('utf-8')
+            # utils.update_tags_mapping(brand_id, region, v, label)
             logger.info(unicode.format(u'Found filter key/value pairs: {0}={1}', k,
                                        v.decode('utf-8') if isinstance(v, str) else v))
             d = data.copy()
@@ -226,11 +291,11 @@ def fetch_filter(region, category, gender, idx, data):
                 filter_bodies = sub_body('a.imgFacet')
                 for temp in filter_bodies:
                     v = temp.attrib['data-value']
-                    if len(pq(temp)('img[alt]')) > 0:
-                        color_text = pq(temp)('img[alt]')[0].attrib['alt']
-                        color_text = color_text.encode('utf-8') if isinstance(color_text, unicode) else color_text
-                        if color_text is not None:
-                            utils.update_tags_mapping(brand_id, region, v, color_text.strip())
+                    # if len(pq(temp)('img[alt]')) > 0:
+                    # color_text = pq(temp)('img[alt]')[0].attrib['alt']
+                    # color_text = color_text.encode('utf-8') if isinstance(color_text, unicode) else color_text
+                    # if color_text is not None:
+                    # utils.update_tags_mapping(brand_id, region, v, color_text.strip())
                     logger.info(unicode.format(u'Found filter key/value pairs: {0}={1}', k,
                                                v.decode('utf-8') if isinstance(v, str) else v))
                     d = data.copy()
@@ -259,18 +324,25 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
     """
     获得单品的详细信息
     """
+    product_url = hosts['url_host'][region] + url
     response = cm.retry_helper(lambda val: cm.get_data(url=val, client='iPad'),
-                               param=hosts['url_host'][region] + url,
+                               param=product_url,
                                logger=logger,
                                except_class=(URLError, socket.timeout),
                                retry_delay=10)
     if response is None:
         return
     body = response['body']
+    if not body:
+        return
 
     # 型号
     model = None
-    temp = pq(body)('div.sku')
+    try:
+        temp = pq(body)('div.sku')
+    except ParserError:
+        return
+
     if len(temp) > 0:
         temp = re.search(details_pattern['model_pattern'][region], temp[0].text.encode('utf-8'), re.M | re.I)
         if temp is not None:
@@ -299,7 +371,7 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
     product_name = ''
     temp = pq(body)('#productName h1')
     if len(temp) > 0:
-        product_name = temp[0].text.encode('utf-8').strip()
+        product_name = cm.unicodify(temp[0].text)
 
     description = ''
     temp = pq(body)('#productDescription')
@@ -313,74 +385,96 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
 
     post_data = filter_data['post_data']
     init_data = {}
-    init_data['color'] = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"]
-    init_data['texture'] = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"]
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"]
+    init_data['color'] = [temp] if temp else []
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"]
+    init_data['texture'] = [temp] if temp else []
     extra = {}
-    extra['page_id'] = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"]
-    extra['function'] = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.functionik"]
-    extra['material'] = post_data[
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"]
+    if temp:
+        extra['page_id'] = [temp]
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.functionik"]
+    if temp:
+        extra['function'] = [temp]
+    temp = post_data[
         "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.casematerialik"]
-    extra['collection'] = post_data[
+    if temp:
+        extra['material'] = [temp]
+    temp = post_data[
         "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.collectionik"]
-    extra['shape'] = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.shapeik"]
-    extra['subcategory'] = post_data[
-        "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subcategoryik"]
-    extra['subsubcategory'] = post_data[
+    if temp:
+        extra['collection'] = [temp]
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.shapeik"]
+    if temp:
+        extra['shape'] = [temp]
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subcategoryik"]
+    if temp:
+        extra['subcategory'] = [temp]
+    temp = post_data[
         '/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subsubcategoryik']
-    extra['typeik'] = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.typeik"]
-    init_data['extra'] = json.dumps(extra)
+    if temp:
+        extra['subsubcategory'] = [temp]
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.typeik"]
+    if temp:
+        extra['typeik'] = [temp]
+    init_data['extra'] = extra
     init_data['model'] = model
     init_data['name'] = product_name
-    init_data['currency'] = currency
     init_data['price'] = price
     init_data['description'] = description
     init_data['details'] = details
-    init_data['category'] = filter_data['tags']['category']
+    temp = filter_data['tags']['category']
+    init_data['category'] = [temp] if temp else []
     init_data['brand_id'] = filter_data['tags']['brand_id']
     init_data['brandname_e'] = filter_data['tags']['brandname_e']
     init_data['brandname_c'] = filter_data['tags']['brandname_c']
-    init_data['gender'] = filter_data['tags']['gender']
+    temp = filter_data['tags']['gender']
+    init_data['gender'] = [temp] if temp else []
     region = filter_data['tags']['region']
     init_data['region'] = region
     init_data['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    product = init_product_item(init_data)
+    init_data['url'] = product_url
+    # product = init_product_item(init_data)
+    product = init_data
 
     if download_image:
         fetch_image(body, model)
 
     db.query('LOCK TABLES products WRITE')
-    db.query(str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
-                        region, init_data['brand_id']))
-    results = db.store_result().fetch_row(maxrows=0, how=1)
-    if len(results) == 0:
-        cm.insert_record(db, product, 'products')
-        logger.info(
-            str.format('INSERT: {0}, {1}, {2}{3}, {4}', model, product_name, currency, price, description).decode(
-                'utf-8'))
-    else:
-        # 需要合并的字段：gender，category, extra, texture, color
-        to_data = {'gender': results[0]['gender'], 'category': results[0]['category'], 'color': results[0]['color'],
-                   'texture': results[0]['texture']}
-        old_extra = json.loads(results[0]['extra'])
-        for k in extra:
-            if k not in old_extra:
-                old_extra[k] = extra[k]
-            else:
-                temp = set(
-                    (val.encode('utf-8') if isinstance(val, unicode) else val) for val in old_extra[k].split('|'))
-                temp.add(extra[k])
-                old_extra[k] = '|'.join(temp)
-        extra_str = json.dumps(old_extra)
-        temp = cm.product_merge(
-            {'gender': init_data['gender'], 'category': init_data['category'], 'color': init_data['color'],
-             'texture': init_data['texture']}, to_data)
-        if extra_str != results[0]['extra'] or temp:
-            to_data['extra'] = extra_str
-            cm.update_record(db, to_data, 'products', str.format('idproducts={0}', results[0]['idproducts']))
-            logger.info(
-                str.format('UPDATE: {0}, {1}, {2}{3}, {4}', model, product_name, currency, price, description).decode(
-                    'utf-8'))
-    db.query('UNLOCK TABLES')
+    try:
+        db.query(str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
+                            region, init_data['brand_id']))
+        results = db.store_result().fetch_row(maxrows=0, how=1)
+        if len(results) == 0:
+            for k in ('extra', 'color', 'gender', 'category', 'texture'):
+                if k in product:
+                    product[k] = json.dumps(product[k], ensure_ascii=False)
+            cm.insert_record(db, product, 'products')
+            logger.info(unicode.format(u'INSERT: {0}, {1}, {2}', model, product_name, region))
+        else:
+            # 需要处理合并的字段
+            merge_keys = ('gender', 'category', 'color', 'texture')
+            dest = dict((k, json.loads(results[0][k])) for k in merge_keys if results[0][k])
+            src = dict((k, product[k]) for k in merge_keys if k in product)
+            dest = product_tags_merge(src, dest)
+
+            s2 = json.loads(results[0]['extra'])
+            dest['extra'] = product_tags_merge(s2, extra)
+            try:
+                dest = dict((k, json.dumps(dest[k], ensure_ascii=False)) for k in merge_keys + ('extra',) for k in dest)
+                # 处理product中其它字段（覆盖现有记录）
+                skip_keys = merge_keys + ('model', 'region', 'brand_id', 'extra')
+                for k in product:
+                    if k in skip_keys:
+                        continue
+                    dest[k] = product[k]
+
+                cm.update_record(db, dest, 'products', str.format('idproducts={0}', results[0]['idproducts']))
+                logger.info(unicode.format(u'UPDATE: {0}, {1}', product['model'], region))
+            except UnicodeDecodeError:
+                pass
+    finally:
+        db.query('UNLOCK TABLES')
     return product
 
 
@@ -393,17 +487,26 @@ def fetch_image(body, model, refetch=False):
     :param cool_time:
     :param refetch: 是否强制重新抓取图片
     """
-    image_dir = utils.get_image_path(brand_id)
+    temp = utils.get_image_path(brand_id)
+    image_dir = temp['full']
+    image_thumb_dir = temp['thumb']
     brand_name = cm.norm_brand_name(cm.fetch_brand_by_id(brand_id)['brandname_e'])
     cm.make_sure_path_exists(image_dir)
+    cm.make_sure_path_exists(image_thumb_dir)
 
     for img_body in pq(body)('#productSheetSlideshow ul.bigs li img'):
         temp = img_body.attrib['data-src'] if 'data-src' in img_body.attrib else (img_body.attrib['src']
                                                                                   if 'src' in img_body.attrib else '')
+        mt = re.search(ur'RENDITIONS\["tablet"\]\["productMain"\]\s*=\s*\'([^\']+)\'', body)
+        if not mt:
+            continue
+        jcr = mt.group(1)
+        base_name = os.path.splitext(os.path.split(temp)[1])[0]
         if re.search(r'^http://', temp) is None:
             url = hosts['image_host'] + temp
         else:
             url = temp
+        url_thumb = unicode.format(u'{0}/jcr:content/renditions/{1}_{2}.jpg', url, base_name, jcr)
         m = re.search(r'([^/]+$)', url)
         if m is None:
             continue
@@ -419,17 +522,30 @@ def fetch_image(body, model, refetch=False):
             with open(full_name, 'wb') as f:
                 f.write(response['body'])
 
+        full_name_thumb = os.path.normpath(os.path.join(image_thumb_dir, fname))
+        flist = tuple(os.listdir(image_thumb_dir))
+        if refetch or fname not in flist:
+            response = utils.fetch_image(url_thumb, logger)
+            if response is None or len(response['body']) == 0:
+                continue
+                # 写入图片文件
+            with open(full_name_thumb, 'wb') as f:
+                f.write(response['body'])
+
         try:
             img = Image.open(full_name)
             db.query('LOCK TABLES products_image WRITE')    # 检查数据库
-            db.query(str.format('SELECT * FROM products_image WHERE path="{0}"', full_name))
-            if len(db.store_result().fetch_row(maxrows=0)) == 0:
-                cm.insert_record(db, {'model': model, 'url': url, 'path': full_name, 'width': img.size[0],
-                                      'height': img.size[1], 'format': img.format, 'brand_id': brand_id,
-                                      'fetch_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},
-                                 'products_image')
-            db.query('UNLOCK TABLES')
-        except IOError:
+            try:
+                db.query(str.format('SELECT * FROM products_image WHERE path="{0}"', full_name))
+                if len(db.store_result().fetch_row(maxrows=0)) == 0:
+                    cm.insert_record(db, {'model': model, 'url': url, 'path': full_name, 'width': img.size[0],
+                                          'height': img.size[1], 'format': img.format, 'brand_id': brand_id,
+                                          'fetch_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},
+                                     'products_image')
+            finally:
+                db.query('UNLOCK TABLES')
+        except IOError as e:
+            logger.error(e.message)
             pass
 
 
@@ -496,7 +612,8 @@ def fetch_products(region, category, gender, refresh_post_data=False):
             json.dump(filter_combinations, f)
 
 
-def main():
+def main(region):
+    logger.info(str.format('Crawler started: {0}', region))
     category_list = {'books--stationery', 'handbags', 'travel', 'watches', 'timepieces', 'shoes', 'fine-jewelry',
                      'ready-to-wear', 'the-legendary-monogram', 'ready-to-wear',
                      'show-fall-winter-2013', 'mens-bags', 'small-leather-goods', 'icons',
@@ -504,8 +621,7 @@ def main():
                      'accessories/belts', 'accessories/sunglasses', 'accessories/fashion-jewelry',
                      'accessories/key-holders-bag-charms-and-more', 'accessories/scarves-ties-and-more',
                      'accessories/key-holders-and-other-accessories'}
-    region_list = {'cn', 'us', 'fr', 'de', 'es', 'it', 'gb', 'ru', 'br', 'ca', 'jp', 'kr', 'tw', 'au'}
-    region = 'de'
+
     for category in category_list:
         logger.info(str.format('{0}/{1}/{2}', region, category, 'men'))
         fetch_products(region, category, 'men')
@@ -513,4 +629,3 @@ def main():
         fetch_products(region, category, 'women')
 
     db.close()
-

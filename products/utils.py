@@ -6,16 +6,21 @@ import socket
 from urllib2 import HTTPError, URLError
 from exceptions import ValueError
 import common as cm
+import global_settings as glob
 
 __author__ = 'Zephyre'
 
-base_path = '../products'
+# base_path = '../products'
+base_path = os.path.join(glob.STORAGE_PATH, 'products')
 tags_mapping = {}
 
 
 def get_image_path(brand_id):
     brand_name = cm.norm_brand_name(cm.fetch_brand_by_id(brand_id)['brandname_e'])
-    return os.path.normpath(os.path.join(base_path, 'images', str.format('{0}_{1}', brand_id, brand_name)))
+    return {
+        'full': os.path.join(base_path, 'images', str.format('{0}_{1}', brand_id, brand_name), 'full'),
+        'thumb': os.path.join(base_path, 'images', str.format('{0}_{1}', brand_id, brand_name), 'thumb')
+    }
 
 
 def get_data_path(brand_id):

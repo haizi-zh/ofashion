@@ -18,31 +18,27 @@ fendi_data = {'base_url': {'cn': 'http://www.fendi.com/cn/zh/collections/woman',
                            'fr': 'http://www.fendi.com/fr/fr/collections/femme',
                            'it': 'http://www.fendi.com/it/it/collezioni/donna',
                            'kr': 'http://www.fendi.com/kr/ko/collections/woman',
-                           'jp': 'http://www.fendi.com/jp/ja/collections/woman'},
+                           'jp': 'http://www.fendi.com/jp/ja/collections/woman',
+                           'ii': 'http://www.fendi.com/ii/en/collections/woman',
+                           'es': 'http://www.fendi.com/ii/es/colecciones/mujer'},
               'host': 'http://www.fendi.com',
               # 'cat-1-reject': {'cn': ['fashion-show', 'ready-to-wear-and-furwear', 'activewear', 'accessories'],
               #                  'us': ['fashion-show', 'ready-to-wear-and-furwear', 'activewear', 'accessories'], },
               'brand_id': 10135, 'brandname_e': 'Fendi', 'brandname_c': u'芬迪', 'bn_short': 'fendi'}
 
 
-def creat_spider():
+def create_spider():
     return FendiSpider()
 
 
 def get_image_path():
-    return os.path.normpath(os.path.join(global_settings.HOME_PATH, u'products/images'))
+    return os.path.normpath(os.path.join(global_settings.STORAGE_PATH, u'products/images'))
 
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(global_settings.HOME_PATH, unicode.format(u'products/crawl/{0}', fendi_data['bn_short'])))
+        os.path.join(global_settings.STORAGE_PATH, unicode.format(u'products/crawl/{0}', fendi_data['bn_short'])))
 
-
-def get_log_path():
-    return os.path.normpath(os.path.join(global_settings.HOME_PATH, u'products/log',
-                                         unicode.format(u'{0}_{1}_{2}.log', fendi_data['brand_id'],
-                                                        fendi_data['bn_short'],
-                                                        datetime.datetime.now().strftime('%Y%m%d'))))
 
 
 class FendiSpider(CrawlSpider):
@@ -52,11 +48,14 @@ class FendiSpider(CrawlSpider):
         self.region = region
 
     def start_requests(self):
-        if self.region:
-            return Request(url=fendi_data['base_url'][self.region], dont_filter=True)
+        region = self.crawler.settings['REGION']
+        self.log(str.format('Fetching data for {0}', region), log.INFO)
+        if region in fendi_data['base_url']:
+            return [Request(url=fendi_data['base_url'][region], dont_filter=True)]
         else:
-            return [Request(url=fendi_data['base_url'][r], dont_filter=True) for r in
-                    self.crawler.settings.get('REGION_LIST')]
+            self.log(str.format('No data for {0}', region), log.WARNING)
+            return []
+
 
     def parse(self, response):
         self.log(unicode.format(u'PARSE_HOME: URL={0}', response.url), level=log.DEBUG)
@@ -72,6 +71,10 @@ class FendiSpider(CrawlSpider):
             metadata = {'region': 'kr'}
         elif 'www.fendi.com/jp' in response.url:
             metadata = {'region': 'jp'}
+        elif 'www.fendi.com/ii/en' in response.url:
+            metadata = {'region': 'ii'}
+        elif 'www.fendi.com/ii/es' in response.url:
+            metadata = {'region': 'es'}
         else:
             metadata = {'region': None}
         metadata['tags_mapping'] = {}
@@ -89,11 +92,11 @@ class FendiSpider(CrawlSpider):
                 continue
             cat = temp.group(1)
             m = copy.deepcopy(metadata)
-            m['extra']['category-1'] = cat
+            m['extra']['category-1'] = [cat]
             m['tags_mapping']['category-1'] = [{'name': cat, 'title': title}]
-            if cat in {'woman', 'women', 'femme', 'donna'}:
+            if cat in {'woman', 'women', 'femme', 'donna', 'mujer'}:
                 m['gender'] = [u'female']
-            elif cat in {'man', 'men', 'homme', 'uomo'}:
+            elif cat in {'man', 'men', 'homme', 'uomo', 'hombre'}:
                 m['gender'] = [u'male']
             else:
                 m['gender'] = []
@@ -119,7 +122,7 @@ class FendiSpider(CrawlSpider):
             #     continue
 
             m = copy.deepcopy(metadata)
-            m['extra']['category-2'] = cat
+            m['extra']['category-2'] = [cat]
             m['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
             m['category'] = [cat]
             url = fendi_data['host'] + href
@@ -145,8 +148,8 @@ class FendiSpider(CrawlSpider):
                 if cat.lower() == u'all':
                     continue
                 m = copy.deepcopy(metadata)
-                m['extra']['filter'] = cat
-                m['tags_mapping'][unicode.format(u'filter:{0}', metadata['extra']['category-2'])] = [
+                m['extra']['filter'] = [cat]
+                m['tags_mapping'][unicode.format(u'filter:{0}', metadata['extra']['category-2'][0])] = [
                     {'name': cat, 'title': title}]
                 url = fendi_data['host'] + href
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_2)

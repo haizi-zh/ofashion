@@ -16,6 +16,8 @@ import datetime
 import os
 import sys
 import errno
+import imp
+import global_settings as glob
 
 __author__ = 'Zephyre'
 
@@ -978,10 +980,39 @@ def make_sure_path_exists(path):
 
 
 def unicodify(val):
-    if isinstance(val, str):
-        return val.decode('utf-8')
+    """
+    Unicode化，并且strip
+    :param val:
+    :return:
+    """
+    if val is None:
+        return None
+    elif isinstance(val, str):
+        return val.decode('utf-8').strip()
+    else:
+        return unicode(val).strip()
+
+
+def norm_url(url, host=None):
+    """
+    去除多余的/
+    :param url:
+    :return:
+    """
+    val = re.sub(r'\.+', '.', re.sub(r'(?<!:)/+', '/', url))
+    if not re.search('^http://', val):
+        if host:
+            return norm_url(host + '/' + val)
+        else:
+            return 'http://' + val
     else:
         return val
+
+
+def get_spider_module(spider_name):
+    spider_path = os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}_spider.py', spider_name))
+    # spider_path = 'd:/Users/Zephyre/Dropbox/Freelance/MStore/src/scrapper/spiders/gucci_spider.py'
+    return imp.load_source(spider_name, spider_path)
 
 
 def simplify_brand_name(val):

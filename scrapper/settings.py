@@ -5,9 +5,10 @@
 #
 #     http://doc.scrapy.org/en/latest/topics/settings.html
 #
-import os
-from scrapper.spiders import burberry_spider, fendi_spider
-import global_settings
+import global_settings as glob
+import sys
+import common as cm
+
 
 BOT_NAME = 'scrapper'
 
@@ -19,13 +20,17 @@ ITEM_PIPELINES = [
     'scrapper.pipelines.ProductPipeline'
 ]
 
-DBSPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123', 'port': 3306, 'schema': 'spider_stores'}
-IMAGES_STORE = os.path.normpath(os.path.join(global_settings.HOME_PATH, u'products/images'))
-REGION_LIST = ['cn', 'us', 'fr', 'it']
+SPIDER_NAME = sys.argv[2]
 
-LOG_LEVEL = 'DEBUG'
-# LOG_FILE = burberry_spider.get_log_path()
-# JOBDIR = burberry_spider.get_job_path() + '-1'
+EDITOR_SPEC = glob.EDITOR_SPEC
+SPIDER_SPEC = glob.SPIDER_SPEC
+RELEASE_SPEC = glob.RELEASE_SPEC
+IMAGES_STORE = cm.get_spider_module(SPIDER_NAME).get_images_store()
+
+LOG_LEVEL = 'INFO'
+LOG_FILE = cm.get_spider_module(SPIDER_NAME).get_log_path()
+
+# JOBDIR = cm.get_spider_module(SPIDER).get_job_path() + '-1'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'scrapper (+http://www.yourdomain.com)'

@@ -1,11 +1,18 @@
+# coding=utf-8
+import json
+
 import os
+import _mysql
+import re
+import global_settings as glob
+import common as cm
 
 __author__ = 'Zephyre'
 
 import sys
 import Image
 
-cmd_list = ('help', 'sandbox', 'resize')
+cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price')
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
 verbose = False
 force_overwrite = False
@@ -21,6 +28,67 @@ def mstore_help():
 
 def mstore_error():
     default_error()
+
+
+def editor_price_processor(args):
+    """
+    处理editor的价格信息
+    """
+    hdr = args[0]
+    if hdr == '--brand':
+        brand_id = args[1]
+    else:
+        print 'Invalid syntax.'
+        return
+
+    db_spec = glob.EDITOR_SPEC
+    db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
+                        passwd=db_spec['password'], db=db_spec['schema'])
+    db.query("SET NAMES 'utf8'")
+    db.query('START TRANSACTION')
+
+    db.query(str.format('SELECT idproducts, price, region FROM products WHERE brand_id={0}', brand_id))
+    rs = db.store_result()
+    tot = rs.num_rows()
+    for i in xrange(rs.num_rows()):
+        if i % 100 == 0:
+            print str.format('PROCESSING {0}/{1}({2:.2%})', i, tot, float(i) / tot)
+
+        record = rs.fetch_row(how=1)[0]
+        pid = record['idproducts']
+        price_body = record['price']
+        region = record['region']
+        if not price_body:
+            continue
+
+        val = cm.unicodify(price_body)
+        currency_map = {'cn': 'CNY', 'us': 'USD', 'uk': 'GBP', 'hk': 'HKD', 'sg': 'SGD', 'de': 'EUR', 'es': 'EUR',
+                        'fr': 'EUR', 'it': 'EUR', 'jp': 'JPY', 'kr': 'KRW', 'mo': 'MOP', 'ae': 'AED', 'au': 'AUD',
+                        'br': 'BRL', 'ca': 'CAD', 'my': 'MYR', 'ch': 'CHF', 'nl': 'EUR', 'ru': 'RUB'}
+        currency = currency_map[region]
+
+        if region in ('de', 'it'):
+            val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
+        elif region in ('fr',):
+            val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
+        else:
+            val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '')
+
+        m = re.search(ur'[\d\.]+', val_new)
+        if not m:
+            price = ''
+        else:
+            price = float(m.group())
+
+        ret = {'currency': currency, 'price': price}
+
+        # 转换后的category
+        clause = unicode.format(u'price_rev={0}, currency_rev="{1}"', ret['price'], ret['currency'])
+        db.query(unicode.format(u'UPDATE products SET {0} WHERE idproducts={1}', clause, pid).encode('utf-8'))
+
+    db.query('COMMIT')
+    db.close()
+    pass
 
 
 def resize(args):
@@ -165,12 +233,58 @@ def resize(args):
     print 'Done.'
 
 
+def image_check(args):
+    hdr = args[0]
+    if hdr == '--brand':
+        brand_id = int(args[1])
+    else:
+        print 'Invalid syntax.'
+        return
+
+    storage_path = glob.STORAGE_PATH
+    db_spec = glob.SPIDER_SPEC
+    db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
+                        passwd=db_spec['password'], db=db_spec['schema'])
+    db.query("SET NAMES 'utf8'")
+
+    db.query(str.format('SELECT DISTINCT model FROM products WHERE brand_id={0}', brand_id))
+    rs = db.store_result()
+    model_list = rs.fetch_row(maxrows=0, how=1)
+    tot = len(model_list)
+    cnt = 0
+    missing = 0
+    mismatch = 0
+    print str.format('Total models: {0}', tot)
+    for model in [val['model'] for val in model_list]:
+        db.query(str.format('SELECT path,width,height FROM products_image WHERE model="{0}"', model))
+        rs_image = db.store_result().fetch_row(maxrows=0, how=1)
+        # image_list = [val['path'] for val in rs_image]
+        for image in rs_image:
+            path = image['path']
+            if cnt % 100 == 0:
+                print str.format('{0} images checked', cnt)
+            try:
+                img = Image.open(os.path.join(storage_path, 'products/images', path))
+                w = int(image['width'])
+                h = int(image['height'])
+                if w != img.size[0] or h != img.size[1]:
+                    print str.format('{0} / {1} size mismatch!', model, path)
+                    mismatch += 1
+            except IOError:
+                missing += 1
+                print str.format('{0} / {1} missing!', model, path)
+            finally:
+                cnt += 1
+
+    print str.format('{0} missing.', missing)
+    print str.format('{0} size mismatch.', mismatch)
+    pass
+
+
 def sand_box():
     """
     For test use.
     """
-    img = Image.open('1.jpg')
-    dir(img)
     pass
 
 
@@ -186,8 +300,12 @@ def argument_parser(args):
         return mstore_help
     elif cmd == 'resize':
         return lambda: resize(args[2:])
+    elif cmd == 'editor_price':
+        return lambda: editor_price_processor(args[2:])
     elif cmd == 'sandbox':
         return sand_box
+    elif cmd == 'image_check':
+        return lambda: image_check(args[2:])
 
     pass
 
