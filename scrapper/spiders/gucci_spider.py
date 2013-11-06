@@ -20,7 +20,7 @@ gucci_data = {'base_url': 'http://www.gucci.com/{0}/home',
               'supported_regions': {'cn', 'us', 'fr', 'de', 'es', 'it', 'nl', 'ae', 'jp', 'kr', 'au', 'bg', 'cz', 'dk',
                                     'fi', 'hu', 'ie', 'no', 'pl', 'pt', 'ro', 'si', 'se', 'ch', 'tr', 'uk', 'at', 'ca',
                                     'be', },
-              'brand_id': 10152, 'brandname_e': 'Gucci', 'brandname_c': u'古驰', 'bn_short': 'gucci'}
+              'brand_id': 10152, 'brandname_e': 'Gucci', 'brandname_c': u'古驰', 'brandname_s': 'gucci'}
 
 
 def region_term(region):
@@ -31,21 +31,9 @@ def create_spider():
     return GucciSpider()
 
 
-def get_job_path():
-    return os.path.normpath(
-        os.path.join(glob.STORAGE_PATH, unicode.format(u'products/crawl/{0}', gucci_data['bn_short'])))
-
-
-def get_log_path():
-    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
-                                         unicode.format(u'{0}_{1}_{2}.log', gucci_data['brand_id'],
-                                                        gucci_data['bn_short'],
-                                                        datetime.datetime.now().strftime('%Y%m%d'))))
-
-
-def get_images_store():
-    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/images',
-                                         str.format('{0}_{1}', gucci_data['brand_id'], gucci_data['bn_short'])))
+def get_spider_data():
+    return dict((k, gucci_data[k]) for k in gucci_data if
+                k in ('host', 'supported_regions', 'brand_id', 'brandname_e', 'brandname_c', 'brandname_s'))
 
 
 class GucciSpider(CrawlSpider):
@@ -54,7 +42,7 @@ class GucciSpider(CrawlSpider):
 
     def start_requests(self):
         region = self.crawler.settings['REGION']
-        self.log(str.format('Fetching data for {0}', region), log.INFO)
+        self.name = str.format('{0}-{1}', self.name, region)
         if region in gucci_data['supported_regions']:
             return [Request(url=str.format(gucci_data['base_url'], region_term(region)))]
         else:

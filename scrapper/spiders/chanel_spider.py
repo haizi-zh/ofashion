@@ -24,33 +24,21 @@ chanel_data = {'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': '
                                 'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
                'pricing': 'https://secure.chanel.com/global-service/frontend/pricing/%s/fashion/%s/?format=json',
                'host': 'http://www-cn.chanel.com',
-               'supported_regions': {'cn', 'us', 'fr', 'it', 'uk', 'hk', 'jp', 'kr', 'sg', 'ca', 'de', 'es', 'ru',
+               'supported_regions': {'cn', 'us', 'fr', 'it', 'uk', 'hk', 'jp', 'kr', 'au', 'sg', 'ca', 'de', 'es', 'ru',
                                      'br'},
-               'brand_id': 10074, 'brandname_e': 'Chanel', 'brandname_c': u'香奈儿', 'bn_short': 'chanel',
+               'brand_id': 10074, 'brandname_e': 'Chanel', 'brandname_c': u'香奈儿', 'brandname_s': 'chanel',
                'description_hdr': {u'产品介绍', u'Description'},
                'details_hdr': {u'使用方法', u'How to use', u"Conseils d'utilisation", u'How-to'}
 }
 
 
+def get_spider_data():
+    return dict((k, chanel_data[k]) for k in chanel_data if
+                k in ('host', 'supported_regions', 'brand_id', 'brandname_e', 'brandname_c', 'brandname_s'))
+
+
 def create_spider():
     return ChanelSpider()
-
-
-def get_job_path():
-    return os.path.normpath(
-        os.path.join(glob.STORAGE_PATH, unicode.format(u'products/crawl/{0}', chanel_data['bn_short'])))
-
-
-def get_log_path():
-    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
-                                         unicode.format(u'{0}_{1}_{2}.log', chanel_data['brand_id'],
-                                                        chanel_data['bn_short'],
-                                                        datetime.datetime.now().strftime('%Y%m%d'))))
-
-
-def get_images_store():
-    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/images',
-                                         str.format('{0}_{1}', chanel_data['brand_id'], chanel_data['bn_short'])))
 
 
 class ChanelSpider(CrawlSpider):
@@ -59,6 +47,7 @@ class ChanelSpider(CrawlSpider):
 
     def start_requests(self):
         region = self.crawler.settings['REGION']
+        self.name = str.format('{0}-{1}', self.name, region)
         if region not in chanel_data['supported_regions']:
             self.log(str.format('No data for {0}', region), log.WARNING)
             return []
@@ -80,11 +69,12 @@ class ChanelSpider(CrawlSpider):
 
         self.log(str.format('Fetching data for {0}', region), log.INFO)
         return [Request(url=str.format('{0}/{1}/', chanel_data['host'], region_code))]
-        # return [Request(url='http://www-cn.chanel.com/en_US/fragrance-beauty/Fragrance-Allure-Sensuelle-ALLURE-SENSUELLE--136880/sku/136881')]
-        # return [Request(url='http://www-cn.chanel.com/en_US/fragrance-beauty/Fragrance-Allure-Sensuelle-ALLURE-SENSUELLE-88317/sku/88318')]
+        # return [Request(
+        #     url='http://www-cn.chanel.com/fr_FR/mode/produits/lunettes/g/s.lunettes-de-soleil-en-nylon-et.13K.A71014X02128S0133.sun.run.html')]
+        # return [Request(url='http://www-cn.chanel.com/zh_CN/fashion/products/eyewear/g/s.acetate-pilot-inspired-sunglasses.13K.A71011X02120S0133.sun.run.html')]
 
     def parse_fashion(self, response):
-        self.log(str.format('PARSE_SKU1: {0}', response.url), level=log.DEBUG)
+        self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in chanel_data['base_url'].items():
@@ -113,9 +103,9 @@ class ChanelSpider(CrawlSpider):
         except KeyError:
             metadata['pricing_service'] = None
 
-        # # images
-        # hxs = HtmlXPathSelector(response)
+        # images
         metadata['image_urls'] = set([])
+        # hxs = HtmlXPathSelector(response)
         # temp = hxs.select('//div[contains(@class, "productimage")]/img[@src]')
         # if len(temp) > 0:
         #     image_url = temp[0]._root.attrib['src']
@@ -272,7 +262,8 @@ class ChanelSpider(CrawlSpider):
         # price
         if pricing_service and 'refPrice' in info:
             url = chanel_data['pricing'] % (chanel_data['base_url'][metadata['region']], info['refPrice'])
-            return Request(url=url, meta={'userdata': metadata}, callback=self.parse_price)
+            return Request(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
+                           callback=self.parse_price)
         else:
             return self.func2(metadata)
 
@@ -290,20 +281,20 @@ class ChanelSpider(CrawlSpider):
         item['metadata'] = metadata
         return item
 
-
     def parse_price(self, response):
         metadata = response.meta['userdata']
-        price_data = json.loads(response._body)
-        if len(price_data) > 0:
-            try:
-                price_data = price_data[0]['price']
-                if 'amount' in price_data and 'currency-symbol' in price_data:
-                    metadata['price'] = price_data['amount']
-                    metadata['currency'] = price_data['currency-symbol']
-                else:
-                    metadata['price'] = price_data['formatted-amount']
-            except (IndexError, KeyError):
-                pass
+        if response.status == 200:
+            price_data = json.loads(response._body)
+            if len(price_data) > 0:
+                try:
+                    price_data = price_data[0]['price']
+                    if 'amount' in price_data and 'currency-symbol' in price_data:
+                        metadata['price'] = price_data['amount']
+                        metadata['currency'] = price_data['currency-symbol']
+                    else:
+                        metadata['price'] = price_data['formatted-amount']
+                except (IndexError, KeyError):
+                    pass
         return self.func2(metadata)
 
     def parse_sku1(self, response):

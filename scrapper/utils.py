@@ -58,27 +58,27 @@ def unicodify(val):
         return val
 
 
+def iterable(val):
+    """
+    val是否iterable。注意：val为str的话，返回False。
+    :param val:
+    """
+    if isinstance(val, types.StringTypes):
+        return False
+    else:
+        try:
+            iter(val)
+            return True
+        except TypeError:
+            return False
+
+
 def product_tags_merge(src, dest):
     """
     合并两个tag列表：把src中的内容合并到dest中
     :param src:
     :param dest:
     """
-
-    def iterable(val):
-        """
-        val是否iterable。注意：val为str的话，返回False。
-        :param val:
-        """
-        if isinstance(val, types.StringTypes):
-            return False
-        else:
-            try:
-                iter(val)
-                return True
-            except TypeError:
-                return False
-
     def to_set(val):
         """
         如果val是iterable，则转为set，否则……

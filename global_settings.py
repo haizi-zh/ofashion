@@ -25,5 +25,10 @@ SPIDER_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
 EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'haizi.zh@qq.com', 'buddy@mfashion.com.cn']
 
 
+# Port for remote debugging
+DEBUG_PORT = 7001
+DEBUG_FLAG = False
+
+
 
 

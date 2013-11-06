@@ -949,6 +949,30 @@ def update_record(db, cond, tbl, record):
             'utf-8'))
 
 
+
+def process_price(price, region):
+    val = unicodify(price)
+    currency_map = {'cn': 'CNY', 'us': 'USD', 'uk': 'GBP', 'hk': 'HKD', 'sg': 'SGD', 'de': 'EUR', 'es': 'EUR',
+                    'fr': 'EUR', 'it': 'EUR', 'jp': 'JPY', 'kr': 'KRW', 'mo': 'MOP', 'ae': 'AED', 'au': 'AUD',
+                    'br': 'BRL', 'ca': 'CAD', 'my': 'MYR', 'ch': 'CHF', 'nl': 'EUR', 'ru': 'RUB', 'tw': 'TWD',
+                    'at': 'EUR'}
+    currency = currency_map[region]
+    if region in ('de', 'it', 'br'):
+        val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
+    elif region in ('fr',):
+        val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
+    else:
+        val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '')
+    m = re.search(ur'[\d\.]+', val_new)
+    if not m:
+        price = ''
+    else:
+        price = float(m.group())
+    ret = {'currency': currency, 'price': price}
+    return ret
+
+
+
 def format_price_text(body, region=None):
     """
     格式化价格字段，需要处理多种格式
@@ -1019,9 +1043,30 @@ def simplify_brand_name(val):
     return re.sub(ur'\s+', u'_', unicodify(val).lower().strip(), flags=re.U)
 
 
-def update_record(db, entry, tbl, where):
+def touch_record(db, tbl, where_clause):
+    entry = {u'touch_time': unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}
+
+    def get_value_term(key, value):
+        if value is None:
+            ret = u'NULL'
+        else:
+            if isinstance(value, str):
+                value = value.decode('utf-8')
+            value = unicode(value)
+            ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
+        return unicode.format(u'{0}={1}', key, ret)
+
+    statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl,
+                               u', '.join(get_value_term(k, entry[k]) for k in entry.keys()),
+                               where_clause).encode('utf-8')
+    db.query(statement)
+
+
+def update_record(db, entry, tbl, where, touch_time=False):
     # INSERT INTO tbl (...) VALUES (...)
-    entry[u'update_time'] = unicode(datetime.datetime.now())
+    entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    if touch_time:
+        entry[u'touch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     entry[u'modified'] = 1
     fields = '(' + ', '.join(entry.keys()) + ')'
 
@@ -1041,10 +1086,12 @@ def update_record(db, entry, tbl, where):
     db.query(statement)
 
 
-def insert_record(db, entry, tbl, update_time=True, modified=True):
+def insert_record(db, entry, tbl, update_time=True, touch_time=False, modified=True):
     # INSERT INTO tbl (...) VALUES (...)
     if update_time:
-        entry[u'update_time'] = unicode(datetime.datetime.now())
+        entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    if touch_time:
+        entry[u'touch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     if modified:
         entry[u'modified'] = 1

@@ -36,7 +36,7 @@ burberry_data = {'host': {'cn': 'http://cn.burberry.com',
                           'kr': 'http://kr.burberry.com',
                           'my': 'http://my.burberry.com',
 },
-                 'brand_id': 10057, 'brandname_e': 'Burberry', 'brandname_c': u'博柏丽', 'bn_short': 'burberry'}
+                 'brand_id': 10057, 'brandname_e': 'Burberry', 'brandname_c': u'博柏丽', 'brandname_s': 'burberry'}
 
 
 def create_spider():
@@ -45,13 +45,13 @@ def create_spider():
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(glob.STORAGE_PATH, unicode.format(u'products/crawl/{0}', burberry_data['bn_short'])))
+        os.path.join(glob.STORAGE_PATH, unicode.format(u'products/crawl/{0}', burberry_data['brandname_s'])))
 
 
 def get_log_path():
     return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
                                          unicode.format(u'{0}_{1}_{2}.log', burberry_data['brand_id'],
-                                                        burberry_data['bn_short'],
+                                                        burberry_data['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))
 
 

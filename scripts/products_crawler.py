@@ -19,8 +19,14 @@ crawler.settings.values['ITEM_PIPELINES'] = [
     'scrapper.pipelines.ProductPipeline'
 ]
 
+# temp =list(crawler.settings.global_defaults.RETRY_HTTP_CODES)
+# if 400 in temp:
+#     temp.remove(400)
+# crawler.settings.values['RETRY_HTTP_CODES'] = temp
+crawler.settings.values['RETRY_TIMES'] = 0
+
 crawler.settings.values['IMAGES_STORE'] = spider_module.get_images_store()
-crawler.settings.values['REGION'] = 'us'
+crawler.settings.values['REGION'] = 'fr'
 
 crawler.settings.values['EDITOR_SPEC'] = glob.EDITOR_SPEC
 crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC

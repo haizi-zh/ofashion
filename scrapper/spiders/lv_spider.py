@@ -29,7 +29,7 @@ lv_data = {'host': {'cn': 'http://m.louisvuitton.cn'},
                'de': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=deu_DE&cache=Medium&category=',
                'es': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=esp_ES&cache=Medium&category=',
                'it': 'http://a.louisvuitton.com/mobile/ajax/productFinderResults.jsp?storeLang=ita_IT&cache=Medium&category='},
-           'brand_id': 10226, 'brandname_e': 'Louis Vuitton', 'brandname_c': u'路易威登', 'bn_short': 'lv'}
+           'brand_id': 10226, 'brandname_e': 'Louis Vuitton', 'brandname_c': u'路易威登', 'brandname_s': 'lv'}
 
 post_keys = ("_dyncharset",
              "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.findProductsSuccessUrl",
@@ -145,13 +145,13 @@ def create_spider():
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(global_settings.STORAGE_PATH, unicode.format(u'products/crawl/{0}', lv_data['bn_short'])))
+        os.path.join(global_settings.STORAGE_PATH, unicode.format(u'products/crawl/{0}', lv_data['brandname_s'])))
 
 
 def get_log_path():
     return os.path.normpath(os.path.join(global_settings.STORAGE_PATH, u'products/log',
                                          unicode.format(u'{0}_{1}_{2}.log', lv_data['brand_id'],
-                                                        lv_data['bn_short'],
+                                                        lv_data['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))
 
 

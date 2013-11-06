@@ -1,9 +1,13 @@
 # coding=utf-8
+import csv
 import json
-
+import logging
+import codecs
 import os
 import _mysql
 import re
+import time
+import pydevd
 import global_settings as glob
 import common as cm
 
@@ -12,10 +16,44 @@ __author__ = 'Zephyre'
 import sys
 import Image
 
-cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price')
+cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags')
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
 verbose = False
 force_overwrite = False
+
+debug_flag = False
+debug_port = glob.DEBUG_PORT
+
+logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
+logger = logging.getLogger()
+
+
+def static_var(varname, value):
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+
+    return decorate
+
+
+@static_var("elapsed_counter", 0)
+@static_var("start_ts", time.time())
+@static_var("interval", 30)
+def log_indicator(reset=False, interval=None):
+    if interval:
+        log_indicator.interval = interval
+
+    if reset:
+        log_indicator.start_ts = time.time()
+        log_indicator.elapsed_counter = 0
+        return False
+    else:
+        val = int((time.time() - log_indicator.start_ts) / log_indicator.interval)
+        if val > log_indicator.elapsed_counter:
+            log_indicator.elapsed_counter = val
+            return True
+        else:
+            return False
 
 
 def default_error():
@@ -28,6 +66,161 @@ def mstore_help():
 
 def mstore_error():
     default_error()
+
+
+def to_sql(val):
+    return val.replace('\\', '\\\\').replace('"', '\\"') if val else ''
+
+
+def import_tag_mapping(args):
+    idx = 0
+    map_file = None
+    region = 'cn'
+    brand_id = None
+    db_spec = glob.SPIDER_SPEC
+    while True:
+        if idx >= len(args):
+            break
+        hdr = args[idx]
+        idx += 1
+        if hdr == '-f':
+            map_file = args[idx]
+            idx += 1
+        elif hdr == '-r':
+            region = args[idx]
+            idx += 1
+        elif hdr == '--brand':
+            brand_id = int(args[idx])
+            idx += 1
+        else:
+            logger.critical('Invalid syntax.')
+            return
+
+    if not map_file or not brand_id:
+        logger.critical('Invalid syntax.')
+        return
+
+    data = []
+    with open(map_file, 'r') as f:
+        rdr = csv.reader(f)
+        for row in rdr:
+            if row[0][:3] == codecs.BOM_UTF8:
+                row[0] = row[0][3:]
+            data.append([cm.unicodify(val) for val in row])
+
+    db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
+                        passwd=db_spec['password'], db=db_spec['schema'])
+    db.query("SET NAMES 'utf8'")
+    db.query('START TRANSACTION')
+
+    for rule in data:
+        tag_name = rule[0]
+        tag_text = rule[1]
+        mapping_list = list(set(filter(lambda x: x, rule[1:])))
+        m_val = json.dumps(mapping_list, ensure_ascii=False)
+        db.query(
+            unicode.format(u'SELECT * FROM products_tag_mapping WHERE brand_id={0} && region="{1}" && tag_name="{2}"',
+                           brand_id, region, tag_name).encode('utf-8'))
+        rs = db.store_result()
+
+        if rs.num_rows() > 0:
+            pid = rs.fetch_row(how=1)[0]['idmappings']
+            db.query(
+                unicode.format(u'UPDATE products_tag_mapping SET mapping_list="{0}" WHERE idmappings={1}',
+                               to_sql(m_val), pid).encode('utf-8'))
+        else:
+            db.query(unicode.format(u'INSERT INTO products_tag_mapping (brand_id, region, tag_name, '
+                                    u'tag_text, mapping_list) VALUES ({0}, "{1}", "{2}", "{3}", "{4}")',
+                                    brand_id, to_sql(region), to_sql(tag_name), to_sql(tag_text),
+                                    to_sql(m_val)).encode('utf-8'))
+
+    db.query('SELECT * FROM products_tag_mapping WHERE mapping_list IS NULL')
+    rs = db.store_result()
+    for i in xrange(rs.num_rows()):
+        record = rs.fetch_row(how=1)[0]
+        tag_text = cm.unicodify(record['tag_text'])
+        pid = record['idmappings']
+        m_val = json.dumps([tag_text] if tag_text else [], ensure_ascii=False)
+        db.query(
+            unicode.format(u'UPDATE products_tag_mapping SET mapping_list="{0}" WHERE idmappings={1}', to_sql(m_val),
+                           pid).encode('utf-8'))
+
+    db.query('COMMIT')
+
+    db.close()
+
+
+def process_tags(args):
+    idx = 0
+    map_file = None
+    region = 'cn'
+    brand_id = None
+    db_spec = glob.EDITOR_SPEC
+    db_spider = glob.SPIDER_SPEC
+    while True:
+        if idx >= len(args):
+            break
+        hdr = args[idx]
+        idx += 1
+        if hdr == '-D':
+            pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
+        elif hdr == '-r':
+            region = args[idx]
+            idx += 1
+        elif hdr == '--brand':
+            brand_id = int(args[idx])
+            idx += 1
+        else:
+            logger.critical('Invalid syntax.')
+            return
+
+    if not brand_id:
+        logger.critical('Invalid syntax.')
+        return
+
+    db = _mysql.connect(host=db_spider['host'], port=db_spider['port'], user=db_spider['username'],
+                        passwd=db_spider['password'], db=db_spider['schema'])
+    db.query("SET NAMES 'utf8'")
+    db.query(str.format('SELECT tag_name,mapping_list FROM products_tag_mapping WHERE brand_id={0} && region="{1}"',
+                        brand_id, region))
+    temp = db.store_result().fetch_row(maxrows=0)
+    mapping_rules = dict(temp)
+    db.close()
+
+    db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
+                        passwd=db_spec['password'], db=db_spec['schema'])
+    db.query("SET NAMES 'utf8'")
+
+    db.query(str.format('SELECT * FROM products WHERE brand_id={0} && region="{1}"', brand_id, region))
+    rs = db.store_result()
+
+    db.query('START TRANSACTION')
+    for i in xrange(rs.num_rows()):
+        record = rs.fetch_row(how=1)[0]
+        extra = json.loads(record['extra'])
+        tags = []
+        for k in extra:
+            if isinstance(extra[k], list):
+                tags.extend(extra[k])
+            else:
+                tags.append(extra[k])
+                extra[k] = [extra[k]]
+
+        tags = set(tags)
+        tag_names = []
+        for v in tags:
+            if v in mapping_rules:
+                tag_names.extend(json.loads(mapping_rules[v]))
+        tag_names = list(set(tag_names))
+
+        db.query(unicode.format(u'UPDATE products SET tags="{0}",extra="{2}" WHERE idproducts={1}',
+                                to_sql(json.dumps(tag_names, ensure_ascii=False)),
+                                record['idproducts'],
+                                to_sql(json.dumps(extra, ensure_ascii=False))
+        ).encode('utf-8'))
+
+    db.query('COMMIT')
+    db.close()
 
 
 def editor_price_processor(args):
@@ -61,26 +254,7 @@ def editor_price_processor(args):
         if not price_body:
             continue
 
-        val = cm.unicodify(price_body)
-        currency_map = {'cn': 'CNY', 'us': 'USD', 'uk': 'GBP', 'hk': 'HKD', 'sg': 'SGD', 'de': 'EUR', 'es': 'EUR',
-                        'fr': 'EUR', 'it': 'EUR', 'jp': 'JPY', 'kr': 'KRW', 'mo': 'MOP', 'ae': 'AED', 'au': 'AUD',
-                        'br': 'BRL', 'ca': 'CAD', 'my': 'MYR', 'ch': 'CHF', 'nl': 'EUR', 'ru': 'RUB'}
-        currency = currency_map[region]
-
-        if region in ('de', 'it'):
-            val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
-        elif region in ('fr',):
-            val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
-        else:
-            val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '')
-
-        m = re.search(ur'[\d\.]+', val_new)
-        if not m:
-            price = ''
-        else:
-            price = float(m.group())
-
-        ret = {'currency': currency, 'price': price}
+        ret = cm.process_price(price_body, region)
 
         # 转换后的category
         clause = unicode.format(u'price_rev={0}, currency_rev="{1}"', ret['price'], ret['currency'])
@@ -234,15 +408,34 @@ def resize(args):
 
 
 def image_check(args):
-    hdr = args[0]
-    if hdr == '--brand':
-        brand_id = int(args[1])
-    else:
-        print 'Invalid syntax.'
-        return
+    idx = 0
+    brand_id = None
+    db_spec = glob.SPIDER_SPEC
+    while True:
+        if idx >= len(args):
+            break
+        hdr = args[idx]
+        idx += 1
+        if hdr == '--brand':
+            brand_id = int(args[idx])
+            idx += 1
+        elif hdr == '-d':
+            database_name = args[idx]
+            idx += 1
+            if database_name == 'spider':
+                db_spec = glob.SPIDER_SPEC
+            elif database_name == 'editor':
+                db_spec = glob.EDITOR_SPEC
+            elif database_name == 'release':
+                db_spec = glob.RELEASE_SPEC
+            else:
+                logger.critical(str.format('Invalid database specifier: {0}', database_name))
+                return
+        else:
+            logger.critical('Invalid syntax.')
+            return
 
     storage_path = glob.STORAGE_PATH
-    db_spec = glob.SPIDER_SPEC
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
     db.query("SET NAMES 'utf8'")
@@ -254,37 +447,51 @@ def image_check(args):
     cnt = 0
     missing = 0
     mismatch = 0
-    print str.format('Total models: {0}', tot)
+    logger.info(str.format('Total models: {0}', tot))
+    log_indicator(reset=True, interval=1)
+    model_cnt = -1
+
     for model in [val['model'] for val in model_list]:
+        model_cnt += 1
         db.query(str.format('SELECT path,width,height FROM products_image WHERE model="{0}"', model))
         rs_image = db.store_result().fetch_row(maxrows=0, how=1)
-        # image_list = [val['path'] for val in rs_image]
         for image in rs_image:
+
+            if log_indicator():
+                report_str = str.format('{0} images, {3} models checked({4:.1%}). {1} missing, {2} size mismatch.',
+                                        cnt, missing, mismatch, model_cnt, float(model_cnt) / len(model_list))
+                # logger.info(report_str)
+                sys.stdout.write(report_str + '\r')
+
             path = image['path']
-            if cnt % 100 == 0:
-                print str.format('{0} images checked', cnt)
             try:
                 img = Image.open(os.path.join(storage_path, 'products/images', path))
                 w = int(image['width'])
                 h = int(image['height'])
                 if w != img.size[0] or h != img.size[1]:
-                    print str.format('{0} / {1} size mismatch!', model, path)
+                    logger.error(str.format('{0} / {1} size mismatch!', model, path))
                     mismatch += 1
             except IOError:
                 missing += 1
-                print str.format('{0} / {1} missing!', model, path)
+                logger.error(str.format('{0} / {1} missing!', model, path))
             finally:
                 cnt += 1
 
-    print str.format('{0} missing.', missing)
-    print str.format('{0} size mismatch.', mismatch)
-    pass
+    logger.info(
+        str.format('Summary: {0} images, {3} models checked. {1} missing, {2} size mismatch.', cnt, missing, mismatch,
+                   model_cnt))
 
 
 def sand_box():
     """
     For test use.
     """
+    for i in xrange(5):
+        time.sleep(1)
+        sys.stdout.write(str.format('{0}\r', i))
+        sys.stdout.flush()
+
+    sys.stdout.write('Done')
     pass
 
 
@@ -306,6 +513,10 @@ def argument_parser(args):
         return sand_box
     elif cmd == 'image_check':
         return lambda: image_check(args[2:])
+    elif cmd == 'import_tag':
+        return lambda: import_tag_mapping(args[2:])
+    elif cmd == 'process_tags':
+        return lambda: process_tags(args[2:])
 
     pass
 

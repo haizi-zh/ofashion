@@ -15,6 +15,7 @@ from pyquery import PyQuery as pq
 import json
 import Image
 from products import utils
+from scrapper import utils as sutils
 
 __author__ = 'Zephyre'
 
@@ -23,48 +24,6 @@ def get_logger():
     logging.config.fileConfig('products/louis_vuitton.cfg')
     return logging.getLogger('firenzeLogger')
     # return logging.getLogger()
-
-
-def product_tags_merge(src, dest):
-    """
-    合并两个tag列表：把src中的内容合并到dest中
-    :param src:
-    :param dest:
-    """
-
-    def iterable(val):
-        """
-        val是否iterable。注意：val为str的话，返回False。
-        :param val:
-        """
-        if isinstance(val, types.StringTypes):
-            return False
-        else:
-            try:
-                iter(val)
-                return True
-            except TypeError:
-                return False
-
-    def to_set(val):
-        """
-        如果val是iterable，则转为set，否则……
-        :param val:
-        :return:
-        """
-        return set(val) if iterable(val) else set([val])
-
-    dest = dict((k, to_set(dest[k])) for k in dest if dest[k])
-    src = dict((k, to_set(src[k])) for k in src if src[k])
-
-    for k in src:
-        if k not in dest:
-            dest[k] = src[k]
-        else:
-            dest[k] = dest[k].union(src[k])
-
-    # 整理
-    return dict((k, list(dest[k])) for k in dest)
 
 
 logger = get_logger()
@@ -355,6 +314,8 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
         price_body = (temp[0].text if isinstance(temp[0].text, unicode) else temp[0].text.decode('utf-8')).strip()
         price = price_body.strip()
         price = price.encode('utf-8') if isinstance(price, unicode) else price
+    else:
+        price = None
         currency = ''
         # m = re.search(ur'(Ұ|\$|€)', price_body)
         # if m is None:
@@ -456,21 +417,30 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
             merge_keys = ('gender', 'category', 'color', 'texture')
             dest = dict((k, json.loads(results[0][k])) for k in merge_keys if results[0][k])
             src = dict((k, product[k]) for k in merge_keys if k in product)
-            dest = product_tags_merge(src, dest)
+            dest = sutils.product_tags_merge(src, dest)
 
             s2 = json.loads(results[0]['extra'])
-            dest['extra'] = product_tags_merge(s2, extra)
+            dest['extra'] = sutils.product_tags_merge(s2, extra)
             try:
                 dest = dict((k, json.dumps(dest[k], ensure_ascii=False)) for k in merge_keys + ('extra',) for k in dest)
                 # 处理product中其它字段（覆盖现有记录）
-                skip_keys = merge_keys + ('model', 'region', 'brand_id', 'extra')
+                skip_keys = merge_keys + ('model', 'region', 'brand_id', 'extra', 'fetch_time')
                 for k in product:
                     if k in skip_keys:
                         continue
                     dest[k] = product[k]
 
-                cm.update_record(db, dest, 'products', str.format('idproducts={0}', results[0]['idproducts']))
-                logger.info(unicode.format(u'UPDATE: {0}, {1}', product['model'], region))
+                # 检查是否有改变
+                modified = False
+                for k in dest:
+                    if cm.unicodify(results[0][k]) != cm.unicodify(dest[k]):
+                        modified = True
+                        break
+                if modified:
+                    cm.update_record(db, dest, 'products', str.format('idproducts={0}', results[0]['idproducts']))
+                    logger.info(unicode.format(u'UPDATE: {0}, {1}', product['model'], region))
+                else:
+                    cm.touch_record(db, 'products', str.format('idproducts={0}', results[0]['idproducts']))
             except UnicodeDecodeError:
                 pass
     finally:
@@ -598,7 +568,7 @@ def fetch_products(region, category, gender, refresh_post_data=False):
             product_list = pq(response['body'])('li[data-url]')
             if len(product_list) == 0:
                 break
-            logger.info(str.format('{0} products found at page {1}', len(product_list), page).decode('utf-8'))
+                # logger.info(str.format('{0} products found at page {1}', len(product_list), page).decode('utf-8'))
             page += 1
             for item in product_list:
                 url_component = item.attrib['data-url']

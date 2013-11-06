@@ -24,7 +24,7 @@ fendi_data = {'base_url': {'cn': 'http://www.fendi.com/cn/zh/collections/woman',
               'host': 'http://www.fendi.com',
               # 'cat-1-reject': {'cn': ['fashion-show', 'ready-to-wear-and-furwear', 'activewear', 'accessories'],
               #                  'us': ['fashion-show', 'ready-to-wear-and-furwear', 'activewear', 'accessories'], },
-              'brand_id': 10135, 'brandname_e': 'Fendi', 'brandname_c': u'芬迪', 'bn_short': 'fendi'}
+              'brand_id': 10135, 'brandname_e': 'Fendi', 'brandname_c': u'芬迪', 'brandname_s': 'fendi'}
 
 
 def create_spider():
@@ -37,7 +37,7 @@ def get_image_path():
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(global_settings.STORAGE_PATH, unicode.format(u'products/crawl/{0}', fendi_data['bn_short'])))
+        os.path.join(global_settings.STORAGE_PATH, unicode.format(u'products/crawl/{0}', fendi_data['brandname_s'])))
 
 
 

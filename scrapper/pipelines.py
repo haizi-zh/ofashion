@@ -69,7 +69,7 @@ class ProductPipeline(object):
                                            tag_name).encode('utf-8'))
                         if len(self.db.store_result().fetch_row(maxrows=0, how=1)) == 0:
                             cm.insert_record(self.db,
-                                             {'brand_id': brand_id, 'brandname_e': entry['brandname_e'],
+                                             {'brand_id': brand_id,
                                               'region': region,
                                               'tag_type': tag_type,
                                               'tag_name': tag_name, 'tag_text': tag_text},
@@ -104,7 +104,7 @@ class ProductPipeline(object):
                     entry['gender'] = json.dumps(entry['gender'], ensure_ascii=False)
                 if 'texture' in entry and entry['texture']:
                     entry['texture'] = json.dumps(entry['texture'], ensure_ascii=False)
-                cm.insert_record(self.db, entry, 'products')
+                cm.insert_record(self.db, entry, 'products', touch_time=True)
                 spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
             else:
                 # 需要处理合并的字段
@@ -132,9 +132,10 @@ class ProductPipeline(object):
                         modified = True
                         break
                 if modified:
-                    cm.update_record(self.db, dest, 'products',
-                                     str.format('idproducts={0}', results[0]['idproducts']))
+                    cm.update_record(self.db, dest, 'products', str.format('idproducts={0}', results[0]['idproducts']), touch_time=True)
                     spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
+                else:
+                    cm.touch_record(self.db, 'products', str.format('idproducts={0}', results[0]['idproducts']))
         finally:
             self.db.query('UNLOCK TABLES')
         return item

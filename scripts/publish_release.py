@@ -3,9 +3,13 @@
 import _mysql
 import json
 import re
+import sys
+import pydevd
 import common as cm
 
 __author__ = 'Zephyre'
+
+# pydevd.settrace('localhost', port=7001, stdoutToServer=True, stderrToServer=True)
 
 
 def blank_splitter(body):
@@ -31,16 +35,23 @@ db_spec_editor = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123'
                   'schema': 'editor_stores'}
 db_spec_release = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123', 'port': 3306,
                    'schema': 'release_stores'}
-extra_cond = 'brand_id=10226'
-country_pref = {'cn': 10, 'us': 20, 'fr': 30, 'it': 40, 'de': 50}
-url_map = {'cn': 'http://m.louisvuitton.cn/mobile/zhs_CN/%E4%BA%A7%E5%93%81%E7%B3%BB%E5%88%97',
-           'us': 'http://m.louisvuitton.com/mobile/eng_US/Collections',
-           'fr': 'http://m.louisvuitton.fr/mobile/fra_FR/Collections',
-           'de': 'http://m.louisvuitton.de/mobile/deu_DE/Kollektionen',
-           'it': 'http://m.louisvuitton.it/mobile/ita_IT/Collezioni'}
-currency_map = {'cn': {'country': u'中国', 'currency': u'￥'}, 'us': {'country': u'美国', 'currency': '$'},
-                'fr': {'country': u'法国', 'currency': u'€'}, 'it': {'country': u'意大利', 'currency': u'€'},
-                'de': {'country': u'德国', 'currency': u'€'}}
+extra_cond = 'brand_id=10057'
+region_list = ['cn', 'us', 'fr', 'uk', 'hk', 'jp', 'it', 'au', 'ae', 'sg', 'de', 'ca', 'es', 'ch', 'ru', 'br', 'kr',
+               'my', 'nl', 'at', 'tw', 'mo']
+country_pref = {}
+for i in xrange(len(region_list)):
+    country_pref[region_list[i]] = 10 * i
+
+# country_pref = {'cn': 10, 'us': 20, 'fr': 30, 'it': 40, 'de': 50}
+# currency_map = {'cn': {'country': u'中国', 'currency': u'¥'}, 'us': {'country': u'美国', 'currency': '$'},
+#                 'fr': {'country': u'法国', 'currency': u'€'}, 'uk': {'country': u'英国'},
+#                 'it': {'country': u'意大利', 'currency': u'€'},
+#                 'de': {'country': u'德国', 'currency': u'€'}, 'jp': {'country': u'日本', 'currency': u'¥'}}
+
+country_map = {'cn': u'中国', 'us': u'美国', 'fr': u'法国', 'uk': u'英国', 'hk': u'香港', 'jp': u'日本', 'it': u'意大利',
+                'au': u'澳大利亚', 'ae': u'阿联酋', 'sg': u'新加坡', 'de': u'德国', 'ca': u'加拿大', 'es': u'西班牙', 'ch': u'瑞士',
+                'ru': u'俄罗斯', 'br': u'巴西', 'kr': u'韩国', 'my': u'马来西亚', 'nl': u'荷兰', 'tw': u'台湾', 'at': u'奥地利',
+                'mo': u'澳门'}
 
 db_editor = _mysql.connect(host=db_spec_editor['host'], port=db_spec_editor['port'], user=db_spec_editor['username'],
                            passwd=db_spec_editor['password'], db=db_spec_editor['schema'])
@@ -51,19 +62,21 @@ model_list = tuple(val[0] for val in db_editor.store_result().fetch_row(maxrows=
 db = _mysql.connect(host=db_spec_release['host'], port=db_spec_release['port'], user=db_spec_release['username'],
                     passwd=db_spec_release['password'], db=db_spec_release['schema'])
 db.query("SET NAMES 'utf8'")
+db.query('START TRANSACTION')
 
 cnt = 0
 for model in model_list:
     db_editor.query(str.format('SELECT * FROM products WHERE model="{0}"', model))
-    results = sorted(db_editor.store_result().fetch_row(maxrows=0, how=1), key=lambda x: country_pref[x['region']])
+    results = sorted(db_editor.store_result().fetch_row(maxrows=0, how=1),
+                     key=lambda x: country_pref[x['region']] if x['region'] in country_pref else sys.maxint)
 
     entry = {'model': results[0]['model'], 'name': results[0]['name'], 'brand_id': results[0]['brand_id'],
              'brandname_e': results[0]['brandname_e'],
              'brandname_c': results[0]['brandname_c'], 'url': results[0]['url'],
              'description': results[0]['description'],
              'details': results[0]['details'],
-             'category': results[0]['category_rev'], 'color': results[0]['color_rev'], 'tags': results[0]['tags'],
-             'texture': results[0]['texture_rev']}
+             'category': results[0]['category'], 'color': results[0]['color'], 'tags': results[0]['tags'],
+             'texture': results[0]['texture']}
 
     if entry['details']:
         temp = list(blank_splitter(entry['details']))
@@ -90,13 +103,12 @@ for model in model_list:
     entry['cover_image'] = json.dumps(image_list[0]) if len(image_list) > 0 else None
 
     db_editor.query(
-        str.format('SELECT price_rev,currency_rev,region,color_rev,texture_rev,gender FROM products WHERE model="{0}"',
+        str.format('SELECT price_rev,currency_rev,region,gender FROM products WHERE model="{0}"',
                    entry['model']))
     results = db_editor.store_result().fetch_row(maxrows=0, how=1)
     # 获得价格列表
-    price_list = [{'price': float(val['price_rev']), 'currency': val['currency_rev'],
-                   'country': currency_map[val['region']]['country'],
-                   'symbol': currency_map[val['region']]['currency']} for val in results]
+    price_list = [{'price': float(val['price_rev']) if val['price_rev'] else None, 'currency': val['currency_rev'],
+                   'country': country_map[val['region']]} for val in results]
     entry['price_list'] = json.dumps(price_list, ensure_ascii=False)
     price_cn = None
     ret = filter(lambda val: val['currency'] == 'CNY', price_list)
@@ -104,23 +116,23 @@ for model in model_list:
         price_cn = ret[0]['price']
     entry['price_cn'] = price_cn
 
-    # color
-    color_set = set([])
-    for val in results:
-        if not val['color_rev']:
-            continue
-        for c in json.loads(val['color_rev']):
-            color_set.add(c)
-    entry['color'] = json.dumps(list(color_set), ensure_ascii=False)
-
-    # texture
-    texture_set = set([])
-    for val in results:
-        if not val['texture_rev']:
-            continue
-        for c in json.loads(val['texture_rev']):
-            texture_set.add(c)
-    entry['texture'] = json.dumps(list(texture_set), ensure_ascii=False)
+    # # color
+    # color_set = set([])
+    # for val in results:
+    #     if not val['color_rev']:
+    #         continue
+    #     for c in json.loads(val['color_rev']):
+    #         color_set.add(c)
+    # entry['color'] = json.dumps(list(color_set), ensure_ascii=False)
+    #
+    # # texture
+    # texture_set = set([])
+    # for val in results:
+    #     if not val['texture_rev']:
+    #         continue
+    #     for c in json.loads(val['texture_rev']):
+    #         texture_set.add(c)
+    # entry['texture'] = json.dumps(list(texture_set), ensure_ascii=False)
 
     # gender
     gender_set = set([])
@@ -136,7 +148,7 @@ for model in model_list:
 
     # 区域列表
     region_list = [val['region'] for val in results]
-    entry['url'] = [url_map[val] for val in sorted(region_list, key=lambda x: country_pref[x])][0]
+    # entry['url'] = [url_map[val] for val in sorted(region_list, key=lambda x: country_pref[x])][0]
     entry['region_list'] = json.dumps(region_list, ensure_ascii=False)
 
     cm.insert_record(db, entry, 'products')
@@ -144,3 +156,6 @@ for model in model_list:
     print str.format('Processed {0}, {1:.1%}', cnt, float(cnt) / len(model_list))
 
     continue
+
+db.query('COMMIT')
+db.close()
