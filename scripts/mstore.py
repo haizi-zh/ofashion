@@ -1,20 +1,25 @@
 # coding=utf-8
+from Queue import Queue, Empty
 import csv
+import hashlib
 import json
 import logging
 import codecs
 import os
 import _mysql
-import re
+from threading import Thread
 import time
 import pydevd
 import global_settings as glob
 import common as cm
+from products import utils
+from scripts.sync_product import SyncProducts
+import core
 
 __author__ = 'Zephyre'
 
 import sys
-import Image
+from PIL import Image
 
 cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags')
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
@@ -26,6 +31,19 @@ debug_port = glob.DEBUG_PORT
 
 logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
 logger = logging.getLogger()
+
+
+def sand_box():
+    """
+    For test use.
+    """
+    for i in xrange(5):
+        time.sleep(1)
+        sys.stdout.write(str.format('{0}\r', i))
+        sys.stdout.flush()
+
+    sys.stdout.write('Done')
+    pass
 
 
 def static_var(varname, value):
@@ -69,7 +87,7 @@ def mstore_error():
 
 
 def to_sql(val):
-    return val.replace('\\', '\\\\').replace('"', '\\"') if val else ''
+    return unicode(val).replace('\\', '\\\\').replace('"', '\\"') if val else ''
 
 
 def import_tag_mapping(args):
@@ -152,7 +170,6 @@ def import_tag_mapping(args):
 
 def process_tags(args):
     idx = 0
-    map_file = None
     region = 'cn'
     brand_id = None
     db_spec = glob.EDITOR_SPEC
@@ -184,14 +201,14 @@ def process_tags(args):
     db.query(str.format('SELECT tag_name,mapping_list FROM products_tag_mapping WHERE brand_id={0} && region="{1}"',
                         brand_id, region))
     temp = db.store_result().fetch_row(maxrows=0)
-    mapping_rules = dict(temp)
+    mapping_rules = dict((cm.unicodify(val[0]), cm.unicodify(val[1])) for val in temp)
     db.close()
 
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
     db.query("SET NAMES 'utf8'")
 
-    db.query(str.format('SELECT * FROM products WHERE brand_id={0} && region="{1}"', brand_id, region))
+    db.query(str.format('SELECT idproducts,extra FROM products WHERE brand_id={0} && region="{1}"', brand_id, region))
     rs = db.store_result()
 
     db.query('START TRANSACTION')
@@ -209,7 +226,7 @@ def process_tags(args):
         tags = set(tags)
         tag_names = []
         for v in tags:
-            if v in mapping_rules:
+            if v in mapping_rules and mapping_rules[v]:
                 tag_names.extend(json.loads(mapping_rules[v]))
         tag_names = list(set(tag_names))
 
@@ -407,10 +424,65 @@ def resize(args):
     print 'Done.'
 
 
+class ImageDownloader(object):
+    def __init__(self):
+        self.queue = Queue(8)
+        self.run_flag = False
+        self.t = None
+        self.timeout = 2
+        self.path_list = set([])
+
+    def download(self, url, path):
+        if path not in self.path_list:
+            self.queue.put({'url': url, 'path': path})
+            self.path_list.add(path)
+
+    def run(self):
+        self.run_flag = True
+        self.t = Thread(target=self.func)
+        self.t.start()
+
+    def func(self):
+        while self.run_flag:
+            try:
+                data = self.queue.get(block=True, timeout=self.timeout)
+                response = utils.fetch_image(data['url'])
+                if response is None or len(response['body']) == 0:
+                    continue
+
+                # 写入图片文件
+                with open(data['path'], 'wb') as f:
+                    f.write(response['body'])
+            except Empty:
+                pass
+        self.run_flag = False
+        self.t = None
+
+    def stop(self):
+        self.run_flag = False
+        self.t.join()
+        self.t = None
+
+
+def sync_editor(args):
+    obj = SyncProducts()
+    core.func_carrier(obj, 1)
+
+
 def image_check(args):
+    """
+    检查图片是否正常。
+    参数：
+    --checksum：同时加入图片的MD5校验
+    --brand：指定
+    :param args:
+    :return:
+    """
     idx = 0
     brand_id = None
     db_spec = glob.SPIDER_SPEC
+    gen_checksum = False
+    refetch = False
     while True:
         if idx >= len(args):
             break
@@ -419,6 +491,12 @@ def image_check(args):
         if hdr == '--brand':
             brand_id = int(args[idx])
             idx += 1
+        elif hdr == '-D':
+            pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
+        elif hdr == '--checksum':
+            gen_checksum = True
+        elif hdr == '--refetch':
+            refetch = True
         elif hdr == '-d':
             database_name = args[idx]
             idx += 1
@@ -435,12 +513,18 @@ def image_check(args):
             logger.critical('Invalid syntax.')
             return
 
+    downloader = ImageDownloader()
+    downloader.run()
+
     storage_path = glob.STORAGE_PATH
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
     db.query("SET NAMES 'utf8'")
 
-    db.query(str.format('SELECT DISTINCT model FROM products WHERE brand_id={0}', brand_id))
+    if brand_id:
+        db.query(str.format('SELECT DISTINCT model FROM products WHERE brand_id={0}', brand_id))
+    else:
+        db.query(str.format('SELECT DISTINCT model FROM products'))
     rs = db.store_result()
     model_list = rs.fetch_row(maxrows=0, how=1)
     tot = len(model_list)
@@ -453,46 +537,58 @@ def image_check(args):
 
     for model in [val['model'] for val in model_list]:
         model_cnt += 1
-        db.query(str.format('SELECT path,width,height FROM products_image WHERE model="{0}"', model))
+        db.query(
+            str.format('SELECT idproducts_image,path,width,height,url FROM products_image WHERE model="{0}"', model))
         rs_image = db.store_result().fetch_row(maxrows=0, how=1)
         for image in rs_image:
-
-            if log_indicator():
+            # if log_indicator():
+            if model_cnt % 50 == 0:
                 report_str = str.format('{0} images, {3} models checked({4:.1%}). {1} missing, {2} size mismatch.',
                                         cnt, missing, mismatch, model_cnt, float(model_cnt) / len(model_list))
-                # logger.info(report_str)
-                sys.stdout.write(report_str + '\r')
+                logger.info(report_str)
+                # sys.stdout.write(report_str + '\r')
+                # print report_str
 
             path = image['path']
+            full_path = os.path.join(storage_path, 'products/images', path)
+
+            cki = gen_checksum
             try:
-                img = Image.open(os.path.join(storage_path, 'products/images', path))
+                img = Image.open(full_path)
                 w = int(image['width'])
                 h = int(image['height'])
                 if w != img.size[0] or h != img.size[1]:
                     logger.error(str.format('{0} / {1} size mismatch!', model, path))
                     mismatch += 1
+
+                    db.query(str.format('UPDATE products_image SET width={0}, height={1} WHERE idproducts_image={2}',
+                                        img.size[0], img.size[1], image['idproducts_image']))
+
             except IOError:
                 missing += 1
                 logger.error(str.format('{0} / {1} missing!', model, path))
+                if refetch:
+                    downloader.download(image['url'], full_path)
+                    cki = True
             finally:
                 cnt += 1
+
+            if cki:
+                md5 = hashlib.md5()
+                try:
+                    with open(full_path, 'rb') as f:
+                        md5.update(f.read())
+                    db.query(
+                        str.format('UPDATE products_image SET checksum="{0}" WHERE idproducts_image={1}',
+                                   md5.hexdigest(),
+                                   image['idproducts_image']))
+                except IOError:
+                    pass
 
     logger.info(
         str.format('Summary: {0} images, {3} models checked. {1} missing, {2} size mismatch.', cnt, missing, mismatch,
                    model_cnt))
-
-
-def sand_box():
-    """
-    For test use.
-    """
-    for i in xrange(5):
-        time.sleep(1)
-        sys.stdout.write(str.format('{0}\r', i))
-        sys.stdout.flush()
-
-    sys.stdout.write('Done')
-    pass
+    downloader.stop()
 
 
 def argument_parser(args):
@@ -517,6 +613,8 @@ def argument_parser(args):
         return lambda: import_tag_mapping(args[2:])
     elif cmd == 'process_tags':
         return lambda: process_tags(args[2:])
+    elif cmd == 'sync_editor':
+        return lambda: sync_editor(args[2:])
 
     pass
 

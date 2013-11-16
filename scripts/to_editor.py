@@ -17,7 +17,6 @@ __author__ = 'Zephyre'
 
 import csv
 
-
 def to_sql(val):
     return val.replace('\\', '\\\\').replace('"', '\\"') if val else ''
 
@@ -135,7 +134,7 @@ def process_editor(brand_id, region):
     db.close()
 
 
-# 转换后的
+    # 转换后的
 
-# import_tag_mapping('../lv_tag_mapping.txt', 'cn', 10226, 'Louis Vuitton')
-# process_editor(10226, 'cn')
+    # import_tag_mapping('../lv_tag_mapping.txt', 'cn', 10226, 'Louis Vuitton')
+    # process_editor(10226, 'cn')

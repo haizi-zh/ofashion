@@ -85,7 +85,7 @@ def product_tags_merge(src, dest):
         :param val:
         :return:
         """
-        return set(val) if iterable(val) else set([val])
+        return set(val) if iterable(val) else {val}
 
     dest = dict((k, to_set(dest[k])) for k in dest if dest[k])
     src = dict((k, to_set(src[k])) for k in src if src[k])

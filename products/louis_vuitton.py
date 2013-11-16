@@ -1,21 +1,22 @@
 # coding=utf-8
+import hashlib
 import logging
 import logging.config
 import re
 import os
 import socket
-import types
 import urllib
 import datetime
-import _mysql
-from urllib2 import HTTPError, URLError
+from urllib2 import URLError
 from lxml.etree import ParserError
 import common as cm
 from pyquery import PyQuery as pq
 import json
 import Image
+from core import MySqlDb
 from products import utils
 from scrapper import utils as sutils
+import global_settings as glob
 
 __author__ = 'Zephyre'
 
@@ -149,8 +150,9 @@ categories = {'books--stationery', 'handbags', 'travel', 'watches', 'timepieces'
               'accessories/belts', 'accessories/sunglasses', 'accessories/fashion-jewelry',
               'accessories/key-holders-bag-charms-and-more', 'accessories/scarves-ties-and-more',
               'accessories/key-holders-and-other-accessories'}
-db = _mysql.connect(host='127.0.0.1', port=3306, user='rose', passwd='rose123', db='spider_stores')
-db.query("SET NAMES 'utf8'")
+
+db = MySqlDb()
+db.conn(glob.SPIDER_SPEC)
 
 
 def make_post_str(post_data):
@@ -303,9 +305,13 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
         return
 
     if len(temp) > 0:
-        temp = re.search(details_pattern['model_pattern'][region], temp[0].text.encode('utf-8'), re.M | re.I)
-        if temp is not None:
-            model = temp.group(1)
+        mt = re.search(details_pattern['model_pattern'][region], temp[0].text.encode('utf-8'), re.M | re.I)
+        if mt:
+            model = mt.group(1)
+        else:
+            mt = re.search(r'[a-zA-Z]\d{5}', temp[0].text.encode('utf-8'))
+            if mt:
+                model = mt.group()
     if model is None:
         return None
 
@@ -401,16 +407,17 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
     if download_image:
         fetch_image(body, model)
 
-    db.query('LOCK TABLES products WRITE')
+    db.start_transaction()
     try:
-        db.query(str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
-                            region, init_data['brand_id']))
-        results = db.store_result().fetch_row(maxrows=0, how=1)
-        if len(results) == 0:
+        results = db.query(
+            str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
+                       region, init_data['brand_id'])).fetch_row(maxrows=0, how=1)
+        if not results:
             for k in ('extra', 'color', 'gender', 'category', 'texture'):
                 if k in product:
                     product[k] = json.dumps(product[k], ensure_ascii=False)
-            cm.insert_record(db, product, 'products')
+
+            db.insert(product, 'products', ['fetch_time', 'update_time', 'touch_time'])
             logger.info(unicode.format(u'INSERT: {0}, {1}, {2}', model, product_name, region))
         else:
             # 需要处理合并的字段
@@ -437,14 +444,17 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
                         modified = True
                         break
                 if modified:
-                    cm.update_record(db, dest, 'products', str.format('idproducts={0}', results[0]['idproducts']))
+                    db.update(dest, 'products', str.format('idproducts={0}', results[0]['idproducts']),
+                              ['update_time', 'touch_time'])
                     logger.info(unicode.format(u'UPDATE: {0}, {1}', product['model'], region))
                 else:
-                    cm.touch_record(db, 'products', str.format('idproducts={0}', results[0]['idproducts']))
+                    db.update({}, 'products', str.format('idproducts={0}', results[0]['idproducts']), ['touch_time'])
             except UnicodeDecodeError:
                 pass
-    finally:
-        db.query('UNLOCK TABLES')
+        db.commit()
+    except:
+        db.rollback()
+        raise
     return product
 
 
@@ -483,40 +493,80 @@ def fetch_image(body, model, refetch=False):
 
         fname = str.format('{0}_{1}_{2}_{3}', brand_id, brand_name, model, m.group())
         full_name = os.path.normpath(os.path.join(image_dir, fname))
+        path_db = os.path.normpath(os.path.join('10226_louis_vuitton/full', fname))
         flist = tuple(os.listdir(image_dir))
-        if refetch or fname not in flist:
-            response = utils.fetch_image(url, logger)
-            if response is None or len(response['body']) == 0:
-                continue
-                # 写入图片文件
-            with open(full_name, 'wb') as f:
-                f.write(response['body'])
-
-        full_name_thumb = os.path.normpath(os.path.join(image_thumb_dir, fname))
-        flist = tuple(os.listdir(image_thumb_dir))
         if refetch or fname not in flist:
             response = utils.fetch_image(url_thumb, logger)
             if response is None or len(response['body']) == 0:
                 continue
                 # 写入图片文件
-            with open(full_name_thumb, 'wb') as f:
+            with open(full_name, 'wb') as f:
                 f.write(response['body'])
+            buf = response['body']
+        else:
+            with open(full_name, 'rb') as f:
+                buf = f.read()
 
+        md5 = hashlib.md5()
+        md5.update(buf)
+        checksum = md5.hexdigest()
+
+        db.start_transaction()
         try:
-            img = Image.open(full_name)
-            db.query('LOCK TABLES products_image WRITE')    # 检查数据库
-            try:
-                db.query(str.format('SELECT * FROM products_image WHERE path="{0}"', full_name))
-                if len(db.store_result().fetch_row(maxrows=0)) == 0:
-                    cm.insert_record(db, {'model': model, 'url': url, 'path': full_name, 'width': img.size[0],
-                                          'height': img.size[1], 'format': img.format, 'brand_id': brand_id,
-                                          'fetch_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},
-                                     'products_image')
-            finally:
-                db.query('UNLOCK TABLES')
-        except IOError as e:
-            logger.error(e.message)
-            pass
+            # If the file already exists
+            rs = db.query(
+                str.format('SELECT path,width,height,format,url FROM products_image WHERE checksum="{0}"',
+                           checksum)).fetch_row(how=1)
+            if rs:
+                path_db = cm.unicodify(rs[0]['path'])
+                width = rs[0]['width']
+                height = rs[0]['height']
+                fmt = rs[0]['format']
+                url = rs[0]['url']
+            else:
+                img = Image.open(full_name)
+                width, height = img.size
+                fmt = img.format
+                url = url_thumb
+
+            rs = db.query(str.format('SELECT * FROM products_image WHERE path="{0}" AND model="{1}"', path_db,
+                                     model)).fetch_row(maxrows=0)
+            if not rs:
+                db.insert({'model': model, 'url': url, 'path': path_db, 'width': width,
+                           'height': height, 'format': fmt, 'brand_id': brand_id, 'checksum': checksum},
+                          'products_image', ['fetch_time', 'update_time'])
+
+            db.commit()
+        except:
+            db.rollback()
+            raise
+
+            # full_name_thumb = os.path.normpath(os.path.join(image_thumb_dir, fname))
+            # flist = tuple(os.listdir(image_thumb_dir))
+            # if refetch or fname not in flist:
+            #     response = utils.fetch_image(url_thumb, logger)
+            #     if response is None or len(response['body']) == 0:
+            #         continue
+            #         # 写入图片文件
+            #     with open(full_name_thumb, 'wb') as f:
+            #         f.write(response['body'])
+
+            # try:
+            #     img = Image.open(full_name)
+            #     db.lock(['products_image'])
+            #     try:
+            #         rs = db.query(str.format('SELECT * FROM products_image WHERE path="{0}"', full_name)).fetch_row(
+            #             maxrows=0)
+            #         if not rs:
+            #             db.insert({'model': model, 'url': url, 'path': full_name, 'width': img.size[0],
+            #                        'height': img.size[1], 'format': img.format, 'brand_id': brand_id,
+            #                        'fetch_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, 'products_image',
+            #                       ['fetch_time', 'update_time', 'touch_time'])
+            #     finally:
+            #         db.unlock()
+            # except IOError as e:
+            #     logger.error(e.message)
+            #     pass
 
 
 def fetch_products(region, category, gender, refresh_post_data=False):
@@ -535,12 +585,18 @@ def fetch_products(region, category, gender, refresh_post_data=False):
         logger.info(str.format('Fetch filter set for {0}, {1}', category, gender).decode('utf-8'))
         filter_combinations = fetch_filter(region, category, gender, 0,
                                            {'post_data': basic_query.copy(), 'tags': {}, 'processed': False})
+
+        post_data = basic_query.copy()
+        post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"] = category
+        post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.gender"] = gender
+        filter_combinations.append({'post_data': post_data, 'processed': False, 'tags': {}})
         with open(fname, 'w') as f:
             json.dump(filter_combinations, f)
     else:
         with open(fname, 'r') as f:
             filter_combinations = json.load(f, encoding='utf-8')
 
+    processed_urls = set([])
     for filter_data in filter_combinations:
         # 跳过已经处理过的post数据
         if filter_data['processed']:
@@ -575,7 +631,12 @@ def fetch_products(region, category, gender, refresh_post_data=False):
                 m = re.search(r'[^-]+$', url_component)
                 if m is None:
                     continue
-                fetch_product_details(region, item.attrib['data-url'], filter_data)
+                url = item.attrib['data-url']
+                if url in processed_urls:
+                    continue
+                else:
+                    processed_urls.add(url)
+                    fetch_product_details(region, url, filter_data)
 
         filter_data['processed'] = True
         with open(fname, 'w') as f:

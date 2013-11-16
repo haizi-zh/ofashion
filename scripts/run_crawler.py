@@ -1,8 +1,12 @@
+#!/usr/bin/env python
 # coding=utf-8
+import hashlib
 
 import os
+import random
 import sys
 import datetime
+import time
 import pydevd
 from scrapy import signals, log
 from scrapy.crawler import Crawler
@@ -13,9 +17,9 @@ import common as cm
 
 __author__ = 'Zephyre'
 
-# 中国,美国,法国,英国,香港,日本,意大利,澳大利亚,阿联酋,新加坡,德国,加拿大,西班牙,瑞士,俄罗斯,巴西,泰国,韩国,马来西亚,荷兰
-region_list = ['fr', 'us', 'cn', 'uk', 'hk', 'jp', 'it', 'au', 'ae', 'sg', 'de', 'ca', 'es', 'ch', 'ru', 'br', 'kr',
-               'my', 'nl', 'tw']
+# # 中国,美国,法国,英国,香港,日本,意大利,澳大利亚,阿联酋,新加坡,德国,加拿大,西班牙,瑞士,俄罗斯,巴西,泰国,韩国,马来西亚,荷兰
+# region_list = ['fr', 'us', 'cn', 'uk', 'hk', 'jp', 'it', 'au', 'ae', 'sg', 'de', 'ca', 'es', 'ch', 'ru', 'br', 'kr',
+#                'my', 'nl', 'tw']
 
 debug_flag = False
 debug_port = glob.DEBUG_PORT
@@ -25,6 +29,8 @@ ua = None
 spider_name = sys.argv[1]
 arguments = sys.argv[2:]
 idx = 0
+# 国家列表
+region_list = []
 while True:
     if idx >= len(arguments):
         break
@@ -39,8 +45,6 @@ while True:
         ua = arguments[idx]
         idx += 1
     elif term == '-r':
-        # 国家列表
-        region_list = []
         while True:
             if idx >= len(arguments):
                 break
@@ -65,7 +69,6 @@ living_spiders = set([])
 
 
 def on_spider_closed(spider, reason):
-    # spider.log(str.format('spider'))
     if spider in living_spiders:
         living_spiders.remove(spider)
 
@@ -73,21 +76,22 @@ def on_spider_closed(spider, reason):
         reactor.stop()
 
 
-def get_job_path(spider_data):
+def get_job_path(brand_id):
     return os.path.normpath(
-        os.path.join(glob.STORAGE_PATH, unicode.format(u'products/crawl/{0}', spider_data['brandname_s'])))
+        os.path.join(glob.STORAGE_PATH,
+                     unicode.format(u'products/crawl/{0}', glob.BRAND_NAMES[brand_id]['brandname_s'])))
 
 
-def get_log_path(spider_data):
+def get_log_path(brand_id):
     return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
-                                         unicode.format(u'{0}_{1}_{2}.log', spider_data['brand_id'],
-                                                        spider_data['brandname_s'],
+                                         unicode.format(u'{0}_{1}_{2}.log', brand_id,
+                                                        glob.BRAND_NAMES[brand_id]['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))
 
 
-def get_images_store(spider_data):
+def get_images_store(brand_id):
     return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/images',
-                                         str.format('{0}_{1}', spider_data['brand_id'], spider_data['brandname_s'])))
+                                         str.format('{0}_{1}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'])))
 
 
 def set_up_spider(region):
@@ -95,22 +99,31 @@ def set_up_spider(region):
     crawler.settings.values['BOT_NAME'] = 'mstore_bot'
     crawler.settings.values['REGION'] = region
 
-    crawler.settings.values['ITEM_PIPELINES'] = ['scrapper.pipelines.ProductImagePipeline',
-                                                 'scrapper.pipelines.ProductPipeline']
+    crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 300,
+                                                 'scrapper.pipelines.ProductPipeline': 800} \
+        if glob.WRITE_DATABASE else {}
+
     crawler.settings.values['EXTENSIONS'] = {
         'scrapper.extensions.SpiderOpenCloseLogging': 500
     }
 
-    crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_data)
+    crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_module.brand_id)
+    spider = spider_module.create_spider()
+
+    # crawler.settings.values['JOBDIR'] = get_job_path(spider_module.brand_id) + str.format('-{0}-1', region)
+
     crawler.settings.values['EDITOR_SPEC'] = glob.EDITOR_SPEC
     crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC
     crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
+
+    crawler.settings.values['TELNETCONSOLE_PORT'] = [7023, 7073]
+    # crawler.settings.values['RETRY_TIMES'] = 0
+    # crawler.settings.values['REDIRECT_ENABLED'] = False
 
     crawler.signals.connect(on_spider_closed, signal=signals.spider_closed)
     # crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
-    spider = spider_module.create_spider()
     living_spiders.add(spider)
     crawler.crawl(spider)
 
@@ -119,13 +132,17 @@ def set_up_spider(region):
 
 if not invalid_syntax:
     spider_module = cm.get_spider_module(spider_name)
-    spider_data = spider_module.get_spider_data()
+    if not region_list:
+        region_list = spider_module.supported_regions()
 
     for region in region_list:
         set_up_spider(region)
 
-    log.start(loglevel='INFO', logfile=get_log_path(spider_data))
-    # log.start(loglevel='DEBUG')
+    if glob.LOG_DEBUG:
+        log.start(loglevel='DEBUG')
+    else:
+        log.start(loglevel='INFO', logfile=get_log_path(spider_module.brand_id))
+
     log.msg(str.format('CRAWLER STARTED FOR REGIONS: {0}', ', '.join(region_list)), log.INFO)
 
     if len(living_spiders) > 0:

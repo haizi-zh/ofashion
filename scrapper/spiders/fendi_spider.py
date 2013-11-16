@@ -31,14 +31,9 @@ def create_spider():
     return FendiSpider()
 
 
-def get_image_path():
-    return os.path.normpath(os.path.join(global_settings.STORAGE_PATH, u'products/images'))
-
-
-def get_job_path():
-    return os.path.normpath(
-        os.path.join(global_settings.STORAGE_PATH, unicode.format(u'products/crawl/{0}', fendi_data['brandname_s'])))
-
+def get_spider_data():
+    return dict((k, fendi_data[k]) for k in fendi_data if
+                k in ('host', 'supported_regions', 'brand_id', 'brandname_e', 'brandname_c', 'brandname_s'))
 
 
 class FendiSpider(CrawlSpider):

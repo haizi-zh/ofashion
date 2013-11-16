@@ -15,78 +15,79 @@ import copy
 
 __author__ = 'Zephyre'
 
-chanel_data = {'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': 'it_IT', 'uk': 'en_GB', 'hk': 'en_HK',
-                            'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG', 'ca': 'en_CA', 'de': 'de_DE',
-                            'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
-               'fashion_term': {'cn': 'fashion', 'us': 'fashion', 'it': 'moda', 'fr': 'mode', 'uk': 'fashion',
-                                'hk': 'fashion',
-                                'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion', 'ca': 'fashion',
-                                'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
-               'pricing': 'https://secure.chanel.com/global-service/frontend/pricing/%s/fashion/%s/?format=json',
-               'host': 'http://www-cn.chanel.com',
-               'supported_regions': {'cn', 'us', 'fr', 'it', 'uk', 'hk', 'jp', 'kr', 'au', 'sg', 'ca', 'de', 'es', 'ru',
-                                     'br'},
-               'brand_id': 10074, 'brandname_e': 'Chanel', 'brandname_c': u'香奈儿', 'brandname_s': 'chanel',
-               'description_hdr': {u'产品介绍', u'Description'},
-               'details_hdr': {u'使用方法', u'How to use', u"Conseils d'utilisation", u'How-to'}
-}
-
-
-def get_spider_data():
-    return dict((k, chanel_data[k]) for k in chanel_data if
-                k in ('host', 'supported_regions', 'brand_id', 'brandname_e', 'brandname_c', 'brandname_s'))
+brand_id = 10074
 
 
 def create_spider():
     return ChanelSpider()
 
 
+def supported_regions():
+    return ChanelSpider.spider_data['supported_regions']
+
+
 class ChanelSpider(CrawlSpider):
     name = 'chanel'
     allowed_domains = ['chanel.com']
 
+    spider_data = {
+        'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': 'it_IT', 'uk': 'en_GB', 'hk': 'en_HK',
+                     'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG', 'ca': 'en_CA', 'de': 'de_DE',
+                     'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
+        'fashion_term': {'cn': 'fashion', 'us': 'fashion', 'it': 'moda', 'fr': 'mode', 'uk': 'fashion',
+                         'hk': 'fashion',
+                         'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion', 'ca': 'fashion',
+                         'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
+        'pricing': 'https://secure.chanel.com/global-service/frontend/pricing/%s/fashion/%s/?format=json',
+        'host': 'http://www-cn.chanel.com',
+        'description_hdr': {u'产品介绍', u'Description'},
+        'details_hdr': {u'使用方法', u'How to use', u"Conseils d'utilisation", u'How-to'}}
+    spider_data['supported_regions'] = spider_data['base_url'].keys()
+
+    def __init__(self, *a, **kw):
+        super(ChanelSpider, self).__init__(*a, **kw)
+        self.spider_data = copy.deepcopy(ChanelSpider.spider_data)
+        self.spider_data['brand_id'] = brand_id
+        for k, v in glob.BRAND_NAMES[self.spider_data['brand_id']].items():
+            self.spider_data[k] = v
+
     def start_requests(self):
         region = self.crawler.settings['REGION']
         self.name = str.format('{0}-{1}', self.name, region)
-        if region not in chanel_data['supported_regions']:
+        if region not in self.spider_data['supported_regions']:
             self.log(str.format('No data for {0}', region), log.WARNING)
             return []
 
-        region_code = chanel_data['base_url'][region]
+        region_code = self.spider_data['base_url'][region]
         self.rules = (
             Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/{0}/.+\?sku=\d+$', region_code), )),
-                 callback='parse_sku1'),
+                 callback=self.parse_sku1),
             Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/{0}/.+/sku/\d+$', region_code), )),
-                 callback='parse_sku2'),
-            Rule(SgmlLinkExtractor(
-                allow=(str.format(r'chanel\.com/{0}/{1}/[^/]+/[^/]+/.*(?<=/)s\.[^/]+\.html', region_code,
-                                  chanel_data['fashion_term'][region]), )),
-                 callback='parse_fashion'),
+                 callback=self.parse_sku2),
+            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/{0}/.+(?<=/)s\.[^/]+\.html', region_code), )),
+                 callback=self.parse_fashion),
             Rule(SgmlLinkExtractor(allow=(r'.+', ),
                                    deny=(str.format(r'chanel\.com(?!/{0}/)', region_code), )))
         )
         self._compile_rules()
 
         self.log(str.format('Fetching data for {0}', region), log.INFO)
-        return [Request(url=str.format('{0}/{1}/', chanel_data['host'], region_code))]
-        # return [Request(
-        #     url='http://www-cn.chanel.com/fr_FR/mode/produits/lunettes/g/s.lunettes-de-soleil-en-nylon-et.13K.A71014X02128S0133.sun.run.html')]
-        # return [Request(url='http://www-cn.chanel.com/zh_CN/fashion/products/eyewear/g/s.acetate-pilot-inspired-sunglasses.13K.A71011X02120S0133.sun.run.html')]
+        return [Request(url=str.format('{0}/{1}/', self.spider_data['host'], region_code))]
 
     def parse_fashion(self, response):
         self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
-        for a, b in chanel_data['base_url'].items():
+        for a, b in self.spider_data['base_url'].items():
             if b == mt.group(1):
                 region = a
                 break
         if not region:
             return None
 
-        metadata = {'region': region, 'brand_id': chanel_data['brand_id'],
-                    'brandname_e': chanel_data['brandname_e'], 'url': response.url,
-                    'brandname_c': chanel_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
+                    'brandname_e': self.spider_data['brandname_e'], 'url': response.url,
+                    'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
                     'gender': set([]), 'category': set([]), 'texture': set([]), 'color': set([])}
 
         mt = re.search(r'var\s+settings', response._body)
@@ -111,21 +112,21 @@ class ChanelSpider(CrawlSpider):
         #     image_url = temp[0]._root.attrib['src']
         #     if re.search(r'\.medium\.[^\.]+$', image_url):
         #         image_url = re.sub(r'\.medium\.([^\.]+)$', r'.hi.\1', image_url)
-        #     metadata['image_urls'].append(cm.norm_url(image_url, host=chanel_data['host']))
+        #     metadata['image_urls'].append(cm.norm_url(image_url, host=self.spider_data['host']))
         #
         # temp = hxs.select('//div[contains(@class, "lookimage")]/img[@src]')
         # if len(temp) > 0:
         #     image_url = temp[0]._root.attrib['src']
         #     if re.search(r'\.look-sheet\.medium\.[^\.]+$', image_url):
         #         image_url = re.sub(r'\.look-sheet\.medium\.([^\.]+)$', r'.hi.\1', image_url)
-        #     metadata['image_urls'].append(cm.norm_url(image_url, host=chanel_data['host']))
+        #     metadata['image_urls'].append(cm.norm_url(image_url, host=self.spider_data['host']))
 
         if 'detailsGridJsonUrl' in data['sectionCache']:
             temp = data['sectionCache']['detailsGridJsonUrl']
             if re.search(r'^http://', temp):
                 url = temp
             else:
-                url = str.format('{0}/{1}', chanel_data['host'], temp)
+                url = str.format('{0}/{1}', self.spider_data['host'], temp)
             return Request(url=url, meta={'userdata': metadata}, callback=self.parse_json_request)
         else:
             return self.parse_json(metadata, data['sectionCache'])
@@ -143,7 +144,7 @@ class ChanelSpider(CrawlSpider):
             href = None
 
         if href:
-            return cm.norm_url(href, host=chanel_data['host'])
+            return cm.norm_url(href, host=self.spider_data['host'])
         else:
             return href
 
@@ -160,6 +161,8 @@ class ChanelSpider(CrawlSpider):
                 cat = cm.unicodify(temp['title'])
                 if not cat or cat in cat_list:
                     continue
+                else:
+                    cat = cat.lower()
                 cat_idx += 1
                 cat_list.append(cat)
                 cat_name = str.format('category-{0}', cat_idx)
@@ -182,7 +185,7 @@ class ChanelSpider(CrawlSpider):
 
             # # module images
             # if 'modulesJsonUrl' in image_data:
-            #     metadata['modules_url'] = cm.norm_url(image_data['modulesJsonUrl'], host=chanel_data['host'])
+            #     metadata['modules_url'] = cm.norm_url(image_data['modulesJsonUrl'], host=self.spider_data['host'])
             # else:
             #     metadata['modules_url'] = None
             metadata['modules_url'] = None
@@ -251,7 +254,10 @@ class ChanelSpider(CrawlSpider):
         if 'description' in info:
             metadata['description'] = self.reformat(cm.unicodify(info['description']))
         if 'title' in info:
-            metadata['name'] = cm.unicodify(info['title'])
+            temp = cm.unicodify(info['title'])
+            if temp:
+                metadata['name'] = temp.lower()
+            metadata['category'] = [metadata['name']]
 
         if 'ref' in info:
             metadata['model'] = cm.unicodify(info['ref'])
@@ -261,7 +267,7 @@ class ChanelSpider(CrawlSpider):
 
         # price
         if pricing_service and 'refPrice' in info:
-            url = chanel_data['pricing'] % (chanel_data['base_url'][metadata['region']], info['refPrice'])
+            url = self.spider_data['pricing'] % (self.spider_data['base_url'][metadata['region']], info['refPrice'])
             return Request(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
                            callback=self.parse_price)
         else:
@@ -301,7 +307,7 @@ class ChanelSpider(CrawlSpider):
         self.log(str.format('PARSE_SKU1: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
-        for a, b in chanel_data['base_url'].items():
+        for a, b in self.spider_data['base_url'].items():
             if b == mt.group(1):
                 region = a
                 break
@@ -313,9 +319,9 @@ class ChanelSpider(CrawlSpider):
             return None
         model = mt.group(1)
 
-        metadata = {'region': region, 'brand_id': chanel_data['brand_id'],
-                    'brandname_e': chanel_data['brandname_e'], 'model': model, 'url': response.url,
-                    'brandname_c': chanel_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
+                    'brandname_e': self.spider_data['brandname_e'], 'model': model, 'url': response.url,
+                    'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
                     'gender': set([]), 'category': set([]), 'texture': set([]), 'color': set([])}
 
         hxs = HtmlXPathSelector(response)
@@ -325,6 +331,8 @@ class ChanelSpider(CrawlSpider):
             cat = cm.unicodify(node._root.text)
             if not cat:
                 continue
+            else:
+                cat = cat.lower()
             if node._root.attrib['class'] == 'WT_cg_s':
                 metadata['category'].add(cat)
             if cat in cat_list:
@@ -372,9 +380,9 @@ class ChanelSpider(CrawlSpider):
             content_map = {}
             for node in content_node.select('./div[@class="tabs"]//a[@rel]'):
                 temp = cm.unicodify(node._root.text)
-                if temp and temp in chanel_data['description_hdr']:
+                if temp and temp in self.spider_data['description_hdr']:
                     content_map['description'] = node._root.attrib['rel']
-                if temp and temp in chanel_data['details_hdr']:
+                if temp and temp in self.spider_data['details_hdr']:
                     content_map['details'] = node._root.attrib['rel']
 
             for term in ('description', 'details'):
@@ -397,10 +405,10 @@ class ChanelSpider(CrawlSpider):
         #     if re.search(r'^http://', href):
         #         image_urls.append(href)
         #     else:
-        #         image_urls.append(str.format('{0}/{1}', chanel_data['host'], href))
+        #         image_urls.append(str.format('{0}/{1}', self.spider_data['host'], href))
         # image_urls = list(set([re.sub(r'\.+', '.', val) for val in image_urls]))
 
-        image_urls = list(set(cm.norm_url(node._root.attrib['src'], chanel_data['base_url'])
+        image_urls = list(set(cm.norm_url(node._root.attrib['src'], self.spider_data['base_url'])
                               for node in hxs.select('//div[@class="major productImg"]/img[@src]') if
                               node._root.attrib['src'] and node._root.attrib['src'].strip()))
 
@@ -425,7 +433,7 @@ class ChanelSpider(CrawlSpider):
         self.log(str.format('PARSE_SKU2: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
-        for a, b in chanel_data['base_url'].items():
+        for a, b in self.spider_data['base_url'].items():
             if b == mt.group(1):
                 region = a
                 break
@@ -437,9 +445,9 @@ class ChanelSpider(CrawlSpider):
             return None
         model = mt.group(1)
 
-        metadata = {'region': region, 'brand_id': chanel_data['brand_id'],
-                    'brandname_e': chanel_data['brandname_e'], 'model': model, 'url': response.url,
-                    'brandname_c': chanel_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
+                    'brandname_e': self.spider_data['brandname_e'], 'model': model, 'url': response.url,
+                    'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
                     'gender': set([]), 'category': set([]), 'texture': set([]), 'color': set([])}
 
         hxs = HtmlXPathSelector(response)
@@ -449,6 +457,8 @@ class ChanelSpider(CrawlSpider):
             cat = cm.unicodify(node._root.text)
             if not cat:
                 continue
+            else:
+                cat = cat.lower()
             if node._root.attrib['class'] == 'WT_cg_s':
                 metadata['category'].add(cat)
             if cat in cat_list:
@@ -502,9 +512,9 @@ class ChanelSpider(CrawlSpider):
             content_map = {}
             for node in content_node.select('.//div[@class="accordion-heading"]/a[@href]'):
                 temp = cm.unicodify(node._root.text)
-                if temp and temp in chanel_data['description_hdr']:
+                if temp and temp in self.spider_data['description_hdr']:
                     content_map['description'] = re.sub(r'^#', '', node._root.attrib['href'])
-                if temp and temp in chanel_data['details_hdr']:
+                if temp and temp in self.spider_data['details_hdr']:
                     content_map['details'] = re.sub(r'^#', '', node._root.attrib['href'])
 
             for term in ('description', 'details'):
@@ -521,9 +531,10 @@ class ChanelSpider(CrawlSpider):
                         metadata[term] = u', '.join(content_list)
 
         # Images
-        image_urls = list(set(cm.norm_url(node._root.attrib['src'], chanel_data['base_url']) for node in hxs.select(
-            '//section[@class="product_image_container"]/img[@src and @class="product_image"]') if
-                              node._root.attrib['src'] and node._root.attrib['src'].strip()))
+        image_urls = list(
+            set(cm.norm_url(node._root.attrib['src'], self.spider_data['base_url']) for node in hxs.select(
+                '//section[@class="product_image_container"]/img[@src and @class="product_image"]') if
+                node._root.attrib['src'] and node._root.attrib['src'].strip()))
 
         metadata['color'] = list(metadata['color'])
         metadata['texture'] = list(metadata['texture'])

@@ -13,11 +13,24 @@ from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline
 from scrapy.http import Request
 import common as cm
+from core import MySqlDb
 from scrapper import utils
 from PIL import Image
+import global_settings as glob
 
 
 images_store_map = {10152: '10152_gucci', 10074: '10074_chanel'}
+
+spider_data_map = {}
+
+
+def fetch_spider_data(brand_id):
+    if brand_id in spider_data_map:
+        return spider_data_map[brand_id]
+    else:
+        cm.get_spider_module()
+        pass
+    pass
 
 
 class ProductPipeline(object):
@@ -28,9 +41,8 @@ class ProductPipeline(object):
         return cls(db_spec)
 
     def __init__(self, db_spec):
-        self.db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
-                                 passwd=db_spec['password'], db=db_spec['schema'])
-        self.db.query("SET NAMES 'utf8'")
+        self.db = MySqlDb()
+        self.db.conn(db_spec)
         self.processed_tags = set([])
 
     def process_tags_mapping(self, tags, entry):
@@ -61,21 +73,21 @@ class ProductPipeline(object):
                 else:
                     # 获得新的tag映射
                     self.processed_tags.add(sig)
-                    self.db.query('LOCK TABLES products_tag_mapping WRITE')
+                    self.db.start_transaction()
                     try:
-                        self.db.query(
+                        rs = self.db.query(
                             unicode.format(u'SELECT * FROM products_tag_mapping WHERE brand_id={0} AND region="{1}" '
                                            u'AND tag_type="{2}" AND tag_name="{3}"', brand_id, region, tag_type,
-                                           tag_name).encode('utf-8'))
-                        if len(self.db.store_result().fetch_row(maxrows=0, how=1)) == 0:
-                            cm.insert_record(self.db,
-                                             {'brand_id': brand_id,
-                                              'region': region,
-                                              'tag_type': tag_type,
-                                              'tag_name': tag_name, 'tag_text': tag_text},
-                                             'products_tag_mapping', update_time=False, modified=False)
-                    finally:
-                        self.db.query('UNLOCK TABLES')
+                                           tag_name)).fetch_row(maxrows=0, how=1)
+                        if not rs:
+                            self.db.insert({'brand_id': brand_id,
+                                            'region': region,
+                                            'tag_type': tag_type,
+                                            'tag_name': tag_name, 'tag_text': tag_text}, 'products_tag_mapping')
+                        self.db.commit()
+                    except:
+                        self.db.rollback()
+                        raise
 
     def process_item(self, item, spider):
         metadata = item['metadata']
@@ -89,12 +101,13 @@ class ProductPipeline(object):
 
         self.process_tags_mapping(tags_mapping, entry)
 
-        self.db.query('LOCK TABLES products WRITE')    # 检查数据库
+        self.db.start_transaction()
         try:
-            self.db.query(unicode.format(u'SELECT * FROM products WHERE brand_id={0} AND model="{1}" AND region="{2}"',
-                                         entry['brand_id'], entry['model'], entry['region']))
-            results = self.db.store_result().fetch_row(maxrows=0, how=1)
-            if len(results) == 0:
+            results = self.db.query(
+                unicode.format(u'SELECT * FROM products WHERE brand_id={0} AND model="{1}" AND region="{2}"',
+                               entry['brand_id'], entry['model'], entry['region']).encode('utf-8')).fetch_row(maxrows=0,
+                                                                                                              how=1)
+            if not results:
                 entry['extra'] = json.dumps(extra, ensure_ascii=False)
                 if 'color' in entry and entry['color']:
                     entry['color'] = json.dumps(entry['color'], ensure_ascii=False)
@@ -104,7 +117,8 @@ class ProductPipeline(object):
                     entry['gender'] = json.dumps(entry['gender'], ensure_ascii=False)
                 if 'texture' in entry and entry['texture']:
                     entry['texture'] = json.dumps(entry['texture'], ensure_ascii=False)
-                cm.insert_record(self.db, entry, 'products', touch_time=True)
+
+                self.db.insert(entry, 'products', ['touch_time', 'fetch_time', 'update_time'])
                 spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
             else:
                 # 需要处理合并的字段
@@ -132,12 +146,16 @@ class ProductPipeline(object):
                         modified = True
                         break
                 if modified:
-                    cm.update_record(self.db, dest, 'products', str.format('idproducts={0}', results[0]['idproducts']), touch_time=True)
+                    self.db.update(dest, 'products', str.format('idproducts={0}', results[0]['idproducts']),
+                                   ['update_time', 'touch_time'])
                     spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
                 else:
-                    cm.touch_record(self.db, 'products', str.format('idproducts={0}', results[0]['idproducts']))
-        finally:
-            self.db.query('UNLOCK TABLES')
+                    self.db.update({}, 'products', str.format('idproducts={0}', results[0]['idproducts']),
+                                       ['touch_time'])
+            self.db.commit()
+        except:
+            self.db.rollback()
+            raise
         return item
 
 
@@ -153,9 +171,8 @@ class ProductImagePipeline(ImagesPipeline):
     def __init__(self, store_uri, crawler=None, db_spec=None):
         self.crawler = crawler
         self.url_map = {}
-        self.db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
-                                 passwd=db_spec['password'], db=db_spec['schema'])
-        self.db.query("SET NAMES 'utf8'")
+        self.db = MySqlDb()
+        self.db.conn(db_spec)
         super(ProductImagePipeline, self).__init__(store_uri)
 
     # def image_key(self, url):
@@ -179,23 +196,54 @@ class ProductImagePipeline(ImagesPipeline):
                 yield Request(url)
 
     def item_completed(self, results, item, info):
+        brand_id = item['metadata']['brand_id']
+        spider_data = glob.BRAND_NAMES[brand_id]
         for status, r in results:
             if not status:
                 continue
 
             path = r['path'].replace(u'\\', u'/')
-            path_db = str.format('{0}/{1}', images_store_map[item['metadata']['brand_id']], path)
-            url = r['url']
-            m = item['metadata']
-            img = Image.open(os.path.join(self.store.basedir, path))
-            self.db.query('LOCK TABLES products_image WRITE')    # 检查数据库
+            path_db = os.path.normpath(
+                os.path.join(str.format('{0}_{1}/{2}', brand_id, spider_data['brandname_s'], path)))
+            full_path = os.path.normpath(os.path.join(self.store.basedir, path))
+            md5 = hashlib.md5()
+            with open(full_path, 'rb') as f:
+                buf = f.read()
+                md5.update(buf)
+            checksum = md5.hexdigest()
+
+            self.db.lock(['products_image'])
+            self.db.start_transaction()
             try:
-                self.db.query(unicode.format(u'SELECT * FROM products_image WHERE path="{0}"', path_db))
-                if len(self.db.store_result().fetch_row(maxrows=0)) == 0:
-                    cm.insert_record(self.db, {'model': m['model'], 'url': url, 'path': path_db, 'width': img.size[0],
-                                               'height': img.size[1], 'format': img.format, 'brand_id': m['brand_id'],
-                                               'fetch_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},
-                                     'products_image')
+                # If the file already exists
+                rs = self.db.query(
+                    str.format('SELECT path,width,height,format,url FROM products_image WHERE checksum="{0}"',
+                               checksum)).fetch_row(how=1)
+                if rs:
+                    path_db = cm.unicodify(rs[0]['path'])
+                    width = rs[0]['width']
+                    height = rs[0]['height']
+                    fmt = rs[0]['format']
+                    url = rs[0]['url']
+                else:
+                    img = Image.open(full_path)
+                    width, height = img.size
+                    fmt = img.format
+                    url = r['url']
+
+                m = item['metadata']
+                rs = self.db.query(
+                    unicode.format(u'SELECT * FROM products_image WHERE path="{0}" AND model="{1}"', path_db,
+                                   m['model'])).fetch_row(maxrows=0)
+                if not rs:
+                    self.db.insert(
+                        {'model': m['model'], 'url': url, 'path': path_db, 'width': width, 'checksum': checksum,
+                         'height': height, 'format': fmt, 'brand_id': m['brand_id']}, 'products_image')
+                self.db.commit()
+            except Exception:
+                self.db.rollback()
+                raise
             finally:
-                self.db.query('UNLOCK TABLES')
+                self.db.unlock()
+
         return item

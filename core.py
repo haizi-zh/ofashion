@@ -9,23 +9,15 @@ import common as cm
 __author__ = 'Zephyre'
 
 
-def unicodify(val):
-    """
-    Unicode化，并且strip
-    :param val:
-    :return:
-    """
-    if val is None:
-        return None
-    elif isinstance(val, str):
-        return val.decode('utf-8').strip()
-    else:
-        return unicode(val).strip()
-
-
 class MySqlDb(object):
+    LOCK_READ = 0
+    LOCK_WRITE = 1
+
     @classmethod
     def default_spec(cls):
+        """
+        :return: 返回默认database specification
+        """
         return {'host': '127.0.0.1', 'username': None, 'password': None, 'port': None, 'schema': None}
 
     @classmethod
@@ -54,18 +46,30 @@ class MySqlDb(object):
                                  db=spec['schema'])
         self.db.query("SET NAMES 'utf8'")
 
+    def lock(self, tbl_list, lock_type=LOCK_WRITE):
+        statement = str.format('LOCK TABLES {0}', ', '.join(
+            str.format('{0} {1}', tbl, 'READ' if lock_type == MySqlDb.LOCK_READ else 'WRITE') for tbl in tbl_list))
+        self.db.query(statement)
+
+    def unlock(self):
+        self.db.query('UNLOCK TABLES')
+
+
     def start_transaction(self):
         self.db.query('START TRANSACTION')
 
     def commit(self):
         self.db.query('COMMIT')
 
+    def rollback(self):
+        self.db.query('ROLLBACK')
+
     def close(self):
         self.db.close()
 
     @staticmethod
-    def __sql_escape(param):
-        return param.replace('\\', '\\\\').replace('"', '\\"') if param else None
+    def sql_escape(param):
+        return unicode(param).replace('\\', '\\\\').replace('"', '\\"') if param else None
 
     def insert(self, entry, table, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S'):
         """
@@ -74,12 +78,13 @@ class MySqlDb(object):
         :param timestamps: 用来在记录上添加时间戳。比如：timestamps=['ts1', 'ts2']，则自动在添加的记录上添加时间戳：ts1和ts2。
         """
         if timestamps:
+            time_str = datetime.datetime.now().strftime(time_fmt)
             for k in timestamps:
-                entry[k] = datetime.datetime.strftime(time_fmt)
+                entry[k] = time_str
 
         fields = unicode.format(u'({0})', ', '.join(entry))
         values = unicode.format(u'({0})',
-                                ', '.join(unicode.format(u'"{0}"', MySqlDb.__sql_escape(cm.unicodify(entry[k])))
+                                ', '.join(unicode.format(u'"{0}"', MySqlDb.sql_escape(cm.unicodify(entry[k])))
                                           if entry[k] else 'NULL' for k in entry))
         statement = unicode.format(u'INSERT INTO {0} {1} VALUES {2}', table, fields, values)
         self.db.query(statement.encode('utf-8'))
@@ -93,12 +98,13 @@ class MySqlDb(object):
         :param time_fmt:
         """
         if timestamps:
+            time_str = datetime.datetime.now().strftime(time_fmt)
             for k in timestamps:
-                entry[k] = datetime.datetime.strftime(time_fmt)
+                entry[k] = time_str
 
         values = ', '.join(
             unicode.format(u'{0}={1}', k,
-                           unicode.format(u'"{0}"', MySqlDb.__sql_escape(cm.unicodify(entry[k]))) if entry[
+                           unicode.format(u'"{0}"', MySqlDb.sql_escape(cm.unicodify(entry[k]))) if entry[
                                k] else 'NULL') for k in entry)
         statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', table, values, cond)
         self.db.query(statement.encode('utf-8'))
@@ -144,4 +150,4 @@ def func_carrier(obj, interval):
     tm_ref[0].cancel()
     timer_cb(last_time=True)
     sys.stdout.write('\n\n')
-    # sys.stdout.flush()
+    sys.stdout.flush()

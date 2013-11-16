@@ -21,6 +21,15 @@ import global_settings as glob
 
 __author__ = 'Zephyre'
 
+
+def static_var(varname, value):
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+
+    return decorate
+
+
 timeout = 30
 
 # 字段名
@@ -68,7 +77,10 @@ class MStoreFileHandler(logging.FileHandler):
     def __init__(self, path=u'.', filename=None, mode='a'):
         if not filename:
             filename = '.'.join(os.path.basename(sys.modules['__main__'].__file__).split('.')[:-1]).decode('utf-8')
-        filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
+            # filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
+        filename = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/log', str.format('{0}_{1}.log', filename,
+                                                                                               datetime.datetime.now().strftime(
+                                                                                                   '%Y%m%d'))))
         super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
 
 
@@ -654,14 +666,6 @@ def retry_helper(func, param=None, logger=None, except_class=Exception, retry=5,
     return None
 
 
-def currency_lookup(symbol):
-    """
-    货币符号到货币代码的转换
-    """
-    currency_map = {u'￥': u'CNY', u'Ұ': u'CNY', u'$': u'USD', u'€': u'EUR', u'₩': u'KRW'}
-    return currency_map[symbol]
-
-
 def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None, client='Desktop',
                      userAgent=''):
     """
@@ -949,15 +953,10 @@ def update_record(db, cond, tbl, record):
             'utf-8'))
 
 
-
 def process_price(price, region):
     val = unicodify(price)
-    currency_map = {'cn': 'CNY', 'us': 'USD', 'uk': 'GBP', 'hk': 'HKD', 'sg': 'SGD', 'de': 'EUR', 'es': 'EUR',
-                    'fr': 'EUR', 'it': 'EUR', 'jp': 'JPY', 'kr': 'KRW', 'mo': 'MOP', 'ae': 'AED', 'au': 'AUD',
-                    'br': 'BRL', 'ca': 'CAD', 'my': 'MYR', 'ch': 'CHF', 'nl': 'EUR', 'ru': 'RUB', 'tw': 'TWD',
-                    'at': 'EUR'}
-    currency = currency_map[region]
-    if region in ('de', 'it', 'br'):
+    currency = glob.CURRENCY_MAP[region]
+    if region in ('de', 'it', 'br', 'es'):
         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
     elif region in ('fr',):
         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
@@ -970,7 +969,6 @@ def process_price(price, region):
         price = float(m.group())
     ret = {'currency': currency, 'price': price}
     return ret
-
 
 
 def format_price_text(body, region=None):
@@ -1034,9 +1032,43 @@ def norm_url(url, host=None):
 
 
 def get_spider_module(spider_name):
-    spider_path = os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}_spider.py', spider_name))
-    # spider_path = 'd:/Users/Zephyre/Dropbox/Freelance/MStore/src/scrapper/spiders/gucci_spider.py'
+    spider_path = os.path.normpath(
+        os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}_spider.py', spider_name)))
     return imp.load_source(spider_name, spider_path)
+
+
+@static_var('data', {})
+def get_spider_info(brand_id=None, brand_name=None):
+    # self.data: {#brand_id# : { #module_name#, #module_path#, #spider_data# }}
+
+    def func():
+        for v in filter(lambda v: not re.search(r'^__init__\.py$', v) and not re.search(r'\.pyc$', v),
+                        os.listdir(os.path.join(glob.HOME_PATH, 'scrapper/spiders'))):
+            full_path = os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}', v))
+            name = os.path.splitext(os.path.split(full_path)[-1])[0]
+
+            if name in (v[1]['module_name'] for v in get_spider_info.data.items()):
+                continue
+
+            mod = imp.load_source(name, full_path)
+            if hasattr(mod, 'get_spider_data'):
+                temp = mod.get_spider_data()
+                b = temp['brand_id']
+                get_spider_info.data[b] = {'module_name': name, 'module_path': full_path, 'spider_data': temp}
+
+                if brand_id and brand_id == b or brand_name and brand_name == brandname_e:
+                    return get_spider_info.data[b]
+        return None
+
+    if brand_id:
+        if brand_id in get_spider_info.data:
+            return get_spider_info.data[brand_id]
+    elif brand_name:
+        temp = dict((v[1]['spider_data']['brandname_e'], v[1]) for v in get_spider_info.data.items())
+        if brand_name in temp:
+            return temp[brand_name]
+
+    return func()
 
 
 def simplify_brand_name(val):
@@ -1062,9 +1094,10 @@ def touch_record(db, tbl, where_clause):
     db.query(statement)
 
 
-def update_record(db, entry, tbl, where, touch_time=False):
+def update_record(db, entry, tbl, where, touch_time=False, update_time=True):
     # INSERT INTO tbl (...) VALUES (...)
-    entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    if update_time:
+        entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     if touch_time:
         entry[u'touch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     entry[u'modified'] = 1
@@ -1086,12 +1119,14 @@ def update_record(db, entry, tbl, where, touch_time=False):
     db.query(statement)
 
 
-def insert_record(db, entry, tbl, update_time=True, touch_time=False, modified=True):
+def insert_record(db, entry, tbl, update_time=True, touch_time=False, fetch_time=False, modified=True):
     # INSERT INTO tbl (...) VALUES (...)
     if update_time:
         entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     if touch_time:
         entry[u'touch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    if fetch_time:
+        entry[u'fetch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     if modified:
         entry[u'modified'] = 1
