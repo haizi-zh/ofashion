@@ -7,7 +7,7 @@ from scrapy import log
 from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.http import Request
-from scrapy.selector import HtmlXPathSelector
+from scrapy.selector import Selector
 import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
@@ -53,7 +53,7 @@ class ChanelSpider(CrawlSpider):
 
     def start_requests(self):
         region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', self.name, region)
+        self.name = str.format('{0}-{1}', ChanelSpider.name, region)
         if region not in self.spider_data['supported_regions']:
             self.log(str.format('No data for {0}', region), log.WARNING)
             return []
@@ -74,8 +74,34 @@ class ChanelSpider(CrawlSpider):
         self.log(str.format('Fetching data for {0}', region), log.INFO)
         return [Request(url=str.format('{0}/{1}/', self.spider_data['host'], region_code))]
 
+    def onerr(self, reason):
+        def is_interested(url):
+            """
+            判断是否对某个URL感兴趣
+            :param url:
+            """
+            return re.search(r'chanel\.com/{0}/.+\?sku=\d+$', url) or re.search(r'chanel\.com/{0}/.+/sku/\d+$', url) \
+                or re.search(r'chanel\.com/{0}/.+(?<=/)s\.[^/]+\.html', url)
+
+        url_main = None
+        response = reason.value.response
+        url = response.url
+
+        temp = reason.request.meta
+        if 'userdata' in temp:
+            metadata = temp['userdata']
+            if 'url' in metadata:
+                url_main = metadata['url']
+
+        if url_main and url_main != url:
+            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
+        else:
+            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
+
+        self.log(msg, log.ERROR)
+
     def parse_fashion(self, response):
-        self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.DEBUG)
+        self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.INFO)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in self.spider_data['base_url'].items():
@@ -83,20 +109,23 @@ class ChanelSpider(CrawlSpider):
                 region = a
                 break
         if not region:
+            self.log(str.format('NO VAR SETTINGS: {0}', response.url), log.ERROR)
             return None
 
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
                     'brandname_e': self.spider_data['brandname_e'], 'url': response.url,
                     'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
-                    'gender': set([]), 'category': set([]), 'texture': set([]), 'color': set([])}
+                    'gender': set([]), 'category': set([]), 'color': set([])}
 
-        mt = re.search(r'var\s+settings', response._body)
+        mt = re.search(r'var\s+settings', response.body)
         if not mt:
+            self.log(str.format('NO VAR SETTINGS: {0}', response.url), log.ERROR)
             return None
-        content = cm.extract_closure(response._body[mt.start():], '{', '}')[0]
+        content = cm.extract_closure(response.body[mt.start():], '{', '}')[0]
         try:
             data = json.loads(content)
         except ValueError:
+            self.log(str.format('FAILED TO LOAD VAR SETTINGS: {0}', response.url), log.ERROR)
             return None
 
         try:
@@ -106,34 +135,20 @@ class ChanelSpider(CrawlSpider):
 
         # images
         metadata['image_urls'] = set([])
-        # hxs = HtmlXPathSelector(response)
-        # temp = hxs.select('//div[contains(@class, "productimage")]/img[@src]')
-        # if len(temp) > 0:
-        #     image_url = temp[0]._root.attrib['src']
-        #     if re.search(r'\.medium\.[^\.]+$', image_url):
-        #         image_url = re.sub(r'\.medium\.([^\.]+)$', r'.hi.\1', image_url)
-        #     metadata['image_urls'].append(cm.norm_url(image_url, host=self.spider_data['host']))
-        #
-        # temp = hxs.select('//div[contains(@class, "lookimage")]/img[@src]')
-        # if len(temp) > 0:
-        #     image_url = temp[0]._root.attrib['src']
-        #     if re.search(r'\.look-sheet\.medium\.[^\.]+$', image_url):
-        #         image_url = re.sub(r'\.look-sheet\.medium\.([^\.]+)$', r'.hi.\1', image_url)
-        #     metadata['image_urls'].append(cm.norm_url(image_url, host=self.spider_data['host']))
-
         if 'detailsGridJsonUrl' in data['sectionCache']:
             temp = data['sectionCache']['detailsGridJsonUrl']
             if re.search(r'^http://', temp):
                 url = temp
             else:
-                url = str.format('{0}/{1}', self.spider_data['host'], temp)
-            return Request(url=url, meta={'userdata': metadata}, callback=self.parse_json_request)
+                url = str.format('{0}{1}', self.spider_data['host'], temp)
+            return Request(url=url, meta={'userdata': metadata}, callback=self.parse_json_request, dont_filter=True,
+                           errback=self.onerr)
         else:
             return self.parse_json(metadata, data['sectionCache'])
 
     def parse_json_request(self, response):
         metadata = response.meta['userdata']
-        return self.parse_json(metadata, json.loads(response._body))
+        return self.parse_json(metadata, json.loads(response.body))
 
     def process_image_url(self, href):
         if re.search(r'\.([a-zA-Z]{3})\.fashionImg(\.look-sheet)*$', href):
@@ -202,18 +217,21 @@ class ChanelSpider(CrawlSpider):
                         m2 = copy.deepcopy(m1)
                         results.append(self.func1(m2, t2))
                 return results
+
+        self.log(str.format('INVALID JSON: {0}', metadata['url'].url), log.ERROR)
         return None
 
     def func2(self, metadata):
         modules_url = metadata.pop('modules_url')
         if modules_url:
-            return Request(url=modules_url, meta={'userdata': metadata}, callback=self.parse_modules)
+            return Request(url=modules_url, meta={'userdata': metadata}, callback=self.parse_modules,
+                           errback=self.onerr, dont_filter=True)
         else:
             return self.init_item(metadata)
 
     def parse_modules(self, response):
         metadata = response.meta['userdata']
-        json_data = json.loads(response._body)
+        json_data = json.loads(response.body)
         hrefs = []
         for data_body in json_data:
             try:
@@ -269,13 +287,12 @@ class ChanelSpider(CrawlSpider):
         if pricing_service and 'refPrice' in info:
             url = self.spider_data['pricing'] % (self.spider_data['base_url'][metadata['region']], info['refPrice'])
             return Request(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
-                           callback=self.parse_price)
+                           callback=self.parse_price, errback=self.onerr, dont_filter=True)
         else:
             return self.func2(metadata)
 
     def init_item(self, metadata):
         metadata['color'] = list(metadata['color'])
-        metadata['texture'] = list(metadata['texture'])
         metadata['gender'] = list(metadata['gender'])
         metadata['category'] = list(metadata['category'])
         metadata['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -290,7 +307,7 @@ class ChanelSpider(CrawlSpider):
     def parse_price(self, response):
         metadata = response.meta['userdata']
         if response.status == 200:
-            price_data = json.loads(response._body)
+            price_data = json.loads(response.body)
             if len(price_data) > 0:
                 try:
                     price_data = price_data[0]['price']
@@ -304,7 +321,7 @@ class ChanelSpider(CrawlSpider):
         return self.func2(metadata)
 
     def parse_sku1(self, response):
-        self.log(str.format('PARSE_SKU1: {0}', response.url), level=log.DEBUG)
+        self.log(str.format('PARSE_SKU1: {0}', response.url), level=log.INFO)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in self.spider_data['base_url'].items():
@@ -322,12 +339,12 @@ class ChanelSpider(CrawlSpider):
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
                     'brandname_e': self.spider_data['brandname_e'], 'model': model, 'url': response.url,
                     'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
-                    'gender': set([]), 'category': set([]), 'texture': set([]), 'color': set([])}
+                    'gender': set([]), 'category': set([]), 'color': set([])}
 
-        hxs = HtmlXPathSelector(response)
+        sel = Selector(response)
         cat_idx = 0
         cat_list = []
-        for node in hxs.select('//div[contains(@class,"trackingSettings")]/span[@class]'):
+        for node in sel.xpath('//div[contains(@class,"trackingSettings")]/span[@class]'):
             cat = cm.unicodify(node._root.text)
             if not cat:
                 continue
@@ -348,11 +365,11 @@ class ChanelSpider(CrawlSpider):
             if u'女士' in cat:
                 metadata['gender'].add(u'female')
 
-        temp = hxs.select('//div[@class="productName"]')
+        temp = sel.xpath('//div[@class="productName"]')
         name_list = []
         if len(temp) > 0:
             product_name = temp[0]
-            temp = product_name.select('./h1[@class="family"]/span[@class="familyText"]')
+            temp = product_name.xpath('./h1[@class="family"]/span[@class="familyText"]')
             if len(temp) > 0:
                 name = cm.unicodify(temp[0]._root.text)
                 if name:
@@ -361,7 +378,7 @@ class ChanelSpider(CrawlSpider):
                                    val.text and val.text.strip()])
                 if name:
                     name_list.append(name.strip())
-            temp = product_name.select('./h2[@class="name"]')
+            temp = product_name.xpath('./h2[@class="name"]')
             if len(temp) > 0:
                 name = cm.unicodify(temp[0]._root.text)
                 if name:
@@ -374,11 +391,11 @@ class ChanelSpider(CrawlSpider):
         metadata['name'] = name if name else None
 
         # Description and details
-        temp = hxs.select('//div[@class="tabHolderFullWidth tabHolder"]')
+        temp = sel.xpath('//div[@class="tabHolderFullWidth tabHolder"]')
         if len(temp) > 0:
             content_node = temp[0]
             content_map = {}
-            for node in content_node.select('./div[@class="tabs"]//a[@rel]'):
+            for node in content_node.xpath('./div[@class="tabs"]//a[@rel]'):
                 temp = cm.unicodify(node._root.text)
                 if temp and temp in self.spider_data['description_hdr']:
                     content_map['description'] = node._root.attrib['rel']
@@ -387,7 +404,7 @@ class ChanelSpider(CrawlSpider):
 
             for term in ('description', 'details'):
                 if term in content_map:
-                    temp = content_node.select(str.format('./div[@id="{0}"]', content_map[term]))
+                    temp = content_node.xpath(str.format('./div[@id="{0}"]', content_map[term]))
                     if len(temp) > 0:
                         content_list = []
                         content = cm.unicodify(temp[0]._root.text)
@@ -409,11 +426,10 @@ class ChanelSpider(CrawlSpider):
         # image_urls = list(set([re.sub(r'\.+', '.', val) for val in image_urls]))
 
         image_urls = list(set(cm.norm_url(node._root.attrib['src'], self.spider_data['base_url'])
-                              for node in hxs.select('//div[@class="major productImg"]/img[@src]') if
+                              for node in sel.xpath('//div[@class="major productImg"]/img[@src]') if
                               node._root.attrib['src'] and node._root.attrib['src'].strip()))
 
         metadata['color'] = list(metadata['color'])
-        metadata['texture'] = list(metadata['texture'])
         metadata['gender'] = list(metadata['gender'])
         metadata['category'] = list(metadata['category'])
 
@@ -430,7 +446,7 @@ class ChanelSpider(CrawlSpider):
             return None
 
     def parse_sku2(self, response):
-        self.log(str.format('PARSE_SKU2: {0}', response.url), level=log.DEBUG)
+        self.log(str.format('PARSE_SKU2: {0}', response.url), level=log.INFO)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in self.spider_data['base_url'].items():
@@ -448,12 +464,12 @@ class ChanelSpider(CrawlSpider):
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
                     'brandname_e': self.spider_data['brandname_e'], 'model': model, 'url': response.url,
                     'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
-                    'gender': set([]), 'category': set([]), 'texture': set([]), 'color': set([])}
+                    'gender': set([]), 'category': set([]), 'color': set([])}
 
-        hxs = HtmlXPathSelector(response)
+        sel = Selector(response)
         cat_idx = 0
         cat_list = []
-        for node in hxs.select('//div[contains(@class,"trackingSettings")]/span[@class]'):
+        for node in sel.xpath('//div[contains(@class,"trackingSettings")]/span[@class]'):
             cat = cm.unicodify(node._root.text)
             if not cat:
                 continue
@@ -484,33 +500,33 @@ class ChanelSpider(CrawlSpider):
                 # Femeninos
                 metadata['gender'].add(u'female')
 
-        temp = hxs.select('//div[contains(@class, "product_detail_container")]')
+        temp = sel.xpath('//div[contains(@class, "product_detail_container")]')
         name_list = []
         if len(temp) > 0:
             product_name = temp[0]
-            temp = product_name.select('./h1[@class="product_name"]')
+            temp = product_name.xpath('./h1[@class="product_name"]')
             if len(temp) > 0:
                 name = cm.unicodify(temp[0]._root.text)
                 if name:
                     name_list.append(name)
-            temp = product_name.select('./h2[@class="product_subtitle"]')
+            temp = product_name.xpath('./h2[@class="product_subtitle"]')
             if len(temp) > 0:
                 name = cm.unicodify(temp[0]._root.text)
                 if name:
                     name_list.append(name)
 
-            temp = product_name.select('.//h3[@class="product_price"]')
+            temp = product_name.xpath('.//h3[@class="product_price"]')
             if len(temp) > 0:
                 metadata['price'] = cm.unicodify(temp[0]._root.text)
         name = u' - '.join(name_list)
         metadata['name'] = name if name else None
 
         # Description and details
-        temp = hxs.select('//div[@class="description_container"]')
+        temp = sel.xpath('//div[@class="description_container"]')
         if len(temp) > 0:
             content_node = temp[0]
             content_map = {}
-            for node in content_node.select('.//div[@class="accordion-heading"]/a[@href]'):
+            for node in content_node.xpath('.//div[@class="accordion-heading"]/a[@href]'):
                 temp = cm.unicodify(node._root.text)
                 if temp and temp in self.spider_data['description_hdr']:
                     content_map['description'] = re.sub(r'^#', '', node._root.attrib['href'])
@@ -519,7 +535,7 @@ class ChanelSpider(CrawlSpider):
 
             for term in ('description', 'details'):
                 if term in content_map:
-                    temp = content_node.select(str.format('.//div[@id="{0}"]', content_map[term]))
+                    temp = content_node.xpath(str.format('.//div[@id="{0}"]', content_map[term]))
                     if len(temp) > 0:
                         content_list = []
                         content = cm.unicodify(temp[0]._root.text)
@@ -532,12 +548,11 @@ class ChanelSpider(CrawlSpider):
 
         # Images
         image_urls = list(
-            set(cm.norm_url(node._root.attrib['src'], self.spider_data['base_url']) for node in hxs.select(
+            set(cm.norm_url(node._root.attrib['src'], self.spider_data['base_url']) for node in sel.xpath(
                 '//section[@class="product_image_container"]/img[@src and @class="product_image"]') if
                 node._root.attrib['src'] and node._root.attrib['src'].strip()))
 
         metadata['color'] = list(metadata['color'])
-        metadata['texture'] = list(metadata['texture'])
         metadata['gender'] = list(metadata['gender'])
         metadata['category'] = list(metadata['category'])
 

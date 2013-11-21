@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 # coding=utf-8
+import hashlib
 
 import json
 import os
 import re
 import shutil
 from _mysql_exceptions import OperationalError
+import global_settings as glob
 from core import MySqlDb
 import core
-import global_settings as glob
+
+import common as cm
+import csv
 from scripts.sync_product import SyncProducts
 
 
@@ -25,7 +29,7 @@ db_spec = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123', 'port
 
 
 class Object(object):
-    def __init__(self, brand_id, db_spec):
+    def __init__(self, brand_id=None, db_spec=None):
         self.progress = 0
         self.tot = 0
         self.brand_id = brand_id
@@ -89,27 +93,105 @@ class Object(object):
 
     def func_oneuse(self):
         db = MySqlDb()
-        db.conn(glob.SPIDER_SPEC)
+        db.conn(glob.EDITOR_SPEC)
+        rs = db.query_match(['idmappings', 'tag_name'], 'original_tags', extra='tag_name regexp binary "[A-Z]"')
+        self.tot = rs.num_rows()
 
-        rs = db.query(
-            'select count(distinct path) as val,checksum from products_image where brand_id=10226 group by checksum').fetch_row(
-            maxrows=0)
-        for checksum in [val[1] for val in rs if int(val[0]) > 1]:
-            db.lock(['products_image'])
-            db.start_transaction()
+        db.start_transaction()
+        for self.progress in xrange(self.tot):
+            record = rs.fetch_row(how=1)[0]
+            tag_name = record['tag_name'].decode('utf-8').lower()
+            db.update({'tag_name': tag_name}, 'original_tags', str.format('idmappings={0}', record['idmappings']))
+        db.commit()
+
+
+    def func_oneuse1(self):
+        db = MySqlDb()
+        db.conn(glob.EDITOR_SPEC)
+
+        rs_all = db.query(
+            'SELECT idproducts,brand_id,region,extra,gender FROM products WHERE modified!=1')
+        self.progress = 0
+        self.tot = rs_all.num_rows()
+        while True:
+            tmp = rs_all.fetch_row(how=1)
+            if not tmp:
+                break
+            record = tmp[0]
+            self.progress += 1
+
+            if not record['extra']:
+                continue
+
+            pid = int(record['idproducts'])
             try:
-                rs = db.query(str.format('select idproducts_image,path from products_image where checksum="{0}"',
-                                         checksum)).fetch_row(maxrows=0, how=1)
-                path = rs[0]['path']
-                for item in rs[1:]:
-                    db.update({'path': path}, 'products_image',
-                              str.format('idproducts_image={0}', item['idproducts_image']))
-                db.commit()
-            except:
-                db.rollback()
-                raise ()
-            finally:
-                db.unlock()
+                extra = json.loads(record['extra'].replace('\r', '').replace('\n', ''))
+            except ValueError:
+                continue
+
+            for tag_type in extra:
+                tmp = extra[tag_type]
+                if tag_type == 'size':
+                    continue
+
+                for tag_name in tmp if cm.iterable(tmp) else [tmp]:
+                    db.start_transaction()
+                    try:
+                        rs = db.query(unicode.format(u'SELECT idmappings FROM original_tags WHERE brand_id={0} AND '
+                                                     u'region="{1}" AND tag_type="{2}" AND tag_name="{3}"',
+                                                     record['brand_id'], record['region'], tag_type,
+                                                     tag_name.replace('\\', '\\\\').replace('"', '\\"')))
+                        if rs.num_rows() == 0:
+                            rs = db.query(unicode.format(u'SELECT idmappings FROM original_tags WHERE brand_id={0} AND '
+                                                         u'region="{1}" AND tag_name="{2}"',
+                                                         record['brand_id'], record['region'],
+                                                         tag_name.replace('\\', '\\\\').replace('"', '\\"')))
+                            if rs.num_rows() == 0:
+                                db.insert(
+                                    {'brand_id': record['brand_id'], 'region': record['region'], 'tag_name': tag_name,
+                                     'tag_type': tag_type, 'tag_text': tag_name}, 'original_tags')
+                                tid = db.query(unicode.format(
+                                    u'SELECT idmappings FROM original_tags WHERE brand_id={0} AND region="{1}" AND '
+                                    u'tag_type="{2}" AND tag_name="{3}"',
+                                    record['brand_id'], record['region'], tag_type,
+                                    tag_name.replace('\\', '\\\\').replace('"', '\\"'))).fetch_row()[0][0]
+                            else:
+                                tid = rs.fetch_row()[0][0]
+                        else:
+                            tid = rs.fetch_row()[0][0]
+
+                        # 找到tag，更新products_original_tags表
+                        db.insert({'idproducts': pid, 'id_original_tags': tid}, 'products_original_tags', ignore=True)
+
+                        db.commit()
+                    except:
+                        db.rollback()
+                        raise
+
+            gender = None
+            tmp = record['gender']
+            if tmp:
+                if tmp == 'male':
+                    gender = 'male'
+                elif tmp == 'female':
+                    gender = 'female'
+                else:
+                    tmp = json.loads(tmp)
+                    val = 0
+                    for g in tmp:
+                        if g in ('female', 'women'):
+                            val |= 1
+                        elif g in ('male', 'men'):
+                            val |= 2
+                    if val == 3 or val == 0:
+                        gender = None
+                    elif val == 1:
+                        gender = 'female'
+                    elif val == 2:
+                        gender = 'male'
+
+            db.update({'modified': 1, 'gender': gender}, 'products', str.format('idproducts={0}', pid))
+
 
     def image_compact(self):
         """
@@ -143,7 +225,7 @@ class Object(object):
         db.close()
 
     def func2(self):
-        db = core.MySqlDb()
+        db = MySqlDb()
         db.conn(self.db_spec)
 
         db.execute('LOCK TABLES products_image WRITE')
@@ -200,7 +282,7 @@ class Object(object):
 
 
     def func1(self):
-        db = core.MySqlDb()
+        db = MySqlDb()
         db.conn(db_spec)
 
         db.execute('LOCK TABLES products READ')
@@ -248,17 +330,8 @@ def func1():
     print 'Done'
 
 
-# func1()
+core.func_carrier(Object(), 0.3)
+# core.func_carrier(SyncProducts(src_spec=glob.TMP_SPEC, cond=['brand_id=10226']), 1)
 
-core.func_carrier(SyncProducts, 1)
 
 
-# print 'Syncing: editor => spider'
-# spider2editor()
-#
-# print 'Processing price info...'
-# process_editor_price()
-
-# th=threading.Timer(2,func4)
-# th.start()
-# time.sleep(100)

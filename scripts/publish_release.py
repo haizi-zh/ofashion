@@ -93,8 +93,7 @@ try:
                  'brandname_c': results[0]['brandname_c'], 'url': results[0]['url'],
                  'description': results[0]['description'],
                  'details': results[0]['details'],
-                 'category': results[0]['category'], 'color': results[0]['color'], 'tags': results[0]['tags'],
-                 'texture': results[0]['texture']}
+                 'category': results[0]['category'], 'color': results[0]['color'], 'tags': results[0]['tags']}
 
         if entry['details']:
             temp = list(blank_splitter(entry['details']))

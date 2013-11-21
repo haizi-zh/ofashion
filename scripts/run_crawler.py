@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding=utf-8
+from Queue import Queue
 import hashlib
 
 import os
 import random
+import re
 import sys
 import datetime
 import time
@@ -14,56 +16,110 @@ from scrapy.settings import Settings
 from twisted.internet import reactor
 import global_settings as glob
 import common as cm
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
-# # 中国,美国,法国,英国,香港,日本,意大利,澳大利亚,阿联酋,新加坡,德国,加拿大,西班牙,瑞士,俄罗斯,巴西,泰国,韩国,马来西亚,荷兰
-# region_list = ['fr', 'us', 'cn', 'uk', 'hk', 'jp', 'it', 'au', 'ae', 'sg', 'de', 'ca', 'es', 'ch', 'ru', 'br', 'kr',
-#                'my', 'nl', 'tw']
 
-debug_flag = False
-debug_port = glob.DEBUG_PORT
-invalid_syntax = False
-ua = None
+def default_error():
+    print 'Invalid syntax. Use mstore help for more information.'
 
-spider_name = sys.argv[1]
-arguments = sys.argv[2:]
-idx = 0
-# 国家列表
-region_list = []
-while True:
-    if idx >= len(arguments):
-        break
-    term = arguments[idx]
-    idx += 1
-    if term == '-D':
-        debug_flag = True
-    elif term == '-P':
-        debug_port = int(arguments[idx])
-        idx += 1
-    elif term == '--user-agent':
-        ua = arguments[idx]
-        idx += 1
-    elif term == '-r':
-        while True:
-            if idx >= len(arguments):
-                break
-            r = arguments[idx]
-            idx += 1
 
-            if r[0] == '-':
-                # r is a command
-                idx -= 1
-                break
-            else:
-                region_list.append(r)
-    else:
-        print str.format('Invalid syntax: unknown command {0}', term)
-        invalid_syntax = True
-        break
+def argument_parser(args):
+    if len(args) < 2:
+        default_error()
+        return
 
-if debug_flag:
-    pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
+    spider_name = args[1]
+
+    # 解析命令行参数
+    param_dict = {}
+    q = Queue()
+    for tmp in args[2:]:
+        q.put(tmp)
+    param_name = None
+    param_value = None
+    while not q.empty():
+        tmp = q.get()
+        if re.search(r'--(?=[^\-])', tmp):
+            tmp = re.sub('^-+', '', tmp)
+            if param_name:
+                param_dict[param_name] = param_value
+
+            param_name = tmp
+            param_value = None
+        elif re.search(r'-(?=[^\-])', tmp):
+            tmp = re.sub('^-+', '', tmp)
+            if param_name:
+                param_dict[param_name] = param_value
+
+            for tmp in list(tmp):
+                param_dict[tmp] = None
+            param_name = None
+            param_value = None
+        else:
+            if param_name:
+                if param_value:
+                    param_value.append(tmp)
+                else:
+                    param_value = [tmp]
+    if param_name:
+        param_dict[param_name] = param_value
+
+    if 'debug' in param_dict or 'D' in param_dict:
+        if 'debug-port' in param_dict:
+            port = param_dict['debug-port']
+        else:
+            port = glob.DEBUG_PORT
+        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
+
+    for k in ('debug', 'D', 'debug-port'):
+        try:
+            param_dict.pop(k)
+        except KeyError:
+            pass
+
+    return {'spider': spider_name, 'param': param_dict}
+
+
+# invalid_syntax = False
+# ua = 'chrome'
+#
+# spider_name = sys.argv[1]
+# arguments = sys.argv[2:]
+# idx = 0
+# # 国家列表
+# region_list = []
+# while True:
+#     if idx >= len(arguments):
+#         break
+#     term = arguments[idx]
+#     idx += 1
+#     if term == '-D':
+#         debug_flag = True
+#     elif term == '-P':
+#         debug_port = int(arguments[idx])
+#         idx += 1
+#     elif term == '--user-agent':
+#         ua = arguments[idx]
+#         idx += 1
+#     elif term == '-r':
+#         while True:
+#             if idx >= len(arguments):
+#                 break
+#             r = arguments[idx]
+#             idx += 1
+#
+#             if r[0] == '-':
+#                 # r is a command
+#                 idx -= 1
+#                 break
+#             else:
+#                 region_list.append(r)
+#     else:
+#         print str.format('Invalid syntax: unknown command {0}', term)
+#         invalid_syntax = True
+#         break
 
 living_spiders = set([])
 
@@ -94,56 +150,81 @@ def get_images_store(brand_id):
                                          str.format('{0}_{1}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'])))
 
 
-def set_up_spider(region):
+def set_up_spider(spider_class, region, data):
     crawler = Crawler(Settings())
     crawler.settings.values['BOT_NAME'] = 'mstore_bot'
     crawler.settings.values['REGION'] = region
 
-    crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 300,
-                                                 'scrapper.pipelines.ProductPipeline': 800} \
+    crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
+                                                 'scrapper.pipelines.ProductPipeline': None} \
         if glob.WRITE_DATABASE else {}
 
-    crawler.settings.values['EXTENSIONS'] = {
-        'scrapper.extensions.SpiderOpenCloseLogging': 500
-    }
+    # crawler.settings.values['EXTENSIONS'] = {
+    #     'scrapper.extensions.SpiderOpenCloseLogging': 500
+    # }
 
-    crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_module.brand_id)
-    spider = spider_module.create_spider()
+    crawler.settings.values['IMAGES_STORE'] = get_images_store(sc.spider_data['brand_id'])
 
     # crawler.settings.values['JOBDIR'] = get_job_path(spider_module.brand_id) + str.format('-{0}-1', region)
-
     crawler.settings.values['EDITOR_SPEC'] = glob.EDITOR_SPEC
     crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC
     crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
 
+    crawler.settings.values['AUTOTHROTTLE_ENABLED'] = True
     crawler.settings.values['TELNETCONSOLE_PORT'] = [7023, 7073]
-    # crawler.settings.values['RETRY_TIMES'] = 0
-    # crawler.settings.values['REDIRECT_ENABLED'] = False
+
+    ua = data['user-agent'] if 'user-agent' in data else 'chrome'
+    if ua.lower() == 'chrome':
+        crawler.settings.values[
+            'USER_AGENT'] = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
+    elif ua.lower() == 'iphone':
+        crawler.settings.values[
+            'USER_AGENT'] = 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5'
+    elif ua.lower() == 'ipad':
+        crawler.settings.values[
+            'USER_AGENT'] = 'Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B334b Safari/531.21.10'
+    else:
+        crawler.settings.values['USER_AGENT'] = ua
+
+    # crawler.settings.values['RETRY_TIMES'] = 3
+    # retry_codes = list(crawler.settings.global_defaults.RETRY_HTTP_CODES)
+    # retry_codes.append(404)
+    # crawler.settings.values['RETRY_HTTP_CODES'] = retry_codes
+    # crawler.settings.values['REDIRECT_ENABLED'] = True
 
     crawler.signals.connect(on_spider_closed, signal=signals.spider_closed)
     # crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
+    spider = spider_class.get_instance(region)
     living_spiders.add(spider)
     crawler.crawl(spider)
-
     crawler.start()
 
+    return spider
 
-if not invalid_syntax:
-    spider_module = cm.get_spider_module(spider_name)
-    if not region_list:
-        region_list = spider_module.supported_regions()
 
-    for region in region_list:
-        set_up_spider(region)
+cmd = argument_parser(sys.argv)
+if cmd:
+    spider_module = cm.get_spider_module(cmd['spider'])
+    sc_list = filter(lambda val: isinstance(val, type) and issubclass(val, MFashionSpider) and val != MFashionSpider,
+                     (getattr(spider_module, tmp) for tmp in dir(spider_module)))
+
+    try:
+        region_list = cmd['param']['r']
+    except KeyError:
+        region_list = []
 
     if glob.LOG_DEBUG:
         log.start(loglevel='DEBUG')
     else:
         log.start(loglevel='INFO', logfile=get_log_path(spider_module.brand_id))
 
-    log.msg(str.format('CRAWLER STARTED FOR REGIONS: {0}', ', '.join(region_list)), log.INFO)
+    for sc in sc_list:
+        # 针对每个spider类，按照region顺序运行
+        for region in region_list if region_list else sc.get_supported_regions():
+            spider = set_up_spider(sc, region, cmd['param'])
+            spider.log('CRAWLER STARTED', log.INFO)
 
     if len(living_spiders) > 0:
         reactor.run()   # the script will block here until the spider_closed signal was sent

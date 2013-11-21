@@ -6,6 +6,7 @@ import gzip
 import json
 import re
 import socket
+import types
 import urllib
 import urllib2
 import _mysql
@@ -665,6 +666,20 @@ def retry_helper(func, param=None, logger=None, except_class=Exception, retry=5,
                 raise
     return None
 
+def iterable(val):
+    """
+    val是否iterable。注意：val为str的话，返回False。
+    :param val:
+    """
+    if isinstance(val, types.StringTypes):
+        return False
+    else:
+        try:
+            iter(val)
+            return True
+        except TypeError:
+            return False
+
 
 def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None, client='Desktop',
                      userAgent=''):
@@ -952,23 +967,81 @@ def update_record(db, cond, tbl, record):
         unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl, u', '.join(update_entries), u' && '.join(cond)).encode(
             'utf-8'))
 
+#
+# @static_var('currency_map', None)
+# def process_price2(price, region):
+#     from core import MySqlDb
+#
+#     if not process_price2.currency_map:
+#         db = MySqlDb()
+#         db.conn(glob.EDITOR_SPEC)
+#         rs = db.query('SELECT iso_code,currency FROM country_info').fetch_row(maxrows=0)
+#         process_price2.currency_map = {val[0]: val[1] for val in rs}
+#
+#     if not price or not price.strip():
+#         return None
+#     val = unicodify(price)
+#
+#     currency = process_price2.currency_map[region]
+#     if region in ('de', 'it', 'br', 'es'):
+#         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
+#     elif region in ('fr',):
+#         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
+#     else:
+#         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '')
+#     m = re.search(ur'[\d\.]+', val_new)
+#     if not m:
+#         price = ''
+#     else:
+#         price = float(m.group())
+#     ret = {'currency': currency, 'price': price}
+#     return ret
 
+
+@static_var('currency_map', None)
 def process_price(price, region):
-    val = unicodify(price)
-    currency = glob.CURRENCY_MAP[region]
-    if region in ('de', 'it', 'br', 'es'):
-        val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
-    elif region in ('fr',):
-        val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
+    def func(val):
+        """
+        去掉多余的空格，以及首尾的非数字字符
+        :param val:
+        """
+        # val=unicode.format(u' {0} ',)
+        if not re.search(r'\d', val):
+            return ''
+        val = re.sub(r'\s', '', val)
+        if val[0] in ('.', ','):
+            val = val[1:]
+        if val[-1] in ('.', ','):
+            val = val[:-1]
+        return val
+
+    from core import MySqlDb
+
+    if not price or not price.strip():
+        return None
+    val = unicode.format(u' {0} ', unicodify(price))
+
+    if not process_price.currency_map:
+        db = MySqlDb()
+        db.conn(glob.EDITOR_SPEC)
+        rs = db.query('SELECT iso_code,currency FROM country_info').fetch_row(maxrows=0)
+        process_price.currency_map = {val[0]: val[1] for val in rs}
+
+    currency = process_price.currency_map[region]
+
+    # 提取最长的数字，分隔符字符串
+    tmp = sorted([func(tmp) for tmp in re.findall(r'(?<=[^\d])[\d\s,\.]+(?=[^\d])', val)], key=lambda tmp: len(tmp),
+                 reverse=True)
+    if not tmp:
+        return None
+    tmp = tmp[0]
+    # 试图查找小数点
+    if len(tmp) >= 3 and tmp[-3] in (',', '.'):
+        part = tmp[:-3], tmp[-2:]
     else:
-        val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '')
-    m = re.search(ur'[\d\.]+', val_new)
-    if not m:
-        price = ''
-    else:
-        price = float(m.group())
-    ret = {'currency': currency, 'price': price}
-    return ret
+        part = tmp, '00'
+    val = int(re.sub(r'[\.,]', '', part[0])) + int(re.sub(r'[\.,]', '', part[1])) * 0.1
+    return {'currency': currency, 'price': val}
 
 
 def format_price_text(body, region=None):

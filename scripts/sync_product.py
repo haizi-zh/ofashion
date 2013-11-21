@@ -1,5 +1,6 @@
 # coding=utf-8
 import json
+import re
 from _mysql_exceptions import OperationalError
 import time
 import core
@@ -12,85 +13,134 @@ from core import MySqlDb
 
 
 class SyncProducts(object):
-    def __init__(self, data, extra=None):
-        self.data = data
+    def __init__(self, src_spec=glob.SPIDER_SPEC, dst_spec=glob.EDITOR_SPEC, cond=None):
         self.progress = 0
-        self.tot = 0
-        self.extra = list(extra) if extra else []
+        self.tot = 1
+        if cond:
+            if cm.iterable(cond):
+                self.cond = cond
+            else:
+                self.cond = [cond]
+        else:
+            self.cond = ['1']
+        self.src_spec = src_spec
+        self.dst_spec = dst_spec
 
     def run(self):
-        db_s = MySqlDb()
-        db_s.conn(glob.SPIDER_SPEC)
-        db_e = MySqlDb()
-        db_e.conn(glob.EDITOR_SPEC)
-        rs = db_s.query('SELECT * FROM products', use_result=True)
-        self.tot = rs.num_rows()
-        db_e.start_transaction()
-        for i in xrange(self.tot):
-            record = rs.fetch_row(how=1).copy()
-            self.tot += 1
+        db_src = MySqlDb()
+        db_src.conn(self.src_spec)
+        db_dst = MySqlDb()
+        db_dst.conn(self.dst_spec)
 
-            brand_id = int(record['brand_id'])
-            model = record['model']
-            region = record['region']
+        # 备选记录
+        idproducts_list = [int(val[0]) for val in db_src.query(
+            unicode.format(u'SELECT idproducts FROM products WHERE {0}', u' AND '.join(self.cond)).encode(
+                'utf-8')).fetch_row(maxrows=0)]
 
-            self.process_price(record)
-            self.process_text(record)
+        self.tot = len(idproducts_list)
+        self.progress = 0
 
-            db_e.start_transaction()
+        db_dst.execute('SET AUTOCOMMIT=0')
+        # db_dst.execute('ALTER TABLE products DISABLE KEYS')
+
+        for pid_src in idproducts_list:
+            self.progress += 1
+            record = db_src.query(str.format('SELECT * FROM products WHERE idproducts={0}', pid_src)).fetch_row(how=1)[
+                0]
+
+            db_dst.start_transaction()
             try:
-                results = db_e.query(
-                    str.format('SELECT * FROM products WHERE brand_id={0} AND model="{1}" AND region="{2}"',
-                               brand_id, model, region)).fetch_row(maxrows=0, how=1)
-                if len(results) > 1:
-                    str.format('DUPLICATE RECORDS: {0}', ', '.join(val['idproducts'] for val in results))
-                    continue
+                rs = db_dst.query(
+                    str.format('SELECT idproducts FROM products WHERE brand_id={0} AND model="{1}" '
+                               'AND region="{2}"', record['brand_id'], record['model'], record['region']))
+                pid_dst = int(rs.fetch_row()[0][0]) if rs.num_rows() > 0 else None
+                entry = {k: record[k] for k in record if k != 'idproducts'}
 
-                if results:
-                    r = {k: results[0][k] for k in results[0] if k != 'idproducts'}
-                    pid = results[0]['idproducts']
-                    # 合并
-                    price_history = sorted(r['price_history'] if r['price_history'] else [],
-                                           key=lambda val: time.strptime(val['time'], '%Y-%m-%d %H:%M:%S'))
-                    candidate = {'time': record['update_time'], 'price': record['price_rev'],
-                                 'currency': record['currency_rev']}
-                    if price_history:
-                        if price_history[-1]['price'] != record['price_rev']:
-                            price_history.append(candidate)
-                    else:
-                        price_history = [candidate]
-                    record['price_history'] = price_history
+                price = cm.process_price(record['price'], record['region'])
+                if price:
+                    entry['price_rev'] = price['price']
+                    entry['currency_rev'] = price['currency']
 
-                    db_e.update(record, 'products', str.format('idproducts={0}', pid))
+                if entry['details']:
+                    entry['details'] = self.process_text(cm.unicodify(entry['details']))
+                if entry['description']:
+                    entry['description'] = self.process_text(cm.unicodify(entry['description']))
+                if entry['name']:
+                    entry['name'] = self.process_text(cm.unicodify(entry['name']))
+                if entry['category']:
+                    entry['category'] = self.process_text(cm.unicodify(entry['category']))
+                if entry['extra']:
+                    entry['extra'] = self.process_text(cm.unicodify(entry['extra']))
 
+                if pid_dst:
+                    db_dst.update(entry, 'products', str.format('idproducts={0}', pid_dst))
                 else:
-                    # 新增
-                    record = {k: record[k] for k in record if k != 'idproducts'}
-                    record['price_history'] = [{'time': record['update_time'], 'price': record['price_rev'],
-                                           'currency': record['currency_rev']}]
-                    db_e.insert(record, 'products')
+                    db_dst.insert(entry, 'products')
+                    pid_dst = int(
+                        db_dst.query(str.format('SELECT idproducts FROM products WHERE brand_id={0} AND model="{1}" '
+                                                'AND region="{2}"', record['brand_id'], record['model'],
+                                                record['region'])).fetch_row()[0][0])
 
-                db_e.commit()
+                # 是否需要处理价格信息
+                if price:
+                    record_price = db_dst.query(str.format('SELECT price,currency FROM products_price_history '
+                                                           'WHERE idproducts={0} ORDER BY date DESC LIMIT 1',
+                                                           pid_dst)).fetch_row(how=1)
+                    if not record_price or float(record_price[0]['price']) != price['price'] or \
+                                    record_price[0]['currency'] != price['currency']:
+                        db_dst.insert({'idproducts': pid_dst, 'date': record['update_time'],
+                                       'brand_id': record['brand_id'], 'region': record['region'],
+                                       'model': record['model'], 'price': price['price'],
+                                       'currency': price['currency']}, 'products_price_history')
+
+                # 处理图像信息
+                tmp = db_src.query(
+                    str.format('SELECT checksum,brand_id,url,path,width,height,format FROM products_image '
+                               'WHERE brand_id={0} AND model="{1}"',
+                               record['brand_id'], record['model'])).fetch_row(maxrows=0, how=1)
+                image_record = {val['checksum']: val for val in tmp}
+                checksum_src = set(image_record.keys())
+
+                # 完善image_store信息。如果checksum没有在image_store中出现，则添加之。
+                for checksum in checksum_src:
+                    if db_dst.query(str.format('SELECT checksum FROM image_store WHERE checksum="{0}"',
+                                               checksum)).num_rows() == 0:
+                        db_dst.insert({'checksum': checksum, 'brand_id': image_record[checksum]['brand_id'],
+                                       'url': image_record[checksum]['url'], 'path': image_record[checksum]['path'],
+                                       'width': image_record[checksum]['width'],
+                                       'height': image_record[checksum]['height'],
+                                       'format': image_record[checksum]['format']}, 'image_store')
+
+                # 补充目标数据库的products_image表，添加相应的checksum
+                checksum_dst = set([val[0] for val in db_dst.query(
+                    str.format('SELECT checksum FROM products_image WHERE brand_id={0} AND model="{1}"',
+                               record['brand_id'], record['model'])).fetch_row(maxrows=0)])
+                for checksum in checksum_src - checksum_dst:
+                    db_dst.insert({'checksum': checksum, 'brand_id': record['brand_id'], 'model': record['model']},
+                                  'products_image')
+
+                db_dst.commit()
             except:
-                db_e.rollback()
+                db_dst.rollback()
                 raise
 
-        return
+                # db_dst.execute('ALTER TABLE products ENABLE KEYS')
 
-    def process_price(self, record):
-        ret = cm.process_price(record['price'])
-        record['price_rev'] = ret['price']
-        record['currency_rev'] = ret['currency']
+    def process_text(self, val):
+        val = cm.html2plain(val.strip())
+        # <br/>换成换行符
+        val = re.sub(ur'<\s*br\s*/?\s*>', u'\n', val)
 
-    def process_text(self, record):
-        if 'details' in record and record['details']:
-            record['details'] = cm.reformat_addr(record['details'])
-        if 'description' in record and record['description']:
-            record['description'] = cm.reformat_addr(record['description'])
+        # 去掉多余的标签
+        val = re.sub(ur'<[^<>]*?>', u'', val)
 
+        return val
 
     def get_msg(self):
-        return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot, float(self.progress) / self.tot)
+        if self.tot>0:
+            return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot, float(self.progress) / self.tot)
+        else:
+            return str.format('{0}/{1} PROCESSED', self.progress, self.tot)
 
 
 class Spider2EditorHlper(object):

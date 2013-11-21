@@ -1,4 +1,5 @@
 # coding=utf-8
+from Queue import Queue
 import _mysql
 import datetime
 import threading
@@ -71,7 +72,7 @@ class MySqlDb(object):
     def sql_escape(param):
         return unicode(param).replace('\\', '\\\\').replace('"', '\\"') if param else None
 
-    def insert(self, entry, table, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S'):
+    def insert(self, entry, table, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S', ignore=False):
         """
         :param entry:
         :param table:
@@ -84,9 +85,12 @@ class MySqlDb(object):
 
         fields = unicode.format(u'({0})', ', '.join(entry))
         values = unicode.format(u'({0})',
-                                ', '.join(unicode.format(u'"{0}"', MySqlDb.sql_escape(cm.unicodify(entry[k])))
-                                          if entry[k] else 'NULL' for k in entry))
-        statement = unicode.format(u'INSERT INTO {0} {1} VALUES {2}', table, fields, values)
+                                ', '.join(unicode.format(u'"{0}"', self.sql_escape(cm.unicodify(entry[k])))
+                                          if entry[k] is not None else 'NULL' for k in entry))
+        if ignore:
+            statement = unicode.format(u'INSERT IGNORE INTO {0} {1} VALUES {2}', table, fields, values)
+        else:
+            statement = unicode.format(u'INSERT INTO {0} {1} VALUES {2}', table, fields, values)
         self.db.query(statement.encode('utf-8'))
 
     def update(self, entry, table, cond, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S'):
@@ -104,7 +108,7 @@ class MySqlDb(object):
 
         values = ', '.join(
             unicode.format(u'{0}={1}', k,
-                           unicode.format(u'"{0}"', MySqlDb.sql_escape(cm.unicodify(entry[k]))) if entry[
+                           unicode.format(u'"{0}"', self.sql_escape(cm.unicodify(entry[k]))) if entry[
                                k] else 'NULL') for k in entry)
         statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', table, values, cond)
         self.db.query(statement.encode('utf-8'))
@@ -113,20 +117,77 @@ class MySqlDb(object):
         self.db.query(statement.encode('utf-8'))
         return self.db.use_result() if use_result else self.db.store_result()
 
+    def query_match(self, selects, table, matches=None, extra=None, tail_str=None, use_result=False):
+        """
+        查询：相当于SELECT ... FROM ... WHERE col=val
+        :param selects: 需要select的字段
+        :param table: 查询的表名称
+        :param matches: dict类型，查询条件
+        :param extra: 其它的查询条件
+        :param tail_str: 添加在查询语句末尾的字符串
+        :param use_result:
+        :return:
+        """
+        if not extra:
+            extra = ['1']
+        elif not cm.iterable(extra):
+            extra = [extra]
+
+        if not cm.iterable(selects):
+            selects = [selects]
+
+        def func(k, v):
+            if v:
+                return unicode.format(u'{0}="{1}"', k, self.sql_escape(v))
+            else:
+                return unicode.format(u'{0} IS NULL', k)
+
+        match_str = ' AND '.join(map(func, matches.items())) if matches else '1'
+        extra_cond = ' AND '.join(extra)
+        statement = unicode.format(u'SELECT {0} FROM {1} WHERE {2} AND {3} {4}',
+                                   ', '.join(selects), table, match_str, extra_cond, tail_str if tail_str else '')
+        self.db.query(statement.encode('utf-8'))
+        return self.db.use_result() if use_result else self.db.store_result()
+
     def execute(self, statement):
         self.db.query(statement.encode('utf-8'))
 
 
-def func_carrier(obj, interval):
+def func_carrier(obj, interval, estimate=False):
     th = threading.Thread(target=lambda: obj.run())
     start_ts = time.time()
     tm_ref = []
+    q = Queue(maxsize=100)
 
     def timer_cb(last_time=False):
         if hasattr(obj, 'callback'):
             obj.callback()
         text = obj.get_msg()
-        sys.stdout.write(' ' * 80 + '\r' + text + '\r')
+
+        q_last = {'progress': obj.progress, 'time': time.time()}
+        if q.full():
+            q.get()
+        q.put(q_last)
+
+        if len(q.queue) > 1:
+            head = q.queue[0]
+            tail = q.queue[-1]
+            speed = (tail['progress'] - head['progress']) / (tail['time'] - head['time'])
+            if speed > 0:
+                eta = (obj.tot - tail['progress']) / speed
+                if eta > 3600:
+                    hour = int(eta) / 3600
+                    m = int(eta) % 3600 / 60
+                    eta_str = str.format('Estimation: {0}h{1}m', hour, m)
+                elif eta > 60:
+                    m = int(eta) / 60
+                    sec = int(eta) % 60
+                    eta_str = str.format('Estimation: {0}m{1}s', m, sec)
+                else:
+                    eta_str = str.format('Estimation: {0}s', int(eta))
+                text = str.format('{0} {1}', text, eta_str)
+
+        sys.stdout.write('\r' + ' ' * 160 + '\r' + text)
         sys.stdout.flush()
 
         if not last_time:

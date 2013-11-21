@@ -26,10 +26,11 @@ def supported_regions():
 
 class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
     name = 'cartier'
+    handle_httpstatus_list = [403, 504]
 
     spider_data = {'hosts': {'cn': 'http://www.cartier.cn', 'us': 'http://www.cartier.us',
                              'fr': 'http://www.cartier.fr', 'jp': 'http://www.cartier.jp',
-                             'uk': 'http://www.cartier.uk', 'kr': 'http://www.cartier.co.kr',
+                             'uk': 'http://www.cartier.co.uk', 'kr': 'http://www.cartier.co.kr',
                              'tw': 'http://www.tw.cartier.com', 'br': 'http://www.cartier.com.br',
                              'de': 'http://www.cartier.de', 'es': 'http://www.cartier.es',
                              'ru': 'http://www.ru.cartier.com', 'it': 'http://www.cartier.it',
@@ -89,14 +90,36 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
         for k, v in glob.BRAND_NAMES[self.spider_data['brand_id']].items():
             self.spider_data[k] = v
 
+    def onerr(self, reason):
+        url_main = None
+        response = reason.value.response if hasattr(reason.value, 'response') else None
+        if not response:
+            self.log(unicode.format(u'ERROR ON PROCESSING {0}', reason.request.url).encode('utf-8'), log.ERROR)
+            return
+        url = response.url
+        temp = reason.request.meta
+        if 'userdata' in temp:
+            metadata = temp['userdata']
+            if 'url' in metadata:
+                url_main = metadata['url']
+
+        if url_main and url_main != url:
+            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
+        else:
+            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
+
+        self.log(msg, log.ERROR)
+
     def start_requests(self):
         region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', self.name, region)
+        self.name = str.format('{0}-{1}', CartierSpider.name, region)
         if region in self.spider_data['supported_regions']:
             metadata = {'region': region, 'brand_id': brand_id,
                         'brandname_e': glob.BRAND_NAMES[brand_id]['brandname_e'],
                         'brandname_c': glob.BRAND_NAMES[brand_id]['brandname_c'], 'tags_mapping': {}, 'extra': {}}
-            return [Request(url=self.spider_data['home_urls'][region], meta={'userdata': metadata})]
+
+            return [Request(url=self.spider_data['home_urls'][region], meta={'userdata': metadata}, callback=self.parse,
+                            errback=self.onerr)]
         else:
             self.log(str.format('No data for {0}', region), log.WARNING)
             return []
@@ -135,10 +158,14 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
                 metadata_1['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
                 metadata_1['page_id'] = 0
 
-                yield Request(url=href, meta={'userdata': metadata_1}, callback=self.parse_list, dont_filter=True)
+                yield Request(url=href, meta={'userdata': metadata_1}, callback=self.parse_list, errback=self.onerr,
+                              dont_filter=True)
 
     def parse_products(self, response):
         metadata = response.meta['userdata']
+        # self.log(unicode.format(u'PROCESSING {0} -> {1} -> {2}: {3}', metadata['extra']['category-0'][0],
+        #                         metadata['extra']['category-1'][0], metadata['name'], response.url).encode('utf-8'),
+        #          log.DEBUG)
         for k in ('post_token', 'page_id'):
             if k in metadata:
                 metadata.pop(k)
@@ -155,6 +182,13 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
             '//div[@class="commerce-product-sku"]/span[@itemprop="productID" and @class="commerce-product-sku-id"]')
         if temp:
             metadata['model'] = temp[0]._root.text.strip()
+        else:
+            return None
+
+        if 'name' not in metadata or not metadata['name']:
+            temp = sel.xpath('//div[@class="product-main"]//span[@itemprop="name"]')
+            if temp:
+                metadata['name'] = cm.unicodify(temp[0]._root.text)
 
         temp = sel.xpath('//div[@class="product-aesthetics"]//span[@itemprop="description"]/p')
         metadata['description'] = '\n'.join(cm.unicodify(val._root.text) for val in temp if val._root.text)
@@ -178,9 +212,11 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
 
         return item
 
-
     def parse_list(self, response):
         metadata = response.meta['userdata']
+        # self.log(unicode.format(u'PROCESSING {0} -> {1} -> PAGE {2}: {3}', metadata['extra']['category-0'][0],
+        #                         metadata['extra']['category-1'][0], metadata['page_id'], response.url).encode('utf-8'),
+        #          log.DEBUG)
         if metadata['page_id'] == 0:
             sel = Selector(response)
         else:
@@ -190,50 +226,49 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
             except (ValueError, KeyError, TypeError):
                 # 解析错误，作为普通HTML对待
                 sel = Selector(response)
-                metadata['page_id'] = 0
+                # metadata['page_id'] = 0
 
         if sel.xpath('//div[@class="product-header"]//span[@class="page-product-title"]'):
         #     实际上是单品页面
-            return self.parse_products(response)
+            yield self.parse_products(response)
+        else:
+            flag = False
+            for node in sel.xpath('//div[contains(@class,"hover-info")]/a[@href]/div[@class="model-info"]'):
+                m = copy.deepcopy(metadata)
+                temp = node.xpath('./div[@class="model-name"]')
+                if not temp:
+                    continue
+                m['name'] = cm.unicodify(temp[0]._root.text)
+                temp = node.xpath('./div[@class="model-description"]')
+                if not temp:
+                    continue
+                m['description'] = cm.unicodify(temp[0]._root.text)
+                href = self.process_href(node.xpath('..')[0]._root.attrib['href'], metadata['region'])
+                flag = True
+                yield Request(url=href, meta={'userdata': m}, callback=self.parse_products, errback=self.onerr,
+                              dont_filter=True)
 
-        ret = []
-        for node in sel.xpath('//div[contains(@class,"hover-info")]/a[@href]/div[@class="model-info"]'):
-            m = copy.deepcopy(metadata)
-            temp = node.xpath('./div[@class="model-name"]')
-            if not temp:
-                continue
-            m['name'] = cm.unicodify(temp[0]._root.text)
-            temp = node.xpath('./div[@class="model-description"]')
-            if not temp:
-                continue
-            m['description'] = cm.unicodify(temp[0]._root.text)
-            href = self.process_href(node.xpath('..')[0]._root.attrib['href'], metadata['region'])
-            ret.append(Request(url=href, meta={'userdata': m}, callback=self.parse_products, dont_filter=True))
-
-        if not ret:
-            return None
-
-        # 处理翻页
-        post_token = metadata['post_token'] if 'post_token' in metadata else None
-        if not post_token:
-            temp = sel.xpath('//body[contains(@class, "html") and contains(@class, "page-navigation")]')
-            if temp:
-                temp = filter(lambda val: re.search('^page-navigation-(.+)', val),
-                              re.split(r'\s+', temp[0]._root.attrib['class']))
-                if temp:
-                    post_token = re.search('^page-navigation-(.+)', temp[0]).group(1).replace('-', '_')
-        if post_token:
-            m = copy.deepcopy(metadata)
-            m['page_id'] += 1
-            m['post_token'] = post_token
-            body = {'facetsajax': 'true', 'limit': m['page_id'], 'params': ''}
-            ret.append(Request(url=self.spider_data['data_urls'][m['region']] + post_token, method='POST',
-                               body='&'.join(str.format('{0}={1}', k, body[k]) for k in body),
-                               headers={'Content-Type': 'application/x-www-form-urlencoded',
-                                        'X-Requested-With': 'XMLHttpRequest'},
-                               callback=self.parse_list, meta={'userdata': m}, dont_filter=True))
-
-        return ret
+            if flag:
+                # 处理翻页
+                post_token = metadata['post_token'] if 'post_token' in metadata else None
+                if not post_token:
+                    temp = sel.xpath('//body[contains(@class, "html") and contains(@class, "page-navigation")]')
+                    if temp:
+                        temp = filter(lambda val: re.search('^page-navigation-(.+)', val),
+                                      re.split(r'\s+', temp[0]._root.attrib['class']))
+                        if temp:
+                            post_token = re.search('^page-navigation-(.+)', temp[0]).group(1).replace('-', '_')
+                if post_token:
+                    m = copy.deepcopy(metadata)
+                    m['page_id'] += 1
+                    m['post_token'] = post_token
+                    body = {'facetsajax': 'true', 'limit': m['page_id'], 'params': ''}
+                    yield Request(url=self.spider_data['data_urls'][m['region']] + post_token, method='POST',
+                                  body='&'.join(str.format('{0}={1}', k, body[k]) for k in body),
+                                  headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                           'X-Requested-With': 'XMLHttpRequest'},
+                                  callback=self.parse_list, meta={'userdata': m}, errback=self.onerr,
+                                  dont_filter=True)
 
 
 

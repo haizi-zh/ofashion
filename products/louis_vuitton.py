@@ -354,9 +354,10 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
     init_data = {}
     temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"]
     init_data['color'] = [temp] if temp else []
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"]
-    init_data['texture'] = [temp] if temp else []
     extra = {}
+    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"]
+    if temp:
+        extra['texture'] = [temp]
     temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"]
     if temp:
         extra['page_id'] = [temp]
@@ -413,7 +414,7 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
             str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
                        region, init_data['brand_id'])).fetch_row(maxrows=0, how=1)
         if not results:
-            for k in ('extra', 'color', 'gender', 'category', 'texture'):
+            for k in ('extra', 'color', 'gender', 'category'):
                 if k in product:
                     product[k] = json.dumps(product[k], ensure_ascii=False)
 
@@ -421,7 +422,7 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
             logger.info(unicode.format(u'INSERT: {0}, {1}, {2}', model, product_name, region))
         else:
             # 需要处理合并的字段
-            merge_keys = ('gender', 'category', 'color', 'texture')
+            merge_keys = ('gender', 'category', 'color')
             dest = dict((k, json.loads(results[0][k])) for k in merge_keys if results[0][k])
             src = dict((k, product[k]) for k in merge_keys if k in product)
             dest = sutils.product_tags_merge(src, dest)

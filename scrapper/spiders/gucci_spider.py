@@ -247,7 +247,6 @@ class GucciSpider(CrawlSpider):
             metadata['model'] = data['style_code']
 
         metadata['color'] = []
-        metadata['texture'] = []
         metadata['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if 'model' in metadata:

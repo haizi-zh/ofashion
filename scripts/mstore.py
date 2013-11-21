@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 # coding=utf-8
+
 from Queue import Queue, Empty
 import csv
 import hashlib
@@ -7,8 +9,12 @@ import logging
 import codecs
 import os
 import _mysql
+import re
+import shutil
 from threading import Thread
 import time
+import urllib
+import urllib2
 import pydevd
 import global_settings as glob
 import common as cm
@@ -21,7 +27,7 @@ __author__ = 'Zephyre'
 import sys
 from PIL import Image
 
-cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags')
+cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags', 'sync')
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
 verbose = False
 force_overwrite = False
@@ -430,12 +436,26 @@ class ImageDownloader(object):
         self.run_flag = False
         self.t = None
         self.timeout = 2
-        self.path_list = set([])
+        self.downloaded = {}
 
-    def download(self, url, path):
-        if path not in self.path_list:
-            self.queue.put({'url': url, 'path': path})
-            self.path_list.add(path)
+    def download(self, url, path, callback=None):
+        buf = None
+        if url in self.downloaded:
+            try:
+                with open(self.downloaded[url], 'rb') as f:
+                    buf = f.read()
+            except IOError:
+                pass
+
+        if not buf:
+            self.queue.put({'url': url, 'path': path, 'callback': callback})
+        elif callback:
+            try:
+                callback(buf, url, self.downloaded[url])
+            except:
+                # 如果未成功，则从已完成列表中移除
+                self.downloaded.pop(url)
+                print sys.exc_info()
 
     def run(self):
         self.run_flag = True
@@ -446,15 +466,24 @@ class ImageDownloader(object):
         while self.run_flag:
             try:
                 data = self.queue.get(block=True, timeout=self.timeout)
-                response = utils.fetch_image(data['url'])
-                if response is None or len(response['body']) == 0:
-                    continue
-
-                # 写入图片文件
-                with open(data['path'], 'wb') as f:
-                    f.write(response['body'])
             except Empty:
-                pass
+                continue
+
+            response = utils.fetch_image(data['url'])
+            callback = data['callback']
+            if not response:
+                raise ValueError
+            if response['status'] != 200:
+                raise urllib2.HTTPError(data['url'], response['status'], str.format('{0}', data['url']),
+                                        response['header'], None)
+
+            if callback:
+                try:
+                    callback(response['body'], response['url'], data['path'])
+                    self.downloaded[data['url']] = data['path']
+                except:
+                    print sys.exc_info()
+
         self.run_flag = False
         self.t = None
 
@@ -464,131 +493,304 @@ class ImageDownloader(object):
         self.t = None
 
 
-def sync_editor(args):
-    obj = SyncProducts()
-    core.func_carrier(obj, 1)
-
-
-def image_check(args):
-    """
-    检查图片是否正常。
-    参数：
-    --checksum：同时加入图片的MD5校验
-    --brand：指定
-    :param args:
-    :return:
-    """
+def sync(args):
     idx = 0
-    brand_id = None
-    db_spec = glob.SPIDER_SPEC
-    gen_checksum = False
-    refetch = False
+    cond = []
+    src_spec = glob.SPIDER_SPEC
+    dst_spec = glob.EDITOR_SPEC
+    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.EDITOR_SPEC,
+              'release': glob.RELEASE_SPEC}
     while True:
         if idx >= len(args):
             break
         hdr = args[idx]
         idx += 1
-        if hdr == '--brand':
-            brand_id = int(args[idx])
+        if hdr == '--cond':
+            cond.append(args[idx])
             idx += 1
+        elif hdr == '--src':
+            tmp = args[idx]
+            idx += 1
+            src_spec = db_map[tmp]
+        elif hdr == '--dst':
+            tmp = args[idx]
+            idx += 1
+            dst_spec = db_map[tmp]
         elif hdr == '-D':
             pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
-        elif hdr == '--checksum':
-            gen_checksum = True
-        elif hdr == '--refetch':
-            refetch = True
-        elif hdr == '-d':
-            database_name = args[idx]
-            idx += 1
-            if database_name == 'spider':
-                db_spec = glob.SPIDER_SPEC
-            elif database_name == 'editor':
-                db_spec = glob.EDITOR_SPEC
-            elif database_name == 'release':
-                db_spec = glob.RELEASE_SPEC
-            else:
-                logger.critical(str.format('Invalid database specifier: {0}', database_name))
-                return
         else:
-            logger.critical('Invalid syntax.')
+            print str.format('INVALID PARAMETER: {0}', hdr)
             return
 
-    downloader = ImageDownloader()
-    downloader.run()
+    core.func_carrier(SyncProducts(src_spec=src_spec, dst_spec=dst_spec, cond=cond), 1)
 
-    storage_path = glob.STORAGE_PATH
-    db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
-                        passwd=db_spec['password'], db=db_spec['schema'])
-    db.query("SET NAMES 'utf8'")
 
-    if brand_id:
-        db.query(str.format('SELECT DISTINCT model FROM products WHERE brand_id={0}', brand_id))
-    else:
-        db.query(str.format('SELECT DISTINCT model FROM products'))
-    rs = db.store_result()
-    model_list = rs.fetch_row(maxrows=0, how=1)
-    tot = len(model_list)
-    cnt = 0
-    missing = 0
-    mismatch = 0
-    logger.info(str.format('Total models: {0}', tot))
-    log_indicator(reset=True, interval=1)
-    model_cnt = -1
+class ImageCheck(object):
+    def __init__(self, db_spec, gen_checksum, refetch, image_validity, cond=None):
+        self.gen_checksum = gen_checksum
+        self.refetch = refetch
+        self.image_validity = image_validity
 
-    for model in [val['model'] for val in model_list]:
-        model_cnt += 1
-        db.query(
-            str.format('SELECT idproducts_image,path,width,height,url FROM products_image WHERE model="{0}"', model))
-        rs_image = db.store_result().fetch_row(maxrows=0, how=1)
-        for image in rs_image:
-            # if log_indicator():
-            if model_cnt % 50 == 0:
-                report_str = str.format('{0} images, {3} models checked({4:.1%}). {1} missing, {2} size mismatch.',
-                                        cnt, missing, mismatch, model_cnt, float(model_cnt) / len(model_list))
-                logger.info(report_str)
-                # sys.stdout.write(report_str + '\r')
-                # print report_str
+        self.missing = 0
+        self.dim_mismatch = 0
+        self.size_mismatch = 0
+        self.format_mismatch = 0
+        self.checksum_mismatch = 0
+        self.path_error = 0
 
-            path = image['path']
-            full_path = os.path.join(storage_path, 'products/images', path)
+        self.db = core.MySqlDb()
+        self.db.conn(db_spec)
 
-            cki = gen_checksum
+        self.progress = 0
+        self.tot = 1
+        if cond:
+            if cm.iterable(cond):
+                self.cond = cond
+            else:
+                self.cond = [cond]
+        else:
+            self.cond = ['1']
+
+    def get_msg(self):
+        summary = str.format(
+            'Summary: {0} images, {1} missing, {2} resolution mismatch, {3} size mismatch, {4} checksum failed, {5} url/path mismatch',
+            self.tot, self.missing, self.dim_mismatch, self.size_mismatch, self.checksum_mismatch, self.path_error)
+        if self.tot > 0:
+            return str.format('{0}/{1}({2:.1%}) PROCESSED {3}', self.progress, self.tot,
+                              float(self.progress) / self.tot, summary)
+        else:
+            return str.format('{0}/{1} PROCESSED {2}', self.progress, self.tot, summary)
+
+    def update_db(self, entry):
+        old_checksum = entry.pop('old_checksum')
+        new_checksum = entry.pop('new_checksum')
+
+        self.db.start_transaction()
+        try:
+            if old_checksum != new_checksum:
+                if self.db.query(
+                        str.format('SELECT * FROM image_store WHERE checksum="{0}"', new_checksum)).num_rows() == 0:
+                    record = {k: cm.unicodify(entry[k]) for k in entry}
+                    record['checksum'] = new_checksum
+                    self.db.update(record, 'image_store', str.format('checksum="{0}"', old_checksum))
+                else:
+                    record = {k: cm.unicodify(entry[k]) for k in entry}
+                    if record:
+                        self.db.update(record, 'image_store', str.format('checksum="{0}"', new_checksum))
+                    self.db.update({'checksum': new_checksum}, 'products_image',
+                                   str.format('checksum="{0}"', old_checksum))
+                    self.db.execute(str.format('DELETE FROM image_store WHERE checksum="{0}"', old_checksum))
+            else:
+                record = {k: cm.unicodify(entry[k]) for k in entry}
+                self.db.update(record, 'image_store', str.format('checksum="{0}"', old_checksum))
+            self.db.commit()
+        except:
+            self.db.rollback()
+            raise
+
+    def run(self):
+        downloader = ImageDownloader()
+        downloader.run()
+
+        storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
+        rs = self.db.query(str.format('SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,'
+                                      'p2.brand_id,p2.model FROM image_store AS p1 '
+                                      'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
+                                      ' AND '.join(self.cond)))
+        self.tot = rs.num_rows()
+        self.progress = 0
+
+        while True:
+            tmp = rs.fetch_row(how=1)
+            if not tmp:
+                break
+            record = tmp[0]
+            self.progress += 1
+
+            hash_url = hashlib.sha1(record['url']).hexdigest()
+            if hash_url != os.path.splitext(os.path.split(record['path'])[-1])[0]:
+                logger.error(str.format('Url/hash mismatch: {0} => {1}', record['url'], hash_url))
+                self.path_error += 1
+            full_path = os.path.normpath(os.path.join(storage_path, record['path']))
+            update_entry = {}
             try:
-                img = Image.open(full_path)
-                w = int(image['width'])
-                h = int(image['height'])
-                if w != img.size[0] or h != img.size[1]:
-                    logger.error(str.format('{0} / {1} size mismatch!', model, path))
-                    mismatch += 1
+                if self.image_validity:
+                    img = Image.open(full_path)
+                    img.crop((0, 0, 16, 16))
+                    if not record['width'] or int(record['width']) != img.size[0] or not record['height'] \
+                        or int(record['height']) != img.size[1]:
+                        self.dim_mismatch += 1
+                        update_entry['width'] = img.size[0]
+                        update_entry['height'] = img.size[1]
 
-                    db.query(str.format('UPDATE products_image SET width={0}, height={1} WHERE idproducts_image={2}',
-                                        img.size[0], img.size[1], image['idproducts_image']))
+                    if not record['format'] or record['format'] != img.format:
+                        self.format_mismatch += 1
+                        update_entry['format'] = img.format
 
-            except IOError:
-                missing += 1
-                logger.error(str.format('{0} / {1} missing!', model, path))
-                if refetch:
-                    downloader.download(image['url'], full_path)
-                    cki = True
-            finally:
-                cnt += 1
+                file_size = os.path.getsize(full_path)
+                if not record['size'] or int(record['size']) != file_size:
+                    self.size_mismatch += 1
+                    update_entry['size'] = file_size
 
-            if cki:
-                md5 = hashlib.md5()
-                try:
+                if self.gen_checksum:
                     with open(full_path, 'rb') as f:
+                        md5 = hashlib.md5()
                         md5.update(f.read())
-                    db.query(
-                        str.format('UPDATE products_image SET checksum="{0}" WHERE idproducts_image={1}',
-                                   md5.hexdigest(),
-                                   image['idproducts_image']))
-                except IOError:
-                    pass
+                    checksum = md5.hexdigest()
+                    if record['checksum'] != checksum:
+                        self.checksum_mismatch += 1
+                        update_entry['old_checksum'] = record['checksum']
+                        update_entry['new_checksum'] = checksum
 
-    logger.info(
-        str.format('Summary: {0} images, {3} models checked. {1} missing, {2} size mismatch.', cnt, missing, mismatch,
-                   model_cnt))
-    downloader.stop()
+                # 有不一致的地方，需要更新
+                if update_entry:
+                    if 'old_checksum' not in update_entry:
+                        update_entry['old_checksum'] = record['checksum']
+                        update_entry['new_checksum'] = record['checksum']
+                    self.update_db(update_entry)
+            except IOError:
+                # 下载图像以后的回调函数
+                def func(body, url, full_path):
+                    path, tmp = os.path.split(full_path)
+                    base_name, ext = os.path.split(tmp)
+
+                    # 检查是否为有效图像文件
+                    tmp_name = str.format('tmp_{0}.{1}', checksum, ext)
+                    with open(tmp_name, 'wb') as f:
+                        f.write(body)
+                    img = Image.open(tmp_name)
+                    img.crop((0, 0, 32, 32))
+                    shutil.move(tmp_name, full_path)
+
+                    md5 = hashlib.md5()
+                    md5.update(body)
+                    new_checksum = md5.hexdigest()
+
+                    self.update_db({'old_checksum': record['checksum'], 'new_checksum': new_checksum, 'res': img.size,
+                                    'format': img.format, 'size': len(body), 'url': url, 'full_path': full_path})
+
+                self.missing += 1
+                logger.error(str.format('{0} / {1} missing!', record['model'], record['path']))
+                if self.refetch:
+                    downloader.download(record['url'], full_path, func)
+
+        logger.info(self.get_msg())
+        downloader.stop()
+
+        # if cki:
+        #     md5 = hashlib.md5()
+        #     try:
+        #         with open(full_path, 'rb') as f:
+        #             md5.update(f.read())
+        #         db.query(
+        #             str.format('UPDATE products_image SET checksum="{0}" WHERE idproducts_image={1}',
+        #                        md5.hexdigest(),
+        #                        image['idproducts_image']))
+        #     except IOError:
+        #         pass
+
+        # model_list = rs.fetch_row(maxrows=0, how=1)
+        # tot = len(model_list)
+        # cnt = 0
+        # missing = 0
+        # mismatch = 0
+        # logger.info(str.format('Total models: {0}', tot))
+        # log_indicator(reset=True, interval=1)
+        # model_cnt = -1
+        #
+        # for model in [val['model'] for val in model_list]:
+        #     model_cnt += 1
+        #     db.query(
+        #         str.format('SELECT idproducts_image,path,width,height,url FROM products_image WHERE model="{0}"',
+        #                    model))
+        #     rs_image = db.store_result().fetch_row(maxrows=0, how=1)
+        #     for image in rs_image:
+        #         # if log_indicator():
+        #         if model_cnt % 50 == 0:
+        #             report_str = str.format('{0} images, {3} models checked({4:.1%}). {1} missing, {2} size mismatch.',
+        #                                     cnt, missing, mismatch, model_cnt, float(model_cnt) / len(model_list))
+        #             logger.info(report_str)
+        #             # sys.stdout.write(report_str + '\r')
+        #             # print report_str
+        #
+        #         path = image['path']
+        #         full_path = os.path.join(storage_path, 'products/images', path)
+        #
+        #         cki = gen_checksum
+        #         try:
+        #             img = Image.open(full_path)
+        #             w = int(image['width'])
+        #             h = int(image['height'])
+        #             if w != img.size[0] or h != img.size[1]:
+        #                 logger.error(str.format('{0} / {1} size mismatch!', model, path))
+        #                 mismatch += 1
+        #
+        #                 db.query(
+        #                     str.format('UPDATE products_image SET width={0}, height={1} WHERE idproducts_image={2}',
+        #                                img.size[0], img.size[1], image['idproducts_image']))
+        #
+        #         except IOError:
+        #             missing += 1
+        #             logger.error(str.format('{0} / {1} missing!', model, path))
+        #             if refetch:
+        #                 downloader.download(image['url'], full_path)
+        #                 cki = True
+        #         finally:
+        #             cnt += 1
+        #
+        #         if cki:
+        #             md5 = hashlib.md5()
+        #             try:
+        #                 with open(full_path, 'rb') as f:
+        #                     md5.update(f.read())
+        #                 db.query(
+        #                     str.format('UPDATE products_image SET checksum="{0}" WHERE idproducts_image={1}',
+        #                                md5.hexdigest(),
+        #                                image['idproducts_image']))
+        #             except IOError:
+        #                 pass
+        #
+        # logger.info(
+        #     str.format('Summary: {0} images, {3} models checked. {1} missing, {2} size mismatch.', cnt, missing,
+        #                mismatch,
+        #                model_cnt))
+        # downloader.stop()
+
+
+def image_check(param_dict):
+    """
+    检查图片是否正常。
+    参数：
+    --checksum：同时加入图片的MD5校验
+    --brand：指定
+    :param param_dict:
+    :return:
+    """
+    db_spec = glob.SPIDER_SPEC
+    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.EDITOR_SPEC,
+              'release': glob.RELEASE_SPEC}
+    cond = ['1']
+    gen_checksum = False
+    refetch = False
+    image_validity = False
+
+    for param_name, param_value in param_dict.items():
+        if param_name == 'checksum':
+            gen_checksum = True
+        elif param_name == 'refetch':
+            refetch = True
+        elif param_name == 'db':
+            db_spec = db_map[param_value[0]]
+        elif param_name == 'cond':
+            cond = param_value
+        elif param_name == 'image-validity':
+            image_validity = True
+        else:
+            logger.critical(str.format('Invalid syntax. Unknow parameter: {0}', param_name))
+            return
+
+    core.func_carrier(ImageCheck(db_spec=db_spec, gen_checksum=gen_checksum, refetch=refetch,
+                                 image_validity=image_validity, cond=cond), 1)
 
 
 def argument_parser(args):
@@ -599,24 +801,69 @@ def argument_parser(args):
     if cmd not in cmd_list:
         return mstore_error
 
+    # 解析命令行参数
+    param_dict = {}
+    q = Queue()
+    for tmp in args[2:]:
+        q.put(tmp)
+    param_name = None
+    param_value = None
+    while not q.empty():
+        tmp = q.get()
+        if re.search(r'--(?=[^\-])', tmp):
+            tmp = re.sub('^-+', '', tmp)
+            if param_name:
+                param_dict[param_name] = param_value
+
+            param_name = tmp
+            param_value = None
+        elif re.search(r'-(?=[^\-])', tmp):
+            tmp = re.sub('^-+', '', tmp)
+            if param_name:
+                param_dict[param_name] = param_value
+
+            for tmp in list(tmp):
+                param_dict[tmp] = None
+            param_name = None
+            param_value = None
+        else:
+            if param_name:
+                if param_value:
+                    param_value.append(tmp)
+                else:
+                    param_value = [tmp]
+    if param_name:
+        param_dict[param_name] = param_value
+
+    if 'debug' in param_dict or 'D' in param_dict:
+        if 'debug-port' in param_dict:
+            port = param_dict['debug-port']
+        else:
+            port = glob.DEBUG_PORT
+        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
+
+    for k in ('debug', 'D', 'debug-port'):
+        try:
+            param_dict.pop(k)
+        except KeyError:
+            pass
+
     if cmd == 'help':
         return mstore_help
     elif cmd == 'resize':
-        return lambda: resize(args[2:])
+        return lambda: resize(param_dict)
     elif cmd == 'editor_price':
-        return lambda: editor_price_processor(args[2:])
+        return lambda: editor_price_processor(param_dict)
     elif cmd == 'sandbox':
         return sand_box
     elif cmd == 'image_check':
-        return lambda: image_check(args[2:])
+        return lambda: image_check(param_dict)
     elif cmd == 'import_tag':
-        return lambda: import_tag_mapping(args[2:])
+        return lambda: import_tag_mapping(param_dict)
     elif cmd == 'process_tags':
-        return lambda: process_tags(args[2:])
-    elif cmd == 'sync_editor':
-        return lambda: sync_editor(args[2:])
-
-    pass
+        return lambda: process_tags(param_dict)
+    elif cmd == 'sync':
+        return lambda: sync(param_dict)
 
 
 if __name__ == "__main__":

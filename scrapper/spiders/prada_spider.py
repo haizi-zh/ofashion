@@ -67,6 +67,28 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
                 host = self.spider_data['hosts']
             return host + href
 
+    def onerr(self, reason):
+        url_main = None
+        response = reason.value.response if hasattr(reason.value, 'response') else None
+        if not response:
+            self.log(str.format('ERROR ON PROCESSING {0}', reason.request.url), log.ERROR)
+            return
+
+        url = response.url
+
+        temp = reason.request.meta
+        if 'userdata' in temp:
+            metadata = temp['userdata']
+            if 'url' in metadata:
+                url_main = metadata['url']
+
+        if url_main and url_main != url:
+            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
+        else:
+            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
+
+        self.log(msg, log.ERROR)
+
     def __init__(self, *a, **kw):
         super(PradaSpider, self).__init__(*a, **kw)
         self.spider_data = copy.deepcopy(PradaSpider.spider_data)
@@ -76,7 +98,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
 
     def start_requests(self):
         region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', self.name, region)
+        self.name = str.format('{0}-{1}', PradaSpider.name, region)
         if region in self.spider_data['supported_regions']:
             metadata = {'region': region, 'brand_id': brand_id,
                         'brandname_e': glob.BRAND_NAMES[brand_id]['brandname_e'],
@@ -102,7 +124,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
                 m['extra'][tag_type] = [tag_name]
                 m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
 
-            yield Request(url=href, callback=self.parse_cat_0, meta={'userdata': m})
+            yield Request(url=href, callback=self.parse_cat_0, meta={'userdata': m}, errback=self.onerr)
 
     def parse_list(self, response):
         metadata = response.meta['userdata']
@@ -116,7 +138,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
             if not temp:
                 continue
             m['name'] = cm.unicodify(temp[0]._root.text)
-            yield Request(url=href, callback=self.parse_details, meta={'userdata': m})
+            yield Request(url=href, callback=self.parse_details, meta={'userdata': m}, errback=self.onerr)
 
     def parse_details(self, response):
         metadata = response.meta['userdata']
@@ -173,7 +195,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
             '//article[contains(@class,"sliding-backgrounds")]//a[@href and contains(@class,"background")]')
         if temp:
             return Request(url=self.process_href(temp[0]._root.attrib['href']), callback=self.parse_list,
-                           meta={'userdata': metadata})
+                           meta={'userdata': metadata}, errback=self.onerr)
 
         node = None
         temp = sel.xpath('//div[@class="menu"]/ul[@class="collections"]/li[contains(@class,"collection")]/'
@@ -211,6 +233,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
                     tag_text = cm.unicodify(node2._root.text) if node2._root.text else tag_name
                     m2['extra'][tag_type] = [tag_name]
                     m2['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
-                ret.append(Request(url=self.process_href(href), meta={'userdata': m2}, callback=self.parse_list))
+                ret.append(Request(url=self.process_href(href), meta={'userdata': m2}, callback=self.parse_list,
+                                   errback=self.onerr))
 
         return ret
