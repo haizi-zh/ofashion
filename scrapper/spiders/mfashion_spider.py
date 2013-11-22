@@ -60,39 +60,26 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         # 去掉多余的标签
         text = re.sub(ur'<[^<>]*?>', u'', text)
         # # 换行转换
+        text = re.sub('[\r\n]+', '\r', text)
         # text = re.subn(ur'(?:[\r\n])+', ', ', text)[0]
         return text
 
     def __init__(self, name, region, *a, **kw):
-        def iterable(val):
-            """
-            val是否iterable。注意：val为str的话，返回False。
-            :param val:
-            """
-            if isinstance(val, types.StringTypes):
-                return False
-            else:
-                try:
-                    iter(val)
-                    return True
-                except TypeError:
-                    return False
-
         self.name = str.format('{0}-{1}', name, region) if region else name
         super(MFashionSpider, self).__init__(*a, **kw)
 
-        if iterable(region):
-            self.region_list = region
-        elif region:
-            self.region_list = [region]
-        else:
+        if not region:
             self.region_list = self.get_supported_regions()
+        elif cm.iterable(region):
+            self.region_list = region
+        else:
+            self.region_list = [region]
 
     def start_requests(self):
         for region in self.region_list:
             if region in self.get_supported_regions():
                 metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                            'tags_mapping': {}, 'extra': {}}
+                            'tags_mapping': {}, 'category': []}
 
                 return [Request(url=self.spider_data['home_urls'][region], meta={'userdata': metadata},
                                 callback=self.parse, errback=self.onerr)]

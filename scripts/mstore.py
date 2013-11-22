@@ -38,46 +38,12 @@ debug_port = glob.DEBUG_PORT
 logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
 logger = logging.getLogger()
 
-
-def sand_box():
-    """
-    For test use.
-    """
-    for i in xrange(5):
-        time.sleep(1)
-        sys.stdout.write(str.format('{0}\r', i))
-        sys.stdout.flush()
-
-    sys.stdout.write('Done')
-    pass
-
-
 def static_var(varname, value):
     def decorate(func):
         setattr(func, varname, value)
         return func
 
     return decorate
-
-
-@static_var("elapsed_counter", 0)
-@static_var("start_ts", time.time())
-@static_var("interval", 30)
-def log_indicator(reset=False, interval=None):
-    if interval:
-        log_indicator.interval = interval
-
-    if reset:
-        log_indicator.start_ts = time.time()
-        log_indicator.elapsed_counter = 0
-        return False
-    else:
-        val = int((time.time() - log_indicator.start_ts) / log_indicator.interval)
-        if val > log_indicator.elapsed_counter:
-            log_indicator.elapsed_counter = val
-            return True
-        else:
-            return False
 
 
 def default_error():
@@ -553,7 +519,8 @@ class ImageCheck(object):
 
     def get_msg(self):
         summary = str.format(
-            'Summary: {0} images, {1} missing, {2} resolution mismatch, {3} size mismatch, {4} checksum failed, {5} url/path mismatch',
+            'Summary: {0} images, {1} missing, {2} resolution mismatch, {3} size mismatch, {4} checksum failed, '
+            '{5} url/path mismatch',
             self.tot, self.missing, self.dim_mismatch, self.size_mismatch, self.checksum_mismatch, self.path_error)
         if self.tot > 0:
             return str.format('{0}/{1}({2:.1%}) PROCESSED {3}', self.progress, self.tot,
@@ -569,20 +536,20 @@ class ImageCheck(object):
         try:
             if old_checksum != new_checksum:
                 if self.db.query(
-                        str.format('SELECT * FROM image_store WHERE checksum="{0}"', new_checksum)).num_rows() == 0:
+                        str.format('SELECT * FROM images_store WHERE checksum="{0}"', new_checksum)).num_rows() == 0:
                     record = {k: cm.unicodify(entry[k]) for k in entry}
                     record['checksum'] = new_checksum
-                    self.db.update(record, 'image_store', str.format('checksum="{0}"', old_checksum))
+                    self.db.update(record, 'images_store', str.format('checksum="{0}"', old_checksum))
                 else:
                     record = {k: cm.unicodify(entry[k]) for k in entry}
                     if record:
-                        self.db.update(record, 'image_store', str.format('checksum="{0}"', new_checksum))
+                        self.db.update(record, 'images_store', str.format('checksum="{0}"', new_checksum))
                     self.db.update({'checksum': new_checksum}, 'products_image',
                                    str.format('checksum="{0}"', old_checksum))
-                    self.db.execute(str.format('DELETE FROM image_store WHERE checksum="{0}"', old_checksum))
+                    self.db.execute(str.format('DELETE FROM images_store WHERE checksum="{0}"', old_checksum))
             else:
                 record = {k: cm.unicodify(entry[k]) for k in entry}
-                self.db.update(record, 'image_store', str.format('checksum="{0}"', old_checksum))
+                self.db.update(record, 'images_store', str.format('checksum="{0}"', old_checksum))
             self.db.commit()
         except:
             self.db.rollback()
@@ -594,7 +561,7 @@ class ImageCheck(object):
 
         storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
         rs = self.db.query(str.format('SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,'
-                                      'p2.brand_id,p2.model FROM image_store AS p1 '
+                                      'p2.brand_id,p2.model FROM images_store AS p1 '
                                       'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
                                       ' AND '.join(self.cond)))
         self.tot = rs.num_rows()
@@ -617,8 +584,8 @@ class ImageCheck(object):
                 if self.image_validity:
                     img = Image.open(full_path)
                     img.crop((0, 0, 16, 16))
-                    if not record['width'] or int(record['width']) != img.size[0] or not record['height'] \
-                        or int(record['height']) != img.size[1]:
+                    if not record['width'] or int(record['width']) != \
+                            img.size[0] or not record['height'] or int(record['height']) != img.size[1]:
                         self.dim_mismatch += 1
                         update_entry['width'] = img.size[0]
                         update_entry['height'] = img.size[1]
@@ -676,85 +643,6 @@ class ImageCheck(object):
 
         logger.info(self.get_msg())
         downloader.stop()
-
-        # if cki:
-        #     md5 = hashlib.md5()
-        #     try:
-        #         with open(full_path, 'rb') as f:
-        #             md5.update(f.read())
-        #         db.query(
-        #             str.format('UPDATE products_image SET checksum="{0}" WHERE idproducts_image={1}',
-        #                        md5.hexdigest(),
-        #                        image['idproducts_image']))
-        #     except IOError:
-        #         pass
-
-        # model_list = rs.fetch_row(maxrows=0, how=1)
-        # tot = len(model_list)
-        # cnt = 0
-        # missing = 0
-        # mismatch = 0
-        # logger.info(str.format('Total models: {0}', tot))
-        # log_indicator(reset=True, interval=1)
-        # model_cnt = -1
-        #
-        # for model in [val['model'] for val in model_list]:
-        #     model_cnt += 1
-        #     db.query(
-        #         str.format('SELECT idproducts_image,path,width,height,url FROM products_image WHERE model="{0}"',
-        #                    model))
-        #     rs_image = db.store_result().fetch_row(maxrows=0, how=1)
-        #     for image in rs_image:
-        #         # if log_indicator():
-        #         if model_cnt % 50 == 0:
-        #             report_str = str.format('{0} images, {3} models checked({4:.1%}). {1} missing, {2} size mismatch.',
-        #                                     cnt, missing, mismatch, model_cnt, float(model_cnt) / len(model_list))
-        #             logger.info(report_str)
-        #             # sys.stdout.write(report_str + '\r')
-        #             # print report_str
-        #
-        #         path = image['path']
-        #         full_path = os.path.join(storage_path, 'products/images', path)
-        #
-        #         cki = gen_checksum
-        #         try:
-        #             img = Image.open(full_path)
-        #             w = int(image['width'])
-        #             h = int(image['height'])
-        #             if w != img.size[0] or h != img.size[1]:
-        #                 logger.error(str.format('{0} / {1} size mismatch!', model, path))
-        #                 mismatch += 1
-        #
-        #                 db.query(
-        #                     str.format('UPDATE products_image SET width={0}, height={1} WHERE idproducts_image={2}',
-        #                                img.size[0], img.size[1], image['idproducts_image']))
-        #
-        #         except IOError:
-        #             missing += 1
-        #             logger.error(str.format('{0} / {1} missing!', model, path))
-        #             if refetch:
-        #                 downloader.download(image['url'], full_path)
-        #                 cki = True
-        #         finally:
-        #             cnt += 1
-        #
-        #         if cki:
-        #             md5 = hashlib.md5()
-        #             try:
-        #                 with open(full_path, 'rb') as f:
-        #                     md5.update(f.read())
-        #                 db.query(
-        #                     str.format('UPDATE products_image SET checksum="{0}" WHERE idproducts_image={1}',
-        #                                md5.hexdigest(),
-        #                                image['idproducts_image']))
-        #             except IOError:
-        #                 pass
-        #
-        # logger.info(
-        #     str.format('Summary: {0} images, {3} models checked. {1} missing, {2} size mismatch.', cnt, missing,
-        #                mismatch,
-        #                model_cnt))
-        # downloader.stop()
 
 
 def image_check(param_dict):
@@ -854,8 +742,6 @@ def argument_parser(args):
         return lambda: resize(param_dict)
     elif cmd == 'editor_price':
         return lambda: editor_price_processor(param_dict)
-    elif cmd == 'sandbox':
-        return sand_box
     elif cmd == 'image_check':
         return lambda: image_check(param_dict)
     elif cmd == 'import_tag':

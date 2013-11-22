@@ -4,13 +4,14 @@ from Queue import Queue
 import hashlib
 
 import os
-import random
 import re
+import shutil
 import sys
 import datetime
-import time
 import pydevd
-from scrapy import signals, log
+from scrapy import log
+import scrapy.signals
+import signal
 from scrapy.crawler import Crawler
 from scrapy.settings import Settings
 from twisted.internet import reactor
@@ -50,13 +51,11 @@ def argument_parser(args):
             param_value = None
         elif re.search(r'-(?=[^\-])', tmp):
             tmp = re.sub('^-+', '', tmp)
-            if param_name:
-                param_dict[param_name] = param_value
-
             for tmp in list(tmp):
-                param_dict[tmp] = None
-            param_name = None
-            param_value = None
+                if param_name:
+                    param_dict[param_name] = param_value
+                    param_value = None
+                param_name = tmp
         else:
             if param_name:
                 if param_value:
@@ -68,7 +67,7 @@ def argument_parser(args):
 
     if 'debug' in param_dict or 'D' in param_dict:
         if 'debug-port' in param_dict:
-            port = param_dict['debug-port']
+            port = int(param_dict['debug-port'][0])
         else:
             port = glob.DEBUG_PORT
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
@@ -82,46 +81,23 @@ def argument_parser(args):
     return {'spider': spider_name, 'param': param_dict}
 
 
-# invalid_syntax = False
-# ua = 'chrome'
-#
-# spider_name = sys.argv[1]
-# arguments = sys.argv[2:]
-# idx = 0
-# # 国家列表
-# region_list = []
-# while True:
-#     if idx >= len(arguments):
-#         break
-#     term = arguments[idx]
-#     idx += 1
-#     if term == '-D':
-#         debug_flag = True
-#     elif term == '-P':
-#         debug_port = int(arguments[idx])
-#         idx += 1
-#     elif term == '--user-agent':
-#         ua = arguments[idx]
-#         idx += 1
-#     elif term == '-r':
-#         while True:
-#             if idx >= len(arguments):
-#                 break
-#             r = arguments[idx]
-#             idx += 1
-#
-#             if r[0] == '-':
-#                 # r is a command
-#                 idx -= 1
-#                 break
-#             else:
-#                 region_list.append(r)
-#     else:
-#         print str.format('Invalid syntax: unknown command {0}', term)
-#         invalid_syntax = True
-#         break
-
 living_spiders = set([])
+
+
+def onsignal_term(a, b):
+    log.msg('SIGTERM received!', log.INFO)
+    reactor.stop()
+
+
+signal.signal(signal.SIGTERM, onsignal_term)
+
+
+def onsignal_int(a, b):
+    log.msg('SIGINT received!', log.INFO)
+    reactor.stop()
+
+
+signal.signal(signal.SIGINT, onsignal_int)
 
 
 def on_spider_closed(spider, reason):
@@ -135,7 +111,7 @@ def on_spider_closed(spider, reason):
 def get_job_path(brand_id):
     return os.path.normpath(
         os.path.join(glob.STORAGE_PATH,
-                     unicode.format(u'products/crawl/{0}', glob.BRAND_NAMES[brand_id]['brandname_s'])))
+                     unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'])))
 
 
 def get_log_path(brand_id):
@@ -146,8 +122,9 @@ def get_log_path(brand_id):
 
 
 def get_images_store(brand_id):
-    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/images',
-                                         str.format('{0}_{1}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'])))
+    return os.path.normpath(os.path.join(
+        glob.STORAGE_PATH, u'products/images', unicode.format(u'{0}_{1}', brand_id,
+                                                              glob.BRAND_NAMES[brand_id]['brandname_s'])))
 
 
 def set_up_spider(spider_class, region, data):
@@ -163,9 +140,12 @@ def set_up_spider(spider_class, region, data):
     #     'scrapper.extensions.SpiderOpenCloseLogging': 500
     # }
 
-    crawler.settings.values['IMAGES_STORE'] = get_images_store(sc.spider_data['brand_id'])
+    if 'job' in data:
+        job_path = get_job_path(sc.spider_data['brand_id']) + '-1'
+        if 'rst-job' in data:
+            shutil.rmtree(job_path, ignore_errors=True)
+        crawler.settings.values['JOBDIR'] = job_path
 
-    # crawler.settings.values['JOBDIR'] = get_job_path(spider_module.brand_id) + str.format('-{0}-1', region)
     crawler.settings.values['EDITOR_SPEC'] = glob.EDITOR_SPEC
     crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC
     crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
@@ -192,7 +172,12 @@ def set_up_spider(spider_class, region, data):
     # crawler.settings.values['RETRY_HTTP_CODES'] = retry_codes
     # crawler.settings.values['REDIRECT_ENABLED'] = True
 
-    crawler.signals.connect(on_spider_closed, signal=signals.spider_closed)
+    crawler.settings.values['IMAGES_STORE'] = get_images_store(sc.spider_data['brand_id'])
+    crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
+    crawler.settings.values['IMAGES_MIN_HEIGHT'] = 160
+    crawler.settings.values['IMAGES_MIN_WIDTH'] = 160
+
+    crawler.signals.connect(on_spider_closed, signal=scrapy.signals.spider_closed)
     # crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
@@ -215,13 +200,14 @@ if cmd:
     except KeyError:
         region_list = []
 
-    if glob.LOG_DEBUG:
-        log.start(loglevel='DEBUG')
-    else:
-        log.start(loglevel='INFO', logfile=get_log_path(spider_module.brand_id))
+    if sc_list:
+        sc = sc_list[0]
 
-    for sc in sc_list:
-        # 针对每个spider类，按照region顺序运行
+        if 'v' in cmd['param'] or glob.LOG_DEBUG:
+            log.start(loglevel='DEBUG')
+        else:
+            log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
+
         for region in region_list if region_list else sc.get_supported_regions():
             spider = set_up_spider(sc, region, cmd['param'])
             spider.log('CRAWLER STARTED', log.INFO)

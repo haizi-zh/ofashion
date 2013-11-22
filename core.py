@@ -136,7 +136,8 @@ class MySqlDb(object):
         if not cm.iterable(selects):
             selects = [selects]
 
-        def func(k, v):
+        def func(arg):
+            k, v = arg
             if v:
                 return unicode.format(u'{0}="{1}"', k, self.sql_escape(v))
             else:

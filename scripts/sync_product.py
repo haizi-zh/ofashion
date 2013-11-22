@@ -101,15 +101,15 @@ class SyncProducts(object):
                 image_record = {val['checksum']: val for val in tmp}
                 checksum_src = set(image_record.keys())
 
-                # 完善image_store信息。如果checksum没有在image_store中出现，则添加之。
+                # 完善images_store信息。如果checksum没有在images_store中出现，则添加之。
                 for checksum in checksum_src:
-                    if db_dst.query(str.format('SELECT checksum FROM image_store WHERE checksum="{0}"',
+                    if db_dst.query(str.format('SELECT checksum FROM images_store WHERE checksum="{0}"',
                                                checksum)).num_rows() == 0:
                         db_dst.insert({'checksum': checksum, 'brand_id': image_record[checksum]['brand_id'],
                                        'url': image_record[checksum]['url'], 'path': image_record[checksum]['path'],
                                        'width': image_record[checksum]['width'],
                                        'height': image_record[checksum]['height'],
-                                       'format': image_record[checksum]['format']}, 'image_store')
+                                       'format': image_record[checksum]['format']}, 'images_store')
 
                 # 补充目标数据库的products_image表，添加相应的checksum
                 checksum_dst = set([val[0] for val in db_dst.query(

@@ -14,7 +14,6 @@ __author__ = 'Zephyre'
 
 class MonclerSpider(MFashionSpider):
     spider_data = {'hosts': {'cn': 'http://store.moncler.cn'},
-                   # 'home_urls': {'cn': 'http://www.moncler.cn'},
                    'brand_id': 13084}
 
     @classmethod
@@ -39,8 +38,10 @@ class MonclerSpider(MFashionSpider):
             m = copy.deepcopy(metadata)
             tag_type = 'category-0'
             tag_name = cm.unicodify(node._root.text)
-            m['extra'][tag_type] = tag_name
-            m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_name}]
+            if not tag_name:
+                continue
+            m['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
+            m['category']=[tag_name.lower()]
 
             url = self.process_href(node._root.attrib['href'], metadata['region'])
             yield Request(url=url, meta={'userdata': m, 'filter-level': 0}, callback=self.parse_filter,
@@ -65,11 +66,12 @@ class MonclerSpider(MFashionSpider):
             for node in filter_node.xpath('./div/ul[contains(@class,"sub")]/li[contains(@class,"sub")]/a[@href]'):
                 m = copy.deepcopy(metadata)
                 tag_name = cm.unicodify(node._root.text)
+                if not tag_name:
+                    continue
                 if tag_type:
-                    m['extra'][tag_type] = tag_name
-                    m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_name}]
+                    m['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
                 else:
-                    m['color'] = [tag_name]
+                    m['color'] = [tag_name.lower()]
 
                 url = self.process_href(node._root.attrib['href'], metadata['region'])
                 yield Request(url=url, meta={'userdata': m, 'filter-level': filter_idx + 1},
@@ -84,7 +86,8 @@ class MonclerSpider(MFashionSpider):
             url = self.process_href(re.sub(r'\s', '', cm.html2plain(node._root.attrib['href'])),
                                     metadata['region'])
             m = copy.deepcopy(metadata)
-            yield Request(url=url, meta={'userdata': m}, callback=self.parse_product_details, errback=self.onerr)
+            yield Request(url=url, meta={'userdata': m}, dont_filter=True,
+                          callback=self.parse_product_details, errback=self.onerr)
 
     def parse_product_details(self, response):
         metadata = response.meta['userdata']
@@ -113,9 +116,6 @@ class MonclerSpider(MFashionSpider):
         if tmp:
             metadata['details'] = self.reformat(cm.unicodify(tmp[0]._root.text))
 
-            # tag_text = u', '.join([cm.html2plain(cm.unicodify(val.text)) for val in temp[0]._root.iterdescendants() if
-            # val.text and val.text.strip()]).lower()
-
         image_urls = []
         mt = re.search(r'var\s+jsoninit_item', response.body)
         if mt:
@@ -141,21 +141,20 @@ class MonclerSpider(MFashionSpider):
     def start_requests(self):
         for region in self.region_list:
             if region in self.get_supported_regions():
-                metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                            'tags_mapping': {}, 'extra': {}}
+                metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'tags_mapping': {}}
 
                 m = copy.deepcopy(metadata)
                 m['gender'] = 'male'
                 yield Request(
                     url='http://store.moncler.cn/cn/%E7%94%B7%E5%A3%AB/%E6%96%B0%E5%93%81%E4%B8%8A%E7%BA%BF_gid24319',
-                    meta={'userdata': metadata},
+                    meta={'userdata': m},
                     callback=self.parse, errback=self.onerr)
 
                 m = copy.deepcopy(metadata)
                 m['gender'] = 'female'
                 yield Request(
                     url='http://store.moncler.cn/cn/%E5%A5%B3%E5%A3%AB/%E6%96%B0%E5%93%81%E4%B8%8A%E7%BA%BF_gid24318',
-                    meta={'userdata': metadata},
+                    meta={'userdata': m},
                     callback=self.parse, errback=self.onerr)
             else:
                 self.log(str.format('No data for {0}', region), log.WARNING)

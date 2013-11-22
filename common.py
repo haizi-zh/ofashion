@@ -666,6 +666,7 @@ def retry_helper(func, param=None, logger=None, except_class=Exception, retry=5,
                 raise
     return None
 
+
 def iterable(val):
     """
     val是否iterable。注意：val为str的话，返回False。
@@ -998,8 +999,7 @@ def update_record(db, cond, tbl, record):
 #     return ret
 
 
-@static_var('currency_map', None)
-def process_price(price, region):
+def process_price(price, region, currency=None):
     def func(val):
         """
         去掉多余的空格，以及首尾的非数字字符
@@ -1015,19 +1015,17 @@ def process_price(price, region):
             val = val[:-1]
         return val
 
-    from core import MySqlDb
-
     if not price or not price.strip():
         return None
     val = unicode.format(u' {0} ', unicodify(price))
 
-    if not process_price.currency_map:
-        db = MySqlDb()
-        db.conn(glob.EDITOR_SPEC)
-        rs = db.query('SELECT iso_code,currency FROM country_info').fetch_row(maxrows=0)
-        process_price.currency_map = {val[0]: val[1] for val in rs}
-
-    currency = process_price.currency_map[region]
+    if not currency:
+        # 如果price没有货币单位信息，则根据region使用默认值
+        mt = re.search(r'\b([A-Z]{3})\b', price)
+        if mt and mt.group(1) in glob.CURRENCY_LIST:
+            currency = mt.group(1)
+        else:
+            currency = glob.REGION_INFO[region]['currency']
 
     # 提取最长的数字，分隔符字符串
     tmp = sorted([func(tmp) for tmp in re.findall(r'(?<=[^\d])[\d\s,\.]+(?=[^\d])', val)], key=lambda tmp: len(tmp),

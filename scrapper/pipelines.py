@@ -9,6 +9,7 @@ import datetime
 import hashlib
 import json
 import os
+import shutil
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
 from scrapy.exceptions import DropItem
@@ -23,7 +24,7 @@ import global_settings as glob
 class ProductPipeline(object):
     @classmethod
     def from_crawler(cls, crawler):
-        db_spec = crawler.settings['SPIDER_SPEC']
+        db_spec = crawler.settings['EDITOR_SPEC']
         return cls(db_spec)
 
     def __init__(self, db_spec):
@@ -36,6 +37,9 @@ class ProductPipeline(object):
         检查entry的gender字段。如果male/female都出现，说明该entry和性别无关，设置gender为None。
         :param entry:
         """
+        if 'gender' not in entry:
+            return
+
         gender = None
         tmp = entry['gender']
         if tmp:
@@ -88,8 +92,10 @@ class ProductPipeline(object):
                        'tag_name': tag_name, 'tag_text': tag_text}
                 self.db.insert(tmp, 'original_tags', ignore=True)
                 tmp.pop('tag_text')
-                tid = int(self.db.query_match('idmappings', 'original_tags', tmp).fetch_row()[0][0])
-                self.db.insert({'idproducts': pid, 'id_original_tags': tid}, 'products_original_tags', ignore=True)
+                rs = self.db.query_match('idmappings', 'original_tags', tmp)
+                if rs.num_rows() > 0:
+                    tid = int(rs.fetch_row()[0][0])
+                    self.db.insert({'idproducts': pid, 'id_original_tags': tid}, 'products_original_tags', ignore=True)
 
     def process_item(self, item, spider):
         entry = item['metadata']
@@ -125,31 +131,57 @@ class ProductPipeline(object):
                             dest[k] = json.loads(tmp)
                         except ValueError:
                             dest[k] = [cm.unicodify(tmp)]
-                    tmp = entry[k]
-                    if tmp:
-                        try:
-                            src[k] = json.loads(tmp)
-                        except ValueError:
-                            src[k] = [cm.unicodify(tmp)]
+                    if k in entry:
+                        tmp = entry[k]
+                        if tmp:
+                            src[k] = tmp if cm.iterable(tmp) else [tmp]
 
                 dest = utils.product_tags_merge(src, dest)
-                dest = {k: json.dumps(dest[k], ensure_ascii=False) for k in dest}
+                dest = {k: json.dumps(dest[k], ensure_ascii=False) if dest[k] else None for k in dest}
                 self.process_gender(dest)
-                for k in ('name', 'url', 'description', 'details', 'price'):
-                    dest[k] = entry[k]
 
-                self.db.update(dest, 'products', str.format('idproducts={0}', pid), ['touch_time'])
+                for k in ('name', 'url', 'description', 'details', 'price'):
+                    if k in entry:
+                        dest[k] = entry[k]
+
+                # 比较内容是否发生实质性变化
+                # cmp_keys = ('name', 'url', 'description', 'details', 'price', 'category', 'color', 'gender')
+                md5_o = hashlib.md5()
+                md5_n = hashlib.md5()
+                flag = True
+                for k in dest:
+                    tmp = cm.unicodify(dest[k])
+                    if tmp:
+                        md5_n.update((tmp if tmp else 'NULL').encode('utf-8'))
+                    tmp = results[0][k]
+                    if tmp:
+                        md5_o.update(tmp if tmp else 'NULL')
+                    if md5_n.hexdigest() != md5_o.hexdigest():
+                        flag = False
+                        break
+
+                if flag:
+                    self.db.update({}, 'products', str.format('idproducts={0}', pid), ['touch_time'])
+                else:
+                    self.db.update(dest, 'products', str.format('idproducts={0}', pid), ['update_time', 'touch_time'])
+
                 spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
 
             # 处理价格变化
-            tmp = cm.process_price(entry['price'], entry['region'])
-            if not tmp:
-                price = tmp['price']
-                currency = tmp['currency']
-                rs = self.db.query_match('price', 'products_price_history', {'idproducts': pid},
-                                         tail_str='ORDER BY date DESC LIMIT 1')
-                if rs.num_rows() == 0 or float(rs.fetch_row()[0][0]) != price:
-                    self.db.insert({'idproducts': pid, 'price': price, 'currency': currency}, 'products_price_history')
+            if 'price' in entry:
+                try:
+                    currency = spider.spider_data['currency'][entry['region']]
+                except KeyError:
+                    currency = None
+                tmp = cm.process_price(entry['price'], entry['region'], currency=currency)
+                if tmp:
+                    price = tmp['price']
+                    currency = tmp['currency']
+                    rs = self.db.query_match('price', 'products_price_history', {'idproducts': pid},
+                                             tail_str='ORDER BY date DESC LIMIT 1')
+                    if rs.num_rows() == 0 or float(rs.fetch_row()[0][0]) != price:
+                        self.db.insert({'idproducts': pid, 'price': price, 'currency': currency},
+                                       'products_price_history')
 
             # 处理标签变化
             self.process_tags_mapping(tags_mapping, entry, pid)
@@ -164,10 +196,11 @@ class ProductImagePipeline(ImagesPipeline):
     @classmethod
     def from_crawler(cls, crawler):
         settings = crawler.settings
-        db_spec = settings['SPIDER_SPEC']
-        image_store = settings.get('IMAGES_STORE')
+        db_spec = settings['EDITOR_SPEC']
+        images_store = settings.get('IMAGES_STORE')
         ProductImagePipeline.DBSPEC = db_spec
-        return cls(image_store, crawler, db_spec)
+        ImagesPipeline.from_settings(crawler.settings)
+        return cls(images_store, crawler, db_spec)
 
     def __init__(self, store_uri, crawler=None, db_spec=None):
         self.crawler = crawler
@@ -192,7 +225,21 @@ class ProductImagePipeline(ImagesPipeline):
     #     return os.path.join(p, unicode.format(u'{0}_{1}', m['brand_id'], m['brandname_e']), fn)
 
     def get_images(self, response, request, info):
-        key = self.file_key(request.url)
+        media_guid = hashlib.sha1(request.url).hexdigest()
+        # 确定图像类型
+        content_type = None
+        for k in response.headers:
+            if k.lower() == 'content-type':
+                try:
+                    content_type = response.headers[k].lower()
+                except (TypeError, IndexError):
+                    pass
+        ext = 'jpg'
+        if content_type == 'image/tiff':
+            ext = 'tif'
+        elif content_type == 'image/png':
+            ext = 'png'
+        key = str.format('full/{0}.{1}', media_guid, ext)
 
         orig_image = Image.open(StringIO(response.body))
 
@@ -207,7 +254,7 @@ class ProductImagePipeline(ImagesPipeline):
         yield key, image, buf
 
         for thumb_id, size in self.THUMBS.iteritems():
-            thumb_key = self.thumb_key(request.url, thumb_id)
+            thumb_key = str.format('thumbs/{0}/{1}.{2}', thumb_id, media_guid, ext)
             thumb_image, thumb_buf = self.convert_image(image, size)
             yield thumb_key, thumb_image, thumb_buf
 
@@ -240,7 +287,22 @@ class ProductImagePipeline(ImagesPipeline):
                 width = img.size[0]
                 if url not in url_dict or width > url_dict[url]['size']:
                     url_dict[url] = {'size': width, 'item': item}
+            return [val['item'] for val in url_dict.values()]
+        elif brand_id == 10029:
+            # 处理Balenciaga
+            url_dict = {}
+            for item in list(filter(lambda val: val[0], results)):
+                url = item[1]['url']
+                key = os.path.splitext(url)[0][-1]
+                try:
+                    img = Image.open(os.path.normpath(os.path.join(self.store.basedir, item[1]['path'])))
+                except IOError:
+                    continue
 
+                # 两种情况会采用该result：尺寸更大，或第一次出现
+                width = img.size[0]
+                if key not in url_dict or width > url_dict[key]['size']:
+                    url_dict[key] = {'size': width, 'item': item}
             return [val['item'] for val in url_dict.values()]
         else:
             return results
@@ -252,7 +314,7 @@ class ProductImagePipeline(ImagesPipeline):
         :param checksum:
         :param model:
         """
-        rs = self.db.query_match('idproducts', 'products_image',
+        rs = self.db.query_match('idproducts_image', 'products_image',
                                  {'brand_id': brand_id, 'model': model, 'checksum': checksum})
         if rs.num_rows() == 0:
             self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model}, 'products_image')
@@ -264,7 +326,7 @@ class ProductImagePipeline(ImagesPipeline):
 
     def update_db(self, data):
         """
-        根据新数据的hash值以及文件路径，更新数据库image_store和products_image
+        根据新数据的hash值以及文件路径，更新数据库images_store和products_image
         :param data:
         """
         checksum = data['checksum']
@@ -272,26 +334,19 @@ class ProductImagePipeline(ImagesPipeline):
         brand_id = data['brand_id']
         model = data['model']
 
-        rs = self.db.query_match('checksum', 'image_store', {'checksum': checksum})
+        rs = self.db.query_match('checksum', 'images_store', {'checksum': checksum})
         checksum_anchor = rs.num_rows() > 0
-        rs = self.db.query_match('checksum', 'image_store', {'path': path})
+        rs = self.db.query_match('checksum', 'images_store', {'path': path})
         path_anchor = rs.num_rows() > 0
-
-        # if checksum_anchor and path_anchor:
-        #     # checksum和path都已存在，image_store不用更新，仅确保products_image中存在
-        #     self.update_products_image(brand_id, model,checksum)
-        # elif checksum_anchor and not path_anchor:
-        #     # checksum存在，path不存在。说明原path对应于一个错误的URL
-        #     self.update_products_image(brand_id,model,checksum)
 
         if not checksum_anchor and path_anchor:
             # 说明原来的checksum有误，整体更正
-            self.db.update({'checksum': checksum}, 'image_store', str.format('path="{0}"', path))
+            self.db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
         elif not checksum_anchor and not path_anchor:
-            # 在image_store里面新增一个item
-            self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'url': data['url'], 'path': data['path'],
+            # 在images_store里面新增一个item
+            self.db.insert({'checksum': checksum, 'url': data['url'], 'path': data['path'],
                             'width': data['width'], 'height': data['height'], 'format': data['format'],
-                            'size': data['size']}, 'image_store')
+                            'size': data['size']}, 'images_store')
 
         self.update_products_image(brand_id, model, checksum)
 
@@ -300,10 +355,7 @@ class ProductImagePipeline(ImagesPipeline):
         results = self.preprocess(results, item)
         brand_id = item['metadata']['brand_id']
         model = cm.unicodify(item['metadata']['model'])
-        for status, r in results:
-            if not status:
-                continue
-
+        for status, r in filter(lambda val: val[0], results):
             path = r['path']    #.replace(u'\\', u'/')
             path_db = os.path.normpath(
                 os.path.join(unicode.format(u'{0}_{1}/{2}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'], path)))

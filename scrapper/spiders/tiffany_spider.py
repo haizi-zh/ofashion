@@ -13,19 +13,26 @@ from scrapper.spiders.mfashion_spider import MFashionSpider
 __author__ = 'Zephyre'
 
 
-def create_spider():
-    return TiffanySpider()
-
-
-def supported_regions():
-    return TiffanySpider.spider_data['supported_regions']
-
-
 class TiffanySpider(MFashionSpider):
     spider_data = {'hosts': {'us': 'http://www.tiffany.com',
-                             'cn': 'http://www.tiffany.cn'},
-                   'home_urls': {'us': 'http://www.tiffany.com/Shopping',
-                                 'cn': 'http://www.tiffany.cn/Shopping'},
+                             'ca': 'http://www.tiffany.ca',
+                             'cn': 'http://www.tiffany.cn',
+                             'mx': 'http://www.tiffany.com.mx',
+                             'br': 'http://www.tiffany.com.br',
+                             'jp': 'http://www.tiffany.co.jp',
+                             'hk': 'http://zh.tiffany.com',
+                             'kr': 'http://www.tiffany.kr',
+                             'au': 'http://www.tiffany.com.au',
+                             'uk': 'http://www.tiffany.co.uk',
+                             'be': 'http://www.tiffany.be',
+                             'de': 'http://www.tiffany.de',
+                             'ie': 'http://www.tiffany.ie',
+                             'it': 'http://www.tiffany.it',
+                             'nl': 'http://nl.tiffany.com',
+                             'es': 'http://www.tiffany.es',
+                             'fr': 'http://www.tiffany.fr',
+                             'ii': 'http://international.tiffany.com',
+                             'at': 'http://www.tiffany.at'},
                    'image_url': 'http://media.tiffany.com/is/image/Tiffany/{0}?scl={1}&fmt=jpg',
                    'image_url2': 'http://media.tiffany.com/is/image/Tiffany/{0}?$EngagementItemXL$',
                    'brand_id': 10350}
@@ -35,6 +42,8 @@ class TiffanySpider(MFashionSpider):
         return TiffanySpider.spider_data['hosts'].keys()
 
     def __init__(self, region):
+        self.spider_data['home_urls'] = {k: str.format('{0}/Shopping', self.spider_data['hosts'][k]) for k in
+                                         self.spider_data['hosts']}
         super(TiffanySpider, self).__init__('tiffany', region)
 
     @classmethod
@@ -59,10 +68,10 @@ class TiffanySpider(MFashionSpider):
             m1['tags_mapping']['category-0'] = [{'name': cat.lower(), 'title': cat}]
             m1['category'] = [cat.lower()]
 
-            if cat not in node_map:
+            if cat.lower() not in node_map:
                 continue
 
-            for node2 in node_map[cat].xpath('./div[@class="l6"]/a[@href]'):
+            for node2 in node_map[cat.lower()].xpath('./div[@class="l6"]/a[@href]'):
                 cat = cm.unicodify(node2._root.text)
                 if not cat:
                     continue
@@ -112,7 +121,7 @@ class TiffanySpider(MFashionSpider):
         item = ProductItem()
         image_urls = []
         for base_img in re.findall(r'"BaseImg"\s*:\s*"([^"]+)"', response.body):
-            for i in xrange(7):
+            for i in xrange(1, 7):
                 image_urls.append(str.format(self.spider_data['image_url'], base_img, i))
             image_urls.append(str.format(self.spider_data['image_url2'], base_img))
         item['image_urls'] = image_urls
