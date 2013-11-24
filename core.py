@@ -72,25 +72,31 @@ class MySqlDb(object):
     def sql_escape(param):
         return unicode(param).replace('\\', '\\\\').replace('"', '\\"') if param else None
 
-    def insert(self, entry, table, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S', ignore=False):
+    def insert(self, entry, table, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S', ignore=False, replace=False):
         """
         :param entry:
         :param table:
         :param timestamps: 用来在记录上添加时间戳。比如：timestamps=['ts1', 'ts2']，则自动在添加的记录上添加时间戳：ts1和ts2。
         """
+        entry_list = [entry] if isinstance(entry, dict) else entry
+        if not entry_list:
+            return
         if timestamps:
             time_str = datetime.datetime.now().strftime(time_fmt)
             for k in timestamps:
-                entry[k] = time_str
+                for entry in entry_list:
+                    entry[k] = time_str
 
-        fields = unicode.format(u'({0})', ', '.join(entry))
-        values = unicode.format(u'({0})',
-                                ', '.join(unicode.format(u'"{0}"', self.sql_escape(cm.unicodify(entry[k])))
-                                          if entry[k] is not None else 'NULL' for k in entry))
-        if ignore:
-            statement = unicode.format(u'INSERT IGNORE INTO {0} {1} VALUES {2}', table, fields, values)
-        else:
-            statement = unicode.format(u'INSERT INTO {0} {1} VALUES {2}', table, fields, values)
+        fields = unicode.format(u'({0})', ', '.join(entry_list[0]))
+
+        def func(entry):
+            return unicode.format(u'({0})',
+                                  ', '.join(unicode.format(u'"{0}"', self.sql_escape(cm.unicodify(entry[k])))
+                                            if entry[k] is not None else 'NULL' for k in entry))
+
+        statement = unicode.format(u'{3}{4}INTO {0} {1} VALUES {2}', table, fields, ', '.join(map(func, entry_list)),
+                                   'INSERT' if not replace else 'REPLACE',
+                                   ' IGNORE ' if ignore else ' ')
         self.db.query(statement.encode('utf-8'))
 
     def update(self, entry, table, cond, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S'):
@@ -117,7 +123,7 @@ class MySqlDb(object):
         self.db.query(statement.encode('utf-8'))
         return self.db.use_result() if use_result else self.db.store_result()
 
-    def query_match(self, selects, table, matches=None, extra=None, tail_str=None, use_result=False):
+    def query_match(self, selects, table, matches=None, extra=None, tail_str=None, use_result=False, distinct=False):
         """
         查询：相当于SELECT ... FROM ... WHERE col=val
         :param selects: 需要select的字段
@@ -145,8 +151,10 @@ class MySqlDb(object):
 
         match_str = ' AND '.join(map(func, matches.items())) if matches else '1'
         extra_cond = ' AND '.join(extra)
-        statement = unicode.format(u'SELECT {0} FROM {1} WHERE {2} AND {3} {4}',
-                                   ', '.join(selects), table, match_str, extra_cond, tail_str if tail_str else '')
+        statement = unicode.format(u'SELECT {5} {0} FROM {1} WHERE {2} AND {3} {4}',
+                                   ', '.join(selects), table, match_str, extra_cond,
+                                   tail_str if tail_str else '',
+                                   'DISTINCT' if distinct else '',)
         self.db.query(statement.encode('utf-8'))
         return self.db.use_result() if use_result else self.db.store_result()
 
@@ -213,3 +221,4 @@ def func_carrier(obj, interval, estimate=False):
     timer_cb(last_time=True)
     sys.stdout.write('\n\n')
     sys.stdout.flush()
+

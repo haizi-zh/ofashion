@@ -1,214 +1,212 @@
 # coding=utf-8
 import copy
 import os
-import datetime
 import re
 from scrapy import log
-from scrapy.contrib.spiders import CrawlSpider
 from scrapy.http import Request
-from scrapy.selector import HtmlXPathSelector
-from scrapper import utils
+from scrapy.selector import Selector
+import common as cm
 from scrapper.items import ProductItem
-import global_settings
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
-fendi_data = {'base_url': {'cn': 'http://www.fendi.com/cn/zh/collections/woman',
-                           'us': 'http://www.fendi.com/us/en/collections/woman',
-                           'fr': 'http://www.fendi.com/fr/fr/collections/femme',
-                           'it': 'http://www.fendi.com/it/it/collezioni/donna',
-                           'kr': 'http://www.fendi.com/kr/ko/collections/woman',
-                           'jp': 'http://www.fendi.com/jp/ja/collections/woman',
-                           'ii': 'http://www.fendi.com/ii/en/collections/woman',
-                           'es': 'http://www.fendi.com/ii/es/colecciones/mujer'},
-              'host': 'http://www.fendi.com',
-              # 'cat-1-reject': {'cn': ['fashion-show', 'ready-to-wear-and-furwear', 'activewear', 'accessories'],
-              #                  'us': ['fashion-show', 'ready-to-wear-and-furwear', 'activewear', 'accessories'], },
-              'brand_id': 10135, 'brandname_e': 'Fendi', 'brandname_c': u'芬迪', 'brandname_s': 'fendi'}
 
+class FendiSpider(MFashionSpider):
+    spider_data = {'home_urls': {'cn': 'http://www.fendi.com/cn/zh/collections/woman',
+                                 'us': 'http://www.fendi.com/us/en/collections/woman',
+                                 'fr': 'http://www.fendi.com/fr/fr/collections/femme',
+                                 'it': 'http://www.fendi.com/it/it/collezioni/donna',
+                                 'kr': 'http://www.fendi.com/kr/ko/collections/woman',
+                                 'jp': 'http://www.fendi.com/jp/ja/collections/woman',
+                                 'ii': 'http://www.fendi.com/ii/en/collections/woman',
+                                 'es': 'http://www.fendi.com/ii/es/colecciones/mujer'},
+                   'brand_id': 10135}
+    spider_data['hosts'] = {k: 'http://www.fendi.com' for k in spider_data['home_urls'].keys()}
 
-def create_spider():
-    return FendiSpider()
+    @classmethod
+    def get_supported_regions(cls):
+        return FendiSpider.spider_data['hosts'].keys()
 
+    def __init__(self, region):
+        super(FendiSpider, self).__init__('fendi', region)
 
-def get_spider_data():
-    return dict((k, fendi_data[k]) for k in fendi_data if
-                k in ('host', 'supported_regions', 'brand_id', 'brandname_e', 'brandname_c', 'brandname_s'))
+    @classmethod
+    def get_instance(cls, region=None):
+        return cls(region)
 
+    def get_host_url(self, region):
+        return self.spider_data['hosts'][region]
 
-class FendiSpider(CrawlSpider):
-    name = 'fendi'
-
-    def __init__(self, region=None):
-        self.region = region
-
-    def start_requests(self):
-        region = self.crawler.settings['REGION']
-        self.log(str.format('Fetching data for {0}', region), log.INFO)
-        if region in fendi_data['base_url']:
-            return [Request(url=fendi_data['base_url'][region], dont_filter=True)]
-        else:
-            self.log(str.format('No data for {0}', region), log.WARNING)
-            return []
-
+    # def start_requests(self):
+    #     entry = {'brand_id': 10135, 'extra': {}, 'region': 'cn'}
+    #
+    #     yield Request(
+    #         url='http://www.fendi.com/cn/zh/collections/woman/fall-winter-2013-14/accessories/watches/for903-ggz-qel',
+    #         callback=self.parse_details, meta={'userdata': entry})
 
     def parse(self, response):
-        self.log(unicode.format(u'PARSE_HOME: URL={0}', response.url), level=log.DEBUG)
+        metadata = response.meta['userdata']
         if 'www.fendi.com/cn' in response.url:
-            metadata = {'region': 'cn'}
+            metadata['region'] = 'cn'
         elif 'www.fendi.com/us' in response.url:
-            metadata = {'region': 'us'}
+            metadata['region'] = 'us'
         elif 'www.fendi.com/fr' in response.url:
-            metadata = {'region': 'fr'}
+            metadata['region'] = 'fr'
         elif 'www.fendi.com/it' in response.url:
-            metadata = {'region': 'it'}
+            metadata['region'] = 'it'
         elif 'www.fendi.com/kr' in response.url:
-            metadata = {'region': 'kr'}
+            metadata['region'] = 'kr'
         elif 'www.fendi.com/jp' in response.url:
-            metadata = {'region': 'jp'}
+            metadata['region'] = 'jp'
         elif 'www.fendi.com/ii/en' in response.url:
-            metadata = {'region': 'ii'}
+            metadata['region'] = 'ii'
         elif 'www.fendi.com/ii/es' in response.url:
-            metadata = {'region': 'es'}
+            metadata['region'] = 'es'
         else:
-            metadata = {'region': None}
-        metadata['tags_mapping'] = {}
+            return
         metadata['extra'] = {}
 
-        hxs = HtmlXPathSelector(response)
-        for item in hxs.select("//header[@id='main-header']//ul[@class='links']/li/ul/li/a[@href]"):
-            href = utils.unicodify(item._root.attrib['href'])
-            title = utils.unicodify(item._root.text)
+        sel = Selector(response)
+        for item in sel.xpath("//header[@id='main-header']//ul[@class='links']/li/ul/li/a[@href]"):
+            href = cm.unicodify(item._root.attrib['href'])
+            title = cm.unicodify(item._root.text)
 
             if not title:
                 continue
             temp = re.search(ur'/([^/]+)/?$', href)
             if not temp:
                 continue
-            cat = temp.group(1)
+            cat = temp.group(1).lower()
             m = copy.deepcopy(metadata)
-            m['extra']['category-1'] = [cat]
             m['tags_mapping']['category-1'] = [{'name': cat, 'title': title}]
             if cat in {'woman', 'women', 'femme', 'donna', 'mujer'}:
                 m['gender'] = [u'female']
             elif cat in {'man', 'men', 'homme', 'uomo', 'hombre'}:
                 m['gender'] = [u'male']
-            else:
-                m['gender'] = []
-            url = fendi_data['host'] + href
+            url = self.process_href(href, metadata['region'])
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_1, dont_filter=True)
 
 
     def parse_category_1(self, response):
         self.log(unicode.format(u'PARSE_CAT_1: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        region = metadata['region']
-        hxs = HtmlXPathSelector(response)
-        for item in hxs.select("//div[@id='page']//ul[@class='links']//li/a[@href]"):
-            href = re.sub(ur'/cover/?', u'', utils.unicodify(item._root.attrib['href']))
-            title = utils.unicodify(item._root.text)
+        sel = Selector(response)
+        for item in sel.xpath("//div[@id='page']//ul[@class='links']//li/a[@href]"):
+            href = re.sub(ur'/cover/?', u'', cm.unicodify(item._root.attrib['href']))
+            title = cm.unicodify(item._root.text)
             if not title:
                 continue
             m = re.search(ur'/([^/]+)/?$', href)
             if not m:
                 continue
-            cat = m.group(1)
-            # if cat in fendi_data['cat-1-reject'][region]:
-            #     continue
-
+            cat = m.group(1).lower()
             m = copy.deepcopy(metadata)
-            m['extra']['category-2'] = [cat]
             m['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
             m['category'] = [cat]
-            url = fendi_data['host'] + href
+            url = self.process_href(href, metadata['region'])
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_2)
 
     def parse_category_2(self, response):
         self.log(unicode.format(u'PARSE_CAT_2: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        hxs = HtmlXPathSelector(response)
+        sel = Selector(response)
 
         # 是否有filter？
-        ret = hxs.select("//aside[@class='sidebar-actions']//div[@class='filter']//ul/li/a[@href]")
+        ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='filter']//ul/li/a[@href]")
         if len(ret) > 0 and 'filter' not in metadata['extra']:
             for item in ret:
-                href = utils.unicodify(item._root.attrib['href'])
-                title = utils.unicodify(item._root.text)
+                href = cm.unicodify(item._root.attrib['href'])
+                title = cm.unicodify(item._root.text)
                 if not title:
                     continue
                 m = re.search(ur'/([^/]+)/?$', href)
                 if not m:
                     continue
-                cat = m.group(1).strip()
+                cat = m.group(1).lower().strip()
                 if cat.lower() == u'all':
                     continue
                 m = copy.deepcopy(metadata)
                 m['extra']['filter'] = [cat]
-                m['tags_mapping'][unicode.format(u'filter:{0}', metadata['extra']['category-2'][0])] = [
-                    {'name': cat, 'title': title}]
-                url = fendi_data['host'] + href
+                m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
+                url = self.process_href(href, metadata['region'])
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_2)
         else:
-            for item in hxs.select(
+            for item in sel.xpath(
                     "//div[@id='page']/div[@class='view-all']/ul[@id='slider']/li/a[@href and @data-id]"):
-                href = utils.unicodify(item._root.attrib['href'])
+                href = cm.unicodify(item._root.attrib['href'])
                 m = copy.deepcopy(metadata)
-                url = fendi_data['host'] + href
+                url = self.process_href(href, metadata['region'])
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_details)
 
     def parse_details(self, response):
-        self.log(unicode.format(u'PARSE_DETAILS: URL={0}', response.url), level=log.DEBUG)
         metadata = copy.deepcopy(response.meta['userdata'])
-        region = metadata['region']
-        hxs = HtmlXPathSelector(response)
-        ret = hxs.select("//aside[@class='sidebar-actions']//div[@class='price']")
+
+        # url必须满足一定的模式：http://www.fendi.com/it/it/collezioni/***
+        if os.path.split(self.spider_data['home_urls'][metadata['region']])[0] not in response.url:
+            return
+
+        # 组合类页面也必须去掉，比如：http://www.fendi.com/cn/zh/collections/kids/junior/boys/look73
+        if re.search(r'/look\d+$', response.url) or re.search(r'/\d+-baby$', response.url):
+            return
+
+        sel = Selector(response)
+        ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='price']")
         if len(ret) > 0:
-            temp = utils.unicodify(ret[0]._root.text)
+            temp = cm.unicodify(ret[0]._root.text)
             metadata['price'] = temp.strip() if temp else None
-        ret = hxs.select("//aside[@class='sidebar-actions']//div[@class='desc']")
+        ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='desc']")
         if len(ret) > 0:
-            temp = utils.unicodify(ret[0]._root.text)
+            temp = cm.unicodify(ret[0]._root.text)
             metadata['description'] = temp.strip() if temp else None
         m = re.search(ur'/([^/]+)/?$', response.url)
         if m:
-            metadata['model'] = utils.unicodify(m.group(1))
+            metadata['model'] = cm.unicodify(m.group(1))
         else:
-            metadata['model'] = None
+            return
         metadata['url'] = response.url
-        for k in {'brand_id', 'brandname_e', 'brandname_c'}:
-            metadata[k] = fendi_data[k]
 
-        if 'price' not in metadata:
-            return None
-
-        metadata['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # if 'price' not in metadata:
+        #     return None
 
         item = ProductItem()
         item['image_urls'] = []
         item['url'] = metadata['url']
         item['model'] = metadata['model']
+        metadata.pop('extra')
         item['metadata'] = metadata
 
-        ret = hxs.select("//div[@id='page']/div[@class='fullscreen-image']/a[@href]")
-        if len(ret) > 0:
-        #     获得图片
-            href = utils.unicodify(ret[0]._root.attrib['href'])
-            url = fendi_data['host'] + href
-            return Request(url=url, meta={'userdata': metadata, 'item': item}, callback=self.parse_image)
+        ret = sel.xpath("//div[@id='page']/div[@class='fullscreen-image']/a[@href]")
+        if ret > 0:
+            # 小尺寸版本的图片，以供不时之需
+            node = ret[0]
+            tmp = node.xpath('./img[@src]')
+            if tmp:
+                href = tmp[0]._root.attrib['src']
+                large_imgs = sorted((val for val in tmp[0]._root.attrib if re.match(r'data-src\d+', val)),
+                                    key=lambda val: int(re.search(r'data-src(\d+)', val).group(1)), reverse=True)
+                if large_imgs:
+                    href = tmp[0]._root.attrib[large_imgs[0]]
+
+                item['image_urls'] = [self.process_href(href, metadata['region'])]
+
+            href = cm.unicodify(node._root.attrib['href'])
+            url = self.process_href(href, metadata['region'])
+            return Request(url=url, meta={'userdata': metadata, 'item': item}, callback=self.parse_image,
+                           dont_filter=True)
         else:
         #     没有图片
             return item
 
     def parse_image(self, response):
         self.log(unicode.format(u'PARSE_IMAGE: URL={0}', response.url), level=log.DEBUG)
-        metadata = response.meta['userdata']
         item = response.meta['item']
-        hxs = HtmlXPathSelector(response)
+        sel = Selector(response)
         image_urls = []
-        for node in hxs.select("//div[@id='zoom']/ul[@class='thumbs']/li"):
+        for node in sel.xpath("//div[@id='zoom']/ul[@class='thumbs']/li"):
             temp = {}
-            for lv in node.select("./ul[@class='levels']/li/a[@href]"):
-                ret = lv.select("./span")
+            for lv in node.xpath("./ul[@class='levels']/li/a[@href]"):
+                ret = lv.xpath("./span")
                 if len(ret) == 0:
                     continue
                 else:
@@ -219,5 +217,8 @@ class FendiSpider(CrawlSpider):
                 url = lv._root.attrib['href']
                 temp[lv_val] = url
             image_urls.append(temp[max(temp.keys())])
-        item['image_urls'] = image_urls
+
+        # 如果成功获得图像列表，则替代之前的小尺寸版本
+        if image_urls:
+            item['image_urls'] = image_urls
         return item

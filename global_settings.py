@@ -32,8 +32,8 @@ EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
 
 # Port for remote debugging
 DEBUG_HOST = 'localhost'
-DEBUG_PORT = 7105
-DEBUG_FLAG = False
+DEBUG_PORT = 7112
+DEBUG_FLAG = True
 WRITE_DATABASE = True
 
 # Log settings

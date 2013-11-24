@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
+import codecs
 import hashlib
 
 import json
@@ -10,7 +11,7 @@ from _mysql_exceptions import OperationalError
 import global_settings as glob
 from core import MySqlDb
 import core
-
+from PIL import Image
 import common as cm
 import csv
 from scripts.sync_product import SyncProducts
@@ -94,16 +95,65 @@ class Object(object):
     def func_oneuse(self):
         db = MySqlDb()
         db.conn(glob.EDITOR_SPEC)
-        rs = db.query_match(['idmappings', 'tag_name'], 'original_tags', extra='tag_name regexp binary "[A-Z]"')
-        self.tot = rs.num_rows()
 
-        db.start_transaction()
+        rs = db.query('SELECT p1.* FROM editor_stores.products_image as p1 '
+                      'left join images_store as p2 on p1.checksum=p2.checksum '
+                      'where p2.checksum is null')
+        self.tot = rs.num_rows()
         for self.progress in xrange(self.tot):
             record = rs.fetch_row(how=1)[0]
-            tag_name = record['tag_name'].decode('utf-8').lower()
-            db.update({'tag_name': tag_name}, 'original_tags', str.format('idmappings={0}', record['idmappings']))
-        db.commit()
+            path = record['path']
+            if record['brand_id'] == '10226':
+                path = hashlib.sha1(record['url']).hexdigest()+'.png'
+            full_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images', path))
 
+            try:
+                img = Image.open(full_path)
+                entry = {'checksum': record['checksum'], 'url': record['url'], 'path': path,
+                         'width': img.size[0], 'height': int(img.size[1]), 'format': img.format,
+                         'size': os.path.getsize(full_path)}
+                db.insert(entry, 'images_store', ignore=True)
+            except IOError:
+                continue
+
+
+    def func_oneuse2(self):
+        db = MySqlDb()
+        db.conn(glob.EDITOR_SPEC)
+        for file_name in (tmp for tmp in os.listdir('.') if re.search(r'\d{5}\.csv', tmp)):
+            db.start_transaction()
+            try:
+                with open(file_name, 'r') as f:
+                    row_list = list(csv.reader(f))
+                    self.tot = len(row_list)
+                    self.progress = 0
+                    for row in row_list:
+                        self.progress += 1
+                        if row[0][:3] == codecs.BOM_UTF8:
+                            row[0] = row[0][3:]
+                        if file_name == '10226.csv':
+                            brand_id, region, tag_name = 10226, 'cn', cm.unicodify(row[0])
+                            mapping_list = [cm.unicodify(val) for val in row[2:] if val.strip()]
+                            rs = db.query_match(['idmappings'], 'original_tags',
+                                                {'brand_id': brand_id, 'region': region,
+                                                 'tag_name': tag_name}).fetch_row()
+                        else:
+                            brand_id, region, tag_type, tag_name = (cm.unicodify(row[i]) for i in (0, 2, 3, 4))
+                            mapping_list = [cm.unicodify(val) for val in row[6:] if val.strip() and val != 'NULL']
+                            rs = db.query_match(['idmappings'], 'original_tags',
+                                                {'brand_id': brand_id, 'region': region,
+                                                 'tag_type': tag_type,
+                                                 'tag_name': tag_name}).fetch_row()
+                        if not rs or not mapping_list:
+                            continue
+                        db.update({'mapping_list': json.dumps(mapping_list, ensure_ascii=False)}, 'original_tags',
+                                  str.format('idmappings={0}', rs[0][0]))
+                db.commit()
+            except:
+                db.rollback()
+                raise
+
+        db.close()
 
     def func_oneuse1(self):
         db = MySqlDb()

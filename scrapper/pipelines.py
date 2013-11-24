@@ -9,6 +9,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
@@ -348,7 +349,8 @@ class ProductImagePipeline(ImagesPipeline):
                             'width': data['width'], 'height': data['height'], 'format': data['format'],
                             'size': data['size']}, 'images_store')
 
-        self.update_products_image(brand_id, model, checksum)
+        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model}, 'products_image',ignore=True)
+        # self.update_products_image(brand_id, model, checksum)
 
     def item_completed(self, results, item, info):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。
@@ -357,25 +359,41 @@ class ProductImagePipeline(ImagesPipeline):
         model = cm.unicodify(item['metadata']['model'])
         for status, r in filter(lambda val: val[0], results):
             path = r['path']    #.replace(u'\\', u'/')
-            path_db = os.path.normpath(
-                os.path.join(unicode.format(u'{0}_{1}/{2}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'], path)))
-            full_path = os.path.normpath(os.path.join(self.store.basedir, path))
-            file_size = os.path.getsize(full_path)
-            checksum = r['checksum']
-            try:
-                img = Image.open(full_path)
-                aw, ah = img.size
-                afmt = img.format
-            except IOError:
-                continue
 
-            self.db.start_transaction()
-            try:
-                self.update_db({'brand_id': brand_id, 'model': model, 'checksum': checksum, 'path': path_db,
-                                'width': aw, 'height': ah, 'format': afmt, 'url': r['url'], 'size': file_size})
-                self.db.commit()
-            except:
-                self.db.rollback()
-                raise
+            # 框架返回的文件名，有可能后缀是错的。需要找到真实的图片文件名称
+            full_path = os.path.normpath(os.path.join(self.store.basedir, path))
+            dir_path, file_name = os.path.split(full_path)
+            file_base, ext = os.path.splitext(file_name)
+
+            # 找到具有同样base name的文件中，modified time最后的那个
+            tmp = sorted([val for val in os.listdir(dir_path) if re.search(file_base, val)],
+                         key=lambda val: os.stat(os.path.join(dir_path, val)).st_mtime, reverse=True)
+            if not tmp:
+                continue
+            else:
+                file_name = tmp[0]
+                full_path = os.path.normpath(os.path.join(dir_path, file_name))
+                file_base, ext = os.path.split(file_name)
+                path_db = os.path.normpath(os.path.join(
+                    unicode.format(u'{0}_{1}/{2}{3}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'],
+                                   os.path.split(path)[0], ext)))
+
+                file_size = os.path.getsize(full_path)
+                checksum = r['checksum']
+                try:
+                    img = Image.open(full_path)
+                    aw, ah = img.size
+                    afmt = img.format
+                except IOError:
+                    continue
+
+                self.db.start_transaction()
+                try:
+                    self.update_db({'brand_id': brand_id, 'model': model, 'checksum': checksum, 'path': path_db,
+                                    'width': aw, 'height': ah, 'format': afmt, 'url': r['url'], 'size': file_size})
+                    self.db.commit()
+                except:
+                    self.db.rollback()
+                    raise
 
         return item

@@ -19,7 +19,9 @@ import pydevd
 import global_settings as glob
 import common as cm
 from products import utils
+from scripts import dbman
 from scripts.sync_product import SyncProducts
+from scripts.dbman import ProcessTags
 import core
 
 __author__ = 'Zephyre'
@@ -37,6 +39,7 @@ debug_port = glob.DEBUG_PORT
 
 logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
 logger = logging.getLogger()
+
 
 def static_var(varname, value):
     def decorate(func):
@@ -141,75 +144,15 @@ def import_tag_mapping(args):
 
 
 def process_tags(args):
-    idx = 0
-    region = 'cn'
-    brand_id = None
-    db_spec = glob.EDITOR_SPEC
-    db_spider = glob.SPIDER_SPEC
-    while True:
-        if idx >= len(args):
-            break
-        hdr = args[idx]
-        idx += 1
-        if hdr == '-D':
-            pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
-        elif hdr == '-r':
-            region = args[idx]
-            idx += 1
-        elif hdr == '--brand':
-            brand_id = int(args[idx])
-            idx += 1
-        else:
-            logger.critical('Invalid syntax.')
-            return
+    last_update = None
+    extra_cond = None
 
-    if not brand_id:
-        logger.critical('Invalid syntax.')
-        return
+    if 'last-update' in args:
+        last_update = args['last-update'][0]
+    if 'cond' in args:
+        extra_cond = args['cond']
 
-    db = _mysql.connect(host=db_spider['host'], port=db_spider['port'], user=db_spider['username'],
-                        passwd=db_spider['password'], db=db_spider['schema'])
-    db.query("SET NAMES 'utf8'")
-    db.query(str.format('SELECT tag_name,mapping_list FROM products_tag_mapping WHERE brand_id={0} && region="{1}"',
-                        brand_id, region))
-    temp = db.store_result().fetch_row(maxrows=0)
-    mapping_rules = dict((cm.unicodify(val[0]), cm.unicodify(val[1])) for val in temp)
-    db.close()
-
-    db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
-                        passwd=db_spec['password'], db=db_spec['schema'])
-    db.query("SET NAMES 'utf8'")
-
-    db.query(str.format('SELECT idproducts,extra FROM products WHERE brand_id={0} && region="{1}"', brand_id, region))
-    rs = db.store_result()
-
-    db.query('START TRANSACTION')
-    for i in xrange(rs.num_rows()):
-        record = rs.fetch_row(how=1)[0]
-        extra = json.loads(record['extra'])
-        tags = []
-        for k in extra:
-            if isinstance(extra[k], list):
-                tags.extend(extra[k])
-            else:
-                tags.append(extra[k])
-                extra[k] = [extra[k]]
-
-        tags = set(tags)
-        tag_names = []
-        for v in tags:
-            if v in mapping_rules and mapping_rules[v]:
-                tag_names.extend(json.loads(mapping_rules[v]))
-        tag_names = list(set(tag_names))
-
-        db.query(unicode.format(u'UPDATE products SET tags="{0}",extra="{2}" WHERE idproducts={1}',
-                                to_sql(json.dumps(tag_names, ensure_ascii=False)),
-                                record['idproducts'],
-                                to_sql(json.dumps(extra, ensure_ascii=False))
-        ).encode('utf-8'))
-
-    db.query('COMMIT')
-    db.close()
+    core.func_carrier(ProcessTags(last_update, extra_cond), 0.3)
 
 
 def editor_price_processor(args):
@@ -645,6 +588,11 @@ class ImageCheck(object):
         downloader.stop()
 
 
+def release(param_dict):
+    for brand in param_dict['brand']:
+        core.func_carrier(dbman.PublishRelease(brand), 1)
+
+
 def image_check(param_dict):
     """
     检查图片是否正常。
@@ -686,8 +634,6 @@ def argument_parser(args):
         return mstore_error
 
     cmd = args[1]
-    if cmd not in cmd_list:
-        return mstore_error
 
     # 解析命令行参数
     param_dict = {}
@@ -725,7 +671,7 @@ def argument_parser(args):
 
     if 'debug' in param_dict or 'D' in param_dict:
         if 'debug-port' in param_dict:
-            port = param_dict['debug-port']
+            port = int(param_dict['debug-port'][0])
         else:
             port = glob.DEBUG_PORT
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
@@ -746,10 +692,14 @@ def argument_parser(args):
         return lambda: image_check(param_dict)
     elif cmd == 'import_tag':
         return lambda: import_tag_mapping(param_dict)
-    elif cmd == 'process_tags':
+    elif cmd == 'process-tags':
         return lambda: process_tags(param_dict)
     elif cmd == 'sync':
         return lambda: sync(param_dict)
+    elif cmd == 'release':
+        return lambda: release(param_dict)
+    else:
+        return mstore_error
 
 
 if __name__ == "__main__":
