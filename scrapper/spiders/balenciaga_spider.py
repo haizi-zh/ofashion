@@ -24,7 +24,7 @@ class BalenciagaSpider(MFashionSpider):
 
     def __init__(self, region):
         region_list = (
-            'us', 'tw', 'cn', 'tw', 'mo', 'es', 'gb', 'at', 'fr', 'it', 'de', 'au', 'be', 'ca', 'ie', 'jp', 'kr', 'uk')
+            'us', 'cn', 'tw', 'mo', 'es', 'gb', 'at', 'fr', 'it', 'de', 'au', 'be', 'ca', 'ie', 'jp', 'kr', 'uk')
         self.spider_data['hosts'] = {k: 'http://www.balenciaga.com' for k in region_list}
         self.spider_data['home_urls'] = {k: str.format('http://www.balenciaga.com/{0}', 'gb' if k == 'uk' else k) for k
                                          in region_list}

@@ -133,7 +133,7 @@ def set_up_spider(spider_class, region, data):
     crawler.settings.values['REGION'] = region
 
     crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
-                                                 'scrapper.pipelines.ProductPipeline': None} \
+                                                 'scrapper.pipelines.ProductPipeline': 300} \
         if glob.WRITE_DATABASE else {}
 
     # crawler.settings.values['EXTENSIONS'] = {

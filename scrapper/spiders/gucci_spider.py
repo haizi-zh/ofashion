@@ -5,87 +5,71 @@ import os
 import datetime
 import re
 from scrapy import log
-from scrapy.contrib.spiders import CrawlSpider
 from scrapy.http import Request
-from scrapy.selector import HtmlXPathSelector
+from scrapy.selector import Selector
 import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
-gucci_data = {'base_url': 'http://www.gucci.com/{0}/home',
-              # 'details_base': 'http://www.gucci.com/{0}/styles{1}',
-              'host': 'http://www.gucci.com',
-              'supported_regions': {'cn', 'us', 'fr', 'de', 'es', 'it', 'nl', 'ae', 'jp', 'kr', 'au', 'bg', 'cz', 'dk',
-                                    'fi', 'hu', 'ie', 'no', 'pl', 'pt', 'ro', 'si', 'se', 'ch', 'tr', 'uk', 'at', 'ca',
-                                    'be', },
-              'brand_id': 10152, 'brandname_e': 'Gucci', 'brandname_c': u'古驰', 'brandname_s': 'gucci'}
 
+class GucciSpider(MFashionSpider):
+    spider_data = {'brand_id': 10152}
 
-def region_term(region):
-    return 'ca-en' if region == 'ca' else region
+    @classmethod
+    def get_supported_regions(cls):
+        return GucciSpider.spider_data['hosts'].keys()
 
+    def __init__(self, region):
+        supported_regions = ['cn', 'us', 'fr', 'de', 'es', 'it', 'nl', 'ae', 'jp', 'kr', 'au', 'bg', 'cz', 'dk',
+                             'fi', 'hu', 'ie', 'no', 'pl', 'pt', 'ro', 'si', 'se', 'ch', 'tr', 'uk', 'at', 'ca',
+                             'be']
+        self.spider_data['home_urls'] = {k: str.format('http://www.gucci.com/{0}/home', k) for k in supported_regions}
+        self.spider_data['hosts'] = {k: 'http://www.gucci.com' for k in supported_regions}
+        super(GucciSpider, self).__init__('gucci', region)
 
-def create_spider():
-    return GucciSpider()
+    @classmethod
+    def get_instance(cls, region=None):
+        return cls(region)
 
+    def get_host_url(self, region):
+        return self.spider_data['hosts'][region]
 
-def get_spider_data():
-    return dict((k, gucci_data[k]) for k in gucci_data if
-                k in ('host', 'supported_regions', 'brand_id', 'brandname_e', 'brandname_c', 'brandname_s'))
-
-
-class GucciSpider(CrawlSpider):
-    name = 'gucci'
     allowed_domains = ['gucci.com']
-
-    def start_requests(self):
-        region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', self.name, region)
-        if region in gucci_data['supported_regions']:
-            return [Request(url=str.format(gucci_data['base_url'], region_term(region)))]
-        else:
-            self.log(str.format('No data for {0}', region), log.WARNING)
-            return []
 
     def parse(self, response):
         self.log(unicode.format(u'PARSE_HOME: URL={0}', response.url), level=log.DEBUG)
+        metadata = response.meta['userdata']
         mt = re.search(r'www\.gucci\.com/([a-z]{2})', response.url)
         if mt:
             region = mt.group(1)
-            metadata = {'region': region, 'brand_id': gucci_data['brand_id'], 'brandname_e': gucci_data['brandname_e'],
-                        'brandname_c': gucci_data['brandname_c'], 'tags_mapping': {}, 'extra': {}}
-            hxs = HtmlXPathSelector(response)
-            for node1 in hxs.select("//ul[@id='header_main']/li[contains(@class, 'mega_menu')]"):
-                span = node1.select("./span[@class='mega_link']")
+            sel = Selector(response)
+            for node1 in sel.xpath("//ul[@id='header_main']/li[contains(@class, 'mega_menu')]"):
+                span = node1.xpath("./span[@class='mega_link']")
                 if len(span) == 0:
                     continue
                 span = span[0]
-                inner = span.select('.//cufontext')
+                inner = span.xpath('.//cufontext')
                 if len(inner) > 0:
                     cat = cm.unicodify(inner[0]._root.text)
                 else:
                     cat = cm.unicodify(span._root.text)
                 if not cat:
                     continue
-                else:
-                    cat = cat.strip()
 
                 m = copy.deepcopy(metadata)
-                m['extra']['category-1'] = [cat]
-                m['tags_mapping']['category-1'] = [{'name': cat, 'title': cat}]
+                m['tags_mapping']['category-1'] = [{'name': cat.lower(), 'title': cat}]
                 if cat in {u'woman', u'women', u'femme', u'donna', u'女士系列', u'shop women', u'여성 쇼핑', u'damen',
                            u'mujer'}:
                     m['gender'] = [u'female']
                 elif cat in {u'man', u'men', u'homme', u'uomo', u'男士系列', u'shop men', u'남성 쇼핑', u'herren', u'hombre'}:
                     m['gender'] = [u'male']
-                else:
-                    m['gender'] = []
 
-                for node2 in node1.select("./div/ul/li[not(@class='mega_promo')]/a[@href]"):
+                for node2 in node1.xpath("./div/ul/li[not(@class='mega_promo')]/a[@href]"):
                     href = cm.unicodify(node2._root.attrib['href'])
-                    inner = node2.select('.//cufontext')
+                    inner = node2.xpath('.//cufontext')
                     if len(inner) > 0:
                         title = cm.unicodify(inner[0]._root.text)
                     else:
@@ -101,10 +85,9 @@ class GucciSpider(CrawlSpider):
                     if not cat:
                         continue
                     else:
-                        cat = cat.strip()
+                        cat = cat.lower()
 
                     m2 = copy.deepcopy(m)
-                    m2['extra']['category-2'] = [cat]
                     m2['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
                     m2['category'] = [cat]
                     if href.find('http://') == -1:
@@ -122,26 +105,23 @@ class GucciSpider(CrawlSpider):
                 if not cat:
                     return None
                 else:
-                    cat = cat.strip()
+                    cat = cat.lower()
                 title = cm.unicodify(node._root.text)
                 if not title:
                     return None
-                else:
-                    title = title.strip()
-                m['extra']['category-3'] = [cat]
                 m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
             return Request(url=href, meta={'userdata': m}, callback=self.parse_category_3, dont_filter=True)
 
         self.log(unicode.format(u'PARSE_CAT_2: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        hxs = HtmlXPathSelector(response)
+        sel = Selector(response)
 
-        for node in hxs.select(
+        for node in sel.xpath(
                 '//section[@id="sub_nav"]/div[@class="content"]/ul[@id="topsort"]/li[@class="full_row"]/a[@href]'):
             ret = func(node, copy.deepcopy(metadata), with_tag=False)
             if ret:
                 yield ret
-        for node in hxs.select(
+        for node in sel.xpath(
                 '//section[@id="sub_nav"]/div[@class="content"]/ul[@id="topsort"]/li[not(@class="full_row")]/a[@href]'):
             ret = func(node, copy.deepcopy(metadata))
             if ret:
@@ -151,8 +131,8 @@ class GucciSpider(CrawlSpider):
     def parse_category_3(self, response):
         self.log(unicode.format(u'PARSE_CAT_3: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        hxs = HtmlXPathSelector(response)
-        for node in hxs.select(
+        sel = Selector(response)
+        for node in sel.xpath(
                 '//div[contains(@class,"ggpanel")]//li[contains(@class,"odd") or contains(@class,"even")]/img[@rel]'):
             rel = node._root.attrib['rel']
             mt = re.search(r'href="([^"]+)"', rel)
@@ -165,37 +145,37 @@ class GucciSpider(CrawlSpider):
     def parse_variations(self, response):
         self.log(unicode.format(u'PARSE_VARIATIONS: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        hxs = HtmlXPathSelector(response)
-        for node in hxs.select(
+        sel = Selector(response)
+        for node in sel.xpath(
                 '//div[@id="variations"]/div[@id="container_variations"]//ul[@class="items"]/li/a[@href]'):
             href = node._root.attrib['href'][1:]
-            url = gucci_data['host'] + '/' + href
+            url = self.spider_data['hosts'][metadata['region']] + '/' + href
             m = copy.deepcopy(metadata)
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_details, dont_filter=True)
 
     def parse_details(self, response):
         self.log(unicode.format(u'PARSE_DETAILS: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        hxs = HtmlXPathSelector(response)
+        sel = Selector(response)
 
         title = None
-        node = hxs.select('//section[@id="column_description"]//span[@class="container_title"]/h1/span')
+        node = sel.xpath('//section[@id="column_description"]//span[@class="container_title"]/h1/span')
         if len(node) > 0:
             node = node[0]
-            inner = node.select('.//cufontext')
+            inner = node.xpath('.//cufontext')
             if len(inner) == 0:
                 title = cm.unicodify(node._root.text)
             else:
                 title = u''.join(val._root.text for val in inner if val._root.text)
 
-        node = hxs.select('//div[@id="accordion_left"]//div[@id="description"]//ul/li')
+        node = sel.xpath('//div[@id="accordion_left"]//div[@id="description"]//ul/li')
         desc = u'\n'.join(cm.unicodify(val._root.text) for val in node if val._root.text)
 
-        node = hxs.select('//div[@id="zoom_in_window"]/div[@class="zoom_in"]/img[@src]')
+        node = sel.xpath('//div[@id="zoom_in_window"]/div[@class="zoom_in"]/img[@src]')
         if len(node) > 0:
             href = node[0]._root.attrib['src']
             image_base = os.path.split(href)[0]
-            node_list = hxs.select('//div[@id="zoom_tools"]/ul[@id="view_thumbs_list"]/li/img[@src]')
+            node_list = sel.xpath('//div[@id="zoom_tools"]/ul[@id="view_thumbs_list"]/li/img[@src]')
             image_list = set([])
             for node in node_list:
                 href = node._root.attrib['src']
@@ -214,8 +194,8 @@ class GucciSpider(CrawlSpider):
         metadata['url'] = response.url
 
         style_id = os.path.split(response.url)[1]
-        url = str.format('{0}/{1}/styles/{2}/load_style.js', gucci_data['host'], region_term(metadata['region']),
-                         style_id)
+        url = str.format('{0}/{1}/styles/{2}/load_style.js', self.spider_data['hosts'][metadata['region']],
+                         'ca-en' if metadata['region'] == 'ca' else metadata['region'], style_id)
         metadata['dynamic_url'] = response.url + '/2/populate_dynamic_content'
 
         return Request(url=url, meta={'userdata': metadata}, callback=self.parse_style, dont_filter=True,
@@ -260,14 +240,3 @@ class GucciSpider(CrawlSpider):
             return item
         else:
             return None
-
-
-
-
-
-
-
-
-
-
-

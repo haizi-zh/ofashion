@@ -229,6 +229,8 @@ class PublishRelease(object):
             else:
                 model_list[record['model']].append(record)
 
+        self.db.close()
+
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'

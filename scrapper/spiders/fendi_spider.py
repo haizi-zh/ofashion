@@ -38,13 +38,6 @@ class FendiSpider(MFashionSpider):
     def get_host_url(self, region):
         return self.spider_data['hosts'][region]
 
-    # def start_requests(self):
-    #     entry = {'brand_id': 10135, 'extra': {}, 'region': 'cn'}
-    #
-    #     yield Request(
-    #         url='http://www.fendi.com/cn/zh/collections/woman/fall-winter-2013-14/accessories/watches/for903-ggz-qel',
-    #         callback=self.parse_details, meta={'userdata': entry})
-
     def parse(self, response):
         metadata = response.meta['userdata']
         if 'www.fendi.com/cn' in response.url:
