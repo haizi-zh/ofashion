@@ -9,24 +9,13 @@ from scrapy.selector import Selector
 import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
-brand_id = 10300
 
-
-# 实例化
-def create_spider():
-    return PradaSpider()
-
-
-def supported_regions():
-    return PradaSpider.spider_data['supported_regions']
-
-
-class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
-    name = 'prada'
-    spider_data = {'hosts': 'http://store.prada.com',
+class PradaSpider(MFashionSpider):
+    spider_data = {'brand_id': 10300,
                    'home_urls': {'cn': 'http://store.prada.com/hans/CN/',
                                  'us': 'http://store.prada.com/en/US/',
                                  'ap': 'http://store.prada.com/hant/AP/',
@@ -50,63 +39,21 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
                                  'ch': 'http://store.prada.com/en/CH/',
                    },
     }
-    spider_data['supported_regions'] = spider_data['home_urls'].keys()
 
-    def process_href(self, href, host=None):
-        if not href or not href.strip():
-            return None
-        else:
-            href = href.strip()
+    @classmethod
+    def get_supported_regions(cls):
+        return PradaSpider.spider_data['hosts'].keys()
 
-        if re.search('^(http|https)://', href):
-            return href
-        elif re.search('^//', href):
-            return 'http:' + href
-        elif re.search('^/', href):
-            if not host:
-                host = self.spider_data['hosts']
-            return host + href
+    def __init__(self, region):
+        self.spider_data['hosts'] = {k: 'http://store.prada.com' for k in self.spider_data['home_urls']}
+        super(PradaSpider, self).__init__('prada', region)
 
-    def onerr(self, reason):
-        url_main = None
-        response = reason.value.response if hasattr(reason.value, 'response') else None
-        if not response:
-            self.log(str.format('ERROR ON PROCESSING {0}', reason.request.url), log.ERROR)
-            return
+    @classmethod
+    def get_instance(cls, region=None):
+        return cls(region)
 
-        url = response.url
-
-        temp = reason.request.meta
-        if 'userdata' in temp:
-            metadata = temp['userdata']
-            if 'url' in metadata:
-                url_main = metadata['url']
-
-        if url_main and url_main != url:
-            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
-        else:
-            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
-
-        self.log(msg, log.ERROR)
-
-    def __init__(self, *a, **kw):
-        super(PradaSpider, self).__init__(*a, **kw)
-        self.spider_data = copy.deepcopy(PradaSpider.spider_data)
-        self.spider_data['brand_id'] = brand_id
-        for k, v in glob.BRAND_NAMES[self.spider_data['brand_id']].items():
-            self.spider_data[k] = v
-
-    def start_requests(self):
-        region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', PradaSpider.name, region)
-        if region in self.spider_data['supported_regions']:
-            metadata = {'region': region, 'brand_id': brand_id,
-                        'brandname_e': glob.BRAND_NAMES[brand_id]['brandname_e'],
-                        'brandname_c': glob.BRAND_NAMES[brand_id]['brandname_c'], 'tags_mapping': {}, 'extra': {}}
-            return [Request(url=self.spider_data['home_urls'][region], meta={'userdata': metadata})]
-        else:
-            self.log(str.format('No data for {0}', region), log.WARNING)
-            return []
+    def get_host_url(self, region):
+        return self.spider_data['hosts'][region]
 
     def parse(self, response):
         metadata = response.meta['userdata']
@@ -115,13 +62,12 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
         for node in sel.xpath('//div[contains(@class,"menu")]/ul[contains(@class,"collections")]/li[contains(@class,'
                               '"collection")]/div/a[@href]'):
             m = copy.deepcopy(metadata)
-            href = self.process_href(node._root.attrib['href'])
+            href = self.process_href(node._root.attrib['href'], metadata['region'])
             mt = re.search('/([^/]+)$', href)
             if mt:
                 tag_name = cm.unicodify(mt.group(1)).lower()
                 tag_type = 'category-0'
                 tag_text = cm.unicodify(node._root.text).lower() if node._root.text else tag_name
-                m['extra'][tag_type] = [tag_name]
                 m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
 
             yield Request(url=href, callback=self.parse_cat_0, meta={'userdata': m}, errback=self.onerr)
@@ -133,7 +79,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
         for node in sel.xpath('//section[@id="contents"]/article[contains(@class,"products")]/'
                               'div[contains(@class,"product")]/a[@href]'):
             m = copy.deepcopy(metadata)
-            href = self.process_href(node._root.attrib['href'])
+            href = self.process_href(node._root.attrib['href'], metadata['region'])
             temp = node.xpath('./figcaption/div[@class="name"]')
             if not temp:
                 continue
@@ -156,25 +102,24 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
 
         temp = sel.xpath('//section[@class="summary"]/div[@class="color"]/div[@class="name"]')
         if temp:
-            temp = [val.strip() for val in cm.unicodify(temp[0]._root.text).split('+')]
-            metadata['extra']['color'] = temp
-            metadata['tags_mapping']['color'] = [{'name': val, 'title': val} for val in temp]
-            metadata['color'] = temp
+            metadata['color'] = [val.strip() for val in cm.unicodify(temp[0]._root.text).split('+')]
 
         temp = sel.xpath('//section[@class="details"]/figcaption[@class="description"]/ul/li')
         metadata['description'] = '\n'.join(cm.unicodify(val._root.text) for val in temp if val._root.text)
 
         temp = sel.xpath('//article[@class="product"]/figure[@class="slider"]/img[@data-zoom-url]')
-        image_urls = [self.process_href(val._root.attrib['data-zoom-url']) for val in temp]
+        image_urls = [self.process_href(val._root.attrib['data-zoom-url'], metadata['region']) for val in temp]
 
-        metadata['category'] = metadata['extra']['category-1'] if 'category-1' in metadata['extra'] else \
-            metadata['extra']['category-0']
+        metadata['category'] = [val['name'] for val in
+                                metadata['tags_mapping'][
+                                    'category-1' if 'category-1' in metadata['tags_mapping'] else 'category-0']
+                                if val]
 
-        if metadata['extra']['category-0'] in ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes',
-                                               'vrouw', 'frauen'):
+        if metadata['tags_mapping']['category-0'][0]['name'] in \
+                ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen'):
             metadata['gender'] = ['female']
-        elif metadata['extra']['category-0'] in ('man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren',
-                                                 'mann', 'signore'):
+        elif metadata['tags_mapping']['category-0'][0]['name'] in \
+                ('man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore'):
             metadata['gender'] = ['male']
 
         metadata['url'] = response._url
@@ -194,7 +139,8 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
         temp = sel.xpath(
             '//article[contains(@class,"sliding-backgrounds")]//a[@href and contains(@class,"background")]')
         if temp:
-            return Request(url=self.process_href(temp[0]._root.attrib['href']), callback=self.parse_list,
+            return Request(url=self.process_href(temp[0]._root.attrib['href'], metadata['region']),
+                           callback=self.parse_list,
                            meta={'userdata': metadata}, errback=self.onerr)
 
         node = None
@@ -202,7 +148,7 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
                          'div[contains(@class,"name")]/a[@href]')
         if temp:
             for temp1 in temp:
-                if self.process_href(temp1._root.attrib['href']) == response._url:
+                if self.process_href(temp1._root.attrib['href'], metadata['region']) == response._url:
                     node = temp1
                     break
         if not node:
@@ -216,10 +162,8 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
             mt = re.search('/([^/]+)$', href)
             if mt:
                 tag_name = cm.unicodify(mt.group(1)).lower()
-                tag_type = 'category-1'
                 tag_text = cm.unicodify(node1._root.text).lower() if node1._root.text else tag_name
-                m1['extra'][tag_type] = [tag_name]
-                m1['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
+                m1['tags_mapping']['category-1'] = [{'name': tag_name, 'title': tag_text}]
 
             # 是否有子分类级别
             for node2 in node1.xpath(
@@ -229,11 +173,10 @@ class PradaSpider(scrapy.contrib.spiders.CrawlSpider):
                 mt = re.search('/([^/]+)$', href)
                 if mt:
                     tag_name = cm.unicodify(mt.group(1))
-                    tag_type = 'category-2'
                     tag_text = cm.unicodify(node2._root.text) if node2._root.text else tag_name
-                    m2['extra'][tag_type] = [tag_name]
-                    m2['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
-                ret.append(Request(url=self.process_href(href), meta={'userdata': m2}, callback=self.parse_list,
+                    m2['tags_mapping']['category-2'] = [{'name': tag_name, 'title': tag_text}]
+                ret.append(Request(url=self.process_href(href, metadata['region']), meta={'userdata': m2},
+                                   callback=self.parse_list,
                                    errback=self.onerr))
 
         return ret

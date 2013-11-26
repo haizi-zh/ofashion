@@ -16,7 +16,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         根据region，获得对应的host地址
         :param region:
         """
-        pass
+        return self.spider_data['hosts'][region]
 
     @classmethod
     def get_instance(cls, region=None):
@@ -65,7 +65,8 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         return text
 
     def __init__(self, name, region, *a, **kw):
-        self.name = str.format('{0}-{1}', name, region) if region else name
+        # self.name = str.format('{0}-{1}', name, region) if region else name
+        self.name = name
         super(MFashionSpider, self).__init__(*a, **kw)
 
         if not region:
@@ -81,25 +82,29 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
                 metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
                             'tags_mapping': {}, 'category': []}
 
-                return [Request(url=self.spider_data['home_urls'][region], meta={'userdata': metadata},
-                                callback=self.parse, errback=self.onerr)]
+                tmp = self.spider_data['home_urls'][region]
+                start_urls = tmp if cm.iterable(tmp) else [tmp]
+                for url in start_urls:
+                    yield Request(url=url, meta={'userdata': metadata}, callback=self.parse, errback=self.onerr)
             else:
                 self.log(str.format('No data for {0}', region), log.WARNING)
-                return []
 
     def onerr(self, reason):
         url_main = None
-        response = reason.value.response
-        url = response.url
+        if hasattr(reason.value, 'response'):
+            response = reason.value.response
+            url = response.url
 
-        temp = reason.request.meta
-        if 'userdata' in temp:
-            metadata = temp['userdata']
-            if 'url' in metadata:
-                url_main = metadata['url']
-        if url_main and url_main != url:
-            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
+            temp = reason.request.meta
+            if 'userdata' in temp:
+                metadata = temp['userdata']
+                if 'url' in metadata:
+                    url_main = metadata['url']
+            if url_main and url_main != url:
+                msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
+            else:
+                msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
+
+            self.log(msg, log.ERROR)
         else:
-            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
-
-        self.log(msg, log.ERROR)
+            self.log(str.format('Error: {0}', reason))

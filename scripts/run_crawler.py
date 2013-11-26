@@ -166,6 +166,8 @@ def set_up_spider(spider_class, region, data):
     else:
         crawler.settings.values['USER_AGENT'] = ua
 
+    crawler.settings.values['COOKIES_ENABLED'] = (data['cookie'].lower() == 'true') if 'cookie' in data else True
+
     # crawler.settings.values['RETRY_TIMES'] = 3
     # retry_codes = list(crawler.settings.global_defaults.RETRY_HTTP_CODES)
     # retry_codes.append(404)
@@ -208,9 +210,8 @@ if cmd:
         else:
             log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
 
-        for region in region_list if region_list else sc.get_supported_regions():
-            spider = set_up_spider(sc, region, cmd['param'])
-            spider.log('CRAWLER STARTED', log.INFO)
+        # for region in region_list if region_list else sc.get_supported_regions():
+        spider = set_up_spider(sc, region_list, cmd['param'])
 
     if len(living_spiders) > 0:
         reactor.run()   # the script will block here until the spider_closed signal was sent

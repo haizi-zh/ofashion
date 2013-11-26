@@ -12,96 +12,70 @@ import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
 import copy
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
 brand_id = 10074
 
 
-def create_spider():
-    return ChanelSpider()
-
-
-def supported_regions():
-    return ChanelSpider.spider_data['supported_regions']
-
-
-class ChanelSpider(CrawlSpider):
-    name = 'chanel'
+class ChanelSpider(MFashionSpider):
     allowed_domains = ['chanel.com']
 
-    spider_data = {
-        'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': 'it_IT', 'uk': 'en_GB', 'hk': 'en_HK',
-                     'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG', 'ca': 'en_CA', 'de': 'de_DE',
-                     'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
-        'fashion_term': {'cn': 'fashion', 'us': 'fashion', 'it': 'moda', 'fr': 'mode', 'uk': 'fashion',
-                         'hk': 'fashion',
-                         'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion', 'ca': 'fashion',
-                         'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
-        'pricing': 'https://secure.chanel.com/global-service/frontend/pricing/%s/fashion/%s/?format=json',
-        'host': 'http://www-cn.chanel.com',
-        'description_hdr': {u'产品介绍', u'Description'},
-        'details_hdr': {u'使用方法', u'How to use', u"Conseils d'utilisation", u'How-to'}}
-    spider_data['supported_regions'] = spider_data['base_url'].keys()
+    spider_data = {'brand_id': 10074,
+                   'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': 'it_IT', 'uk': 'en_GB',
+                                'hk': 'en_HK',
+                                'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG', 'ca': 'en_CA',
+                                'de': 'de_DE',
+                                'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
+                   'fashion_term': {'cn': 'fashion', 'us': 'fashion', 'it': 'moda', 'fr': 'mode', 'uk': 'fashion',
+                                    'hk': 'fashion', 'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion',
+                                    'ca': 'fashion', 'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
+                   'pricing': 'https://secure.chanel.com/global-service/frontend/pricing/%s/fashion/%s/?format=json',
+                   # 'host': 'http://www-cn.chanel.com',
+                   'description_hdr': {u'产品介绍', u'Description'},
+                   'details_hdr': {u'使用方法', u'How to use', u"Conseils d'utilisation", u'How-to'}}
+    spider_data['hosts'] = {k: 'http://www-cn.chanel.com' for k in spider_data['base_url'].keys()}
 
-    def __init__(self, *a, **kw):
-        super(ChanelSpider, self).__init__(*a, **kw)
-        self.spider_data = copy.deepcopy(ChanelSpider.spider_data)
-        self.spider_data['brand_id'] = brand_id
-        for k, v in glob.BRAND_NAMES[self.spider_data['brand_id']].items():
-            self.spider_data[k] = v
+
+    @classmethod
+    def get_supported_regions(cls):
+        return ChanelSpider.spider_data['hosts'].keys()
+
+    def __init__(self, region):
+        super(ChanelSpider, self).__init__('chanel', region)
+
+    @classmethod
+    def get_instance(cls, region=None):
+        return cls(region)
+
+    def get_host_url(self, region):
+        return self.spider_data['hosts'][region]
 
     def start_requests(self):
-        region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', ChanelSpider.name, region)
-        if region not in self.spider_data['supported_regions']:
-            self.log(str.format('No data for {0}', region), log.WARNING)
-            return []
-
-        region_code = self.spider_data['base_url'][region]
+        region_code = '|'.join(self.spider_data['base_url'][region] for region in self.region_list)
         self.rules = (
-            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/{0}/.+\?sku=\d+$', region_code), )),
+            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+\?sku=\d+$', region_code), )),
                  callback=self.parse_sku1),
-            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/{0}/.+/sku/\d+$', region_code), )),
+            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+/sku/\d+$', region_code), )),
                  callback=self.parse_sku2),
-            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/{0}/.+(?<=/)s\.[^/]+\.html', region_code), )),
+            Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+(?<=/)s\.[^/]+\.html', region_code), )),
                  callback=self.parse_fashion),
-            Rule(SgmlLinkExtractor(allow=(r'.+', ),
-                                   deny=(str.format(r'chanel\.com(?!/{0}/)', region_code), )))
+            Rule(SgmlLinkExtractor(allow=(r'.+', ), ))
+            # deny=(str.format(r'chanel\.com(?!/{0}/)', region_code), )))
         )
         self._compile_rules()
 
-        self.log(str.format('Fetching data for {0}', region), log.INFO)
-        return [Request(url=str.format('{0}/{1}/', self.spider_data['host'], region_code))]
+        for region in self.region_list:
+            if region not in self.get_supported_regions():
+                self.log(str.format('No data for {0}', region), log.WARNING)
+                return
 
-    def onerr(self, reason):
-        def is_interested(url):
-            """
-            判断是否对某个URL感兴趣
-            :param url:
-            """
-            return re.search(r'chanel\.com/{0}/.+\?sku=\d+$', url) or re.search(r'chanel\.com/{0}/.+/sku/\d+$', url) \
-                or re.search(r'chanel\.com/{0}/.+(?<=/)s\.[^/]+\.html', url)
-
-        url_main = None
-        response = reason.value.response
-        url = response.url
-
-        temp = reason.request.meta
-        if 'userdata' in temp:
-            metadata = temp['userdata']
-            if 'url' in metadata:
-                url_main = metadata['url']
-
-        if url_main and url_main != url:
-            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
-        else:
-            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
-
-        self.log(msg, log.ERROR)
+            yield Request(
+                url=str.format('{0}/{1}/', self.spider_data['hosts'][region], self.spider_data['base_url'][region]))
 
     def parse_fashion(self, response):
-        self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.INFO)
+        self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in self.spider_data['base_url'].items():
@@ -110,23 +84,21 @@ class ChanelSpider(CrawlSpider):
                 break
         if not region:
             self.log(str.format('NO VAR SETTINGS: {0}', response.url), log.ERROR)
-            return None
+            return
 
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                    'brandname_e': self.spider_data['brandname_e'], 'url': response.url,
-                    'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
-                    'gender': set([]), 'category': set([]), 'color': set([])}
+                    'url': response.url, 'tags_mapping': {}, 'category': set([])}
 
         mt = re.search(r'var\s+settings', response.body)
         if not mt:
             self.log(str.format('NO VAR SETTINGS: {0}', response.url), log.ERROR)
-            return None
+            return
         content = cm.extract_closure(response.body[mt.start():], '{', '}')[0]
         try:
             data = json.loads(content)
         except ValueError:
             self.log(str.format('FAILED TO LOAD VAR SETTINGS: {0}', response.url), log.ERROR)
-            return None
+            return
 
         try:
             metadata['pricing_service'] = data['servicesURL']['pricing']
@@ -140,17 +112,19 @@ class ChanelSpider(CrawlSpider):
             if re.search(r'^http://', temp):
                 url = temp
             else:
-                url = str.format('{0}{1}', self.spider_data['host'], temp)
-            return Request(url=url, meta={'userdata': metadata}, callback=self.parse_json_request, dont_filter=True,
-                           errback=self.onerr)
+                url = str.format('{0}{1}', self.spider_data['hosts'][region], temp)
+            yield Request(url=url, meta={'userdata': metadata}, callback=self.parse_json_request, dont_filter=True,
+                          errback=self.onerr)
         else:
-            return self.parse_json(metadata, data['sectionCache'])
+            for val in self.parse_json(metadata, data['sectionCache']):
+                yield val
 
     def parse_json_request(self, response):
         metadata = response.meta['userdata']
-        return self.parse_json(metadata, json.loads(response.body))
+        for val in self.parse_json(metadata, json.loads(response.body)):
+            yield val
 
-    def process_image_url(self, href):
+    def process_image_url(self, href, region):
         if re.search(r'\.([a-zA-Z]{3})\.fashionImg(\.look-sheet)*$', href):
             href = re.sub(r'\.([a-zA-Z]{3})\.fashionImg(\.look-sheet)*$', r'.\1.fashionImg.hi.\1', href)
         elif re.search(r'\.[a-zA-Z]{3}$', href):
@@ -159,11 +133,15 @@ class ChanelSpider(CrawlSpider):
             href = None
 
         if href:
-            return cm.norm_url(href, host=self.spider_data['host'])
+            return cm.norm_url(href, host=self.spider_data['hosts'][region])
         else:
             return href
 
     def parse_json(self, metadata, json_data):
+        if not json_data:
+            self.log(str.format('INVALID JSON: {0}', metadata['url'].url), log.ERROR)
+            return
+
         for url, product_info in json_data.items():
             if url not in metadata['url']:
                 continue
@@ -174,15 +152,11 @@ class ChanelSpider(CrawlSpider):
                 if 'title' not in temp:
                     continue
                 cat = cm.unicodify(temp['title'])
-                if not cat or cat in cat_list:
+                if not cat or cat.lower() in cat_list:
                     continue
-                else:
-                    cat = cat.lower()
                 cat_idx += 1
-                cat_list.append(cat)
-                cat_name = str.format('category-{0}', cat_idx)
-                metadata['extra'][cat_name] = [cat]
-                metadata['tags_mapping'][cat_name] = [{'name': cat, 'title': cat}]
+                cat_list.append(cat.lower())
+                metadata['tags_mapping'][str.format('category-{0}', cat_idx)] = [{'name': cat.lower(), 'title': cat}]
             if len(cat_list) > 0 and cat_list[-1]:
                 metadata['category'].add(cat_list[-1])
 
@@ -194,7 +168,7 @@ class ChanelSpider(CrawlSpider):
             except KeyError:
                 if 'imgsrc' in image_data:
                     href = image_data['imgsrc']
-            href = self.process_image_url(href)
+            href = self.process_image_url(href, metadata['region'])
             if href:
                 metadata['image_urls'].add(href)
 
@@ -208,26 +182,23 @@ class ChanelSpider(CrawlSpider):
             info = product_info['data']['details']['information']
 
             if 'ref' in info:
-                return self.func1(metadata, info)
+                for val in self.func1(metadata, info):
+                    yield val
             else:
-                results = []
                 for t1 in info:
                     m1 = copy.deepcopy(metadata)
                     for t2 in t1['datas']:
                         m2 = copy.deepcopy(m1)
-                        results.append(self.func1(m2, t2))
-                return results
-
-        self.log(str.format('INVALID JSON: {0}', metadata['url'].url), log.ERROR)
-        return None
+                        for val in self.func1(m2, t2):
+                            yield val
 
     def func2(self, metadata):
         modules_url = metadata.pop('modules_url')
         if modules_url:
-            return Request(url=modules_url, meta={'userdata': metadata}, callback=self.parse_modules,
-                           errback=self.onerr, dont_filter=True)
+            yield Request(url=modules_url, meta={'userdata': metadata}, callback=self.parse_modules,
+                          errback=self.onerr, dont_filter=True)
         else:
-            return self.init_item(metadata)
+            yield self.init_item(metadata)
 
     def parse_modules(self, response):
         metadata = response.meta['userdata']
@@ -248,7 +219,7 @@ class ChanelSpider(CrawlSpider):
             if url:
                 metadata['image_urls'].add(url)
 
-        return self.init_item(metadata)
+        yield self.init_item(metadata)
 
     def reformat(self, text):
         """
@@ -286,16 +257,18 @@ class ChanelSpider(CrawlSpider):
         # price
         if pricing_service and 'refPrice' in info:
             url = self.spider_data['pricing'] % (self.spider_data['base_url'][metadata['region']], info['refPrice'])
-            return Request(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
-                           callback=self.parse_price, errback=self.onerr, dont_filter=True)
+            yield Request(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
+                          callback=self.parse_price, errback=self.onerr, dont_filter=True)
         else:
-            return self.func2(metadata)
+            for val in self.func2(metadata):
+                yield val
 
     def init_item(self, metadata):
-        metadata['color'] = list(metadata['color'])
-        metadata['gender'] = list(metadata['gender'])
+        if 'color' in metadata:
+            metadata['color'] = list(metadata['color'])
+        if 'gender' in metadata:
+            metadata['gender'] = list(metadata['gender'])
         metadata['category'] = list(metadata['category'])
-        metadata['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         item = ProductItem()
         item['image_urls'] = list(metadata.pop('image_urls'))
@@ -313,15 +286,15 @@ class ChanelSpider(CrawlSpider):
                     price_data = price_data[0]['price']
                     if 'amount' in price_data and 'currency-symbol' in price_data:
                         metadata['price'] = price_data['amount']
-                        metadata['currency'] = price_data['currency-symbol']
                     else:
                         metadata['price'] = price_data['formatted-amount']
                 except (IndexError, KeyError):
                     pass
-        return self.func2(metadata)
+        for val in self.func2(metadata):
+            yield val
 
     def parse_sku1(self, response):
-        self.log(str.format('PARSE_SKU1: {0}', response.url), level=log.INFO)
+        self.log(str.format('PARSE_SKU1: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in self.spider_data['base_url'].items():
@@ -329,17 +302,15 @@ class ChanelSpider(CrawlSpider):
                 region = a
                 break
         if not region:
-            return None
+            return
 
         mt = re.search(r'\?sku=(\d+)$', response.url)
         if not mt:
-            return None
+            return
         model = mt.group(1)
 
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                    'brandname_e': self.spider_data['brandname_e'], 'model': model, 'url': response.url,
-                    'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
-                    'gender': set([]), 'category': set([]), 'color': set([])}
+                    'model': model, 'url': response.url, 'tags_mapping': {}, 'category': set([])}
 
         sel = Selector(response)
         cat_idx = 0
@@ -348,21 +319,23 @@ class ChanelSpider(CrawlSpider):
             cat = cm.unicodify(node._root.text)
             if not cat:
                 continue
-            else:
-                cat = cat.lower()
             if node._root.attrib['class'] == 'WT_cg_s':
-                metadata['category'].add(cat)
-            if cat in cat_list:
+                if 'category' not in metadata:
+                    metadata['category'] = set([])
+                metadata['category'].add(cat.lower())
+            if cat.lower() in cat_list:
                 continue
 
             cat_idx += 1
-            cat_list.append(cat)
-            cat_name = str.format('category-{0}', cat_idx)
-            metadata['extra'][cat_name] = [cat]
-            metadata['tags_mapping'][cat_name] = [{'name': cat, 'title': cat}]
+            cat_list.append(cat.lower())
+            metadata['tags_mapping'][str.format('category-{0}', cat_idx)] = [{'name': cat.lower(), 'title': cat}]
             if u'男士' in cat:
+                if 'gender' not in metadata:
+                    metadata['gender'] = set([])
                 metadata['gender'].add(u'male')
             if u'女士' in cat:
+                if 'gender' not in metadata:
+                    metadata['gender'] = set([])
                 metadata['gender'].add(u'female')
 
         temp = sel.xpath('//div[@class="productName"]')
@@ -429,11 +402,11 @@ class ChanelSpider(CrawlSpider):
                               for node in sel.xpath('//div[@class="major productImg"]/img[@src]') if
                               node._root.attrib['src'] and node._root.attrib['src'].strip()))
 
-        metadata['color'] = list(metadata['color'])
-        metadata['gender'] = list(metadata['gender'])
+        if 'color' in metadata:
+            metadata['color'] = list(metadata['color'])
+        if 'gender' in metadata:
+            metadata['gender'] = list(metadata['gender'])
         metadata['category'] = list(metadata['category'])
-
-        metadata['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if 'model' in metadata:
             item = ProductItem()
@@ -441,12 +414,10 @@ class ChanelSpider(CrawlSpider):
             item['url'] = metadata['url']
             item['model'] = metadata['model']
             item['metadata'] = metadata
-            return item
-        else:
-            return None
+            yield item
 
     def parse_sku2(self, response):
-        self.log(str.format('PARSE_SKU2: {0}', response.url), level=log.INFO)
+        self.log(str.format('PARSE_SKU2: {0}', response.url), level=log.DEBUG)
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
         region = None
         for a, b in self.spider_data['base_url'].items():
@@ -454,17 +425,15 @@ class ChanelSpider(CrawlSpider):
                 region = a
                 break
         if not region:
-            return None
+            return
 
         mt = re.search(r'/sku/(\d+)$', response.url)
         if not mt:
-            return None
+            return
         model = mt.group(1)
 
-        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                    'brandname_e': self.spider_data['brandname_e'], 'model': model, 'url': response.url,
-                    'brandname_c': self.spider_data['brandname_c'], 'tags_mapping': {}, 'extra': {},
-                    'gender': set([]), 'category': set([]), 'color': set([])}
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'model': model, 'url': response.url,
+                    'tags_mapping': {}, 'category': set([])}
 
         sel = Selector(response)
         cat_idx = 0
@@ -473,24 +442,23 @@ class ChanelSpider(CrawlSpider):
             cat = cm.unicodify(node._root.text)
             if not cat:
                 continue
-            else:
-                cat = cat.lower()
             if node._root.attrib['class'] == 'WT_cg_s':
-                metadata['category'].add(cat)
-            if cat in cat_list:
+                metadata['category'].add(cat.lower())
+            if cat.lower() in cat_list:
                 continue
 
             cat_idx += 1
-            cat_list.append(cat)
+            cat_list.append(cat.lower())
             cat_name = str.format('category-{0}', cat_idx)
-            metadata['extra'][cat_name] = [cat]
-            metadata['tags_mapping'][cat_name] = [{'name': cat, 'title': cat}]
+            metadata['tags_mapping'][cat_name] = [{'name': cat.lower(), 'title': cat}]
             if u'男士' in cat or re.search(r'\bman\b', cat, flags=re.I) or re.search(r'\bmen\b', cat, flags=re.I) or \
                     re.search(r'\bhomme\b', cat, flags=re.I) or re.search(r'\buomo\b', cat, flags=re.I) or \
                     re.search(r'\bhombre\b', cat, flags=re.I) or u'男性' in cat or \
                     re.search(r'\bherren\b', cat, flags=re.I) or re.search(r'\bmasculinos\b', cat, flags=re.I) or \
                     re.search(r'\bhomens \b', cat, flags=re.I):
                 # Masculinos
+                if 'gender' not in metadata:
+                    metadata['gender'] = set([])
                 metadata['gender'].add(u'male')
             if u'女士' in cat or re.search(r'\bwoman\b', cat, flags=re.I) or re.search(r'\bwomen\b', cat, flags=re.I) or \
                     re.search(r'\bfemme\b', cat, flags=re.I) or re.search(r'\bdonna\b', cat, flags=re.I) or \
@@ -498,6 +466,8 @@ class ChanelSpider(CrawlSpider):
                     re.search(r'\bdamen\b', cat, flags=re.I) or re.search(r'\bfemeninos\b', cat, flags=re.I) or \
                     re.search(r'\bmulheres \b', cat, flags=re.I):
                 # Femeninos
+                if 'gender' not in metadata:
+                    metadata['gender'] = set([])
                 metadata['gender'].add(u'female')
 
         temp = sel.xpath('//div[contains(@class, "product_detail_container")]')
@@ -552,11 +522,11 @@ class ChanelSpider(CrawlSpider):
                 '//section[@class="product_image_container"]/img[@src and @class="product_image"]') if
                 node._root.attrib['src'] and node._root.attrib['src'].strip()))
 
-        metadata['color'] = list(metadata['color'])
-        metadata['gender'] = list(metadata['gender'])
+        if 'color' in metadata:
+            metadata['color'] = list(metadata['color'])
+        if 'gender' in metadata:
+            metadata['gender'] = list(metadata['gender'])
         metadata['category'] = list(metadata['category'])
-
-        metadata['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if 'model' in metadata:
             item = ProductItem()
@@ -564,6 +534,4 @@ class ChanelSpider(CrawlSpider):
             item['url'] = metadata['url']
             item['model'] = metadata['model']
             item['metadata'] = metadata
-            return item
-        else:
-            return None
+            yield item

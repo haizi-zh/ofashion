@@ -40,8 +40,10 @@ class CoachSpider(MFashionSpider):
             region_list = [region]
         self.region = region
         self.allowed_domains = [self.spider_data['domains'][val] for val in region_list]
+        # 每个单品页面的referer，都对应于某些category
+        self.url_cat_dict = {}
 
-        super(CoachSpider, self).__init__('balenciaga', region)
+        super(CoachSpider, self).__init__('coach', region)
 
     @classmethod
     def get_instance(cls, region=None):
@@ -89,9 +91,52 @@ class CoachSpider(MFashionSpider):
             for req in next_func(reason.value.response, prev_success=False):
                 yield req
 
+    def parse_cat(self, response):
+        def func(node):
+            return self.reformat(cm.unicodify(node._root.text))
+
+        sel = Selector(response)
+        tags = filter(lambda val: val,
+                      (func(node) for node in sel.xpath(
+                          '//div[@class="noheaderBreadcrumb" or @class="pageBreadcrumb"]/a[@href]')))
+        if not tags:
+            # 美国样式
+            tmp = sel.xpath('//div[@id="breadcrumbs"]')
+            if tmp:
+                tag = cm.unicodify(tmp[0]._root.text)
+                if tag:
+                    tag = re.sub(r'^\s*/\s*', '', tag)
+                    tags = [tag]
+                else:
+                    tags = []
+                tags.extend(
+                    filter(lambda val: val, (cm.unicodify(val._root.text) for val in tmp[0].xpath('.//a[@href]'))))
+
+        tag_list = []
+        for idx, tag_name in enumerate(tags):
+            tag_list.append({'type': str.format('category-{0}', idx), 'name': tag_name.lower(), 'title': tag_name})
+
+        referer = response.meta['coach-referer']
+        self.url_cat_dict[referer] = tag_list
+
+        if not tag_list:
+            self.log(str.format('No category info found in referer: {0}', referer), log.WARNING)
+        return self.parse_details(response.meta['stash'])
+
     def parse_details(self, response):
         metadata = {'region': self.region, 'brand_id': self.spider_data['brand_id'],
                     'tags_mapping': {}, 'category': []}
+
+        # 根据referer，获得category信息
+        referer = response.request.headers['Referer']
+        if referer not in self.url_cat_dict:
+            return Request(url=referer, callback=self.parse_cat, meta={'stash': response, 'coach-referer': referer},
+                           errback=self.onerr, dont_filter=True)
+        tag_list = self.url_cat_dict[referer]
+        for tag in tag_list:
+            metadata['tags_mapping'][tag['type']] = [{'name': tag['name'], 'title': tag['title']}]
+        if tag_list:
+            metadata['category'] = [tag_list[-1]['name']]
 
         sel = Selector(response)
 
@@ -119,12 +164,12 @@ class CoachSpider(MFashionSpider):
             metadata['name'] = cm.unicodify(tmp[0]._root.attrib['value'])
 
         # 价格信息
-        yield Request(url=self.spider_data['price_url'][self.region], method='POST', dont_filter=True,
-                      body=str.format('skuCode={0}', sku_code), callback=self.get_info, errback=self.onerr,
-                      headers={'Content-Type': 'application/x-www-form-urlencoded',
-                               'Accept-Encoding': 'gzip,deflate,sdch',
-                               'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
-                      meta={'userdata': metadata, 'next_func': self.get_info})
+        return Request(url=self.spider_data['price_url'][self.region], method='POST', dont_filter=True,
+                       body=str.format('skuCode={0}', sku_code), callback=self.get_info, errback=self.onerr,
+                       headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                'Accept-Encoding': 'gzip,deflate,sdch',
+                                'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
+                       meta={'userdata': metadata, 'next_func': self.get_info})
 
     def get_info(self, response, prev_success=True):
         metadata = response.meta['userdata']
@@ -148,15 +193,18 @@ class CoachSpider(MFashionSpider):
         if prev_success:
             try:
                 data = json.loads(response.body)
-                metadata['description'] = self.reformat(
-                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['description']))
-                metadata['details'] = self.reformat(re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['detail']))
+                if data['description'][0]['description']:
+                    metadata['description'] = self.reformat(
+                        re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['description']))
+                if data['description'][0]['detail']:
+                    metadata['details'] = self.reformat(
+                        re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['detail']))
             except (ValueError, IndexError, KeyError):
                 pass
 
         # 说明信息
         yield Request(url=self.spider_data['image_url'][self.region], method='POST', dont_filter=True,
-                      body=str.format('styleCode={0}', metadata['model']), callback=self.parse_final,
+                      body=str.format('styleCode={0}', metadata['model'].lower()), callback=self.parse_final,
                       headers={'Content-Type': 'application/x-www-form-urlencoded',
                                'Accept-Encoding': 'gzip,deflate,sdch',
                                'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
@@ -179,5 +227,3 @@ class CoachSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         return item
-
-

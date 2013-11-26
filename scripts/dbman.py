@@ -126,8 +126,8 @@ class PublishRelease(object):
             if k['region'] in self.region_order else sys.maxint)
         main_entry = sorted_prods[0]
         entry = {k: cm.unicodify(main_entry[k]) for k in (
-            'brand_id', 'region', 'model', 'name', 'description', 'details', 'gender', 'category', 'color', 'url')}
-        entry['idproducts_list'] = json.dumps([int(val['idproducts']) for val in prods], ensure_ascii=False)
+            'brand_id', 'model', 'name', 'description', 'details', 'gender', 'category', 'color', 'url')}
+        # entry['idproducts_list'] = json.dumps([int(val['idproducts']) for val in prods], ensure_ascii=False)
 
         mfashion_tags = [cm.unicodify(val[0]) for val in
                          self.db.query(str.format('SELECT DISTINCT p1.tag FROM mfashion_tags AS p1 '
@@ -146,6 +146,8 @@ class PublishRelease(object):
         entry['original_tags'] = json.dumps(original_tags, ensure_ascii=False)
 
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
+        entry['brandname_e'] = gs.BRAND_NAMES[int(entry['brand_id'])]['brandname_e']
+        entry['brandname_c'] = gs.BRAND_NAMES[int(entry['brand_id'])]['brandname_c']
 
         # pid和region之间的关系
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
@@ -182,30 +184,35 @@ class PublishRelease(object):
             entry['price_cn'] = tmp['cn']['price']
 
         image_list = []
-        checksums = set([])
+        checksums = []
         cover_checksum = None
         p = prods[0]
         rs = self.db.query_match(['checksum'], 'products_image',
-                                 {'brand_id': p['brand_id'], 'model': p['model']}).fetch_row(maxrows=0)
+                                 {'brand_id': p['brand_id'], 'model': p['model']},
+                                 tail_str='ORDER BY idproducts_image').fetch_row(maxrows=0)
         for val in rs:
-            checksums.add(val[0])
+            if val[0] in checksums:
+                continue
+            checksums.append(val[0])
             if not cover_checksum:
                 cover_checksum = val[0]
+        checksum_order = {key: idx for idx, key in enumerate(checksums)}
 
+        # 如果没有图片，则暂时不添加到release表中
         if checksums:
             rs = self.db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
                                      str.format('checksum IN ({0})',
                                                 ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
                 maxrows=0, how=1)
-            for val in rs:
+            for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
                 tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
                 image_list.append(tmp)
                 if val['checksum'] == cover_checksum:
-                    entry['cover_image'] = tmp
+                    entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
 
             entry['image_list'] = json.dumps(image_list, ensure_ascii=False)
 
-        self.db.insert(entry, 'products_release')
+            self.db.insert(entry, 'products_release')
 
     def run(self):
         self.db = MySqlDb()
@@ -215,11 +222,13 @@ class PublishRelease(object):
 
         # 每一个model，对应哪些pid需要合并？
         model_list = {}
-        rs = self.db.query_match(['COUNT(DISTINCT model)'], self.products_tbl, {'brand_id': self.brand_id})
+        rs = self.db.query_match(['COUNT(*)'], self.products_tbl, {'brand_id': self.brand_id})
         self.tot = int(rs.fetch_row()[0][0])
         rs = self.db.query_match(['*'], self.products_tbl, {'brand_id': self.brand_id}, tail_str='ORDER BY model')
+        tmp = rs.fetch_row(how=1, maxrows=0)
         for self.progress in xrange(self.tot):
-            record = rs.fetch_row(how=1)[0]
+            # record = rs.fetch_row(how=1)[0]
+            record = tmp[self.progress]
             if record['model'] not in model_list:
                 if model_list.keys():
                     # 归并上一个model

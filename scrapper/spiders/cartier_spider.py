@@ -9,33 +9,23 @@ from scrapy.selector import Selector
 import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
-brand_id = 10066
 
-
-# 实例化
-def create_spider():
-    return CartierSpider()
-
-
-def supported_regions():
-    return CartierSpider.spider_data['supported_regions']
-
-
-class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
-    name = 'cartier'
+class CartierSpider(MFashionSpider):
     handle_httpstatus_list = [403, 504]
 
-    spider_data = {'hosts': {'cn': 'http://www.cartier.cn', 'us': 'http://www.cartier.us',
+    spider_data = {'brand_id': 10066,
+                   'hosts': {'cn': 'http://www.cartier.cn', 'us': 'http://www.cartier.us',
                              'fr': 'http://www.cartier.fr', 'jp': 'http://www.cartier.jp',
                              'uk': 'http://www.cartier.co.uk', 'kr': 'http://www.cartier.co.kr',
                              'tw': 'http://www.tw.cartier.com', 'br': 'http://www.cartier.com.br',
                              'de': 'http://www.cartier.de', 'es': 'http://www.cartier.es',
                              'ru': 'http://www.ru.cartier.com', 'it': 'http://www.cartier.it',
                              'hk': 'http://www.cartier.hk', 'ii': 'http://www.cartier.com'
-    },
+                   },
                    'home_urls': {'cn': 'http://www.cartier.cn/%E7%B3%BB%E5%88%97/',
                                  'us': 'http://www.cartier.us/collections/',
                                  'fr': 'http://www.cartier.fr/collections/',
@@ -66,63 +56,20 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
                                  'hk': 'http://www.cartier.hk/ajax/navigation/',
                                  'ii': 'http://www.cartier.com/ajax/navigation/'
                    }}
-    spider_data['supported_regions'] = spider_data['hosts'].keys()
 
-    def process_href(self, href, region, host=None):
-        if not href or not href.strip():
-            return None
-        else:
-            href = href.strip()
+    @classmethod
+    def get_supported_regions(cls):
+        return CartierSpider.spider_data['hosts'].keys()
 
-        if re.search('^(http|https)://', href):
-            return href
-        elif re.search('^//', href):
-            return 'http:' + href
-        elif re.search('^/', href):
-            if not host:
-                host = self.spider_data['hosts'][region]
-            return host + href
+    def __init__(self, region):
+        super(CartierSpider, self).__init__('cartier', region)
 
-    def __init__(self, *a, **kw):
-        super(CartierSpider, self).__init__(*a, **kw)
-        self.spider_data = copy.deepcopy(CartierSpider.spider_data)
-        self.spider_data['brand_id'] = brand_id
-        for k, v in glob.BRAND_NAMES[self.spider_data['brand_id']].items():
-            self.spider_data[k] = v
+    @classmethod
+    def get_instance(cls, region=None):
+        return cls(region)
 
-    def onerr(self, reason):
-        url_main = None
-        response = reason.value.response if hasattr(reason.value, 'response') else None
-        if not response:
-            self.log(unicode.format(u'ERROR ON PROCESSING {0}', reason.request.url).encode('utf-8'), log.ERROR)
-            return
-        url = response.url
-        temp = reason.request.meta
-        if 'userdata' in temp:
-            metadata = temp['userdata']
-            if 'url' in metadata:
-                url_main = metadata['url']
-
-        if url_main and url_main != url:
-            msg = str.format('ERROR ON PROCESSING {0}, REFERER: {1}, CODE: {2}', url, url_main, response.status)
-        else:
-            msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
-
-        self.log(msg, log.ERROR)
-
-    def start_requests(self):
-        region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', CartierSpider.name, region)
-        if region in self.spider_data['supported_regions']:
-            metadata = {'region': region, 'brand_id': brand_id,
-                        'brandname_e': glob.BRAND_NAMES[brand_id]['brandname_e'],
-                        'brandname_c': glob.BRAND_NAMES[brand_id]['brandname_c'], 'tags_mapping': {}, 'extra': {}}
-
-            return [Request(url=self.spider_data['home_urls'][region], meta={'userdata': metadata}, callback=self.parse,
-                            errback=self.onerr)]
-        else:
-            self.log(str.format('No data for {0}', region), log.WARNING)
-            return []
+    def get_host_url(self, region):
+        return self.spider_data['hosts'][region]
 
     def parse(self, response):
         metadata = response.meta['userdata']
@@ -134,12 +81,10 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
                 continue
             else:
                 temp = temp.strip()
-            tag_name = cm.unicodify(temp).lower()
-            tag_type = 'category-0'
-            tag_text = tag_name
+            tag_text = cm.unicodify(temp)
+            tag_name = tag_text.lower()
             metadata_0 = copy.deepcopy(metadata)
-            metadata_0['extra'][tag_type] = [tag_name]
-            metadata_0['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
+            metadata_0['tags_mapping']['category-0'] = [{'name': tag_name, 'title': tag_text}]
             metadata_0['category'] = [tag_name]
 
             for node_1 in node_0.xpath('../div/ul/li/ul/li/a[@href]'):
@@ -149,13 +94,10 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
                     continue
                 else:
                     temp = temp.strip()
-                tag_name = cm.unicodify(temp).lower()
-                tag_type = 'category-1'
-                tag_text = tag_name
-
+                tag_text = cm.unicodify(temp)
+                tag_name=tag_text.lower()
                 metadata_1 = copy.deepcopy(metadata_0)
-                metadata_1['extra'][tag_type] = [tag_name]
-                metadata_1['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
+                metadata_1['tags_mapping']['category-1'] = [{'name': tag_name, 'title': tag_text}]
                 metadata_1['page_id'] = 0
 
                 yield Request(url=href, meta={'userdata': metadata_1}, callback=self.parse_list, errback=self.onerr,
@@ -175,8 +117,7 @@ class CartierSpider(scrapy.contrib.spiders.CrawlSpider):
         if temp:
             collection = cm.unicodify(temp[0]._root.text)
             if collection:
-                metadata['extra']['collection'] = [collection]
-                metadata['tags_mapping']['collection'] = [{'name': collection, 'title': collection}]
+                metadata['tags_mapping']['collection'] = [{'name': collection.lower(), 'title': collection}]
 
         temp = sel.xpath(
             '//div[@class="commerce-product-sku"]/span[@itemprop="productID" and @class="commerce-product-sku-id"]')

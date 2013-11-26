@@ -32,12 +32,13 @@ EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
 
 # Port for remote debugging
 DEBUG_HOST = 'localhost'
-DEBUG_PORT = 7112
+DEBUG_PORT = 7101
 DEBUG_FLAG = True
 WRITE_DATABASE = True
 
 # Log settings
 LOG_DEBUG = False
+
 
 def __fetch_brand_info():
     db = core.MySqlDb()
@@ -59,6 +60,9 @@ def __fetch_region_info():
                             'currency': k['currency']}
             for k in tmp}
 
+
+DECIMAL_MARK = {'.': {'cn', 'au', 'us', 'hk', 'tw'},
+                ',': {'fr', 'de', 'it', 'fi'}}
 
 BRAND_NAMES = __fetch_brand_info()
 REGION_INFO = __fetch_region_info()

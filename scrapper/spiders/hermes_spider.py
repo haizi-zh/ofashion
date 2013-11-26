@@ -9,56 +9,36 @@ from scrapy.selector import Selector
 import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
-brand_id = 10166
 
-# 实例化
-def create_spider():
-    return HermesSpider()
-
-
-def supported_regions():
-    return HermesSpider.spider_data['supported_regions']
-
-
-class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
-    # 必须实现
-    name = 'hermes'
+class HermesSpider(MFashionSpider):
     allowed_domains = ['hermes.com']
-    # //
 
-    spider_data = {'base_url': {'us': 'http://usa.hermes.com/', 'fr': 'http://france.hermes.com/',
-                                'at': 'http://austria.hermes.com/', 'be': 'http://belgium-nl.hermes.com/',
-                                'dk': 'http://denmark.hermes.com/', 'de': 'http://germany.hermes.com/',
-                                'es': 'http://spain.hermes.com/', 'fi': 'http://finland.hermes.com/',
-                                'ie': 'http://ireland.hermes.com/', 'it': 'http://italy.hermes.com/',
-                                'lu': 'http://luxembourg.hermes.com/', 'nl': 'http://netherlands.hermes.com/',
-                                'no': 'http://norway.hermes.com/', 'ch': 'http://switzerland-fr.hermes.com/',
-                                'se': 'http://sweden.hermes.com/', 'uk': 'http://uk.hermes.com/',
-                                'jp': 'http://japan.hermes.com/', 'ca': 'http://canada-en.hermes.com/'}}
-    spider_data['supported_regions'] = spider_data['base_url'].keys()
+    spider_data = {'home_urls': {'us': 'http://usa.hermes.com', 'fr': 'http://france.hermes.com',
+                                 'at': 'http://austria.hermes.com', 'be': 'http://belgium-nl.hermes.com',
+                                 'dk': 'http://denmark.hermes.com', 'de': 'http://germany.hermes.com',
+                                 'es': 'http://spain.hermes.com', 'fi': 'http://finland.hermes.com',
+                                 'ie': 'http://ireland.hermes.com', 'it': 'http://italy.hermes.com',
+                                 'lu': 'http://luxembourg.hermes.com', 'nl': 'http://netherlands.hermes.com',
+                                 'no': 'http://norway.hermes.com', 'ch': 'http://switzerland-fr.hermes.com',
+                                 'se': 'http://sweden.hermes.com', 'uk': 'http://uk.hermes.com',
+                                 'jp': 'http://japan.hermes.com', 'ca': 'http://canada-en.hermes.com'},
+                   'brand_id': 10166}
+    spider_data['hosts'] = spider_data['home_urls']
 
-    def __init__(self, *a, **kw):
-        super(HermesSpider, self).__init__(*a, **kw)
-        self.spider_data = copy.deepcopy(HermesSpider.spider_data)
-        self.spider_data['brand_id'] = brand_id
-        for k, v in glob.BRAND_NAMES[self.spider_data['brand_id']].items():
-            self.spider_data[k] = v
+    @classmethod
+    def get_supported_regions(cls):
+        return HermesSpider.spider_data['hosts'].keys()
 
-    # 必须实现
-    def start_requests(self):
-        region = self.crawler.settings['REGION']
-        self.name = str.format('{0}-{1}', self.name, region)
-        if region in self.spider_data['supported_regions']:
-            metadata = {'region': region, 'brand_id': brand_id,
-                        'brandname_e': glob.BRAND_NAMES[brand_id]['brandname_e'],
-                        'brandname_c': glob.BRAND_NAMES[brand_id]['brandname_c'], 'tags_mapping': {}, 'extra': {}}
-            return [Request(url=self.spider_data['base_url'][region], meta={'userdata': metadata}, dont_filter=False)]
-        else:
-            self.log(str.format('No data for {0}', region), log.WARNING)
-            return []
+    def __init__(self, region):
+        super(HermesSpider, self).__init__('hermes', region)
+
+    @classmethod
+    def get_instance(cls, region=None):
+        return cls(region)
 
     def parse(self, response):
         metadata = response.meta['userdata']
@@ -77,10 +57,9 @@ class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
                 continue
             href = temp[0]._root.attrib['href']
             tag_text = u', '.join([cm.html2plain(cm.unicodify(val.text)) for val in temp[0]._root.iterdescendants() if
-                                   val.text and val.text.strip()]).lower()
+                                   val.text and val.text.strip()])
 
             m = copy.deepcopy(metadata)
-            m['extra'][tag_type] = [tag_name]
             m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
 
             if tag_name in ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen'):
@@ -126,10 +105,9 @@ class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
             url = None
             for k, v in node.items():
                 if k == 'href':
-                    url = v
+                    url = self.process_href(v, metadata['region'])
                 elif re.search(r'category-\d+', k):
-                    m['extra'][k] = [v]
-                    m['tags_mapping'][k] = [{'name': v, 'title': v}]
+                    m['tags_mapping'][k] = [{'name': v.lower(), 'title': v}]
             if url:
                 yield Request(url=url, meta={'userdata': m, 'main-page': True}, callback=self.parse_list)
 
@@ -138,23 +116,21 @@ class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
         temp = sel.xpath('//div[contains(@class,"offer-description")]')
         # 此为单品详细介绍页面
         if temp:
-            return self.parse_details(response)
+            for val in self.parse_details(response):
+                yield val
+        else:
+            metadata = response.meta['userdata']
+            for node in sel.xpath('//div[contains(@class,"category-products")]/div[@class="stand"]/'
+                                  'ul[@class="products"]/li[@id]/a[@href]'):
+                url = node._root.attrib['href']
+                yield Request(url=url, meta={'userdata': copy.deepcopy(metadata)}, callback=self.parse_details)
 
-        ret = []
-        metadata = response.meta['userdata']
-        for node in sel.xpath(
-                '//div[contains(@class,"category-products")]/div[@class="stand"]/ul[@class="products"]/li[@id]/a[@href]'):
-            url = node._root.attrib['href']
-            ret.append(Request(url=url, meta={'userdata': copy.deepcopy(metadata)}, callback=self.parse_details))
-
-        # 处理分页信息
-        if 'main-page' in response.meta and response.meta['main-page']:
-            for node in sel.xpath('//div[@class="pager"]//li//a[@href]'):
-                ret.append(Request(url=node._root.attrib['href'],
-                                   meta={'userdata': copy.deepcopy(metadata), 'main-page': False},
-                                   callback=self.parse_list))
-
-        return ret
+            # 处理分页信息
+            if 'main-page' in response.meta and response.meta['main-page']:
+                for node in sel.xpath('//div[@class="pager"]//li//a[@href]'):
+                    yield Request(url=node._root.attrib['href'],
+                                  meta={'userdata': copy.deepcopy(metadata), 'main-page': False},
+                                  callback=self.parse_list)
 
     def parse_details(self, response):
         def func(product_id):
@@ -166,9 +142,9 @@ class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
             image_url = data['baseImages'][product_id]
             # 尝试找到zoom图
             zoom_image_url = re.sub(r'/default/([^/]+)$', r'/zoom/\1', image_url)
-            if zoom_image_url in cm.unicodify(response._body):
+            if zoom_image_url in cm.unicodify(response.body):
                 image_url = zoom_image_url
-            elif zoom_image_url.replace('/', r'\/') in cm.unicodify(response._body):
+            elif zoom_image_url.replace('/', r'\/') in cm.unicodify(response.body):
                 image_url = zoom_image_url
 
             m['description'] = data['descriptions'][product_id]
@@ -191,10 +167,11 @@ class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
                 if attrib_name == 'color':
                     m['color'] = temp
                 else:
-                    m['extra'][attrib_name] = temp
+                    m['tags_mapping'][cm.unicodify(attrib_name).lower()] = \
+                        [{'name': val.lower(), 'title': val} for val in temp]
 
-            if 'category-1' in m['extra']:
-                m['category'] = m['extra']['category-1']
+            if 'category-1' in m['tags_mapping']:
+                m['category'] = [val['name'] for val in m['tags_mapping']['category-1']]
 
             # 必须实现
             item = ProductItem()
@@ -207,11 +184,14 @@ class HermesSpider(scrapy.contrib.spiders.CrawlSpider):
             return item
 
         metadata = response.meta['userdata']
-        idx = response._body.find('spConfig.init')
+        idx = response.body.find('spConfig.init')
         if idx == -1:
-            return None
-        body = cm.extract_closure(response._body[idx:], '{', '}')[0]
-        data = json.loads(body)
+            idx = response.body.find('ConfProduct.init')
+            if idx == -1:
+                return
 
-        return [func(product_id) for product_id in data['productIds']]
+        body = cm.extract_closure(response.body[idx:], '{', '}')[0]
+        data = json.loads(body)
+        for val in (func(product_id) for product_id in data['productIds']):
+            yield val
 

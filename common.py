@@ -1015,6 +1015,8 @@ def process_price(price, region, currency=None):
             val = val[:-1]
         return val
 
+    if isinstance(price, int) or isinstance(price, float):
+        price = unicode(price)
     if not price or not price.strip():
         return None
     val = unicode.format(u' {0} ', unicodify(price))
@@ -1034,11 +1036,52 @@ def process_price(price, region, currency=None):
         return None
     tmp = tmp[0]
     # 试图查找小数点
-    if len(tmp) >= 3 and tmp[-3] in (',', '.'):
-        part = tmp[:-3], tmp[-2:]
+    # if region in {'cn', 'us', 'uk', 'hk', 'tw', 'mo'}:
+    #     idx = tmp.find('.')
+    #     if idx == -1:
+    #         part = tmp, '00'
+    #     else:
+    #         part = tmp[:idx], tmp[idx + 1:]
+    # elif region in {'fr'}:
+    #     idx = tmp.find(',')
+    #     if idx == -1:
+    #         part = tmp, '00'
+    #     else:
+    #         part = tmp[:idx], tmp[idx + 1:]
+
+    # 根据区域来判断哪个是小数点符号
+    if region in glob.DECIMAL_MARK['.']:
+        d = '.'
+    elif region in glob.DECIMAL_MARK[',']:
+        d = ','
     else:
-        part = tmp, '00'
-    val = int(re.sub(r'[\.,]', '', part[0])) + int(re.sub(r'[\.,]', '', part[1])) * 0.1
+        # 根据个数来判断那个是小数点符号
+        num_p = tmp.count('.')
+        num_c = tmp.count(',')
+        if num_p == 1 and num_c != 1:
+            d = '.'
+        elif num_p != 1 and num_c == 1:
+            d = ','
+        elif num_p == 1 and num_c == 1:
+            # 最后一个出现的为小数点分隔符
+            mt = re.search(r'[\.,]', tmp[::-1])
+            d = tmp[::-1][mt.regs[0][0]]
+        elif num_p == 0 and num_c == 0:
+            d = None
+        else:
+            return None
+
+    if d:
+        part = tmp.split(d)
+    else:
+        part = tmp, '0'
+    if len(part) == 1:
+        part = part, '0'
+    try:
+        val = int(re.sub(r'[\.,]', '', part[0])) + float('.' + re.sub(r'[\.,]', '', part[1]))
+    except TypeError:
+        print 0
+
     return {'currency': currency, 'price': val}
 
 

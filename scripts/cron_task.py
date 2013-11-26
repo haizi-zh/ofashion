@@ -1,17 +1,27 @@
+# coding=utf-8
 import logging
 import sys
 import os
 import datetime
 import errno
+import global_settings as glob
+from Queue import Queue
+import re
 
 sys.path.append('/home/rose/MStore/src')
-
-import global_settings as glob
 
 __author__ = 'Zephyre'
 
 logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
 logger = logging.getLogger()
+
+
+def default_error(msg):
+    logger.error(msg)
+
+
+def mstore_help():
+    print str.format('Available commands are: {0}', ', '.join(cmd_list))
 
 
 def make_sure_path_exists(path):
@@ -41,12 +51,12 @@ def backup_all():
 
     logger.info(str.format('{0}\tAUTO BACKUP STARTED', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
 
-    backup_name = str.format('{0}_spider_editor_release_auto_backup', datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+    backup_name = str.format('{0}_auto_backup', datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     path = os.path.join(storage_path, 'backups')
     make_sure_path_exists(path)
     template = str.format('{0}/{1}', path, backup_name)
     sys_cmd = str.format(
-        'mysqldump -c -u rose -prose123 --databases spider_stores editor_stores release_stores > {0}.sql', template)
+        'mysqldump -c -u rose -prose123 --databases editor_stores > {0}.sql', template)
     logger.debug(sys_cmd)
     os.system(sys_cmd)
     sys_cmd = str.format('7z a {0}.7z {0}.sql > /dev/null', template)
@@ -60,17 +70,52 @@ def backup_all():
     logger.info(str.format('{0}\tAUTO BACKUP COMPLETED', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
 
 
-if __name__ == "__main__" and len(sys.argv) >= 2:
-    cmd = sys.argv[1]
+def argument_parser(args):
+    if len(args) < 2:
+        return default_error()
+
+    cmd = args[1]
+
+    # 解析命令行参数
+    param_dict = {}
+    q = Queue()
+    for tmp in args[2:]:
+        q.put(tmp)
+    param_name = None
+    param_value = None
+    while not q.empty():
+        tmp = q.get()
+        if re.search(r'--(?=[^\-])', tmp):
+            tmp = re.sub('^-+', '', tmp)
+            if param_name:
+                param_dict[param_name] = param_value
+
+            param_name = tmp
+            param_value = None
+        elif re.search(r'-(?=[^\-])', tmp):
+            tmp = re.sub('^-+', '', tmp)
+            if param_name:
+                param_dict[param_name] = param_value
+
+            for tmp in list(tmp):
+                param_dict[tmp] = None
+            param_name = None
+            param_value = None
+        else:
+            if param_name:
+                if param_value:
+                    param_value.append(tmp)
+                else:
+                    param_value = [tmp]
+    if param_name:
+        param_dict[param_name] = param_value
 
     if cmd == 'test':
-        test()
+        return test
     elif cmd == 'backup-all':
-        backup_all()
+        return backup_all
     else:
-        logger.error(str.format('Unknown command: {0}', cmd))
-else:
-    logger.error('No command specified.')
+        return lambda msg: default_error(str.format('Unknown command: {0}', cmd))
 
-
-
+if __name__ == "__main__":
+    argument_parser(sys.argv)()

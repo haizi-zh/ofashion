@@ -97,10 +97,9 @@ class BalenciagaSpider(MFashionSpider):
             metadata['description'] = self.reformat(tmp) if tmp else None
 
         tmp = sel.xpath('//div[@id="itemInfo"]/h1/span[@class="modelColor"]')
+        tmp = tmp and cm.unicodify(tmp[0]._root.text)
         if tmp:
-            node = tmp[0]
-            tmp = cm.unicodify(node._root.text)
-            metadata['color'] = [self.reformat(tmp).lower() if tmp else None]
+            metadata['color'] = [self.reformat(tmp).lower()]
 
         tmp = sel.xpath('//div[@id="itemPrice"]//span[@class="priceValue"]')
         if tmp:
@@ -139,7 +138,6 @@ class BalenciagaSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         return item
-
 
     def parse_list(self, response):
         metadata = response.meta['userdata']

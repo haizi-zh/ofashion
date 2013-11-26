@@ -13,7 +13,28 @@ __author__ = 'Zephyre'
 
 
 class MonclerSpider(MFashionSpider):
-    spider_data = {'hosts': {'cn': 'http://store.moncler.cn'},
+    # TODO 有些单品没有description信息
+
+    spider_data = {'hosts': {'cn': 'http://store.moncler.cn',
+                             'us': 'http://store.moncler.com'},
+                   'home_urls': {'cn': {
+                       'http://store.moncler.cn/cn/%E7%94%B7%E5%A3%AB/%E6%96%B0%E5%93%81%E4%B8%8A%E7%BA%BF_gid24319': {
+                           'gender': ['male']},
+                       'http://store.moncler.cn/cn/%E5%A5%B3%E5%A3%AB/%E6%96%B0%E5%93%81%E4%B8%8A%E7%BA%BF_gid24318': {
+                           'gender': ['female']}},
+                                 'us': {'http://store.moncler.com/us/women': {'gender': ['female']},
+                                        'http://store.moncler.com/us/men': {'gender': ['male']},
+                                        'http://store.moncler.com/us/unisex': {'gender': 'children'}},
+                                 'uk': {'http://store.moncler.com/gb/women': {'gender': ['female']},
+                                        'http://store.moncler.com/gb/men': {'gender': ['male']},
+                                        'http://store.moncler.com/gb/unisex': {'gender': 'children'}},
+                                 'fr': {'http://store.moncler.com/fr/femme': {'gender': ['female']},
+                                        'http://store.moncler.com/fr/homme': {'gender': ['male']},
+                                        'http://store.moncler.com/fr/unisexe': {'gender': 'children'}},
+                                 'it': {'http://store.moncler.com/it/donna': {'gender': ['female']},
+                                        'http://store.moncler.com/it/uomo': {'gender': ['male']},
+                                        'http://store.moncler.com/it/unisex': {'gender': 'children'}}
+                   },
                    'brand_id': 13084}
 
     @classmethod
@@ -21,6 +42,8 @@ class MonclerSpider(MFashionSpider):
         return MonclerSpider.spider_data['hosts'].keys()
 
     def __init__(self, region):
+        self.spider_data['hosts'] = {k: 'http://store.moncler.com' if k != 'cn' else 'http://store.moncler.cn' for k in
+                                     self.spider_data['home_urls']}
         super(MonclerSpider, self).__init__('moncler', region)
 
     @classmethod
@@ -41,7 +64,7 @@ class MonclerSpider(MFashionSpider):
             if not tag_name:
                 continue
             m['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
-            m['category']=[tag_name.lower()]
+            m['category'] = [tag_name.lower()]
 
             url = self.process_href(node._root.attrib['href'], metadata['region'])
             yield Request(url=url, meta={'userdata': m, 'filter-level': 0}, callback=self.parse_filter,
@@ -137,24 +160,17 @@ class MonclerSpider(MFashionSpider):
         item['metadata'] = metadata
         return item
 
-
     def start_requests(self):
         for region in self.region_list:
             if region in self.get_supported_regions():
                 metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'tags_mapping': {}}
-
-                m = copy.deepcopy(metadata)
-                m['gender'] = 'male'
-                yield Request(
-                    url='http://store.moncler.cn/cn/%E7%94%B7%E5%A3%AB/%E6%96%B0%E5%93%81%E4%B8%8A%E7%BA%BF_gid24319',
-                    meta={'userdata': m},
-                    callback=self.parse, errback=self.onerr)
-
-                m = copy.deepcopy(metadata)
-                m['gender'] = 'female'
-                yield Request(
-                    url='http://store.moncler.cn/cn/%E5%A5%B3%E5%A3%AB/%E6%96%B0%E5%93%81%E4%B8%8A%E7%BA%BF_gid24318',
-                    meta={'userdata': m},
-                    callback=self.parse, errback=self.onerr)
+                for url, extra_tag in self.spider_data['home_urls'][region].items():
+                    m = copy.deepcopy(metadata)
+                    for k, v in extra_tag.items():
+                        if k == 'gender' and v == 'children':
+                            m['tags_mapping']['category-x'] = [{'name': 'children', 'title': 'Children'}]
+                        else:
+                            m[k] = v
+                    yield Request(url=url, meta={'userdata': m}, callback=self.parse, errback=self.onerr)
             else:
                 self.log(str.format('No data for {0}', region), log.WARNING)

@@ -140,7 +140,7 @@ class FendiSpider(MFashionSpider):
             return
 
         # 组合类页面也必须去掉，比如：http://www.fendi.com/cn/zh/collections/kids/junior/boys/look73
-        if re.search(r'/look\d+$', response.url) or re.search(r'/\d+-baby$', response.url):
+        if re.search(r'/look-?\d+$', response.url) or re.search(r'/\d+-baby$', response.url):
             return
 
         sel = Selector(response)

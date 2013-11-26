@@ -8,6 +8,7 @@ from scrapy.selector import Selector
 from scrapper import utils
 from scrapper.items import ProductItem
 import global_settings as glob
+import common as cm
 import copy
 from scrapper.spiders.mfashion_spider import MFashionSpider
 
@@ -32,9 +33,6 @@ class BurberrySpider(MFashionSpider):
     @classmethod
     def get_instance(cls, region=None):
         return cls(region)
-
-    def get_host_url(self, region):
-        return self.spider_data['hosts'][region]
 
     def parse(self, response):
         self.log(unicode.format(u'PARSE_HOME: URL={0}', response.url).encode('utf-8'), level=log.DEBUG)
@@ -126,14 +124,30 @@ class BurberrySpider(MFashionSpider):
         metadata = response.meta['userdata']
 
         hxs = Selector(response)
+        ret = hxs.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]/"
+                        "li[contains(@class,'color')]/a[@title and @data-color-link]")
+        # 访问商品的其它颜色版本
+        for node in (val for val in ret if val._root.attrib['data-color-link'] not in metadata['url']):
+            m = copy.deepcopy(metadata)
+            m['color'] = [self.reformat(cm.unicodify(node._root.attrib['title'])).lower()]
+            yield Request(url=self.process_href(node._root.attrib['data-color-link'], metadata['region']),
+                          callback=self.parse_details, errback=self.onerr,
+                          meta={'userdata': m})
+        # 本页面商品的颜色
+        tmp = [val for val in ret if val._root.attrib['data-color-link'] in metadata['url']]
+        if tmp:
+            metadata['color'] = [self.reformat(cm.unicodify(tmp[0]._root.attrib['title'])).lower()]
+
+        ret = hxs.xpath('//p[contains(@class,"product-id")]')
+        if ret:
+            mt = re.search(r'(\d)+', self.reformat(cm.unicodify(ret[0]._root.text)))
+            if mt:
+                metadata['model'] = mt.group(1)
+
         ret = hxs.xpath("//div[@class='price']//span[@class='price-amount']")
         if ret:
             metadata['price'] = ret[0]._root.text
-        ret = hxs.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]/"
-                        "li[contains(@class,'color')]/a[@title]/@title")
-        if ret:
-            clrs = filter(lambda x: x, (utils.unicodify(val.extract()) for val in ret))
-            metadata['color'] = [c.lower() for sublist in [re.split(u'[|/]', v) for v in clrs] for c in sublist]
+
         ret = hxs.xpath("//li[@id='description-panel']//ul//li")
         if ret:
             metadata['description'] = u', '.join(filter(lambda x: x, (val._root.text for val in ret)))
@@ -154,7 +168,6 @@ class BurberrySpider(MFashionSpider):
             item['url'] = metadata['url']
             item['model'] = metadata['model']
             item['metadata'] = metadata
-            return item
+            yield item
         else:
             self.log(unicode.format(u'INVALID ITEM: {0}', metadata['url']).encode('utf-8'), log.ERROR)
-            return None

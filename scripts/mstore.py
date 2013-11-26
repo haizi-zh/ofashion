@@ -435,10 +435,11 @@ def sync(args):
 
 
 class ImageCheck(object):
-    def __init__(self, db_spec, gen_checksum, refetch, image_validity, cond=None):
+    def __init__(self, db_spec, gen_checksum, refetch, image_validity, cond=None, update=False):
         self.gen_checksum = gen_checksum
         self.refetch = refetch
         self.image_validity = image_validity
+        self.update_flag = update
 
         self.missing = 0
         self.dim_mismatch = 0
@@ -544,16 +545,14 @@ class ImageCheck(object):
 
                 if self.gen_checksum:
                     with open(full_path, 'rb') as f:
-                        md5 = hashlib.md5()
-                        md5.update(f.read())
-                    checksum = md5.hexdigest()
+                        checksum = hashlib.md5(f.read()).hexdigest()
                     if record['checksum'] != checksum:
                         self.checksum_mismatch += 1
                         update_entry['old_checksum'] = record['checksum']
                         update_entry['new_checksum'] = checksum
 
                 # 有不一致的地方，需要更新
-                if update_entry:
+                if update_entry and self.update_flag:
                     if 'old_checksum' not in update_entry:
                         update_entry['old_checksum'] = record['checksum']
                         update_entry['new_checksum'] = record['checksum']
@@ -602,7 +601,7 @@ def image_check(param_dict):
     :param param_dict:
     :return:
     """
-    db_spec = glob.SPIDER_SPEC
+    db_spec = glob.EDITOR_SPEC
     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.EDITOR_SPEC,
               'release': glob.RELEASE_SPEC}
     cond = ['1']
@@ -688,7 +687,7 @@ def argument_parser(args):
         return lambda: resize(param_dict)
     elif cmd == 'editor_price':
         return lambda: editor_price_processor(param_dict)
-    elif cmd == 'image_check':
+    elif cmd == 'image-check':
         return lambda: image_check(param_dict)
     elif cmd == 'import_tag':
         return lambda: import_tag_mapping(param_dict)

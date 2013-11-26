@@ -289,7 +289,7 @@ class ProductImagePipeline(ImagesPipeline):
                 if url not in url_dict or width > url_dict[url]['size']:
                     url_dict[url] = {'size': width, 'item': item}
             return [val['item'] for val in url_dict.values()]
-        elif brand_id == 10029:
+        elif brand_id in {10029, 10008}:
             # 处理Balenciaga
             url_dict = {}
             for item in list(filter(lambda val: val[0], results)):
@@ -349,7 +349,7 @@ class ProductImagePipeline(ImagesPipeline):
                             'width': data['width'], 'height': data['height'], 'format': data['format'],
                             'size': data['size']}, 'images_store')
 
-        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model}, 'products_image',ignore=True)
+        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model}, 'products_image', ignore=True)
         # self.update_products_image(brand_id, model, checksum)
 
     def item_completed(self, results, item, info):
@@ -373,10 +373,10 @@ class ProductImagePipeline(ImagesPipeline):
             else:
                 file_name = tmp[0]
                 full_path = os.path.normpath(os.path.join(dir_path, file_name))
-                file_base, ext = os.path.split(file_name)
+                _, ext = os.path.splitext(file_name)
                 path_db = os.path.normpath(os.path.join(
                     unicode.format(u'{0}_{1}/{2}{3}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'],
-                                   os.path.split(path)[0], ext)))
+                                   os.path.splitext(path)[0], ext)))
 
                 file_size = os.path.getsize(full_path)
                 checksum = r['checksum']
