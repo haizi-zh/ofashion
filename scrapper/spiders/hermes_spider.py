@@ -173,14 +173,11 @@ class HermesSpider(MFashionSpider):
             if 'category-1' in m['tags_mapping']:
                 m['category'] = [val['name'] for val in m['tags_mapping']['category-1']]
 
-            # 必须实现
             item = ProductItem()
             item['image_urls'] = [image_url]
             item['url'] = m['url']
             item['model'] = m['model']
             item['metadata'] = m
-            # //
-
             return item
 
         metadata = response.meta['userdata']

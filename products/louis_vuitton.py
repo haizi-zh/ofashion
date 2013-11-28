@@ -17,6 +17,9 @@ from core import MySqlDb
 from products import utils
 from scrapper import utils as sutils
 import global_settings as glob
+from scrapper.items import ProductItem
+from scrapper.pipelines import ProductPipeline, ProductImagePipeline
+from scrapper.spiders.mfashion_spider import MFashionSpider
 
 __author__ = 'Zephyre'
 
@@ -26,6 +29,11 @@ def get_logger():
     return logging.getLogger('firenzeLogger')
     # return logging.getLogger()
 
+
+product_pipeline = ProductPipeline(glob.EDITOR_SPEC)
+store_uri = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images', '10226_louis_vuitton'))
+image_pipeline = ProductImagePipeline(store_uri, db_spec=glob.EDITOR_SPEC)
+spider = None
 
 logger = get_logger()
 post_keys = ("_dyncharset",
@@ -281,6 +289,23 @@ def init_product_item(init_data=None):
     return item
 
 
+def reformat(text):
+    """
+    格式化字符串，将多余的空格、换行、制表符等合并
+    """
+    if text is None:
+        return None
+    text = cm.html2plain(text.strip())
+    # <br/>换成换行符
+    text = re.sub(ur'<\s*br\s*/?>', u'\r\n', text)
+    # 去掉多余的标签
+    text = re.sub(ur'<[^<>]*?>', u'', text)
+    # # 换行转换
+    text = re.sub('[\r\n]+', '\r', text)
+    # text = re.subn(ur'(?:[\r\n])+', ', ', text)[0]
+    return text
+
+
 def fetch_product_details(region, url, filter_data, download_image=True, extra=None):
     """
     获得单品的详细信息
@@ -316,147 +341,152 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
         return None
 
     temp = pq(body)('td.priceValue')
-    if len(temp) > 0:
-        price_body = (temp[0].text if isinstance(temp[0].text, unicode) else temp[0].text.decode('utf-8')).strip()
-        price = price_body.strip()
-        price = price.encode('utf-8') if isinstance(price, unicode) else price
-    else:
-        price = None
-        currency = ''
-        # m = re.search(ur'(Ұ|\$|€)', price_body)
-        # if m is None:
-        #     currency = u''
-        # else:
-        #     currency = common.currency_lookup(m.group())
-        #
-        # m = re.search(ur'[\d\.,\s]+', price_body, flags=re.U)
-        # if m is None:
-        #     price = 0
-        # else:
-        #     price = common.format_price_text(m.group())
+    price = cm.unicodify(temp[0].text) if temp else None
 
     product_name = ''
     temp = pq(body)('#productName h1')
-    if len(temp) > 0:
+    if temp:
         product_name = cm.unicodify(temp[0].text)
 
     description = ''
     temp = pq(body)('#productDescription')
-    if len(temp) > 0:
-        description = temp[0].text.encode('utf-8').strip()
+    if temp:
+        description = cm.unicodify(temp[0].text)
 
     details = ''
     temp = pq(body)('#productDescription div.productDescription')
-    if len(temp) > 0:
-        details = unicode(temp[0].text_content()).encode('utf-8').strip()
+    if temp:
+        details = reformat(cm.unicodify(temp[0].text_content()))
 
     post_data = filter_data['post_data']
     init_data = {}
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"]
+    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"])
     init_data['color'] = [temp] if temp else []
     extra = {}
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"]
+    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"])
     if temp:
         extra['texture'] = [temp]
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"]
+    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"])
     if temp:
-        extra['page_id'] = [temp]
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.functionik"]
+        extra['category-0'] = [temp]
+    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.functionik"])
     if temp:
         extra['function'] = [temp]
-    temp = post_data[
-        "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.casematerialik"]
+    temp = cm.unicodify(post_data[
+        "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.casematerialik"])
     if temp:
         extra['material'] = [temp]
-    temp = post_data[
-        "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.collectionik"]
+    temp = cm.unicodify(post_data[
+        "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.collectionik"])
     if temp:
         extra['collection'] = [temp]
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.shapeik"]
+    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.shapeik"])
     if temp:
         extra['shape'] = [temp]
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subcategoryik"]
+    temp = cm.unicodify(
+        post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subcategoryik"])
     if temp:
-        extra['subcategory'] = [temp]
-    temp = post_data[
-        '/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subsubcategoryik']
+        extra['category-1'] = [temp]
+    temp = cm.unicodify(post_data[
+        '/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subsubcategoryik'])
     if temp:
-        extra['subsubcategory'] = [temp]
-    temp = post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.typeik"]
+        extra['category-2'] = [temp]
+    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.typeik"])
     if temp:
         extra['typeik'] = [temp]
-    init_data['extra'] = extra
+
+    init_data['tags_mapping'] = {k: [{'name': val.lower(), 'title': val} for val in extra[k]] for k in extra}
+
+    # init_data['extra'] = extra
     init_data['model'] = model
     init_data['name'] = product_name
     init_data['price'] = price
     init_data['description'] = description
     init_data['details'] = details
-    temp = filter_data['tags']['category']
+    temp = cm.unicodify(filter_data['tags']['category'])
     init_data['category'] = [temp] if temp else []
     init_data['brand_id'] = filter_data['tags']['brand_id']
-    init_data['brandname_e'] = filter_data['tags']['brandname_e']
-    init_data['brandname_c'] = filter_data['tags']['brandname_c']
+
     temp = filter_data['tags']['gender']
-    init_data['gender'] = [temp] if temp else []
+    if temp.lower() in ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen',
+                        'womenswear'):
+        init_data['gender'] = ['female']
+    elif temp.lower() in ('man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore',
+                          'menswear'):
+        init_data['gender'] = ['male']
+
     region = filter_data['tags']['region']
     init_data['region'] = region
-    init_data['fetch_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     init_data['url'] = product_url
     # product = init_product_item(init_data)
     product = init_data
+    price = cm.process_price(u'2 350,00 €', 'fr')
 
     if download_image:
-        fetch_image(body, model)
+        results = fetch_image(body, model)
+    else:
+        results = []
 
-    db.start_transaction()
-    try:
-        results = db.query(
-            str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
-                       region, init_data['brand_id'])).fetch_row(maxrows=0, how=1)
-        if not results:
-            for k in ('extra', 'color', 'gender', 'category'):
-                if k in product:
-                    product[k] = json.dumps(product[k], ensure_ascii=False)
+    item = ProductItem()
+    item['image_urls'] = []
+    item['url'] = init_data['url']
+    item['model'] = init_data['model']
+    item['metadata'] = init_data
 
-            db.insert(product, 'products', ['fetch_time', 'update_time', 'touch_time'])
-            logger.info(unicode.format(u'INSERT: {0}, {1}, {2}', model, product_name, region))
-        else:
-            # 需要处理合并的字段
-            merge_keys = ('gender', 'category', 'color')
-            dest = dict((k, json.loads(results[0][k])) for k in merge_keys if results[0][k])
-            src = dict((k, product[k]) for k in merge_keys if k in product)
-            dest = sutils.product_tags_merge(src, dest)
+    product_pipeline.process_item(item, spider)
+    image_pipeline.item_completed(results, item, None)
 
-            s2 = json.loads(results[0]['extra'])
-            dest['extra'] = sutils.product_tags_merge(s2, extra)
-            try:
-                dest = dict((k, json.dumps(dest[k], ensure_ascii=False)) for k in merge_keys + ('extra',) for k in dest)
-                # 处理product中其它字段（覆盖现有记录）
-                skip_keys = merge_keys + ('model', 'region', 'brand_id', 'extra', 'fetch_time')
-                for k in product:
-                    if k in skip_keys:
-                        continue
-                    dest[k] = product[k]
+    return item
 
-                # 检查是否有改变
-                modified = False
-                for k in dest:
-                    if cm.unicodify(results[0][k]) != cm.unicodify(dest[k]):
-                        modified = True
-                        break
-                if modified:
-                    db.update(dest, 'products', str.format('idproducts={0}', results[0]['idproducts']),
-                              ['update_time', 'touch_time'])
-                    logger.info(unicode.format(u'UPDATE: {0}, {1}', product['model'], region))
-                else:
-                    db.update({}, 'products', str.format('idproducts={0}', results[0]['idproducts']), ['touch_time'])
-            except UnicodeDecodeError:
-                pass
-        db.commit()
-    except:
-        db.rollback()
-        raise
-    return product
+    # db.start_transaction()
+    # try:
+    #     results = db.query(
+    #         str.format('SELECT * FROM {0} WHERE model="{1}" && region="{2}" && brand_id={3}', 'products', model,
+    #                    region, init_data['brand_id'])).fetch_row(maxrows=0, how=1)
+    #     if not results:
+    #         for k in ('extra', 'color', 'gender', 'category'):
+    #             if k in product:
+    #                 product[k] = json.dumps(product[k], ensure_ascii=False)
+    #
+    #         db.insert(product, 'products', ['fetch_time', 'update_time', 'touch_time'])
+    #         logger.info(unicode.format(u'INSERT: {0}, {1}, {2}', model, product_name, region))
+    #     else:
+    #         # 需要处理合并的字段
+    #         merge_keys = ('gender', 'category', 'color')
+    #         dest = dict((k, json.loads(results[0][k])) for k in merge_keys if results[0][k])
+    #         src = dict((k, product[k]) for k in merge_keys if k in product)
+    #         dest = sutils.product_tags_merge(src, dest)
+    #
+    #         s2 = json.loads(results[0]['extra'])
+    #         dest['extra'] = sutils.product_tags_merge(s2, extra)
+    #         try:
+    #             dest = dict((k, json.dumps(dest[k], ensure_ascii=False)) for k in merge_keys + ('extra',) for k in dest)
+    #             # 处理product中其它字段（覆盖现有记录）
+    #             skip_keys = merge_keys + ('model', 'region', 'brand_id', 'extra', 'fetch_time')
+    #             for k in product:
+    #                 if k in skip_keys:
+    #                     continue
+    #                 dest[k] = product[k]
+    #
+    #             # 检查是否有改变
+    #             modified = False
+    #             for k in dest:
+    #                 if cm.unicodify(results[0][k]) != cm.unicodify(dest[k]):
+    #                     modified = True
+    #                     break
+    #             if modified:
+    #                 db.update(dest, 'products', str.format('idproducts={0}', results[0]['idproducts']),
+    #                           ['update_time', 'touch_time'])
+    #                 logger.info(unicode.format(u'UPDATE: {0}, {1}', product['model'], region))
+    #             else:
+    #                 db.update({}, 'products', str.format('idproducts={0}', results[0]['idproducts']), ['touch_time'])
+    #         except UnicodeDecodeError:
+    #             pass
+    #     db.commit()
+    # except:
+    #     db.rollback()
+    #     raise
+    # return product
 
 
 def fetch_image(body, model, refetch=False):
@@ -475,6 +505,7 @@ def fetch_image(body, model, refetch=False):
     cm.make_sure_path_exists(image_dir)
     cm.make_sure_path_exists(image_thumb_dir)
 
+    results = []
     for img_body in pq(body)('#productSheetSlideshow ul.bigs li img'):
         temp = img_body.attrib['data-src'] if 'data-src' in img_body.attrib else (img_body.attrib['src']
                                                                                   if 'src' in img_body.attrib else '')
@@ -492,82 +523,64 @@ def fetch_image(body, model, refetch=False):
         if m is None:
             continue
 
-        fname = str.format('{0}_{1}_{2}_{3}', brand_id, brand_name, model, m.group())
+        # flist = tuple(os.listdir(image_dir))
+        # if refetch or fname not in flist:
+
+        response = utils.fetch_image(url_thumb, logger)
+        if response is None or len(response['body']) == 0:
+            continue
+            # 写入图片文件
+
+        # fname = str.format('{0}_{1}_{2}_{3}', brand_id, brand_name, model, m.group())
+        fname = str.format('{0}.{1}', hashlib.sha1(url_thumb).hexdigest(), response['image_ext'])
         full_name = os.path.normpath(os.path.join(image_dir, fname))
         path_db = os.path.normpath(os.path.join('10226_louis_vuitton/full', fname))
-        flist = tuple(os.listdir(image_dir))
-        if refetch or fname not in flist:
-            response = utils.fetch_image(url_thumb, logger)
-            if response is None or len(response['body']) == 0:
-                continue
-                # 写入图片文件
-            with open(full_name, 'wb') as f:
-                f.write(response['body'])
-            buf = response['body']
-        else:
-            with open(full_name, 'rb') as f:
-                buf = f.read()
+
+        with open(full_name, 'wb') as f:
+            f.write(response['body'])
+        buf = response['body']
+
+        # else:
+        #     with open(full_name, 'rb') as f:
+        #         buf = f.read()
 
         md5 = hashlib.md5()
         md5.update(buf)
         checksum = md5.hexdigest()
 
-        db.start_transaction()
-        try:
-            # If the file already exists
-            rs = db.query(
-                str.format('SELECT path,width,height,format,url FROM products_image WHERE checksum="{0}"',
-                           checksum)).fetch_row(how=1)
-            if rs:
-                path_db = cm.unicodify(rs[0]['path'])
-                width = rs[0]['width']
-                height = rs[0]['height']
-                fmt = rs[0]['format']
-                url = rs[0]['url']
-            else:
-                img = Image.open(full_name)
-                width, height = img.size
-                fmt = img.format
-                url = url_thumb
+        results.append(['True', {'checksum': checksum, 'url': url_thumb, 'path': str.format('full/{0}', fname)}])
 
-            rs = db.query(str.format('SELECT * FROM products_image WHERE path="{0}" AND model="{1}"', path_db,
-                                     model)).fetch_row(maxrows=0)
-            if not rs:
-                db.insert({'model': model, 'url': url, 'path': path_db, 'width': width,
-                           'height': height, 'format': fmt, 'brand_id': brand_id, 'checksum': checksum},
-                          'products_image', ['fetch_time', 'update_time'])
+        # db.start_transaction()
+        # try:
+        #     # If the file already exists
+        #     rs = db.query(
+        #         str.format('SELECT path,width,height,format,url FROM products_image WHERE checksum="{0}"',
+        #                    checksum)).fetch_row(how=1)
+        #     if rs:
+        #         path_db = cm.unicodify(rs[0]['path'])
+        #         width = rs[0]['width']
+        #         height = rs[0]['height']
+        #         fmt = rs[0]['format']
+        #         url = rs[0]['url']
+        #     else:
+        #         img = Image.open(full_name)
+        #         width, height = img.size
+        #         fmt = img.format
+        #         url = url_thumb
+        #
+        #     rs = db.query(str.format('SELECT * FROM products_image WHERE path="{0}" AND model="{1}"', path_db,
+        #                              model)).fetch_row(maxrows=0)
+        #     if not rs:
+        #         db.insert({'model': model, 'url': url, 'path': path_db, 'width': width,
+        #                    'height': height, 'format': fmt, 'brand_id': brand_id, 'checksum': checksum},
+        #                   'products_image', ['fetch_time', 'update_time'])
+        #
+        #     db.commit()
+        # except:
+        #     db.rollback()
+        #     raise
 
-            db.commit()
-        except:
-            db.rollback()
-            raise
-
-            # full_name_thumb = os.path.normpath(os.path.join(image_thumb_dir, fname))
-            # flist = tuple(os.listdir(image_thumb_dir))
-            # if refetch or fname not in flist:
-            #     response = utils.fetch_image(url_thumb, logger)
-            #     if response is None or len(response['body']) == 0:
-            #         continue
-            #         # 写入图片文件
-            #     with open(full_name_thumb, 'wb') as f:
-            #         f.write(response['body'])
-
-            # try:
-            #     img = Image.open(full_name)
-            #     db.lock(['products_image'])
-            #     try:
-            #         rs = db.query(str.format('SELECT * FROM products_image WHERE path="{0}"', full_name)).fetch_row(
-            #             maxrows=0)
-            #         if not rs:
-            #             db.insert({'model': model, 'url': url, 'path': full_name, 'width': img.size[0],
-            #                        'height': img.size[1], 'format': img.format, 'brand_id': brand_id,
-            #                        'fetch_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, 'products_image',
-            #                       ['fetch_time', 'update_time', 'touch_time'])
-            #     finally:
-            #         db.unlock()
-            # except IOError as e:
-            #     logger.error(e.message)
-            #     pass
+    return results
 
 
 def fetch_products(region, category, gender, refresh_post_data=False):

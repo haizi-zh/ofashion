@@ -130,9 +130,10 @@ class BurberrySpider(MFashionSpider):
         for node in (val for val in ret if val._root.attrib['data-color-link'] not in metadata['url']):
             m = copy.deepcopy(metadata)
             m['color'] = [self.reformat(cm.unicodify(node._root.attrib['title'])).lower()]
-            yield Request(url=self.process_href(node._root.attrib['data-color-link'], metadata['region']),
-                          callback=self.parse_details, errback=self.onerr,
-                          meta={'userdata': m})
+            url = self.process_href(node._root.attrib['data-color-link'], metadata['region'])
+            m['url'] = url
+            yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
+
         # 本页面商品的颜色
         tmp = [val for val in ret if val._root.attrib['data-color-link'] in metadata['url']]
         if tmp:
@@ -140,7 +141,7 @@ class BurberrySpider(MFashionSpider):
 
         ret = hxs.xpath('//p[contains(@class,"product-id")]')
         if ret:
-            mt = re.search(r'(\d)+', self.reformat(cm.unicodify(ret[0]._root.text)))
+            mt = re.search(r'(\d+)', self.reformat(cm.unicodify(ret[0]._root.text)))
             if mt:
                 metadata['model'] = mt.group(1)
 

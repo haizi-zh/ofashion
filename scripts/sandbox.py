@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
+
 import codecs
 import hashlib
 
@@ -11,8 +12,9 @@ from _mysql_exceptions import OperationalError
 import global_settings as glob
 from core import MySqlDb
 import core
-from PIL import Image
 import common as cm
+from PIL import Image
+
 import csv
 from scripts.sync_product import SyncProducts
 
@@ -92,7 +94,47 @@ class Object(object):
             db.unlock()
             db.close()
 
+    def proc_price(self):
+        """
+        原先的价格处理函数有错误。解决方法：根据products.price字段，对价格重新处理。如果和price_history相应单品的最新记录不一致，则
+        覆盖、更正之（而不是添加）！
+        """
+        max_transaction = 10000
+        db = MySqlDb()
+        db.conn(glob.EDITOR_SPEC)
+
+        self.tot = int(db.query('SELECT COUNT(*) FROM products WHERE price IS NOT NULL').fetch_row()[0][0])
+        self.progress = 0
+        rs_tot = db.query_match(['idproducts', 'price', 'region', 'brand_id', 'model'], 'products', {},
+                                extra='price IS NOT NULL').fetch_row(maxrows=0)
+
+        db.start_transaction()
+        for pid, price_str, region, brand, model in rs_tot:
+            self.progress += 1
+
+            price = cm.process_price(price_str, region=region)
+            if not price:
+                continue
+
+            r = {'idproducts': int(pid), 'price': price['price'], 'brand_id': int(brand), 'model': cm.unicodify(model)}
+            db.insert({'idproducts': r['idproducts'], 'price': price['price'], 'currency': price['currency']},
+                      'products_price_history')
+
+            # rs = db.query_match(['*'], 'products_price_history', {'idproducts': r['idproducts']},
+            #                     tail_str='ORDER BY date DESC LIMIT 1').fetch_row(maxrows=0, how=1)
+            # if float(rs[0]['price']) != r['price']:
+            #     print str.format('\rPRICE MISMATCH: brand:{0}, model:{1}, idproducts:{4} price:{2}=>{3}',
+            #                      r['brand_id'], r['model'], rs[0]['price'], r['price'], r['idproducts'])
+            #     db.update({'price': r['price']}, 'products_price_history',
+            #               str.format('idprice_history={0}', rs[0]['idprice_history']))
+
+        db.commit()
+        db.close()
+
     def func_oneuse(self):
+        self.proc_price()
+
+    def proc_image_path(self):
         db = MySqlDb()
         db.conn(glob.EDITOR_SPEC)
 

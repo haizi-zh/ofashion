@@ -113,8 +113,9 @@ class ChopardSpider(MFashionSpider):
             metadata['name'] = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
                                                          tmp[0]._root.iterdescendants()) if val)
 
+        # TODO 这里需要注意一个网页：http://www.chopard.fr/fiancailles/bijoux-mariage/pendentifs/an-elegant-diamond-pendant-810374-1001
         tmp = sel.xpath(
-            '//div[@class="product-essential"]//div[contains(@class,"description-content")]/div[@class="std"]')
+            '//div[@class="product-essential"]//div[contains(@class,"description-content")]//div[@class="std"]')
         if tmp:
             metadata['description'] = self.reformat(cm.unicodify(tmp[0]._root.text))
 

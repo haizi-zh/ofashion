@@ -2,6 +2,7 @@
 import copy
 import re
 import types
+import urlparse
 from scrapy import log
 import scrapy.contrib.spiders
 from scrapy.http import Request
@@ -11,12 +12,12 @@ __author__ = 'Zephyre'
 
 
 class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
-    def get_host_url(self, region):
-        """
-        根据region，获得对应的host地址
-        :param region:
-        """
-        return self.spider_data['hosts'][region]
+    # def get_host_url(self, region):
+    #     """
+    #     根据region，获得对应的host地址
+    #     :param region:
+    #     """
+    #     return self.spider_data['hosts'][region]
 
     @classmethod
     def get_instance(cls, region=None):
@@ -33,20 +34,18 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         """
         pass
 
-    def process_href(self, href, region, host=None):
+    def process_href(self, href, referer):
         if not href or not href.strip():
             return None
         else:
             href = href.strip()
 
-        if re.search('^(http|https)://', href):
+        tmp=urlparse.urlparse(href)
+        if tmp.scheme:
             return href
-        elif re.search('^//', href):
-            return 'http:' + href
-        elif re.search('^/', href):
-            if not host:
-                host = self.get_host_url(region)
-            return host + href
+        else:
+            tmp = urlparse.urlparse(referer)
+            return str.format('{0}://{1}{2}', tmp.scheme, tmp.netloc, href)
 
     def reformat(self, text):
         """
@@ -62,6 +61,8 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         # # 换行转换
         text = re.sub('[\r\n]+', '\r', text)
         # text = re.subn(ur'(?:[\r\n])+', ', ', text)[0]
+        # 去掉连续的多个空格
+        text = re.sub(r'[ \t]+', ' ', text)
         return text
 
     def __init__(self, name, region, *a, **kw):
@@ -85,7 +86,8 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
                 tmp = self.spider_data['home_urls'][region]
                 start_urls = tmp if cm.iterable(tmp) else [tmp]
                 for url in start_urls:
-                    yield Request(url=url, meta={'userdata': metadata}, callback=self.parse, errback=self.onerr)
+                    m = copy.deepcopy(metadata)
+                    yield Request(url=url, meta={'userdata': m}, callback=self.parse, errback=self.onerr)
             else:
                 self.log(str.format('No data for {0}', region), log.WARNING)
 

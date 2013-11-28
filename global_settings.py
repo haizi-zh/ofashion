@@ -33,7 +33,7 @@ EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
 # Port for remote debugging
 DEBUG_HOST = 'localhost'
 DEBUG_PORT = 7101
-DEBUG_FLAG = True
+DEBUG_FLAG = False
 WRITE_DATABASE = True
 
 # Log settings
@@ -57,12 +57,9 @@ def __fetch_region_info():
     return {k['iso_code']: {'iso_code3': k['iso_code3'],
                             'name_e': k['name_e'].decode('utf-8'),
                             'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
-                            'currency': k['currency']}
+                            'currency': k['currency'], 'decimal': k['decimal_mark']}
             for k in tmp}
 
-
-DECIMAL_MARK = {'.': {'cn', 'au', 'us', 'hk', 'tw'},
-                ',': {'fr', 'de', 'it', 'fi'}}
 
 BRAND_NAMES = __fetch_brand_info()
 REGION_INFO = __fetch_region_info()

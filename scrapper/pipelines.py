@@ -119,7 +119,8 @@ class ProductPipeline(object):
 
                 self.db.insert(entry, 'products', ['touch_time', 'update_time', 'fetch_time'])
                 pid = int(self.db.query('SELECT LAST_INSERT_ID()').fetch_row()[0][0])
-                spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
+                if spider:
+                    spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
             else:
                 pid = results[0]['idproducts']
                 # 需要处理合并的字段
@@ -166,14 +167,17 @@ class ProductPipeline(object):
                 else:
                     self.db.update(dest, 'products', str.format('idproducts={0}', pid), ['update_time', 'touch_time'])
 
-                spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
+                if spider:
+                    spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
 
             # 处理价格变化
             if 'price' in entry:
+                currency = None
                 try:
-                    currency = spider.spider_data['currency'][entry['region']]
+                    if spider:
+                        currency = spider.spider_data['currency'][entry['region']]
                 except KeyError:
-                    currency = None
+                    pass
                 tmp = cm.process_price(entry['price'], entry['region'], currency=currency)
                 if tmp:
                     price = tmp['price']

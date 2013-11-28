@@ -968,38 +968,8 @@ def update_record(db, cond, tbl, record):
         unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl, u', '.join(update_entries), u' && '.join(cond)).encode(
             'utf-8'))
 
-#
-# @static_var('currency_map', None)
-# def process_price2(price, region):
-#     from core import MySqlDb
-#
-#     if not process_price2.currency_map:
-#         db = MySqlDb()
-#         db.conn(glob.EDITOR_SPEC)
-#         rs = db.query('SELECT iso_code,currency FROM country_info').fetch_row(maxrows=0)
-#         process_price2.currency_map = {val[0]: val[1] for val in rs}
-#
-#     if not price or not price.strip():
-#         return None
-#     val = unicodify(price)
-#
-#     currency = process_price2.currency_map[region]
-#     if region in ('de', 'it', 'br', 'es'):
-#         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace('.', '').replace(',', '.')
-#     elif region in ('fr',):
-#         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '.')
-#     else:
-#         val_new = re.sub(ur'\s', u'', val, flags=re.U).replace(',', '')
-#     m = re.search(ur'[\d\.]+', val_new)
-#     if not m:
-#         price = ''
-#     else:
-#         price = float(m.group())
-#     ret = {'currency': currency, 'price': price}
-#     return ret
 
-
-def process_price(price, region, currency=None):
+def process_price(price, region, decimal=None, currency=None):
     def func(val):
         """
         去掉多余的空格，以及首尾的非数字字符
@@ -1008,7 +978,7 @@ def process_price(price, region, currency=None):
         # val=unicode.format(u' {0} ',)
         if not re.search(r'\d', val):
             return ''
-        val = re.sub(r'\s', '', val)
+        val = re.sub(r'\s', '', val, flags=re.U)
         if val[0] in ('.', ','):
             val = val[1:]
         if val[-1] in ('.', ','):
@@ -1021,6 +991,8 @@ def process_price(price, region, currency=None):
         return None
     val = unicode.format(u' {0} ', unicodify(price))
 
+    pre_currency={'$':'USD','HK$':'HKD','€':'EUR','£':'GBP','₩':'KRW'}
+
     if not currency:
         # 如果price没有货币单位信息，则根据region使用默认值
         mt = re.search(r'\b([A-Z]{3})\b', price)
@@ -1030,57 +1002,61 @@ def process_price(price, region, currency=None):
             currency = glob.REGION_INFO[region]['currency']
 
     # 提取最长的数字，分隔符字符串
-    tmp = sorted([func(tmp) for tmp in re.findall(r'(?<=[^\d])[\d\s,\.]+(?=[^\d])', val)], key=lambda tmp: len(tmp),
-                 reverse=True)
+    tmp = sorted([func(tmp) for tmp in re.findall(r'(?<=[^\d])[\d\s,\.]+(?=[^\d])', val, flags=re.U)],
+                 key=lambda tmp: len(tmp), reverse=True)
     if not tmp:
         return None
-    tmp = tmp[0]
-    # 试图查找小数点
-    # if region in {'cn', 'us', 'uk', 'hk', 'tw', 'mo'}:
-    #     idx = tmp.find('.')
-    #     if idx == -1:
-    #         part = tmp, '00'
-    #     else:
-    #         part = tmp[:idx], tmp[idx + 1:]
-    # elif region in {'fr'}:
-    #     idx = tmp.find(',')
-    #     if idx == -1:
-    #         part = tmp, '00'
-    #     else:
-    #         part = tmp[:idx], tmp[idx + 1:]
-
-    # 根据区域来判断哪个是小数点符号
-    if region in glob.DECIMAL_MARK['.']:
-        d = '.'
-    elif region in glob.DECIMAL_MARK[',']:
-        d = ','
-    else:
-        # 根据个数来判断那个是小数点符号
-        num_p = tmp.count('.')
-        num_c = tmp.count(',')
-        if num_p == 1 and num_c != 1:
-            d = '.'
-        elif num_p != 1 and num_c == 1:
-            d = ','
-        elif num_p == 1 and num_c == 1:
-            # 最后一个出现的为小数点分隔符
-            mt = re.search(r'[\.,]', tmp[::-1])
-            d = tmp[::-1][mt.regs[0][0]]
-        elif num_p == 0 and num_c == 0:
-            d = None
-        else:
+        # 去除首尾的符号
+    while True:
+        tmp = tmp[0].strip()
+        if not tmp:
             return None
+        elif tmp[0] in ('.', ','):
+            tmp = tmp[1:]
+            continue
+        elif tmp[-1] in ('.', ','):
+            tmp = tmp[:-1]
+            continue
+        break
 
-    if d:
-        part = tmp.split(d)
+
+    # 判断小数点符号
+    # 方法：如果,和.都有，谁在后面，谁就是分隔符。否则的话，看该符号是否在三的倍数位置上
+    if decimal:
+        pass
+    elif (tmp.count('.') > 0 and tmp.count(',') == 1) or (tmp.count(',') > 0 and tmp.count('.') == 1):
+        decimal = re.search(r'[\.,]', tmp[::-1]).group()
+    elif (tmp.count('.') | tmp.count(',')) and not (tmp.count('.') & tmp.count(',')):
+        # 只有一种符号出现
+        c = re.search(r'[\.,]', tmp).group()
+        # 符号位的位置。如果相互之间间隔为4，则说明是千位分隔符。
+        pos = [val.start() for val in re.finditer(r'[\.,]', tmp)]
+        pos.append(len(tmp))
+        is_triple = reduce(lambda ret, val: ret and (val == 4), [pos[i + 1] - pos[i] for i in xrange(len(pos) - 1)],
+                           True)
+        if is_triple:
+            decimal = list({',', '.'} - {c})[0]
+        else:
+            if tmp.count(c) == 1:
+                decimal = c
+            else:
+                decimal = None
+    elif tmp.count('.')==0 and tmp.count(',')==0:
+        decimal='.'
     else:
-        part = tmp, '0'
+        decimal = None
+
+    if not decimal:
+        return None
+
+    part = tmp.split(decimal)
     if len(part) == 1:
-        part = part, '0'
+        part = part[0], '0'
+
     try:
         val = int(re.sub(r'[\.,]', '', part[0])) + float('.' + re.sub(r'[\.,]', '', part[1]))
-    except TypeError:
-        print 0
+    except (TypeError, ValueError):
+        return None
 
     return {'currency': currency, 'price': val}
 

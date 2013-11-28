@@ -66,13 +66,13 @@ def argument_parser(args):
         param_dict[param_name] = param_value
 
     if 'debug' in param_dict or 'D' in param_dict:
-        if 'debug-port' in param_dict:
-            port = int(param_dict['debug-port'][0])
+        if 'P' in param_dict:
+            port = int(param_dict['P'][0])
         else:
             port = glob.DEBUG_PORT
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
 
-    for k in ('debug', 'D', 'debug-port'):
+    for k in ('debug', 'D', 'P'):
         try:
             param_dict.pop(k)
         except KeyError:
@@ -130,15 +130,10 @@ def get_images_store(brand_id):
 def set_up_spider(spider_class, region, data):
     crawler = Crawler(Settings())
     crawler.settings.values['BOT_NAME'] = 'mstore_bot'
-    crawler.settings.values['REGION'] = region
 
     crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                  'scrapper.pipelines.ProductPipeline': 300} \
         if glob.WRITE_DATABASE else {}
-
-    # crawler.settings.values['EXTENSIONS'] = {
-    #     'scrapper.extensions.SpiderOpenCloseLogging': 500
-    # }
 
     if 'job' in data:
         job_path = get_job_path(sc.spider_data['brand_id']) + '-1'
@@ -151,7 +146,13 @@ def set_up_spider(spider_class, region, data):
     crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
 
     crawler.settings.values['AUTOTHROTTLE_ENABLED'] = True
-    crawler.settings.values['TELNETCONSOLE_PORT'] = [7023, 7073]
+
+    crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
+    if 'telnet' in data and data['telnet']:
+        start_port = int(data['telnet'][0])
+    else:
+        start_port = spider_class.spider_data['brand_id']
+    crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
 
     ua = data['user-agent'] if 'user-agent' in data else 'chrome'
     if ua.lower() == 'chrome':
@@ -168,12 +169,6 @@ def set_up_spider(spider_class, region, data):
 
     crawler.settings.values['COOKIES_ENABLED'] = (data['cookie'].lower() == 'true') if 'cookie' in data else True
 
-    # crawler.settings.values['RETRY_TIMES'] = 3
-    # retry_codes = list(crawler.settings.global_defaults.RETRY_HTTP_CODES)
-    # retry_codes.append(404)
-    # crawler.settings.values['RETRY_HTTP_CODES'] = retry_codes
-    # crawler.settings.values['REDIRECT_ENABLED'] = True
-
     crawler.settings.values['IMAGES_STORE'] = get_images_store(sc.spider_data['brand_id'])
     crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
     crawler.settings.values['IMAGES_MIN_HEIGHT'] = 160
@@ -182,6 +177,16 @@ def set_up_spider(spider_class, region, data):
     crawler.signals.connect(on_spider_closed, signal=scrapy.signals.spider_closed)
     # crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
+
+    if not region:
+        region = spider_class.get_supported_regions()
+    elif not cm.iterable(region):
+        region = [region]
+
+    if 'exclude-region' in data:
+        for r in data['exclude-region']:
+            if r in region:
+                region.pop(r)
 
     spider = spider_class.get_instance(region)
     living_spiders.add(spider)

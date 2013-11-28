@@ -63,8 +63,7 @@ class ProcessTags(object):
             # 删除旧单品/标签关系
             self.db.execute(str.format('DELETE FROM p2 USING {0} AS p1, {1} AS p2 WHERE p1.idproducts=p2.idproducts '
                                        'AND p1.brand_id={2} AND region="{3}"', self.products, self.prod_mt_tbl,
-                                       brand_id,
-                                       region))
+                                       brand_id, region))
 
         self.tot = len(tag_dict)
         self.progress = 0

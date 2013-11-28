@@ -78,13 +78,13 @@ def fetch_image(url, logger=None):
                                abort_message=unicode.format(u'Abort to fetch URL: {0}', url))
     if response is not None and len(response['body']) > 0:
         ctype = response['headers']['content-type']
-        if ctype.lower() == 'image/jpeg':
-            ext = 'jpg'
+        if ctype.lower() == 'image/tiff':
+            ext = 'tif'
         elif ctype.lower() == 'image/png':
             ext = 'png'
         elif ctype.lower() == 'image/gif':
             ext = 'gif'
         else:
-            ext = ''
+            ext = 'jpg'
         response['image_ext'] = ext
     return response
