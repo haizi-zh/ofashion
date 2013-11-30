@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 # coding=utf-8
 from Queue import Queue
-import hashlib
-
 import os
 import re
 import shutil
 import sys
 import datetime
 import pydevd
-from scrapy import log
-import scrapy.signals
-import signal
+from scrapy import log, signals
 from scrapy.crawler import Crawler
 from scrapy.settings import Settings
 from twisted.internet import reactor
@@ -81,31 +77,31 @@ def argument_parser(args):
     return {'spider': spider_name, 'param': param_dict}
 
 
-living_spiders = set([])
+# living_spiders = set([])
 
 
-def onsignal_term(a, b):
-    log.msg('SIGTERM received!', log.INFO)
-    reactor.stop()
+# def onsignal_term(a, b):
+#     log.msg('SIGTERM received!', log.INFO)
+#     reactor.stop()
+#
+#
+# signal.signal(signal.SIGTERM, onsignal_term)
 
 
-signal.signal(signal.SIGTERM, onsignal_term)
+# def onsignal_int(a, b):
+#     log.msg('SIGINT received!', log.INFO)
+#     reactor.stop()
+#
+#
+# signal.signal(signal.SIGINT, onsignal_int)
 
 
-def onsignal_int(a, b):
-    log.msg('SIGINT received!', log.INFO)
-    reactor.stop()
-
-
-signal.signal(signal.SIGINT, onsignal_int)
-
-
-def on_spider_closed(spider, reason):
-    if spider in living_spiders:
-        living_spiders.remove(spider)
-
-    if len(living_spiders) == 0:
-        reactor.stop()
+# def on_spider_closed(spider, reason):
+#     if spider in living_spiders:
+#         living_spiders.remove(spider)
+#
+#     if len(living_spiders) == 0:
+#         reactor.stop()
 
 
 def get_job_path(brand_id):
@@ -174,8 +170,8 @@ def set_up_spider(spider_class, region, data):
     crawler.settings.values['IMAGES_MIN_HEIGHT'] = 160
     crawler.settings.values['IMAGES_MIN_WIDTH'] = 160
 
-    crawler.signals.connect(on_spider_closed, signal=scrapy.signals.spider_closed)
-    # crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
+    # crawler.signals.connect(on_spider_closed, signal=scrapy.signals.spider_closed)
+    crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
     if not region:
@@ -186,10 +182,10 @@ def set_up_spider(spider_class, region, data):
     if 'exclude-region' in data:
         for r in data['exclude-region']:
             if r in region:
-                region.pop(r)
+                region.pop(region.index(r))
 
     spider = spider_class.get_instance(region)
-    living_spiders.add(spider)
+    # living_spiders.add(spider)
     crawler.crawl(spider)
     crawler.start()
 
@@ -215,8 +211,6 @@ if cmd:
         else:
             log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
 
-        # for region in region_list if region_list else sc.get_supported_regions():
         spider = set_up_spider(sc, region_list, cmd['param'])
-
-    if len(living_spiders) > 0:
         reactor.run()   # the script will block here until the spider_closed signal was sent
+

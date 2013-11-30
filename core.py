@@ -55,7 +55,6 @@ class MySqlDb(object):
     def unlock(self):
         self.db.query('UNLOCK TABLES')
 
-
     def start_transaction(self):
         self.db.query('START TRANSACTION')
 

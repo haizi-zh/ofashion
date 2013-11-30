@@ -88,7 +88,6 @@ class CartierSpider(MFashionSpider):
             metadata_0['category'] = [tag_name]
 
             for node_1 in node_0.xpath('../div/ul/li/ul/li/a[@href]'):
-                href = self.process_href(node_1._root.attrib['href'], metadata['region'])
                 temp = node_1._root.text
                 if not temp or not temp.strip():
                     continue
@@ -100,8 +99,8 @@ class CartierSpider(MFashionSpider):
                 metadata_1['tags_mapping']['category-1'] = [{'name': tag_name, 'title': tag_text}]
                 metadata_1['page_id'] = 0
 
-                yield Request(url=href, meta={'userdata': metadata_1}, callback=self.parse_list, errback=self.onerr,
-                              dont_filter=True)
+                yield Request(url=self.process_href(node_1._root.attrib['href'], response.url), dont_filter=True,
+                              meta={'userdata': metadata_1}, callback=self.parse_list, errback=self.onerr)
 
     def parse_products(self, response):
         metadata = response.meta['userdata']
@@ -141,8 +140,8 @@ class CartierSpider(MFashionSpider):
         if temp:
             metadata['price'] = cm.unicodify(temp[0]._root.text)
 
-        temp = sel.xpath('//div[@class="column-images"]//a[@href and contains(@class,"zoom-cursor")]')
-        image_urls = [self.process_href(val._root.attrib['href'], metadata['region']) for val in temp]
+        temp = sel.xpath('//div[@class="column-images"]//a[@href and contains(@class,"zoom-trigger-link")]')
+        image_urls = [self.process_href(val._root.attrib['href'], response.url) for val in temp]
 
         metadata['url'] = response._url
         item = ProductItem()
@@ -184,10 +183,9 @@ class CartierSpider(MFashionSpider):
                 if not temp:
                     continue
                 m['description'] = cm.unicodify(temp[0]._root.text)
-                href = self.process_href(node.xpath('..')[0]._root.attrib['href'], metadata['region'])
                 flag = True
-                yield Request(url=href, meta={'userdata': m}, callback=self.parse_products, errback=self.onerr,
-                              dont_filter=True)
+                yield Request(url=self.process_href(node.xpath('..')[0]._root.attrib['href'], response.url),
+                              meta={'userdata': m}, callback=self.parse_products, errback=self.onerr, dont_filter=True)
 
             if flag:
                 # 处理翻页

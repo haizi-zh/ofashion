@@ -35,17 +35,22 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         pass
 
     def process_href(self, href, referer):
+        href = cm.unicodify(href)
+        referer = cm.unicodify(referer)
         if not href or not href.strip():
             return None
         else:
             href = href.strip()
 
-        tmp=urlparse.urlparse(href)
+        if re.search(r'^//', href):
+            return 'http:' + href
+
+        tmp = urlparse.urlparse(href)
         if tmp.scheme:
             return href
         else:
             tmp = urlparse.urlparse(referer)
-            return str.format('{0}://{1}{2}', tmp.scheme, tmp.netloc, href)
+            return unicode.format(u'{0}://{1}{2}', tmp.scheme, tmp.netloc, href)
 
     def reformat(self, text):
         """
