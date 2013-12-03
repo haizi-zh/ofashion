@@ -57,7 +57,7 @@ def mstore_help():
     print str.format('Available commands are: {0}', ', '.join(cmd_list))
 
 
-def mstore_error():
+def mstore_error(*args, **kwargs):
     default_error()
 
 
@@ -503,12 +503,15 @@ class ImageCheck(object):
         downloader = ImageDownloader()
         downloader.run()
 
-        storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
-        rs = self.db.query(str.format('SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,'
-                                      'p2.brand_id,p2.model FROM images_store AS p1 '
+        rs = self.db.query(str.format('SELECT COUNT(DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model) FROM images_store AS p1 '
                                       'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
-                                      ' AND '.join(self.cond)))
-        self.tot = rs.num_rows()
+                                      ' AND '.join(self.cond)), use_result=True)
+        self.tot = int(rs.fetch_row(maxrows=0)[0][0])
+        storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
+        rs = self.db.query(str.format('SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
+                                      'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
+                                      ' AND '.join(self.cond)), use_result=True)
+        #self.tot = rs.num_rows()
         self.progress = 0
 
         while True:
@@ -642,63 +645,45 @@ def argument_parser(args):
     param_name = None
     param_value = None
     while not q.empty():
-        tmp = q.get()
-        if re.search(r'--(?=[^\-])', tmp):
-            tmp = re.sub('^-+', '', tmp)
+        term = q.get()
+        if re.search(r'--(?=[^\-])', term):
+            tmp = re.sub('^-+', '', term)
             if param_name:
                 param_dict[param_name] = param_value
-
             param_name = tmp
             param_value = None
-        elif re.search(r'-(?=[^\-])', tmp):
-            tmp = re.sub('^-+', '', tmp)
-            if param_name:
-                param_dict[param_name] = param_value
-
+        elif re.search(r'-(?=[^\-])', term):
+            tmp = re.sub('^-+', '', term)
             for tmp in list(tmp):
-                param_dict[tmp] = None
-            param_name = None
-            param_value = None
+                if param_name:
+                    param_dict[param_name] = param_value
+                    param_value = None
+                param_name = tmp
         else:
             if param_name:
                 if param_value:
-                    param_value.append(tmp)
+                    param_value.append(term)
                 else:
-                    param_value = [tmp]
+                    param_value = [term]
     if param_name:
         param_dict[param_name] = param_value
 
     if 'debug' in param_dict or 'D' in param_dict:
-        if 'debug-port' in param_dict:
-            port = int(param_dict['debug-port'][0])
+        if 'P' in param_dict:
+            port = int(param_dict['P'][0])
         else:
             port = glob.DEBUG_PORT
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
-
-    for k in ('debug', 'D', 'debug-port'):
+    for k in ('debug', 'D', 'P'):
         try:
             param_dict.pop(k)
         except KeyError:
             pass
 
-    if cmd == 'help':
-        return mstore_help
-    elif cmd == 'resize':
-        return lambda: resize(param_dict)
-    elif cmd == 'editor_price':
-        return lambda: editor_price_processor(param_dict)
-    elif cmd == 'image-check':
-        return lambda: image_check(param_dict)
-    elif cmd == 'import_tag':
-        return lambda: import_tag_mapping(param_dict)
-    elif cmd == 'process-tags':
-        return lambda: process_tags(param_dict)
-    elif cmd == 'sync':
-        return lambda: sync(param_dict)
-    elif cmd == 'release':
-        return lambda: release(param_dict)
-    else:
-        return mstore_error
+    cmd_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
+                'currency-update': dbman.currency_update}
+
+    return lambda: cmd_dict[cmd](param_dict)
 
 
 if __name__ == "__main__":

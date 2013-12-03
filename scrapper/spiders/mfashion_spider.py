@@ -56,6 +56,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         """
         格式化字符串，将多余的空格、换行、制表符等合并
         """
+        text = cm.unicodify(text)
         if text is None:
             return None
         text = cm.html2plain(text.strip())

@@ -24,6 +24,8 @@ class CoachSpider(MFashionSpider):
                    #              'tw': 'USD', 'tm': 'USD'},
                    'brand_id': 10093}
 
+    # TODO 多国家支持
+
 
     @classmethod
     def get_supported_regions(cls):

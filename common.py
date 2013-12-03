@@ -991,7 +991,7 @@ def process_price(price, region, decimal=None, currency=None):
         return None
     val = unicode.format(u' {0} ', unicodify(price))
 
-    pre_currency={'$':'USD','HK$':'HKD','€':'EUR','£':'GBP','₩':'KRW'}
+    pre_currency = {'$': 'USD', 'HK$': 'HKD', '€': 'EUR', '£': 'GBP', '₩': 'KRW'}
 
     if not currency:
         # 如果price没有货币单位信息，则根据region使用默认值
@@ -1041,8 +1041,8 @@ def process_price(price, region, decimal=None, currency=None):
                 decimal = c
             else:
                 decimal = None
-    elif tmp.count('.')==0 and tmp.count(',')==0:
-        decimal='.'
+    elif tmp.count('.') == 0 and tmp.count(',') == 0:
+        decimal = '.'
     else:
         decimal = None
 
@@ -1125,6 +1125,30 @@ def get_spider_module(spider_name):
     spider_path = os.path.normpath(
         os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}_spider.py', spider_name)))
     return imp.load_source(spider_name, spider_path)
+
+
+def guess_gender(desc, extra=None):
+    """
+    猜测desc所描述的信息为男性还是女性。返回'male'或者'female'，如果不能确定，返回None。
+    @param desc: 额外的性别提示信息。满足以下格式：{'male': [u'男性', u'男人'], 'female': [u'女性']}
+    @param extra:
+    """
+    if not extra:
+        extra = {'male': [], 'female': []}
+
+    gender_dict = {'male': ['man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore', u'男性',
+                            u'男士', u'男人', u'男款', u'男装', 'for him', u'für ihn', 'per lui'],
+                   'female': ['women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen', u'女性',
+                              u'女士', u'女人', u'女款', u'女装', 'for her', u'für sie', 'per lei', 'pour elle']}
+    gender_dict = {'male': list(set(gender_dict['male']).union(set(extra['male']))),
+                   'female': list(set(gender_dict['female']).union(set(extra['female']))), }
+
+    for gender in ['male', 'female']:
+        for term in gender_dict[gender]:
+            if re.search(term, desc, flags=re.U | re.I):
+                return gender
+
+    return None
 
 
 @static_var('data', {})

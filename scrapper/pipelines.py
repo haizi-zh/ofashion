@@ -273,44 +273,112 @@ class ProductImagePipeline(ImagesPipeline):
     def preprocess(self, results, item):
         brand_id = item['metadata']['brand_id']
 
-        if brand_id == 10350:
-            # 处理Tiffany
+        def tiffany_chrt(r):
+            """
+            提取Tiffany图片链接的特征表达，即URL变量中，?之前的部分，即url的主体
+            @param r:
+            """
+            # TODO 利用urlparser库来解析url地址
+            url = item[1]['url']
+            idx = url.find('?')
+            if idx != -1:
+                url = url[:idx]
+            return hashlib.md5(url).hexdigest()
+
+        def balenciaga_chrt(r):
+            # 处理Balenciaga图片连接的特征值，即url变量文件名部分的最后一个字母
+            return os.path.splitext(r[1]['path'])[0][-1]
+
+        mcqueen_chrt = balenciaga_chrt
+        # TODO Dolce Gabbana的图片数据需要重新做
+        dolce_chrt = balenciaga_chrt
+
+        def bottega_chrt(r):
+            # 处理Bottega的图片链接特征值，即url变量文件名部分的最后两个字母
+            return os.path.splitext(r[1]['path'])[0][-2:]
+
+        def func(chrt_func):
             url_dict = {}
             for item in list(filter(lambda val: val[0], results)):
-                path = item[1]['path']
-                full_path = os.path.normpath(os.path.join(self.store.basedir, path))
-                url = item[1]['url']
-                idx = url.find('?')
-                if idx != -1:
-                    url = url[:idx]
+                chrt = chrt_func(item)
+
+                full_path = os.path.normpath(os.path.join(self.store.basedir, item[1]['path']))
                 try:
                     img = Image.open(full_path)
                 except IOError:
                     continue
 
                 # 两种情况会采用该result：尺寸更大，或第一次出现
-                width = img.size[0]
-                if url not in url_dict or width > url_dict[url]['size']:
-                    url_dict[url] = {'size': width, 'item': item}
+                dim = img.size[0]
+                if chrt not in url_dict or dim > url_dict[chrt]['dim']:
+                    url_dict[chrt] = {'dim': dim, 'item': item}
             return [val['item'] for val in url_dict.values()]
-        elif brand_id in {10029, 10008}:
-            # 处理Balenciaga
-            url_dict = {}
-            for item in list(filter(lambda val: val[0], results)):
-                url = item[1]['url']
-                key = os.path.splitext(url)[0][-1]
-                try:
-                    img = Image.open(os.path.normpath(os.path.join(self.store.basedir, item[1]['path'])))
-                except IOError:
-                    continue
 
-                # 两种情况会采用该result：尺寸更大，或第一次出现
-                width = img.size[0]
-                if key not in url_dict or width > url_dict[key]['size']:
-                    url_dict[key] = {'size': width, 'item': item}
-            return [val['item'] for val in url_dict.values()]
+        func_map = {10350: lambda: func(tiffany_chrt),
+                    10029: lambda: func(balenciaga_chrt),
+                    10008: lambda: func(mcqueen_chrt),
+                    10109: lambda: func(dolce_chrt),
+                    10049: lambda: func(bottega_chrt)}
+
+        if brand_id in func_map:
+            return func_map[brand_id]()
         else:
             return results
+
+            #if brand_id == 10350:
+            #    # 处理Tiffany
+            #    url_dict = {}
+            #    for item in list(filter(lambda val: val[0], results)):
+            #        path = item[1]['path']
+            #        full_path = os.path.normpath(os.path.join(self.store.basedir, path))
+            #        url = item[1]['url']
+            #        idx = url.find('?')
+            #        if idx != -1:
+            #            url = url[:idx]
+            #        try:
+            #            img = Image.open(full_path)
+            #        except IOError:
+            #            continue
+            #
+            #        # 两种情况会采用该result：尺寸更大，或第一次出现
+            #        width = img.size[0]
+            #        if url not in url_dict or width > url_dict[url]['size']:
+            #            url_dict[url] = {'size': width, 'item': item}
+            #    return [val['item'] for val in url_dict.values()]
+            #elif brand_id in {10029, 10008}:
+            #    # 处理Balenciaga
+            #    url_dict = {}
+            #    for item in list(filter(lambda x: x[0], results)):
+            #        url = item[1]['url']
+            #        key = os.path.splitext(url)[0][-1]
+            #        try:
+            #            img = Image.open(os.path.normpath(os.path.join(self.store.basedir, item[1]['path'])))
+            #        except IOError:
+            #            continue
+            #
+            #        # 两种情况会采用该result：尺寸更大，或第一次出现
+            #        width = img.size[0]
+            #        if key not in url_dict or width > url_dict[key]['size']:
+            #            url_dict[key] = {'size': width, 'item': item}
+            #    return [val['item'] for val in url_dict.values()]
+            #elif brand_id in {10049}:
+            #    # 处理Bottega
+            #    url_dict = {}
+            #    for item in list(filter(lambda x: x[0], results)):
+            #        url = item[1]['url']
+            #        key = os.path.splitext(url)[0][-2:]
+            #        try:
+            #            img = Image.open(os.path.normpath(os.path.join(self.store.basedir, item[1]['path'])))
+            #        except IOError:
+            #            continue
+            #
+            #        # 两种情况会采用该result：尺寸更大，或第一次出现
+            #        width = img.size[0]
+            #        if key not in url_dict or width > url_dict[key]['size']:
+            #            url_dict[key] = {'size': width, 'item': item}
+            #    return [val['item'] for val in url_dict.values()]
+            #else:
+            #    return results
 
     def update_products_image(self, brand_id, model, checksum):
         """

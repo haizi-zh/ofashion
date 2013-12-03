@@ -38,6 +38,10 @@ class Object(object):
         self.brand_id = brand_id
         self.db_spec = db_spec
 
+    def get_msg(self):
+        return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
+                          float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
+
     def run(self):
         self.func_oneuse()
 
@@ -117,22 +121,23 @@ class Object(object):
                 continue
 
             r = {'idproducts': int(pid), 'price': price['price'], 'brand_id': int(brand), 'model': cm.unicodify(model)}
-            db.insert({'idproducts': r['idproducts'], 'price': price['price'], 'currency': price['currency']},
-                      'products_price_history')
+            #db.insert({'idproducts': r['idproducts'], 'price': price['price'], 'currency': price['currency']},
+            #          'products_price_history')
 
-            # rs = db.query_match(['*'], 'products_price_history', {'idproducts': r['idproducts']},
-            #                     tail_str='ORDER BY date DESC LIMIT 1').fetch_row(maxrows=0, how=1)
-            # if float(rs[0]['price']) != r['price']:
-            #     print str.format('\rPRICE MISMATCH: brand:{0}, model:{1}, idproducts:{4} price:{2}=>{3}',
-            #                      r['brand_id'], r['model'], rs[0]['price'], r['price'], r['idproducts'])
-            #     db.update({'price': r['price']}, 'products_price_history',
-            #               str.format('idprice_history={0}', rs[0]['idprice_history']))
+            rs = db.query_match(['*'], 'products_price_history', {'idproducts': r['idproducts']},
+                                tail_str='ORDER BY date DESC LIMIT 1').fetch_row(maxrows=0, how=1)
+            if float(rs[0]['price']) != r['price']:
+                print str.format('\rPRICE MISMATCH: brand:{0}, model:{1}, idproducts:{4} price:{2}=>{3}',
+                                 r['brand_id'], r['model'], rs[0]['price'], r['price'], r['idproducts'])
+                #db.update({'price': r['price']}, 'products_price_history',
+                #          str.format('idprice_history={0}', rs[0]['idprice_history']))
 
         db.commit()
         db.close()
 
     def func_oneuse(self):
-        self.proc_price()
+        self.func_1()
+        #self.proc_price()
 
     def proc_image_path(self):
         db = MySqlDb()
@@ -151,6 +156,67 @@ class Object(object):
         db.commit()
         db.close()
 
+    def func_1(self):
+        db = MySqlDb()
+        db.conn(glob.EDITOR_SPEC)
+
+        self.tot = int(db.query('SELECT COUNT(*) FROM images_store where path like "10109%" order by '
+                                'url').fetch_row()[0][0])
+        self.progress = 0
+        storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
+
+        rs = db.query_match(['checksum', 'url', 'path'], 'images_store', extra=['path like "10109%"'],
+                            tail_str='order by url')
+        cur_data = {}
+        del_list = []
+        db.start_transaction()
+        try:
+            while True:
+                record = rs.fetch_row(how=1)
+                if not record:
+                    break
+                else:
+                    record = record[0]
+                self.progress += 1
+
+                full_path = os.path.normpath(os.path.join(storage_path, record['path']))
+                try:
+                    img = Image.open(full_path)
+                    dim = img.size[0]
+                except IOError:
+                    continue
+
+                # 取model和特征值
+                mt = re.search(r'/([\da-zA-Z]+)_\d+_([a-z])\.', record['url'])
+                if not mt:
+                    continue
+                model = mt.group(1)
+                tail = mt.group(2)
+                key = str.format('{0}_{1}', model, tail)
+
+                to_del = None
+                if key in cur_data:
+                    tmp = cur_data[key]
+                    if dim > tmp['dim']:
+                        del_list.append(tmp['checksum'])
+                        to_del = tmp['checksum']
+                        tmp['checksum'] = record['checksum']
+                        tmp['dim'] = dim
+                    else:
+                        del_list.append(record['checksum'])
+                        to_del = record['checksum']
+                else:
+                    cur_data[key] = {'checksum': record['checksum'], 'dim': dim}
+
+                if to_del:
+                    db.execute(str.format('DELETE FROM images_store WHERE checksum="{0}"', to_del))
+        except:
+            db.rollback()
+            raise
+
+            ## 开始删除
+            #db.execute(str.format('DELETE FROM images_store WHERE checksum in ({0})',
+            #                      ','.join(str.format('"{0}"', val) for val in del_list)))
 
     def image_compact(self):
         """
@@ -183,114 +249,8 @@ class Object(object):
         db.unlock()
         db.close()
 
-    def func2(self):
-        db = MySqlDb()
-        db.conn(self.db_spec)
 
-        db.execute('LOCK TABLES products_image WRITE')
-        db.start_transaction()
-
-        try:
-            db.execute('DROP TEMPORARY TABLES IF EXISTS tmp')
-            db.execute(str.format('CREATE TEMPORARY TABLE tmp (SELECT * FROM products_image WHERE brand_id={0})',
-                                  self.brand_id))
-
-            rs = db.query('SELECT idproducts_image, path FROM tmp')
-            self.tot = rs.num_rows()
-            image_dir = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
-            for i in xrange(self.tot):
-                self.progress = i
-                pid, full_path = rs.fetch_row()[0]
-                path, tail = os.path.split(full_path)
-                mt = re.search(r'_([^_]+\.[a-zA-Z]{3})$', tail)
-                if mt:
-                    # print tail
-                    new_tail = mt.group(1)
-                    try:
-                        shutil.move(os.path.join(image_dir, path, tail),
-                                    os.path.join(image_dir, path, new_tail))
-                    except IOError:
-                        pass
-
-                    db.update({'path': os.path.normpath(os.path.join(path, new_tail))}, 'products_image',
-                              str.format('idproducts_image={0}', pid))
-
-
-                    # temp = []
-                    # path = full_path
-                    # for j in xrange(3):
-                    #     path, tail = os.path.split(path)
-                    #     temp.append(tail)
-                    # temp.reverse()
-                    #
-                    # path = apply(os.path.join, temp)
-                    #
-                    # rs1 = db.query(str.format('SELECT COUNT(*) FROM tmp WHERE path="{0}"', path))
-                    # if int(rs1.fetch_row()[0][0]) == 0:
-                    #     db.update({'path': path}, 'products_image', str.format('idproducts_image={0}', pid))
-                    # else:
-                    #     db.execute(str.format('DELETE FROM products_image WHERE idproducts_image={0}', pid))
-
-            db.commit()
-        except:
-            db.rollback()
-            raise
-        finally:
-            db.execute('UNLOCK TABLES')
-            db.close()
-
-
-    def func1(self):
-        db = MySqlDb()
-        db.conn(db_spec)
-
-        db.execute('LOCK TABLES products READ')
-        db.start_transaction()
-        try:
-            rs = db.query('SELECT idproducts,image_list,cover_image FROM products')
-            self.tot = rs.num_rows()
-            for i in xrange(self.tot):
-                record = rs.fetch_row(how=1)[0]
-                image_list = json.loads(record['image_list'])
-                for item in image_list:
-                    item['width'] = int(item['width'])
-                    item['height'] = int(item['height'])
-
-                try:
-                    cover = json.loads(record['cover_image'])
-                except:
-                    print record['cover_image']
-
-                cover['width'] = int(cover['width'])
-                cover['height'] = int(cover['height'])
-
-                db.update({'cover_image': cover, 'image_list': image_list}, 'products',
-                          str.format('idproducts={0}', record['idproducts']))
-        finally:
-            db.commit()
-            # db.execute('UNLOCK TABLES')
-
-    def get_msg(self):
-        if self.tot != 0:
-            return str.format('{0}/{1}({2:.1%}) completed', self.progress, self.tot, float(self.progress) / self.tot)
-        else:
-            return ''
-
-
-def func1():
-    base_dir = os.path.join(glob.STORAGE_PATH, 'products/images/10226_louis_vuitton')
-
-    full_list = set(os.listdir(os.path.join(base_dir, 'full')))
-    thumb_list = set(os.listdir(os.path.join(base_dir, 'thumb')))
-
-    a = thumb_list - full_list
-    b = full_list - thumb_list
-
-    print 'Done'
-
-# cm.process_price('12.30', 'cn', currency='CNY')
 core.func_carrier(Object(), 0.3)
-# core.func_carrier(SyncProducts(src_spec=glob.TMP_SPEC, cond=['brand_id=10226']), 1)
 
 
 

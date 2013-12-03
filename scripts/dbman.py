@@ -1,4 +1,6 @@
 # coding=utf-8
+from cStringIO import StringIO
+import csv
 import sys
 import datetime
 from core import MySqlDb
@@ -97,6 +99,7 @@ class ProcessTags(object):
 
 class PublishRelease(object):
     def __init__(self, brand_id, extra_cond=None):
+        self.db = None
         self.brand_id = brand_id
         if not extra_cond:
             extra_cond = ['1']
@@ -105,9 +108,8 @@ class PublishRelease(object):
         self.extra_cond = extra_cond
         self.tot = 0
         self.progress = 0
-
-        region_list = ['cn', 'us', 'uk', 'fr', 'hk']
-        self.region_order = {region_list[idx]: idx * 10 for idx in xrange(len(region_list))}
+        # 国家的展示顺序
+        self.region_order = {k: gs.REGION_INFO[k]['weight'] for k in gs.REGION_INFO}
 
         self.products_tbl = 'products'
         self.prod_mt_tbl = 'products_mfashion_tags'
@@ -121,12 +123,12 @@ class PublishRelease(object):
         按照国家顺序，挑选主记录
         :param prods:
         """
-        sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']] \
-            if k['region'] in self.region_order else sys.maxint)
+        sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
         entry = {k: cm.unicodify(main_entry[k]) for k in (
             'brand_id', 'model', 'name', 'description', 'details', 'gender', 'category', 'color', 'url')}
-        # entry['idproducts_list'] = json.dumps([int(val['idproducts']) for val in prods], ensure_ascii=False)
+        if not entry['name']:
+            entry['name'] = u'单品'
 
         mfashion_tags = [cm.unicodify(val[0]) for val in
                          self.db.query(str.format('SELECT DISTINCT p1.tag FROM mfashion_tags AS p1 '
@@ -174,13 +176,13 @@ class PublishRelease(object):
 
         for val in price_list.values():
             val.pop('date')
-        entry['price_list'] = json.dumps(sorted(price_list.values(),
-                                                key=lambda val: self.region_order[val['code']] if \
-                                                    val['code'] in self.region_order else sys.maxint),
-                                         ensure_ascii=False)
-        tmp = {k['code']: k for k in price_list.values()}
-        if 'cn' in tmp:
-            entry['price_cn'] = tmp['cn']['price']
+        entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
+        if entry['price_list']:
+            # 取第一个国家的价格，转换成CNY
+            region = entry['price_list'][0]['code']
+            price = entry['price_list'][0]['price']
+            entry['price_cn'] = float(gs.REGION_INFO[region]['rate']) * price
+        entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         image_list = []
         checksums = []
@@ -219,26 +221,52 @@ class PublishRelease(object):
 
         self.db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
 
-        # 每一个model，对应哪些pid需要合并？
-        model_list = {}
         rs = self.db.query_match(['COUNT(*)'], self.products_tbl, {'brand_id': self.brand_id})
         self.tot = int(rs.fetch_row()[0][0])
         rs = self.db.query_match(['*'], self.products_tbl, {'brand_id': self.brand_id}, tail_str='ORDER BY model')
-        tmp = rs.fetch_row(how=1, maxrows=0)
-        for self.progress in xrange(self.tot):
-            # record = rs.fetch_row(how=1)[0]
-            record = tmp[self.progress]
+        record_list = rs.fetch_row(how=1, maxrows=0)
+
+        # 每一个model，对应哪些pid需要合并？
+        model_list = {}
+        for self.progress, record in enumerate(record_list):
             if record['model'] not in model_list:
                 if model_list.keys():
                     # 归并上一个model
-                    self.merge_prods(model_list.pop(model_list.keys()[0]))
-
+                    self.merge_prods(model_list.pop(list(model_list.keys())[0]))
                 model_list[record['model']] = [record]
             else:
                 model_list[record['model']].append(record)
+        # 归并最后一个model
+        self.merge_prods(model_list.pop(list(model_list.keys())[0]))
 
         self.db.close()
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
+
+
+def currency_update(param_dict):
+    """
+    更新货币的汇率信息
+    @param param_dict:
+    """
+    db = MySqlDb()
+    db.conn(gs.EDITOR_SPEC)
+    rs = db.query_match(['iso_code', 'currency'], 'region_info').fetch_row(maxrows=0)
+    db.start_transaction()
+    try:
+        for code, currency in rs:
+            print str.format('Fetching for currency data for {0}...', currency)
+            data = cm.get_data(url=str.format('http://download.finance.yahoo.com/d/quotes.csv?s={0}CNY=X'
+                                              '&f=sl1d1t1ba&e=.json', currency))
+            rdr = csv.reader(StringIO(data['body']))
+            line_data = [val for val in rdr][0]
+            timestamp = datetime.datetime.strptime(str.format('{0} {1}', line_data[2], line_data[3]),
+                                                   '%m/%d/%Y %I:%M%p')
+            db.update({'rate': line_data[1], 'update_time': timestamp.strftime('%Y-%m-%d %H:%M:%S')},
+                      'region_info', str.format('iso_code="{0}"', code))
+        db.commit()
+    except:
+        db.rollback()
+        raise

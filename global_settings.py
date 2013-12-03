@@ -32,7 +32,7 @@ EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
 
 # Port for remote debugging
 DEBUG_HOST = 'localhost'
-DEBUG_PORT = 7101
+DEBUG_PORT = 7100
 DEBUG_FLAG = False
 WRITE_DATABASE = True
 
@@ -55,6 +55,7 @@ def __fetch_region_info():
     db.conn(EDITOR_SPEC)
     tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
     return {k['iso_code']: {'iso_code3': k['iso_code3'],
+                            'weight': k['weight'], 'rate': k['rate'],
                             'name_e': k['name_e'].decode('utf-8'),
                             'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
                             'currency': k['currency'], 'decimal': k['decimal_mark']}
