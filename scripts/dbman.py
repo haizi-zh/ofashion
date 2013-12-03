@@ -177,6 +177,7 @@ class PublishRelease(object):
         for val in price_list.values():
             val.pop('date')
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
+        # TODO price_cn的计算：应该按照真实的货币来计算，而不是国家/区域。因为有时候，网站所使用的货币并非该国家的法定货币。比如Versace的中国产品，价格计量采用的是EUR而不是CNY。
         if entry['price_list']:
             # 取第一个国家的价格，转换成CNY
             region = entry['price_list'][0]['code']
@@ -236,7 +237,7 @@ class PublishRelease(object):
                 model_list[record['model']] = [record]
             else:
                 model_list[record['model']].append(record)
-        # 归并最后一个model
+            # 归并最后一个model
         self.merge_prods(model_list.pop(list(model_list.keys())[0]))
 
         self.db.close()

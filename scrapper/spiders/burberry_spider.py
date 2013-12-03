@@ -54,7 +54,7 @@ class BurberrySpider(MFashionSpider):
                     m['gender'] = [u'female']
                 elif cat in {'men', 'homme', 'uomo'}:
                     m['gender'] = [u'male']
-                yield Request(url=self.process_href(href, region),
+                yield Request(url=self.process_href(href, response.url),
                               meta={'userdata': m}, dont_filter=True, callback=self.parse_category_1,
                               errback=self.onerr)
 
@@ -72,7 +72,7 @@ class BurberrySpider(MFashionSpider):
             m = copy.deepcopy(metadata)
             m['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
             m['category'] = [cat]
-            yield Request(url=self.process_href(href, region),
+            yield Request(url=self.process_href(href, response.url),
                           meta={'userdata': m}, dont_filter=True, callback=self.parse_category_2,
                           errback=self.onerr)
 
@@ -97,7 +97,7 @@ class BurberrySpider(MFashionSpider):
                 title = utils.unicodify(item._root.attrib['title'])
                 m = copy.deepcopy(metadata)
                 m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
-                yield Request(url=self.process_href(href, region),
+                yield Request(url=self.process_href(href, response.url),
                               meta={'userdata': m}, dont_filter=True, callback=self.parse_category_3,
                               errback=self.onerr)
 
@@ -114,7 +114,7 @@ class BurberrySpider(MFashionSpider):
             model = item._root.attrib['data-product-id']
             m = copy.deepcopy(metadata)
             m['model'] = model
-            url = self.process_href(item._root.attrib['href'], region)
+            url = self.process_href(item._root.attrib['href'], region.url)
             m['url'] = url
             yield Request(url=url, meta={'userdata': m}, dont_filter=True, callback=self.parse_details,
                           errback=self.onerr)
@@ -130,7 +130,7 @@ class BurberrySpider(MFashionSpider):
         for node in (val for val in ret if val._root.attrib['data-color-link'] not in metadata['url']):
             m = copy.deepcopy(metadata)
             m['color'] = [self.reformat(cm.unicodify(node._root.attrib['title'])).lower()]
-            url = self.process_href(node._root.attrib['data-color-link'], metadata['region'])
+            url = self.process_href(node._root.attrib['data-color-link'], response.url)
             m['url'] = url
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 

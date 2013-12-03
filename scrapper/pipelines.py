@@ -214,21 +214,6 @@ class ProductImagePipeline(ImagesPipeline):
         self.db.conn(db_spec)
         super(ProductImagePipeline, self).__init__(store_uri)
 
-        # def image_key(self, url):
-        #     val = super(ProductImagePipeline, self).image_key(url)
-        #     return val
-        # m = self.url_map.pop(url)
-        # p, fn = os.path.split(val)
-        # fn = unicode.format(u'{0}_{1}', m['model'], fn)
-        # return os.path.join(p, unicode.format(u'{0}_{1}', m['brand_id'], cm.simplify_brand_name(m['brandname_e'])), fn)
-
-    # def thumb_key(self, url, thumb_id):
-    #     val = super(ProductImagePipeline, self).thumb_key(url, thumb_id)
-    #     m = self.url_map[url]
-    #     p, fn = os.path.split(val)
-    #     fn = unicode.format(u'{0}_{1}', m['model'], fn)
-    #     return os.path.join(p, unicode.format(u'{0}_{1}', m['brand_id'], m['brandname_e']), fn)
-
     def get_images(self, response, request, info):
         media_guid = hashlib.sha1(request.url).hexdigest()
         # 确定图像类型
@@ -285,17 +270,19 @@ class ProductImagePipeline(ImagesPipeline):
                 url = url[:idx]
             return hashlib.md5(url).hexdigest()
 
+        # TODO balenciaga和bottega的特征提取函数都错了，需要重新做
         def balenciaga_chrt(r):
             # 处理Balenciaga图片连接的特征值，即url变量文件名部分的最后一个字母
-            return os.path.splitext(r[1]['path'])[0][-1]
+            return os.path.splitext(r[1]['url'])[0][-1]
 
         mcqueen_chrt = balenciaga_chrt
         # TODO Dolce Gabbana的图片数据需要重新做
         dolce_chrt = balenciaga_chrt
+        valentino_chrt = balenciaga_chrt
 
         def bottega_chrt(r):
             # 处理Bottega的图片链接特征值，即url变量文件名部分的最后两个字母
-            return os.path.splitext(r[1]['path'])[0][-2:]
+            return os.path.splitext(r[1]['url'])[0][-2:]
 
         def func(chrt_func):
             url_dict = {}
@@ -318,67 +305,13 @@ class ProductImagePipeline(ImagesPipeline):
                     10029: lambda: func(balenciaga_chrt),
                     10008: lambda: func(mcqueen_chrt),
                     10109: lambda: func(dolce_chrt),
-                    10049: lambda: func(bottega_chrt)}
+                    10049: lambda: func(bottega_chrt),
+                    10367: lambda: func(valentino_chrt)}
 
         if brand_id in func_map:
             return func_map[brand_id]()
         else:
             return results
-
-            #if brand_id == 10350:
-            #    # 处理Tiffany
-            #    url_dict = {}
-            #    for item in list(filter(lambda val: val[0], results)):
-            #        path = item[1]['path']
-            #        full_path = os.path.normpath(os.path.join(self.store.basedir, path))
-            #        url = item[1]['url']
-            #        idx = url.find('?')
-            #        if idx != -1:
-            #            url = url[:idx]
-            #        try:
-            #            img = Image.open(full_path)
-            #        except IOError:
-            #            continue
-            #
-            #        # 两种情况会采用该result：尺寸更大，或第一次出现
-            #        width = img.size[0]
-            #        if url not in url_dict or width > url_dict[url]['size']:
-            #            url_dict[url] = {'size': width, 'item': item}
-            #    return [val['item'] for val in url_dict.values()]
-            #elif brand_id in {10029, 10008}:
-            #    # 处理Balenciaga
-            #    url_dict = {}
-            #    for item in list(filter(lambda x: x[0], results)):
-            #        url = item[1]['url']
-            #        key = os.path.splitext(url)[0][-1]
-            #        try:
-            #            img = Image.open(os.path.normpath(os.path.join(self.store.basedir, item[1]['path'])))
-            #        except IOError:
-            #            continue
-            #
-            #        # 两种情况会采用该result：尺寸更大，或第一次出现
-            #        width = img.size[0]
-            #        if key not in url_dict or width > url_dict[key]['size']:
-            #            url_dict[key] = {'size': width, 'item': item}
-            #    return [val['item'] for val in url_dict.values()]
-            #elif brand_id in {10049}:
-            #    # 处理Bottega
-            #    url_dict = {}
-            #    for item in list(filter(lambda x: x[0], results)):
-            #        url = item[1]['url']
-            #        key = os.path.splitext(url)[0][-2:]
-            #        try:
-            #            img = Image.open(os.path.normpath(os.path.join(self.store.basedir, item[1]['path'])))
-            #        except IOError:
-            #            continue
-            #
-            #        # 两种情况会采用该result：尺寸更大，或第一次出现
-            #        width = img.size[0]
-            #        if key not in url_dict or width > url_dict[key]['size']:
-            #            url_dict[key] = {'size': width, 'item': item}
-            #    return [val['item'] for val in url_dict.values()]
-            #else:
-            #    return results
 
     def update_products_image(self, brand_id, model, checksum):
         """

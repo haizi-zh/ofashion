@@ -1133,6 +1133,18 @@ def guess_gender(desc, extra=None):
     @param desc: 额外的性别提示信息。满足以下格式：{'male': [u'男性', u'男人'], 'female': [u'女性']}
     @param extra:
     """
+
+    def is_cjk(val):
+        """
+        val是否为cjk字符集
+        @param val:
+        """
+        for c in val:
+            if c >= '\u4e00' and c < '\u9fff':
+                return True
+        else:
+            return False
+
     if not extra:
         extra = {'male': [], 'female': []}
 
@@ -1145,9 +1157,12 @@ def guess_gender(desc, extra=None):
 
     for gender in ['male', 'female']:
         for term in gender_dict[gender]:
-            if re.search(term, desc, flags=re.U | re.I):
-                return gender
-
+            if is_cjk(term):
+                if re.search(term, desc, flags=re.U | re.I):
+                    return gender
+            else:
+                if re.search(unicode.format(ur'\b{0}\b', term), desc, flags=re.U | re.I):
+                    return gender
     return None
 
 

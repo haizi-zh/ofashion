@@ -167,8 +167,8 @@ def set_up_spider(spider_class, region, data):
 
     crawler.settings.values['IMAGES_STORE'] = get_images_store(sc.spider_data['brand_id'])
     crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
-    crawler.settings.values['IMAGES_MIN_HEIGHT'] = 160
-    crawler.settings.values['IMAGES_MIN_WIDTH'] = 160
+    crawler.settings.values['IMAGES_MIN_HEIGHT'] = 64
+    crawler.settings.values['IMAGES_MIN_WIDTH'] = 64
 
     # crawler.signals.connect(on_spider_closed, signal=scrapy.signals.spider_closed)
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
