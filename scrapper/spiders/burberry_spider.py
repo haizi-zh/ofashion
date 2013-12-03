@@ -114,7 +114,7 @@ class BurberrySpider(MFashionSpider):
             model = item._root.attrib['data-product-id']
             m = copy.deepcopy(metadata)
             m['model'] = model
-            url = self.process_href(item._root.attrib['href'], region.url)
+            url = self.process_href(item._root.attrib['href'], response.url)
             m['url'] = url
             yield Request(url=url, meta={'userdata': m}, dont_filter=True, callback=self.parse_details,
                           errback=self.onerr)

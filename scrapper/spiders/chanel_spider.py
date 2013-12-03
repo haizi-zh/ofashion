@@ -243,10 +243,10 @@ class ChanelSpider(MFashionSpider):
         if 'description' in info:
             metadata['description'] = self.reformat(cm.unicodify(info['description']))
         if 'title' in info:
-            temp = cm.unicodify(info['title'])
+            temp = self.reformat(info['title'])
             if temp:
                 metadata['name'] = temp.lower()
-            metadata['category'] = [metadata['name']]
+                metadata['category'] = [metadata['name']]
 
         if 'ref' in info:
             metadata['model'] = cm.unicodify(info['ref'])

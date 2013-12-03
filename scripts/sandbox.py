@@ -38,12 +38,43 @@ class Object(object):
         self.brand_id = brand_id
         self.db_spec = db_spec
 
+    def reformat(self, text):
+        """
+        格式化字符串，将多余的空格、换行、制表符等合并
+        """
+        text = cm.unicodify(text)
+        if text is None:
+            return None
+        text = cm.html2plain(text.strip())
+        # <br/>换成换行符
+        text = re.sub(ur'<\s*br\s*/?>', u'\r\n', text)
+        # 去掉多余的标签
+        text = re.sub(ur'<[^<>]*?>', u'', text)
+        # # 换行转换
+        text = re.sub('[\r\n]+', '\r', text)
+        # text = re.subn(ur'(?:[\r\n])+', ', ', text)[0]
+        # 去掉连续的多个空格
+        text = re.sub(r'[ \t]+', ' ', text)
+        return text
+
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
 
     def run(self):
-        self.func_oneuse()
+        db = MySqlDb()
+        db.conn(glob.EDITOR_SPEC)
+
+        rs = db.query_match(['idproducts', 'name', 'category'], 'products', {},
+                            extra=['name like "%&nbsp;%" OR category like "%&nbsp;%"']).fetch_row(maxrows=0, how=1)
+        db.start_transaction()
+        for record in rs:
+            pid = int(record['idproducts'])
+            name = self.reformat(record['name'])
+            category = self.reformat(record['category'])
+            db.update({'name': name, 'category': category}, 'products', str.format('idproducts={0}', pid))
+        db.commit()
+        #self.func_oneuse()
 
     def reduce_duplicate_image(self, db_spec=glob.SPIDER_SPEC, table='products_image'):
         db = MySqlDb()

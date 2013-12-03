@@ -26,6 +26,7 @@ class ProcessTags(object):
     progress = 0
 
     def __init__(self, last_update=None, extra_cond=None):
+        print str.format('Processing tags (last_update="{0}", extra_cond="{1}")...', last_update, extra_cond)
         self.db = MySqlDb()
         self.db.conn(self.db_spec)
         self.last_update = last_update
@@ -99,6 +100,7 @@ class ProcessTags(object):
 
 class PublishRelease(object):
     def __init__(self, brand_id, extra_cond=None):
+        print str.format('Publishing (brand_id={0}, extra_cond="{1}")...', brand_id, extra_cond)
         self.db = None
         self.brand_id = brand_id
         if not extra_cond:
@@ -171,18 +173,22 @@ class PublishRelease(object):
                 region = pid_region_dict[pid]
                 price_list[pid] = {'price': float(item['price']), 'currency': item['currency'],
                                    'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
-                                   'code': region,
-                                   'country': gs.REGION_INFO[region]['name_c']}
+                                   'code': region, 'country': gs.REGION_INFO[region]['name_c']}
+
+        # 如果没有价格信息，则不发布
+        if not price_list:
+            return
 
         for val in price_list.values():
             val.pop('date')
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
+
         # TODO price_cn的计算：应该按照真实的货币来计算，而不是国家/区域。因为有时候，网站所使用的货币并非该国家的法定货币。比如Versace的中国产品，价格计量采用的是EUR而不是CNY。
-        if entry['price_list']:
-            # 取第一个国家的价格，转换成CNY
-            region = entry['price_list'][0]['code']
-            price = entry['price_list'][0]['price']
-            entry['price_cn'] = float(gs.REGION_INFO[region]['rate']) * price
+
+        # 取第一个国家的价格，转换成CNY
+        price = entry['price_list'][0]['price']
+        currency = entry['price_list'][0]['currency']
+        entry['price_cn'] = gs.CURRENCY_RATE[currency] * price
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         image_list = []
@@ -201,20 +207,22 @@ class PublishRelease(object):
         checksum_order = {key: idx for idx, key in enumerate(checksums)}
 
         # 如果没有图片，则暂时不添加到release表中
-        if checksums:
-            rs = self.db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
-                                     str.format('checksum IN ({0})',
-                                                ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
-                maxrows=0, how=1)
-            for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
-                tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
-                image_list.append(tmp)
-                if val['checksum'] == cover_checksum:
-                    entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
+        if not checksums:
+            return
 
-            entry['image_list'] = json.dumps(image_list, ensure_ascii=False)
+        rs = self.db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
+                                 str.format('checksum IN ({0})',
+                                            ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
+            maxrows=0, how=1)
+        for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
+            tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
+            image_list.append(tmp)
+            if val['checksum'] == cover_checksum:
+                entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
 
-            self.db.insert(entry, 'products_release')
+        entry['image_list'] = json.dumps(image_list, ensure_ascii=False)
+
+        self.db.insert(entry, 'products_release')
 
     def run(self):
         self.db = MySqlDb()
@@ -237,7 +245,7 @@ class PublishRelease(object):
                 model_list[record['model']] = [record]
             else:
                 model_list[record['model']].append(record)
-            # 归并最后一个model
+                # 归并最后一个model
         self.merge_prods(model_list.pop(list(model_list.keys())[0]))
 
         self.db.close()

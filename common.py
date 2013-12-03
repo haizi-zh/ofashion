@@ -996,7 +996,7 @@ def process_price(price, region, decimal=None, currency=None):
     if not currency:
         # 如果price没有货币单位信息，则根据region使用默认值
         mt = re.search(r'\b([A-Z]{3})\b', price)
-        if mt and mt.group(1) in glob.CURRENCY_LIST:
+        if mt and mt.group(1) in glob.CURRENCY_RATE.keys():
             currency = mt.group(1)
         else:
             currency = glob.REGION_INFO[region]['currency']

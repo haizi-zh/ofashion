@@ -179,7 +179,7 @@ class ProductPipeline(object):
                 except KeyError:
                     pass
                 tmp = cm.process_price(entry['price'], entry['region'], currency=currency)
-                if tmp:
+                if tmp and tmp['price'] > 0:
                     price = tmp['price']
                     currency = tmp['currency']
                     rs = self.db.query_match('price', 'products_price_history', {'idproducts': pid},

@@ -55,13 +55,23 @@ def __fetch_region_info():
     db.conn(EDITOR_SPEC)
     tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
     return {k['iso_code']: {'iso_code3': k['iso_code3'],
-                            'weight': k['weight'], 'rate': k['rate'],
+                            'weight': k['weight'], 'rate': float(k['rate']),
                             'name_e': k['name_e'].decode('utf-8'),
                             'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
                             'currency': k['currency'], 'decimal': k['decimal_mark']}
             for k in tmp}
 
 
+def __fetch_rate(region_info):
+    rate_data = {}
+    for code, data in region_info.items():
+        if data['currency'] in rate_data:
+            continue
+        rate_data[data['currency']] = data['rate']
+    return rate_data
+
+
 BRAND_NAMES = __fetch_brand_info()
 REGION_INFO = __fetch_region_info()
-CURRENCY_LIST = set(val['currency'] for val in REGION_INFO.values())
+CURRENCY_RATE = __fetch_rate(REGION_INFO)
+#CURRENCY_LIST = set(val['currency'] for val in REGION_INFO.values())
