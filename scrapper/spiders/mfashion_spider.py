@@ -34,6 +34,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         """
         pass
 
+    # TODO 原来的process_href中，第二个参数为region。有误，改为referer。但是，很多caller需要做相应的修改。
     def process_href(self, href, referer):
         href = cm.unicodify(href)
         referer = cm.unicodify(referer)

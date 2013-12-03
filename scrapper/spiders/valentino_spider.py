@@ -15,7 +15,9 @@ __author__ = 'Zephyre'
 
 class ValentinoSpider(MFashionSpider):
     spider_data = {'brand_id': 10367,
-                   'currency': {'cn': 'EUR', 'hk': 'EUR', 'tw': 'EUR'},
+                   'currency': {'cn': 'EUR', 'hk': 'EUR', 'tw': 'EUR', 'au': 'EUR', 'ca': 'USD', 'cz': 'EUR',
+                                'my': 'EUR', 'ru': 'EUR', 'nz': 'EUR', 'no': 'EUR', 'sg': 'EUR', 'se': 'EUR',
+                                'ch': 'EUR', 'th': 'EUR'},
                    'home_urls': {'cn': 'http://store.valentino.com/VALENTINO/home/tskay/5A81B803/mm/112',
                                  'us': 'http://store.valentino.com/VALENTINO/home/tskay/B60ACEA7/mm/112',
                                  'fr': 'http://store.valentino.com/VALENTINO/home/tskay/D5C4AA66/mm/112',
@@ -23,7 +25,28 @@ class ValentinoSpider(MFashionSpider):
                                  'uk': 'http://store.valentino.com/VALENTINO/home/tskay/112439D7/mm/112',
                                  'jp': 'http://store.valentino.com/VALENTINO/home/tskay/7D74C94E/mm/112',
                                  'hk': 'http://store.valentino.com/VALENTINO/home/tskay/3DC16A52/mm/112',
-                                 'tw': 'http://store.valentino.com/VALENTINO/home/tskay/928128F6/mm/112'
+                                 'tw': 'http://store.valentino.com/VALENTINO/home/tskay/928128F6/mm/112',
+                                 'au': 'http://store.valentino.com/VALENTINO/home/tskay/C6921D72/mm/112',
+                                 'at': 'http://store.valentino.com/VALENTINO/home/tskay/F71D8A1F/mm/112',
+                                 'be': 'http://store.valentino.com/VALENTINO/home/tskay/552ACA0C/mm/112',
+                                 'ca': 'http://store.valentino.com/VALENTINO/home/tskay/30E5FB37/mm/112',
+                                 'cz': 'http://store.valentino.com/VALENTINO/home/tskay/AD8236E3/mm/112',
+                                 'dk': 'http://store.valentino.com/VALENTINO/home/tskay/8E38B618/mm/112',
+                                 'fi': 'http://store.valentino.com/VALENTINO/home/tskay/CBF2ABDE/mm/112',
+                                 'de': 'http://store.valentino.com/VALENTINO/home/tskay/C7EC0275/mm/112',
+                                 'gr': 'http://store.valentino.com/VALENTINO/home/tskay/35CC0F8E/mm/112',
+                                 'ie': 'http://store.valentino.com/VALENTINO/home/tskay/3D5AF91F/mm/112',
+                                 'my': 'http://store.valentino.com/VALENTINO/home/tskay/5F3402F6/mm/112',
+                                 'nl': 'http://store.valentino.com/VALENTINO/home/tskay/AE548791/mm/112',
+                                 'nz': 'http://store.valentino.com/VALENTINO/home/tskay/F80CDC79/mm/112',
+                                 'no': 'http://store.valentino.com/VALENTINO/home/tskay/813D3CFE/mm/112',
+                                 'pt': 'http://store.valentino.com/VALENTINO/home/tskay/CA8091BE/mm/112',
+                                 'ru': 'http://store.valentino.com/VALENTINO/home/tskay/6658A396/mm/112',
+                                 'sg': 'http://store.valentino.com/VALENTINO/home/tskay/58B187DC/mm/112',
+                                 'es': 'http://store.valentino.com/VALENTINO/home/tskay/27D69C18/mm/112',
+                                 'se': 'http://store.valentino.com/VALENTINO/home/tskay/DD852A3F/mm/112',
+                                 'ch': 'http://store.valentino.com/VALENTINO/home/tskay/138A41DE/mm/112',
+                                 'th': 'http://store.valentino.com/VALENTINO/home/tskay/FFC03A39/mm/112',
                    }}
 
     @classmethod
