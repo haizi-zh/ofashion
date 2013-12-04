@@ -634,8 +634,6 @@ def geocode_query(db, id_range=None, extra_condition=None, overwrite=False, logg
 
     logger.info('Done.')
 
-# TODO Create a function to reset geocoded records: reset idcity and geo_queried, delete corresponding
-# records from city and city_fingerprints.
 
 def insert_new_city(db, result, ratio_threshold=10, big_cities=None):
     city_info = {u'country': result[u'geo_country'].upper(), u'code2': result[u'geo_country_short'].upper()}
@@ -1164,7 +1162,6 @@ def update_city_info(db, id_range=None, extra_condition=None, overwrite=False):
 
     logger.info(u'Done')
 
-# TODO email_formatter
 
 def tel_formatter(db, field='tel', id_range=None, extra_condition=None, logger=None):
     statement = 'SELECT idstores, tel FROM stores'

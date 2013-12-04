@@ -145,7 +145,7 @@ class PradaSpider(MFashionSpider):
                          'div[contains(@class,"name")]/a[@href]')
         if temp:
             for temp1 in temp:
-                if self.process_href(temp1._root.attrib['href'], response.url) == response._url:
+                if self.process_href(temp1._root.attrib['href'], response.url) == response.url:
                     node = temp1
                     break
         if not node:

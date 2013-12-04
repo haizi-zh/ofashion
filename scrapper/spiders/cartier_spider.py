@@ -161,7 +161,7 @@ class CartierSpider(MFashionSpider):
             sel = Selector(response)
         else:
             try:
-                text = json.loads(response._body)['cartierFoAjaxSearch']['data']
+                text = json.loads(response.body)['cartierFoAjaxSearch']['data']
                 sel = Selector(text=text)
             except (ValueError, KeyError, TypeError):
                 # 解析错误，作为普通HTML对待

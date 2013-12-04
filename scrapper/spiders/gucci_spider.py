@@ -203,7 +203,7 @@ class GucciSpider(MFashionSpider):
     def parse_style(self, response):
         metadata = response.meta['userdata']
         try:
-            data = json.loads(response._body)['images']['web_zoomin']
+            data = json.loads(response.body)['images']['web_zoomin']
             metadata['image_urls'] = data
         except KeyError:
             return None
@@ -216,7 +216,7 @@ class GucciSpider(MFashionSpider):
     def parse_dynamic(self, response):
         self.log(unicode.format(u'PARSE_DETAILS: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        data = json.loads(response._body)['style_wrappers']
+        data = json.loads(response.body)['style_wrappers']
         k = data.keys()[0]
         data = data[k]
 

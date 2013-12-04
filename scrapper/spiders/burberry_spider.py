@@ -158,6 +158,7 @@ class BurberrySpider(MFashionSpider):
         if ret:
             metadata['name'] = utils.unicodify(ret[0]._root.text.strip() if ret[0]._root.text is not None else '')
 
+        # TODO Images might have various versions due to different color selections. Fetch them all.
         if 'name' in metadata and 'details' in metadata and 'description' in metadata:
             ret = hxs.xpath(
                 "//div[@class='product_detail_container']/div[@class='product_viewer']//ul[@class='product-media-set']/"
