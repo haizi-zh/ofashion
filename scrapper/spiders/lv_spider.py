@@ -120,7 +120,8 @@ def make_post_str(post_data):
     :param post_data:
     """
     return u'&'.join(
-        unicode.format(u'{0}={1}', urllib.quote_plus(item[0]), urllib.quote_plus(item[1])) for item in post_data.items())
+        unicode.format(u'{0}={1}', urllib.quote_plus(item[0]), urllib.quote_plus(item[1])) for item in
+        post_data.items())
 
     # def func(val):
     #     if val == "+":

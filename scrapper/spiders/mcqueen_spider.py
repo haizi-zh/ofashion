@@ -11,12 +11,15 @@ __author__ = 'Zephyre'
 
 class McQueenSpider(MFashionSpider):
     spider_data = {
-    'currency': {'au': 'USD', 'bn': 'USD', 'ca': 'USD', 'mo': 'USD', 'my': 'USD', 'bh': 'EUR', 'bg': 'EUR', 'cz': 'EUR',
-                 'eg': 'EUR', 'ge': 'EUR', 'hu': 'EUR', 'is': 'EUR', 'in': 'USD', 'id': 'USD', 'il': 'EUR', 'jo': 'EUR',
-                 'kw': 'EUR', 'lv': 'EUR', 'li': 'EUR', 'lt': 'EUR', 'mk': 'EUR', 'mx': 'EUR', 'nz': 'USD', 'no': 'EUR',
-                 'pl': 'EUR', 'qa': 'EUR', 'ru': 'EUR', 'sg': 'USD', 'kr': 'USD', 'se': 'EUR', 'ch': 'EUR',
-                 'tw': 'USD'},
-    'brand_id': 10008}
+        'currency': {'au': 'USD', 'bn': 'USD', 'ca': 'USD', 'mo': 'USD', 'my': 'USD', 'bh': 'EUR', 'bg': 'EUR',
+                     'cz': 'EUR',
+                     'eg': 'EUR', 'ge': 'EUR', 'hu': 'EUR', 'is': 'EUR', 'in': 'USD', 'id': 'USD', 'il': 'EUR',
+                     'jo': 'EUR',
+                     'kw': 'EUR', 'lv': 'EUR', 'li': 'EUR', 'lt': 'EUR', 'mk': 'EUR', 'mx': 'EUR', 'nz': 'USD',
+                     'no': 'EUR',
+                     'pl': 'EUR', 'qa': 'EUR', 'ru': 'EUR', 'sg': 'USD', 'kr': 'USD', 'se': 'EUR', 'ch': 'EUR',
+                     'tw': 'USD'},
+        'brand_id': 10008}
 
 
     @classmethod
@@ -58,9 +61,9 @@ class McQueenSpider(MFashionSpider):
 
             m1 = copy.deepcopy(metadata)
             m1['tags_mapping']['category-0'] = [{'name': tag_text.lower(), 'title': tag_text}]
-            gender=cm.guess_gender(tag_text.lower())
+            gender = cm.guess_gender(tag_text.lower())
             if gender:
-                m1['gender']=[gender]
+                m1['gender'] = [gender]
 
             for node2 in node1.xpath('./ul[contains(@class,"secondLevel")]/li/a[@href]'):
                 tag_text = self.reformat(cm.unicodify(node2._root.text))
@@ -70,7 +73,7 @@ class McQueenSpider(MFashionSpider):
                 m2 = copy.deepcopy(metadata)
                 m2['tags_mapping']['category-1'] = [{'name': tag_text.lower(), 'title': tag_text}]
                 m2['category'] = [tag_text.lower()]
-                yield Request(url=self.process_href(node2._root.attrib['href'], metadata['region']),
+                yield Request(url=self.process_href(node2._root.attrib['href'], response.url),
                               callback=self.parse_cat1, errback=self.onerr, meta={'userdata': m2})
 
     def parse_cat1(self, response):
@@ -83,7 +86,7 @@ class McQueenSpider(MFashionSpider):
                 continue
             m = copy.deepcopy(metadata)
             m['tags_mapping']['category-2'] = [{'name': tag_text.lower(), 'title': tag_text}]
-            yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+            yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                           callback=self.parse_cat2, errback=self.onerr, meta={'userdata': m})
 
     def parse_cat2(self, response):
@@ -99,7 +102,7 @@ class McQueenSpider(MFashionSpider):
                     continue
                 m = copy.deepcopy(metadata)
                 m['tags_mapping']['category-3'] = [{'name': tag_text.lower(), 'title': tag_text}]
-                yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+                yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                               callback=self.parse_list, errback=self.onerr, meta={'userdata': m})
         else:
             for val in self.parse_list(response):
@@ -118,7 +121,7 @@ class McQueenSpider(MFashionSpider):
                 if not model_name:
                     continue
                 m['name'] = model_name
-                url = self.process_href(tmp[0].xpath('..')[0]._root.attrib['href'], metadata['region'])
+                url = self.process_href(tmp[0].xpath('..')[0]._root.attrib['href'], response.url)
             if not url:
                 continue
 
@@ -132,7 +135,7 @@ class McQueenSpider(MFashionSpider):
                         pass
                 m['price'] = val
 
-            yield Request(url=self.process_href(url, metadata['region']), callback=self.parse_details,
+            yield Request(url=self.process_href(url, response.url), callback=self.parse_details,
                           errback=self.onerr, meta={'userdata': m}, dont_filter=True)
 
     def parse_details(self, response):

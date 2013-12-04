@@ -157,7 +157,7 @@ class CoachSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="shareUrl" and @value]')
         if tmp:
-            metadata['url'] = self.process_href(tmp[0]._root.attrib['value'], self.region)
+            metadata['url'] = self.process_href(tmp[0]._root.attrib['value'], response.url)
         else:
             metadata['url'] = response.url
 

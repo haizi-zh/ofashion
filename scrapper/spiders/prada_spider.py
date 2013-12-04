@@ -62,7 +62,7 @@ class PradaSpider(MFashionSpider):
         for node in sel.xpath('//div[contains(@class,"menu")]/ul[contains(@class,"collections")]/li[contains(@class,'
                               '"collection")]/div/a[@href]'):
             m = copy.deepcopy(metadata)
-            href = self.process_href(node._root.attrib['href'], metadata['region'])
+            href = self.process_href(node._root.attrib['href'], response.url)
             mt = re.search('/([^/]+)$', href)
             if mt:
                 tag_name = cm.unicodify(mt.group(1)).lower()
@@ -79,7 +79,7 @@ class PradaSpider(MFashionSpider):
         for node in sel.xpath('//section[@id="contents"]/article[contains(@class,"products")]/'
                               'div[contains(@class,"product")]/a[@href]'):
             m = copy.deepcopy(metadata)
-            href = self.process_href(node._root.attrib['href'], metadata['region'])
+            href = self.process_href(node._root.attrib['href'], response.url)
             temp = node.xpath('./figcaption/div[@class="name"]')
             if not temp:
                 continue
@@ -108,7 +108,7 @@ class PradaSpider(MFashionSpider):
         metadata['description'] = '\n'.join(cm.unicodify(val._root.text) for val in temp if val._root.text)
 
         temp = sel.xpath('//article[@class="product"]/figure[@class="slider"]/img[@data-zoom-url]')
-        image_urls = [self.process_href(val._root.attrib['data-zoom-url'], metadata['region']) for val in temp]
+        image_urls = [self.process_href(val._root.attrib['data-zoom-url'], response.url) for val in temp]
 
         metadata['category'] = [val['name'] for val in
                                 metadata['tags_mapping'][
@@ -136,7 +136,7 @@ class PradaSpider(MFashionSpider):
         temp = sel.xpath(
             '//article[contains(@class,"sliding-backgrounds")]//a[@href and contains(@class,"background")]')
         if temp:
-            return Request(url=self.process_href(temp[0]._root.attrib['href'], metadata['region']),
+            return Request(url=self.process_href(temp[0]._root.attrib['href'], response.url),
                            callback=self.parse_list,
                            meta={'userdata': metadata}, errback=self.onerr)
 
@@ -145,7 +145,7 @@ class PradaSpider(MFashionSpider):
                          'div[contains(@class,"name")]/a[@href]')
         if temp:
             for temp1 in temp:
-                if self.process_href(temp1._root.attrib['href'], metadata['region']) == response._url:
+                if self.process_href(temp1._root.attrib['href'], response.url) == response._url:
                     node = temp1
                     break
         if not node:
@@ -172,7 +172,7 @@ class PradaSpider(MFashionSpider):
                     tag_name = cm.unicodify(mt.group(1))
                     tag_text = cm.unicodify(node2._root.text) if node2._root.text else tag_name
                     m2['tags_mapping']['category-2'] = [{'name': tag_name, 'title': tag_text}]
-                ret.append(Request(url=self.process_href(href, metadata['region']), meta={'userdata': m2},
+                ret.append(Request(url=self.process_href(href, response.url), meta={'userdata': m2},
                                    callback=self.parse_list,
                                    errback=self.onerr))
 

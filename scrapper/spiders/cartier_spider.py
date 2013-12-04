@@ -94,7 +94,7 @@ class CartierSpider(MFashionSpider):
                 else:
                     temp = temp.strip()
                 tag_text = cm.unicodify(temp)
-                tag_name=tag_text.lower()
+                tag_name = tag_text.lower()
                 metadata_1 = copy.deepcopy(metadata_0)
                 metadata_1['tags_mapping']['category-1'] = [{'name': tag_name, 'title': tag_text}]
                 metadata_1['page_id'] = 0

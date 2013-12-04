@@ -61,9 +61,9 @@ class HermesSpider(MFashionSpider):
 
             m = copy.deepcopy(metadata)
             m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
-            gender=cm.guess_gender(tag_name)
+            gender = cm.guess_gender(tag_name)
             if gender:
-                m['gender']=[gender]
+                m['gender'] = [gender]
 
             if not href or not href.strip():
                 continue

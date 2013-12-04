@@ -77,7 +77,7 @@ class TiffanySpider(MFashionSpider):
                     continue
                 m2 = copy.deepcopy(m1)
                 m2['tags_mapping']['category-1'] = [{'name': cat.lower(), 'title': cat}]
-                yield Request(url=self.process_href(node2._root.attrib['href'], metadata['region']),
+                yield Request(url=self.process_href(node2._root.attrib['href'], response.url),
                               callback=self.parse_cat, errback=self.onerr, meta={'userdata': m2})
 
     def parse_cat(self, response):
@@ -89,7 +89,7 @@ class TiffanySpider(MFashionSpider):
             temp = cm.unicodify(node._root.text)
             if temp:
                 m['name'] = cm.reformat_addr(temp)
-            yield Request(url=self.process_href(node._root.attrib['href'], m['region']), callback=self.parse_details,
+            yield Request(url=self.process_href(node._root.attrib['href'], response.url), callback=self.parse_details,
                           errback=self.onerr, meta={'userdata': m}, dont_filter=True)
 
     def parse_details(self, response):

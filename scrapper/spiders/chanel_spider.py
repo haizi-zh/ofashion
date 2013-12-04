@@ -332,7 +332,7 @@ class ChanelSpider(MFashionSpider):
             gender = cm.guess_gender(cat)
             if gender:
                 if 'gender' not in metadata:
-                    metadata['gender']=set([])
+                    metadata['gender'] = set([])
                 metadata['gender'].add(gender)
 
         temp = sel.xpath('//div[@class="productName"]')
@@ -451,7 +451,7 @@ class ChanelSpider(MFashionSpider):
             gender = cm.guess_gender(cat)
             if gender:
                 if 'gender' not in metadata:
-                    metadata['gender']=set([])
+                    metadata['gender'] = set([])
                 metadata['gender'].add(gender)
 
         temp = sel.xpath('//div[contains(@class, "product_detail_container")]')

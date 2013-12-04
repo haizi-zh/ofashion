@@ -66,7 +66,7 @@ class MonclerSpider(MFashionSpider):
             m['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
             m['category'] = [tag_name.lower()]
 
-            url = self.process_href(node._root.attrib['href'], metadata['region'])
+            url = self.process_href(node._root.attrib['href'], response.url)
             yield Request(url=url, meta={'userdata': m, 'filter-level': 0}, callback=self.parse_filter,
                           errback=self.onerr, dont_filter=True)
 
@@ -96,7 +96,7 @@ class MonclerSpider(MFashionSpider):
                 else:
                     m['color'] = [tag_name.lower()]
 
-                url = self.process_href(node._root.attrib['href'], metadata['region'])
+                url = self.process_href(node._root.attrib['href'], response.url)
                 yield Request(url=url, meta={'userdata': m, 'filter-level': filter_idx + 1},
                               callback=self.parse_filter, errback=self.onerr)
 
@@ -106,8 +106,7 @@ class MonclerSpider(MFashionSpider):
 
         for node in sel.xpath(
                 '//div[@id="elementsContainer"]/div[contains(@id,"item")]/a[@class="itemImage" and @href]'):
-            url = self.process_href(re.sub(r'\s', '', cm.html2plain(node._root.attrib['href'])),
-                                    metadata['region'])
+            url = self.process_href(re.sub(r'\s', '', cm.html2plain(node._root.attrib['href'])), response.url)
             m = copy.deepcopy(metadata)
             yield Request(url=url, meta={'userdata': m}, dont_filter=True,
                           callback=self.parse_product_details, errback=self.onerr)

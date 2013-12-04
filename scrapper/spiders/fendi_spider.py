@@ -76,7 +76,7 @@ class FendiSpider(MFashionSpider):
             gender = cm.guess_gender(cat)
             if gender:
                 m['gender'] = [gender]
-            url = self.process_href(href, metadata['region'])
+            url = self.process_href(href, response.url)
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_1, dont_filter=True)
 
 
@@ -96,7 +96,7 @@ class FendiSpider(MFashionSpider):
             m = copy.deepcopy(metadata)
             m['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
             m['category'] = [cat]
-            url = self.process_href(href, metadata['region'])
+            url = self.process_href(href, response.url)
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_2)
 
     def parse_category_2(self, response):
@@ -121,14 +121,14 @@ class FendiSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
                 m['extra']['filter'] = [cat]
                 m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
-                url = self.process_href(href, metadata['region'])
+                url = self.process_href(href, response.url)
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_2)
         else:
             for item in sel.xpath(
                     "//div[@id='page']/div[@class='view-all']/ul[@id='slider']/li/a[@href and @data-id]"):
                 href = cm.unicodify(item._root.attrib['href'])
                 m = copy.deepcopy(metadata)
-                url = self.process_href(href, metadata['region'])
+                url = self.process_href(href, response.url)
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_details)
 
     def parse_details(self, response):
@@ -180,10 +180,10 @@ class FendiSpider(MFashionSpider):
                 if large_imgs:
                     href = tmp[0]._root.attrib[large_imgs[0]]
 
-                item['image_urls'] = [self.process_href(href, metadata['region'])]
+                item['image_urls'] = [self.process_href(href, response.url)]
 
             href = cm.unicodify(node._root.attrib['href'])
-            url = self.process_href(href, metadata['region'])
+            url = self.process_href(href, response.url)
             return Request(url=url, meta={'userdata': metadata, 'item': item}, callback=self.parse_image,
                            dont_filter=True)
         else:

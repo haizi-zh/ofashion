@@ -15,7 +15,7 @@ __author__ = 'Zephyre'
 class MiumiuSpider(MFashionSpider):
     spider_data = {'brand_id': 10264,
                    'home_urls': {'cn': 'http://store.miumiu.com/hans/CN/'}}
-                                 # 'us': 'http://www.miumiu.com/en'}}}
+    # 'us': 'http://www.miumiu.com/en'}}}
 
     @classmethod
     def get_supported_regions(cls):

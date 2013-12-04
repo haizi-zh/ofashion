@@ -58,7 +58,7 @@ class BalenciagaSpider(MFashionSpider):
                     continue
                 m2['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
 
-                url = self.process_href(node2._root.attrib['href'], metadata['region'])
+                url = self.process_href(node2._root.attrib['href'], response.url)
                 if re.search(r'/view-all[^/]+$', url):
                     continue
                 yield Request(url=url, meta={'userdata': m2}, callback=self.parse_list, errback=self.onerr)
@@ -145,7 +145,7 @@ class BalenciagaSpider(MFashionSpider):
             color_nodes = node.xpath('..//div[@class="description"]//div[@class="colorLink"]/a[@href]/img[@title]')
             if not color_nodes:
                 # 没有色彩信息
-                yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+                yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                               meta={'userdata': copy.deepcopy(metadata)}, dont_filter=True,
                               callback=self.parse_details, errback=self.onerr)
             else:
@@ -156,7 +156,7 @@ class BalenciagaSpider(MFashionSpider):
                         continue
                     m = copy.deepcopy(metadata)
                     m['color'] = [tmp.lower()]
-                    yield Request(url=self.process_href(node2.xpath('..')[0]._root.attrib['href'], metadata['region']),
+                    yield Request(url=self.process_href(node2.xpath('..')[0]._root.attrib['href'], response.url),
                                   meta={'userdata': m}, callback=self.parse_details, errback=self.onerr,
                                   dont_filter=True)
 

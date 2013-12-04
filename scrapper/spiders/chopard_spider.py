@@ -42,7 +42,7 @@ class ChopardSpider(MFashionSpider):
                                                  node._root.iterdescendants()) if val)
             m['tags_mapping']['category-0'] = [{'name': tag_text.lower(), 'title': tag_text}]
             m['category'] = [tag_text.lower()]
-            yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+            yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                           meta={'userdata': m}, callback=self.parse_cat1, errback=self.onerr, dont_filter=True)
 
     def parse_cat1(self, response):
@@ -55,7 +55,7 @@ class ChopardSpider(MFashionSpider):
             tag_text = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
                                                  node._root.iterdescendants()) if val)
             m['tags_mapping']['category-1'] = [{'name': tag_text.lower(), 'title': tag_text}]
-            yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+            yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                           meta={'userdata': m}, callback=self.parse_cat2, errback=self.onerr, dont_filter=True)
 
         if not node_list:
@@ -72,7 +72,7 @@ class ChopardSpider(MFashionSpider):
             tag_text = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
                                                  node._root.iterdescendants()) if val)
             m['tags_mapping']['category-2'] = [{'name': tag_text.lower(), 'title': tag_text}]
-            yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+            yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                           meta={'userdata': m}, callback=self.parse_list, errback=self.onerr, dont_filter=True)
 
         if not node_list:
@@ -88,18 +88,18 @@ class ChopardSpider(MFashionSpider):
             # tmp = node.xpath('../*[@class="product-name"]')
             # if not tmp:
             #     m['name'] = self.reformat(cm.unicodify(tmp[0]._root.text))
-            yield Request(url=self.process_href(node._root.attrib['href'], metadata['region']),
+            yield Request(url=self.process_href(node._root.attrib['href'], response.url),
                           meta={'userdata': m}, callback=self.parse_details, errback=self.onerr, dont_filter=True)
 
         for node in sel.xpath('//div[contains(@class,"home-widget")]/div[contains(@class,"widget-content")]/a[@href]'):
-            url = self.process_href(node._root.attrib['href'], metadata['region'])
+            url = self.process_href(node._root.attrib['href'], response.url)
             if url:
                 yield Request(url=url, meta={'userdata': copy.deepcopy(metadata)}, callback=self.parse_details,
                               errback=self.onerr)
 
         for node in sel.xpath(
                 '//div[contains(@class,"home-widget")]/div[contains(@class,"widget-content")]/ul/li/a[@href]'):
-            url = self.process_href(node._root.attrib['href'], metadata['region'])
+            url = self.process_href(node._root.attrib['href'], response.url)
             if url:
                 yield Request(url=url, meta={'userdata': copy.deepcopy(metadata)}, callback=self.parse_details,
                               errback=self.onerr)
@@ -158,8 +158,8 @@ class ChopardSpider(MFashionSpider):
         #         image_processed.add(hv)
 
         for node in sel.xpath('//div[@class="other-products-carousel"]//ul/li/a[@rel and @data-zoomimg]'):
-            small_url = self.process_href(node._root.attrib['data-zoomimg'], metadata['region'])
-            zoom_url = self.process_href(node._root.attrib['rel'], metadata['region'])
+            small_url = self.process_href(node._root.attrib['data-zoomimg'], response.url)
+            zoom_url = self.process_href(node._root.attrib['rel'], response.url)
             image_candidates.append({'zoom': zoom_url, 'small': small_url})
 
             # hv = hashlib.md5(zoom_url).hexdigest()
@@ -183,7 +183,7 @@ class ChopardSpider(MFashionSpider):
             sel = Selector(response)
             image_urls.pop()
             for node in sel.xpath('//p[@class="product-image-zoom"]/img[@src]'):
-                image_urls.append(self.process_href(node._root.attrib['src'], metadata['region']))
+                image_urls.append(self.process_href(node._root.attrib['src'], response.url))
 
         if image_candidates:
             # 使用小版本图像。如果成功，则使用zoom版本将其替换。
