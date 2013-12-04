@@ -64,7 +64,7 @@ class Object(object):
 
     def run(self):
         db = MySqlDb()
-        db.conn(glob.EDITOR_SPEC)
+        db.conn(glob.DB_SPEC)
 
         rs = db.query_match(['idproducts', 'name', 'category'], 'products', {},
                             extra=['name like "%&nbsp;%" OR category like "%&nbsp;%"']).fetch_row(maxrows=0, how=1)
@@ -137,7 +137,7 @@ class Object(object):
         """
         max_transaction = 10000
         db = MySqlDb()
-        db.conn(glob.EDITOR_SPEC)
+        db.conn(glob.DB_SPEC)
 
         self.tot = int(db.query('SELECT COUNT(*) FROM products WHERE price IS NOT NULL').fetch_row()[0][0])
         self.progress = 0
@@ -173,7 +173,7 @@ class Object(object):
 
     def proc_image_path(self):
         db = MySqlDb()
-        db.conn(glob.EDITOR_SPEC)
+        db.conn(glob.DB_SPEC)
 
         rs = db.query('SELECT * FROM images_store WHERE path NOT LIKE "%/full/%"')
         self.tot = rs.num_rows()
@@ -190,7 +190,7 @@ class Object(object):
 
     def func_1(self):
         db = MySqlDb()
-        db.conn(glob.EDITOR_SPEC)
+        db.conn(glob.DB_SPEC)
 
         self.tot = int(db.query('SELECT COUNT(*) FROM images_store where path like "10109%" order by '
                                 'url').fetch_row()[0][0])

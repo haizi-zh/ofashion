@@ -14,7 +14,7 @@ from core import MySqlDb
 
 
 class SyncProducts(object):
-    def __init__(self, src_spec=glob.SPIDER_SPEC, dst_spec=glob.EDITOR_SPEC, cond=None):
+    def __init__(self, src_spec=glob.SPIDER_SPEC, dst_spec=glob.DB_SPEC, cond=None):
         self.progress = 0
         self.tot = 1
         if cond:
@@ -193,7 +193,7 @@ class EditorPriceProcessor(object):
         return str.format('{0} out of {1} completed({2:.1%})', self.progress, self.tot, float(self.progress) / self.tot)
 
 
-def spider2editor(src=glob.SPIDER_SPEC, dst=glob.EDITOR_SPEC, table='products'):
+def spider2editor(src=glob.SPIDER_SPEC, dst=glob.DB_SPEC, table='products'):
     """
     从spider库到editor库的更新机制
     """
@@ -229,7 +229,7 @@ def spider2editor(src=glob.SPIDER_SPEC, dst=glob.EDITOR_SPEC, table='products'):
     scr_db.close()
 
 
-def process_editor_price(db_spec=glob.EDITOR_SPEC, table='products', extra_cond=None):
+def process_editor_price(db_spec=glob.DB_SPEC, table='products', extra_cond=None):
     """
     处理editor库中的价格信息
     :param table: 需要操作的表。默认为products。
@@ -257,7 +257,7 @@ def process_editor_price(db_spec=glob.EDITOR_SPEC, table='products', extra_cond=
         db.close()
 
 
-def process_editor_tags(db_spec=glob.EDITOR_SPEC, db_spider_spec=glob.SPIDER_SPEC, table='products', extra_cond=None):
+def process_editor_tags(db_spec=glob.DB_SPEC, db_spider_spec=glob.SPIDER_SPEC, table='products', extra_cond=None):
     """
     给editor库的数据添加tags字段
     """

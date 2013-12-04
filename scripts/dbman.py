@@ -22,7 +22,7 @@ class ProcessTags(object):
     prod_mt_tbl = 'products_mfashion_tags'
     products = 'products'
 
-    db_spec = gs.EDITOR_SPEC
+    db_spec = gs.DB_SPEC
     tot = 1
     progress = 0
 
@@ -225,7 +225,7 @@ class PublishRelease(object):
 
     def run(self):
         self.db = MySqlDb()
-        self.db.conn(gs.EDITOR_SPEC)
+        self.db.conn(gs.DB_SPEC)
 
         self.db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
 
@@ -260,7 +260,7 @@ def currency_update(param_dict):
     @param param_dict:
     """
     db = MySqlDb()
-    db.conn(gs.EDITOR_SPEC)
+    db.conn(gs.DB_SPEC)
     rs = db.query_match(['iso_code', 'currency'], 'region_info').fetch_row(maxrows=0)
     db.start_transaction()
     try:

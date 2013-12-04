@@ -17,14 +17,14 @@ REMOTE_CONN = True
 if sys.platform not in ('win32', ):
     REMOTE_CONN = False
 
-EDITOR_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-               'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
-RELEASE_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-                'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'release_stores'}
-SPIDER_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-               'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'spider_stores'}
-TMP_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-            'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'spider_stores_bkp'}
+DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
+           'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
+#RELEASE_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
+#                'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'release_stores'}
+#SPIDER_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
+#               'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'spider_stores'}
+#TMP_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
+#            'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'spider_stores_bkp'}
 
 # Email settings for notification
 EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
@@ -42,7 +42,7 @@ LOG_DEBUG = False
 
 def __fetch_brand_info():
     db = core.MySqlDb()
-    db.conn(EDITOR_SPEC)
+    db.conn(DB_SPEC)
     tmp = db.query('SELECT * FROM brand_info').fetch_row(how=1, maxrows=0)
     return {int(k['brand_id']): {'brandname_e': k['brandname_e'].decode('utf-8') if k['brandname_e'] else None,
                                  'brandname_c': k['brandname_c'].decode('utf-8') if k['brandname_c'] else None,
@@ -52,7 +52,7 @@ def __fetch_brand_info():
 
 def __fetch_region_info():
     db = core.MySqlDb()
-    db.conn(EDITOR_SPEC)
+    db.conn(DB_SPEC)
     tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
     return {k['iso_code']: {'iso_code3': k['iso_code3'],
                             'weight': k['weight'], 'rate': float(k['rate']),

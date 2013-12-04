@@ -138,7 +138,7 @@ def set_up_spider(spider_class, region, data):
             shutil.rmtree(job_path, ignore_errors=True)
         crawler.settings.values['JOBDIR'] = job_path
 
-    crawler.settings.values['EDITOR_SPEC'] = glob.EDITOR_SPEC
+    crawler.settings.values['EDITOR_SPEC'] = glob.DB_SPEC
     crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC
     crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
 

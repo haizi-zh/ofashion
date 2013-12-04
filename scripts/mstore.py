@@ -165,7 +165,7 @@ def editor_price_processor(args):
         print 'Invalid syntax.'
         return
 
-    db_spec = glob.EDITOR_SPEC
+    db_spec = glob.DB_SPEC
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
     db.query("SET NAMES 'utf8'")
@@ -405,8 +405,8 @@ def sync(args):
     idx = 0
     cond = []
     src_spec = glob.SPIDER_SPEC
-    dst_spec = glob.EDITOR_SPEC
-    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.EDITOR_SPEC,
+    dst_spec = glob.DB_SPEC
+    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
               'release': glob.RELEASE_SPEC}
     while True:
         if idx >= len(args):
@@ -603,8 +603,8 @@ def image_check(param_dict):
     :param param_dict:
     :return:
     """
-    db_spec = glob.EDITOR_SPEC
-    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.EDITOR_SPEC,
+    db_spec = glob.DB_SPEC
+    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
               'release': glob.RELEASE_SPEC}
     cond = ['1']
     gen_checksum = False

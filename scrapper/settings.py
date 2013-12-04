@@ -23,7 +23,7 @@ ITEM_PIPELINES = [
 
 SPIDER_NAME = sys.argv[2]
 
-EDITOR_SPEC = glob.EDITOR_SPEC
+EDITOR_SPEC = glob.DB_SPEC
 SPIDER_SPEC = glob.SPIDER_SPEC
 RELEASE_SPEC = glob.RELEASE_SPEC
 IMAGES_STORE = cm.get_spider_module(SPIDER_NAME).get_images_store()

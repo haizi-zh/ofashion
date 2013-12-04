@@ -30,9 +30,9 @@ def get_logger():
     # return logging.getLogger()
 
 
-product_pipeline = ProductPipeline(glob.EDITOR_SPEC)
+product_pipeline = ProductPipeline(glob.DB_SPEC)
 store_uri = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images', '10226_louis_vuitton'))
-image_pipeline = ProductImagePipeline(store_uri, db_spec=glob.EDITOR_SPEC)
+image_pipeline = ProductImagePipeline(store_uri, db_spec=glob.DB_SPEC)
 spider = None
 
 logger = get_logger()
