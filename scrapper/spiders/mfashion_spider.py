@@ -34,23 +34,12 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         """
         pass
 
-    def process_href(self, href, referer):
-        href = unicodify(href)
-        referer = unicodify(referer)
-        if not href or not href.strip():
-            return None
-        else:
-            href = href.strip()
-
-        if re.search(r'^//', href):
-            return 'http:' + href
-
-        tmp = urlparse.urlparse(href)
-        if tmp.scheme:
-            return href
-        else:
-            tmp = urlparse.urlparse(referer)
-            return unicode.format(u'{0}://{1}{2}', tmp.scheme, tmp.netloc, href)
+    @staticmethod
+    def process_href(href, referer):
+        ret = urlparse.urlparse(href)
+        netloc = ret.netloc if ret.netloc else urlparse.urlparse(referer).netloc
+        scheme = ret.scheme if ret.scheme else 'http'
+        return urlparse.urlunparse((scheme, netloc, ret.path, ret.params, ret.query, ret.fragment))
 
     def reformat(self, text):
         """
