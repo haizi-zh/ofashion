@@ -6,6 +6,7 @@ from scrapy.selector import Selector
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
+from utils.utils import process_price, unicodify
 
 __author__ = 'Zephyre'
 
@@ -44,7 +45,7 @@ class BalenciagaSpider(MFashionSpider):
                                              'a[@href]'):
             m1 = copy.deepcopy(metadata)
             tag_type = 'category-0'
-            tag_name = cm.unicodify(node._root.text)
+            tag_name = unicodify(node._root.text)
             if not tag_name:
                 continue
             m1['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
@@ -53,7 +54,7 @@ class BalenciagaSpider(MFashionSpider):
             for node2 in node.xpath('../div/div[@class="col"]/ul/li/a[@href]'):
                 m2 = copy.deepcopy(m1)
                 tag_type = 'category-1'
-                tag_name = cm.unicodify(node2._root.text)
+                tag_name = unicodify(node2._root.text)
                 if not tag_name:
                     continue
                 m2['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
@@ -87,29 +88,29 @@ class BalenciagaSpider(MFashionSpider):
         tmp = sel.xpath('//div[@id="itemInfo"]/h1')
         if tmp:
             node = tmp[0]
-            tmp = cm.unicodify(node._root.text)
+            tmp = unicodify(node._root.text)
             metadata['name'] = self.reformat(tmp) if tmp else None
 
         tmp = sel.xpath('//div[@id="itemInfo"]/h2')
         if tmp:
             node = tmp[0]
-            tmp = cm.unicodify(node._root.text)
+            tmp = unicodify(node._root.text)
             metadata['description'] = self.reformat(tmp) if tmp else None
 
         tmp = sel.xpath('//div[@id="itemInfo"]/h1/span[@class="modelColor"]')
-        tmp = tmp and cm.unicodify(tmp[0]._root.text)
+        tmp = tmp and unicodify(tmp[0]._root.text)
         if tmp:
             metadata['color'] = [self.reformat(tmp).lower()]
 
         tmp = sel.xpath('//div[@id="itemPrice"]//span[@class="priceValue"]')
         if tmp:
-            val = cm.unicodify(tmp[0]._root.text)
+            val = unicodify(tmp[0]._root.text)
             if not val:
                 try:
-                    val = cm.unicodify(tmp[0]._root.iterdescendants().next().tail)
+                    val = unicodify(tmp[0]._root.iterdescendants().next().tail)
                 except StopIteration:
                     pass
-            ret = cm.process_price(val, metadata['region'])
+            ret = process_price(val, metadata['region'])
             if ret and ret['price'] != 0:
                 metadata['price'] = val
 
@@ -117,16 +118,16 @@ class BalenciagaSpider(MFashionSpider):
         tmp = sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]')
         if tmp:
             tmp1 = tmp[0].xpath('./span[@class="itemPropertyKey"]')
-            item_key = cm.unicodify(tmp1[0]._root.text) if tmp1 else None
+            item_key = unicodify(tmp1[0]._root.text) if tmp1 else None
             tmp1 = tmp[0].xpath('./span[@class="itemPropertyValue"]')
-            item_val = cm.unicodify(tmp1[0]._root.text) if tmp1 else None
+            item_val = unicodify(tmp1[0]._root.text) if tmp1 else None
             details.append(' '.join(filter(lambda val: val, [item_key, item_val])))
 
         for node in sel.xpath('//div[@id="description_pane"]/div[@class="details"]/div'):
             tmp1 = node.xpath('./span[@class="itemPropertyKey"]')
-            item_key = cm.unicodify(tmp1[0]._root.text) if tmp1 else None
+            item_key = unicodify(tmp1[0]._root.text) if tmp1 else None
             tmp1 = node.xpath('./span[@class="itemPropertyValue"]')
-            item_val = cm.unicodify(tmp1[0]._root.text) if tmp1 else None
+            item_val = unicodify(tmp1[0]._root.text) if tmp1 else None
             details.append(' '.join(filter(lambda val: val, [item_key, item_val])))
 
         if details:
@@ -151,7 +152,7 @@ class BalenciagaSpider(MFashionSpider):
             else:
                 # 枚举色彩
                 for node2 in color_nodes:
-                    tmp = cm.unicodify(node2._root.attrib['title'])
+                    tmp = unicodify(node2._root.attrib['title'])
                     if not tmp:
                         continue
                     m = copy.deepcopy(metadata)

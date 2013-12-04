@@ -14,6 +14,7 @@ from twisted.internet import reactor
 import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import iterable
 
 __author__ = 'Zephyre'
 
@@ -176,7 +177,7 @@ def set_up_spider(spider_class, region, data):
 
     if not region:
         region = spider_class.get_supported_regions()
-    elif not cm.iterable(region):
+    elif not iterable(region):
         region = [region]
 
     if 'exclude-region' in data:

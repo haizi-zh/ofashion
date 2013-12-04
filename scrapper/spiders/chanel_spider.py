@@ -1,18 +1,19 @@
 # coding=utf-8
 import json
-import os
-import datetime
 import re
+import copy
+
 from scrapy import log
 from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
-from scrapy.contrib.spiders import CrawlSpider, Rule
+from scrapy.contrib.spiders import Rule
 from scrapy.http import Request
 from scrapy.selector import Selector
-import global_settings as glob
+
 import common as cm
 from scrapper.items import ProductItem
-import copy
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -150,7 +151,7 @@ class ChanelSpider(MFashionSpider):
             for temp in product_info['navItems']:
                 if 'title' not in temp:
                     continue
-                cat = cm.unicodify(temp['title'])
+                cat = unicodify(temp['title'])
                 if not cat or cat.lower() in cat_list:
                     continue
                 cat_idx += 1
@@ -240,7 +241,7 @@ class ChanelSpider(MFashionSpider):
         pricing_service = metadata.pop('pricing_service')
 
         if 'description' in info:
-            metadata['description'] = self.reformat(cm.unicodify(info['description']))
+            metadata['description'] = self.reformat(unicodify(info['description']))
         if 'title' in info:
             temp = self.reformat(info['title'])
             if temp:
@@ -248,10 +249,10 @@ class ChanelSpider(MFashionSpider):
                 metadata['category'] = [metadata['name']]
 
         if 'ref' in info:
-            metadata['model'] = cm.unicodify(info['ref'])
+            metadata['model'] = unicodify(info['ref'])
         else:
             info = info['data'][0]
-            metadata['model'] = cm.unicodify(info['ref'])
+            metadata['model'] = unicodify(info['ref'])
 
         # price
         if pricing_service and 'refPrice' in info:
@@ -315,7 +316,7 @@ class ChanelSpider(MFashionSpider):
         cat_idx = 0
         cat_list = []
         for node in sel.xpath('//div[contains(@class,"trackingSettings")]/span[@class]'):
-            cat = cm.unicodify(node._root.text)
+            cat = unicodify(node._root.text)
             if not cat:
                 continue
             if node._root.attrib['class'] == 'WT_cg_s':
@@ -340,19 +341,19 @@ class ChanelSpider(MFashionSpider):
             product_name = temp[0]
             temp = product_name.xpath('./h1[@class="family"]/span[@class="familyText"]')
             if len(temp) > 0:
-                name = cm.unicodify(temp[0]._root.text)
+                name = unicodify(temp[0]._root.text)
                 if name:
                     name_list.append(name)
-                name = u', '.join([cm.unicodify(val.text) for val in temp[0]._root.iterdescendants() if
+                name = u', '.join([unicodify(val.text) for val in temp[0]._root.iterdescendants() if
                                    val.text and val.text.strip()])
                 if name:
                     name_list.append(name.strip())
             temp = product_name.xpath('./h2[@class="name"]')
             if len(temp) > 0:
-                name = cm.unicodify(temp[0]._root.text)
+                name = unicodify(temp[0]._root.text)
                 if name:
                     name_list.append(name)
-                name = u', '.join([cm.unicodify(val.text) for val in temp[0]._root.iterdescendants() if
+                name = u', '.join([unicodify(val.text) for val in temp[0]._root.iterdescendants() if
                                    val.text and val.text.strip()])
                 if name:
                     name_list.append(name.strip())
@@ -365,7 +366,7 @@ class ChanelSpider(MFashionSpider):
             content_node = temp[0]
             content_map = {}
             for node in content_node.xpath('./div[@class="tabs"]//a[@rel]'):
-                temp = cm.unicodify(node._root.text)
+                temp = unicodify(node._root.text)
                 if temp and temp in self.spider_data['description_hdr']:
                     content_map['description'] = node._root.attrib['rel']
                 if temp and temp in self.spider_data['details_hdr']:
@@ -376,11 +377,11 @@ class ChanelSpider(MFashionSpider):
                     temp = content_node.xpath(str.format('./div[@id="{0}"]', content_map[term]))
                     if len(temp) > 0:
                         content_list = []
-                        content = cm.unicodify(temp[0]._root.text)
+                        content = unicodify(temp[0]._root.text)
                         if content:
                             content_list.append(content)
                         content_list.extend(
-                            [cm.unicodify(val.text) for val in temp[0]._root.iterdescendants() if
+                            [unicodify(val.text) for val in temp[0]._root.iterdescendants() if
                              val.text and val.text.strip()])
                         metadata[term] = u', '.join(content_list)
 
@@ -435,7 +436,7 @@ class ChanelSpider(MFashionSpider):
         cat_idx = 0
         cat_list = []
         for node in sel.xpath('//div[contains(@class,"trackingSettings")]/span[@class]'):
-            cat = cm.unicodify(node._root.text)
+            cat = unicodify(node._root.text)
             if not cat:
                 continue
             if node._root.attrib['class'] == 'WT_cg_s':
@@ -459,18 +460,18 @@ class ChanelSpider(MFashionSpider):
             product_name = temp[0]
             temp = product_name.xpath('./h1[@class="product_name"]')
             if len(temp) > 0:
-                name = cm.unicodify(temp[0]._root.text)
+                name = unicodify(temp[0]._root.text)
                 if name:
                     name_list.append(name)
             temp = product_name.xpath('./h2[@class="product_subtitle"]')
             if len(temp) > 0:
-                name = cm.unicodify(temp[0]._root.text)
+                name = unicodify(temp[0]._root.text)
                 if name:
                     name_list.append(name)
 
             temp = product_name.xpath('.//h3[@class="product_price"]')
             if len(temp) > 0:
-                metadata['price'] = cm.unicodify(temp[0]._root.text)
+                metadata['price'] = unicodify(temp[0]._root.text)
         name = u' - '.join(name_list)
         metadata['name'] = name if name else None
 
@@ -480,7 +481,7 @@ class ChanelSpider(MFashionSpider):
             content_node = temp[0]
             content_map = {}
             for node in content_node.xpath('.//div[@class="accordion-heading"]/a[@href]'):
-                temp = cm.unicodify(node._root.text)
+                temp = unicodify(node._root.text)
                 if temp and temp in self.spider_data['description_hdr']:
                     content_map['description'] = re.sub(r'^#', '', node._root.attrib['href'])
                 if temp and temp in self.spider_data['details_hdr']:
@@ -491,11 +492,11 @@ class ChanelSpider(MFashionSpider):
                     temp = content_node.xpath(str.format('.//div[@id="{0}"]', content_map[term]))
                     if len(temp) > 0:
                         content_list = []
-                        content = cm.unicodify(temp[0]._root.text)
+                        content = unicodify(temp[0]._root.text)
                         if content:
                             content_list.append(content)
                         content_list.extend(
-                            [cm.unicodify(val.text) for val in temp[0]._root.iterdescendants() if
+                            [unicodify(val.text) for val in temp[0]._root.iterdescendants() if
                              val.text and val.text.strip()])
                         metadata[term] = u', '.join(content_list)
 

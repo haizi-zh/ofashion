@@ -2,14 +2,12 @@
 import copy
 import json
 import re
-from scrapy import log
-import scrapy.contrib.spiders
 from scrapy.http import Request
 from scrapy.selector import Selector
-import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -81,7 +79,7 @@ class CartierSpider(MFashionSpider):
                 continue
             else:
                 temp = temp.strip()
-            tag_text = cm.unicodify(temp)
+            tag_text = unicodify(temp)
             tag_name = tag_text.lower()
             metadata_0 = copy.deepcopy(metadata)
             metadata_0['tags_mapping']['category-0'] = [{'name': tag_name, 'title': tag_text}]
@@ -93,7 +91,7 @@ class CartierSpider(MFashionSpider):
                     continue
                 else:
                     temp = temp.strip()
-                tag_text = cm.unicodify(temp)
+                tag_text = unicodify(temp)
                 tag_name = tag_text.lower()
                 metadata_1 = copy.deepcopy(metadata_0)
                 metadata_1['tags_mapping']['category-1'] = [{'name': tag_name, 'title': tag_text}]
@@ -114,7 +112,7 @@ class CartierSpider(MFashionSpider):
 
         temp = sel.xpath('//div[@class="product-header"]//span[@class="page-product-title"]')
         if temp:
-            collection = cm.unicodify(temp[0]._root.text)
+            collection = unicodify(temp[0]._root.text)
             if collection:
                 metadata['tags_mapping']['collection'] = [{'name': collection.lower(), 'title': collection}]
 
@@ -128,17 +126,17 @@ class CartierSpider(MFashionSpider):
         if 'name' not in metadata or not metadata['name']:
             temp = sel.xpath('//div[@class="product-main"]//span[@itemprop="name"]')
             if temp:
-                metadata['name'] = cm.unicodify(temp[0]._root.text)
+                metadata['name'] = unicodify(temp[0]._root.text)
 
         temp = sel.xpath('//div[@class="product-aesthetics"]//span[@itemprop="description"]/p')
-        metadata['description'] = '\n'.join(cm.unicodify(val._root.text) for val in temp if val._root.text)
+        metadata['description'] = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
 
         temp = sel.xpath('//div[@class="product-details"]//div[contains(@class,"field-item")]/p')
-        metadata['details'] = '\n'.join(cm.unicodify(val._root.text) for val in temp if val._root.text)
+        metadata['details'] = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
 
         temp = sel.xpath('//div[@itemprop="offers"]//div[@itemprop="price" and @class="product-price"]')
         if temp:
-            metadata['price'] = cm.unicodify(temp[0]._root.text)
+            metadata['price'] = unicodify(temp[0]._root.text)
 
         temp = sel.xpath('//div[@class="column-images"]//a[@href and contains(@class,"zoom-trigger-link")]')
         image_urls = [self.process_href(val._root.attrib['href'], response.url) for val in temp]
@@ -178,11 +176,11 @@ class CartierSpider(MFashionSpider):
                 temp = node.xpath('./div[@class="model-name"]')
                 if not temp:
                     continue
-                m['name'] = cm.unicodify(temp[0]._root.text)
+                m['name'] = unicodify(temp[0]._root.text)
                 temp = node.xpath('./div[@class="model-description"]')
                 if not temp:
                     continue
-                m['description'] = cm.unicodify(temp[0]._root.text)
+                m['description'] = unicodify(temp[0]._root.text)
                 flag = True
                 yield Request(url=self.process_href(node.xpath('..')[0]._root.attrib['href'], response.url),
                               meta={'userdata': m}, callback=self.parse_products, errback=self.onerr, dont_filter=True)

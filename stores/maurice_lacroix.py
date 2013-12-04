@@ -70,7 +70,7 @@ def fetch_stores(data):
     for s in js:
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         tmp = s['retail_name'].strip()
-        if cm.is_chinese(tmp):
+        if cm.is_cjk(tmp):
             entry[cm.name_c] = tmp
         else:
             entry[cm.name_e] = tmp

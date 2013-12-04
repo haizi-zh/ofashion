@@ -7,10 +7,10 @@ import re
 from scrapy import log
 from scrapy.http import Request
 from scrapy.selector import Selector
-import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -54,9 +54,9 @@ class GucciSpider(MFashionSpider):
                 span = span[0]
                 inner = span.xpath('.//cufontext')
                 if len(inner) > 0:
-                    cat = cm.unicodify(inner[0]._root.text)
+                    cat = unicodify(inner[0]._root.text)
                 else:
-                    cat = cm.unicodify(span._root.text)
+                    cat = unicodify(span._root.text)
                 if not cat:
                     continue
 
@@ -67,12 +67,12 @@ class GucciSpider(MFashionSpider):
                     m['gender'] = [gender]
 
                 for node2 in node1.xpath("./div/ul/li[not(@class='mega_promo')]/a[@href]"):
-                    href = cm.unicodify(node2._root.attrib['href'])
+                    href = unicodify(node2._root.attrib['href'])
                     inner = node2.xpath('.//cufontext')
                     if len(inner) > 0:
-                        title = cm.unicodify(inner[0]._root.text)
+                        title = unicodify(inner[0]._root.text)
                     else:
-                        title = cm.unicodify(node2._root.text)
+                        title = unicodify(node2._root.text)
                     if not title:
                         continue
                     else:
@@ -80,7 +80,7 @@ class GucciSpider(MFashionSpider):
                     mt = re.search(ur'/([^/]+)/?$', href)
                     if not mt:
                         continue
-                    cat = cm.unicodify(mt.group(1))
+                    cat = unicodify(mt.group(1))
                     if not cat:
                         continue
                     else:
@@ -100,12 +100,12 @@ class GucciSpider(MFashionSpider):
                 mt = re.search(ur'/([^/]+)/?$', href)
                 if not mt:
                     return None
-                cat = cm.unicodify(mt.group(1))
+                cat = unicodify(mt.group(1))
                 if not cat:
                     return None
                 else:
                     cat = cat.lower()
-                title = cm.unicodify(node._root.text)
+                title = unicodify(node._root.text)
                 if not title:
                     return None
                 m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
@@ -163,12 +163,12 @@ class GucciSpider(MFashionSpider):
             node = node[0]
             inner = node.xpath('.//cufontext')
             if len(inner) == 0:
-                title = cm.unicodify(node._root.text)
+                title = unicodify(node._root.text)
             else:
                 title = u''.join(val._root.text for val in inner if val._root.text)
 
         node = sel.xpath('//div[@id="accordion_left"]//div[@id="description"]//ul/li')
-        desc = u'\n'.join(cm.unicodify(val._root.text) for val in node if val._root.text)
+        desc = u'\n'.join(unicodify(val._root.text) for val in node if val._root.text)
 
         node = sel.xpath('//div[@id="zoom_in_window"]/div[@class="zoom_in"]/img[@src]')
         if len(node) > 0:

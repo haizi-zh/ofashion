@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # coding=utf-8
-from products import louis_vuitton
 import sys
+
+from products import louis_vuitton
 import global_settings as glob
+
 
 __author__ = 'Zephyre'
 

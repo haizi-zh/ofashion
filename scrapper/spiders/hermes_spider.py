@@ -2,14 +2,12 @@
 import copy
 import json
 import re
-from scrapy import log
-import scrapy.contrib.spiders
 from scrapy.http import Request
 from scrapy.selector import Selector
-import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -51,12 +49,12 @@ class HermesSpider(MFashionSpider):
                 continue
 
             tag_type = 'category-0'
-            tag_name = cm.unicodify(mt.group(1)).lower()
+            tag_name = unicodify(mt.group(1)).lower()
             temp = node.xpath('./a[@href]')
             if not temp:
                 continue
             href = temp[0]._root.attrib['href']
-            tag_text = u', '.join([cm.html2plain(cm.unicodify(val.text)) for val in temp[0]._root.iterdescendants() if
+            tag_text = u', '.join([cm.html2plain(unicodify(val.text)) for val in temp[0]._root.iterdescendants() if
                                    val.text and val.text.strip()])
 
             m = copy.deepcopy(metadata)
@@ -76,7 +74,7 @@ class HermesSpider(MFashionSpider):
             temp = node.xpath('./a[@href]')
             if temp:
                 temp = temp[0]
-                data[str.format('category-{0}', level)] = cm.unicodify(temp._root.text).lower()
+                data[str.format('category-{0}', level)] = unicodify(temp._root.text).lower()
                 href = temp._root.attrib['href']
                 if 'javascript:void' not in href:
                     data['href'] = href
@@ -140,9 +138,9 @@ class HermesSpider(MFashionSpider):
             image_url = data['baseImages'][product_id]
             # 尝试找到zoom图
             zoom_image_url = re.sub(r'/default/([^/]+)$', r'/zoom/\1', image_url)
-            if zoom_image_url in cm.unicodify(response.body):
+            if zoom_image_url in unicodify(response.body):
                 image_url = zoom_image_url
-            elif zoom_image_url.replace('/', r'\/') in cm.unicodify(response.body):
+            elif zoom_image_url.replace('/', r'\/') in unicodify(response.body):
                 image_url = zoom_image_url
 
             m['description'] = data['descriptions'][product_id]
@@ -160,12 +158,12 @@ class HermesSpider(MFashionSpider):
                 elif re.search('size_sized', attrib_name):
                     attrib_name = 'size'
 
-                temp = [cm.unicodify(val['label']).lower() for val in attrib['options'] if
+                temp = [unicodify(val['label']).lower() for val in attrib['options'] if
                         product_id in val['products']]
                 if attrib_name == 'color':
                     m['color'] = temp
                 else:
-                    m['tags_mapping'][cm.unicodify(attrib_name).lower()] = \
+                    m['tags_mapping'][unicodify(attrib_name).lower()] = \
                         [{'name': val.lower(), 'title': val} for val in temp]
 
             if 'category-1' in m['tags_mapping']:

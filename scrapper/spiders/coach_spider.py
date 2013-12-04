@@ -9,6 +9,7 @@ from scrapy.selector import Selector
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -36,7 +37,7 @@ class CoachSpider(MFashionSpider):
 
         if not region:
             region_list = self.get_supported_regions()
-        elif cm.iterable(region):
+        elif iterable(region):
             region_list = region
         else:
             region_list = [region]
@@ -95,7 +96,7 @@ class CoachSpider(MFashionSpider):
 
     def parse_cat(self, response):
         def func(node):
-            return self.reformat(cm.unicodify(node._root.text))
+            return self.reformat(unicodify(node._root.text))
 
         sel = Selector(response)
         tags = filter(lambda val: val,
@@ -105,14 +106,14 @@ class CoachSpider(MFashionSpider):
             # 美国样式
             tmp = sel.xpath('//div[@id="breadcrumbs"]')
             if tmp:
-                tag = cm.unicodify(tmp[0]._root.text)
+                tag = unicodify(tmp[0]._root.text)
                 if tag:
                     tag = re.sub(r'^\s*/\s*', '', tag)
                     tags = [tag]
                 else:
                     tags = []
                 tags.extend(
-                    filter(lambda val: val, (cm.unicodify(val._root.text) for val in tmp[0].xpath('.//a[@href]'))))
+                    filter(lambda val: val, (unicodify(val._root.text) for val in tmp[0].xpath('.//a[@href]'))))
 
         tag_list = []
         for idx, tag_name in enumerate(tags):
@@ -163,7 +164,7 @@ class CoachSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="title" and @value]')
         if tmp:
-            metadata['name'] = cm.unicodify(tmp[0]._root.attrib['value'])
+            metadata['name'] = unicodify(tmp[0]._root.attrib['value'])
 
         # 价格信息
         return Request(url=self.spider_data['price_url'][self.region], method='POST', dont_filter=True,

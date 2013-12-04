@@ -1,12 +1,12 @@
 # coding=utf-8
 import copy
 import re
-import types
 import urlparse
 from scrapy import log
 import scrapy.contrib.spiders
 from scrapy.http import Request
 import common as cm
+from utils.utils import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -35,8 +35,8 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         pass
 
     def process_href(self, href, referer):
-        href = cm.unicodify(href)
-        referer = cm.unicodify(referer)
+        href = unicodify(href)
+        referer = unicodify(referer)
         if not href or not href.strip():
             return None
         else:
@@ -56,7 +56,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         """
         格式化字符串，将多余的空格、换行、制表符等合并
         """
-        text = cm.unicodify(text)
+        text = unicodify(text)
         if text is None:
             return None
         text = cm.html2plain(text.strip())
@@ -78,7 +78,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
 
         if not region:
             self.region_list = self.get_supported_regions()
-        elif cm.iterable(region):
+        elif iterable(region):
             self.region_list = region
         else:
             self.region_list = [region]
@@ -90,7 +90,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
                             'tags_mapping': {}, 'category': []}
 
                 tmp = self.spider_data['home_urls'][region]
-                start_urls = tmp if cm.iterable(tmp) else [tmp]
+                start_urls = tmp if iterable(tmp) else [tmp]
                 for url in start_urls:
                     m = copy.deepcopy(metadata)
                     yield Request(url=url, meta={'userdata': m}, callback=self.parse, errback=self.onerr)

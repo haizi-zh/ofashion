@@ -1,16 +1,16 @@
 # coding=utf-8
 import re
-import datetime
+import copy
+
 from scrapy import log
-from scrapy.contrib.spiders import CrawlSpider
 from scrapy.http import Request
 from scrapy.selector import Selector
-from scrapper import utils
+
 from scrapper.items import ProductItem
-import global_settings as glob
 import common as cm
-import copy
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -85,8 +85,8 @@ class BurberrySpider(MFashionSpider):
             for item in temp:
                 href = item.xpath('@href').extract()[0]
                 # TODO What is cat?
-                cat = utils.unicodify(re.sub(r'/', '', href)).lower()
-                title = utils.unicodify(item.xpath('@title').extract()[0])
+                cat = self.reformat(re.sub(r'/', '', href)).lower()
+                title = self.reformat(item.xpath('@title').extract()[0])
                 m = copy.deepcopy(metadata)
                 m['tags_mapping']['category-3'] = [{'name': cat, 'title': title}]
                 yield Request(url=self.process_href(href, response.url), meta={'userdata': m}, dont_filter=True,
@@ -117,7 +117,7 @@ class BurberrySpider(MFashionSpider):
         # 访问商品的其它颜色版本
         for node in (val for val in ret if val.xpath('@data-color-link').extract()[0] not in metadata['url']):
             m = copy.deepcopy(metadata)
-            m['color'] = [self.reformat(cm.unicodify(node.xpath('@title').extract()[0])).lower()]
+            m['color'] = [self.reformat(unicodify(node.xpath('@title').extract()[0])).lower()]
             url = self.process_href(node.xpath('@data-color-link').extract()[0], response.url)
             m['url'] = url
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
@@ -125,7 +125,7 @@ class BurberrySpider(MFashionSpider):
         # 本页面商品的颜色
         tmp = [val for val in ret if val.xpath('@data-color-link').extract()[0] in metadata['url']]
         if tmp:
-            metadata['color'] = [self.reformat(cm.unicodify(tmp[0].xpath('@title').extract()[0])).lower()]
+            metadata['color'] = [self.reformat(unicodify(tmp[0].xpath('@title').extract()[0])).lower()]
 
         tmp = hxs.xpath('//p[contains(@class,"product-id")]/text()').extract()
         if tmp and tmp[0]:

@@ -8,6 +8,7 @@ from scrapy.selector import Selector
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -60,7 +61,7 @@ class MonclerSpider(MFashionSpider):
         for node in sel.xpath('//div[@id="mainmenu"]/ul[@id="menu"]/li/a[@href]'):
             m = copy.deepcopy(metadata)
             tag_type = 'category-0'
-            tag_name = cm.unicodify(node._root.text)
+            tag_name = unicodify(node._root.text)
             if not tag_name:
                 continue
             m['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
@@ -88,7 +89,7 @@ class MonclerSpider(MFashionSpider):
                 tag_type = None
             for node in filter_node.xpath('./div/ul[contains(@class,"sub")]/li[contains(@class,"sub")]/a[@href]'):
                 m = copy.deepcopy(metadata)
-                tag_name = cm.unicodify(node._root.text)
+                tag_name = unicodify(node._root.text)
                 if not tag_name:
                     continue
                 if tag_type:
@@ -116,7 +117,7 @@ class MonclerSpider(MFashionSpider):
         sel = Selector(response)
 
         metadata['url'] = response.url
-        metadata['name'] = self.reformat(' '.join(cm.unicodify(val._root.text) for val in
+        metadata['name'] = self.reformat(' '.join(unicodify(val._root.text) for val in
                                                   sel.xpath('//div[@id="titlePrice"]/div[@class="itemTitle"]')
                                                   if val._root.text))
 
@@ -132,11 +133,11 @@ class MonclerSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@id="descr_content"]')
         if tmp:
-            metadata['description'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['description'] = self.reformat(unicodify(tmp[0]._root.text))
 
         tmp = sel.xpath('//div[@id="details_content"]')
         if tmp:
-            metadata['details'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['details'] = self.reformat(unicodify(tmp[0]._root.text))
 
         image_urls = []
         mt = re.search(r'var\s+jsoninit_item', response.body)

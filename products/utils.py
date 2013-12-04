@@ -1,7 +1,6 @@
 # coding=utf-8
 import json
 import os
-import re
 import socket
 from urllib2 import HTTPError, URLError
 from exceptions import ValueError

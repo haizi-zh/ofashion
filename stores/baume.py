@@ -67,14 +67,14 @@ def fetch(level=1, data=None, user='root', passwd=''):
                         entry[common.country_e] = ret['name_e']
                         entry[common.country_c] = ret['name_c']
                     else:
-                        if common.is_chinese(country_c):
+                        if common.is_cjk(country_c):
                             entry[common.country_c] = country_c
                         else:
                             entry[common.country_e] = country_c
 
                 if s['address'] is not None:
                     addr = common.reformat_addr(s['address'])
-                    if common.is_chinese(addr):
+                    if common.is_cjk(addr):
                         entry[common.addr_c] = addr
                     else:
                         entry[common.addr_e] = addr
@@ -87,7 +87,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
                         entry[common.city_c] = ret['name_c']
                         entry[common.city_e] = ret['name_e']
                     else:
-                        if common.is_chinese(city):
+                        if common.is_cjk(city):
                             entry[common.city_c] = city
                         else:
                             entry[common.city_e] = city
@@ -109,7 +109,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
                 if s['title'] is not None:
                     name = s['title']
-                    if common.is_chinese(name):
+                    if common.is_cjk(name):
                         entry[common.name_c] = name
                     else:
                         entry[common.name_e] = name

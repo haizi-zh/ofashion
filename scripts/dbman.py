@@ -7,6 +7,7 @@ from core import MySqlDb
 import global_settings as gs
 import common as cm
 import json
+from utils.utils import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -42,7 +43,7 @@ class ProcessTags(object):
 
         if not extra_cond:
             extra_cond = []
-        elif not cm.iterable(extra_cond):
+        elif not iterable(extra_cond):
             extra_cond = [extra_cond]
         if last_update:
             extra_cond.append(unicode.format(u'update_time > "{0}"', last_update))
@@ -105,7 +106,7 @@ class PublishRelease(object):
         self.brand_id = brand_id
         if not extra_cond:
             extra_cond = ['1']
-        elif not cm.iterable(extra_cond):
+        elif not iterable(extra_cond):
             extra_cond = [extra_cond]
         self.extra_cond = extra_cond
         self.tot = 0
@@ -127,12 +128,12 @@ class PublishRelease(object):
         """
         sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
-        entry = {k: cm.unicodify(main_entry[k]) for k in (
+        entry = {k: unicodify(main_entry[k]) for k in (
             'brand_id', 'model', 'name', 'description', 'details', 'gender', 'category', 'color', 'url')}
         if not entry['name']:
             entry['name'] = u'单品'
 
-        mfashion_tags = [cm.unicodify(val[0]) for val in
+        mfashion_tags = [unicodify(val[0]) for val in
                          self.db.query(str.format('SELECT DISTINCT p1.tag FROM mfashion_tags AS p1 '
                                                   'JOIN products_mfashion_tags AS p2 ON p1.idmfashion_tags=p2.id_mfashion_tags '
                                                   'WHERE p2.idproducts IN ({0})',

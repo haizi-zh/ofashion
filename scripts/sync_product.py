@@ -5,6 +5,7 @@ from _mysql_exceptions import OperationalError
 import time
 import core
 import common as cm
+from utils.utils import process_price, unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -17,7 +18,7 @@ class SyncProducts(object):
         self.progress = 0
         self.tot = 1
         if cond:
-            if cm.iterable(cond):
+            if iterable(cond):
                 self.cond = cond
             else:
                 self.cond = [cond]
@@ -56,21 +57,21 @@ class SyncProducts(object):
                 pid_dst = int(rs.fetch_row()[0][0]) if rs.num_rows() > 0 else None
                 entry = {k: record[k] for k in record if k != 'idproducts'}
 
-                price = cm.process_price(record['price'], record['region'])
+                price = process_price(record['price'], record['region'])
                 if price:
                     entry['price_rev'] = price['price']
                     entry['currency_rev'] = price['currency']
 
                 if entry['details']:
-                    entry['details'] = self.process_text(cm.unicodify(entry['details']))
+                    entry['details'] = self.process_text(unicodify(entry['details']))
                 if entry['description']:
-                    entry['description'] = self.process_text(cm.unicodify(entry['description']))
+                    entry['description'] = self.process_text(unicodify(entry['description']))
                 if entry['name']:
-                    entry['name'] = self.process_text(cm.unicodify(entry['name']))
+                    entry['name'] = self.process_text(unicodify(entry['name']))
                 if entry['category']:
-                    entry['category'] = self.process_text(cm.unicodify(entry['category']))
+                    entry['category'] = self.process_text(unicodify(entry['category']))
                 if entry['extra']:
-                    entry['extra'] = self.process_text(cm.unicodify(entry['extra']))
+                    entry['extra'] = self.process_text(unicodify(entry['extra']))
 
                 if pid_dst:
                     db_dst.update(entry, 'products', str.format('idproducts={0}', pid_dst))
@@ -153,7 +154,7 @@ class Spider2EditorHlper(object):
     def run(self):
         for i in xrange(self.tot):
             temp = self.rs.fetch_row(how=1)[0]
-            record = dict((k, cm.unicodify(temp[k])) for k in temp)
+            record = dict((k, unicodify(temp[k])) for k in temp)
 
             rs = self.db.query(
                 str.format('SELECT idproducts FROM products WHERE idproducts={0}', record['idproducts']))
@@ -181,9 +182,9 @@ class EditorPriceProcessor(object):
     def run(self):
         for i in xrange(self.tot):
             temp = self.rs.fetch_row(how=1)[0]
-            record = dict((k, cm.unicodify(temp[k])) for k in temp)
+            record = dict((k, unicodify(temp[k])) for k in temp)
 
-            ret = cm.process_price(record['price'], record['region'])
+            ret = process_price(record['price'], record['region'])
             self.db.update({'price_rev': ret['price'], 'currency_rev': ret['currency']}, 'products',
                            str.format('idproducts={0}', record['idproducts']))
             self.progress = i + 1
@@ -238,7 +239,7 @@ def process_editor_price(db_spec=glob.EDITOR_SPEC, table='products', extra_cond=
     db = MySqlDb()
     db.conn(db_spec)
     extra_cond = ' AND '.join(
-        unicode.format(u'({0})', tuple(cm.unicodify(v))) for v in extra_cond) if extra_cond else '1'
+        unicode.format(u'({0})', tuple(unicodify(v))) for v in extra_cond) if extra_cond else '1'
 
     db.lock([table])
     db.start_transaction()
@@ -264,7 +265,7 @@ def process_editor_tags(db_spec=glob.EDITOR_SPEC, db_spider_spec=glob.SPIDER_SPE
     db.conn(db_spider_spec)
     try:
         extra_cond = ' AND '.join(
-            unicode.format(u'({0})', tuple(cm.unicodify(v))) for v in extra_cond) if extra_cond else '1'
+            unicode.format(u'({0})', tuple(unicodify(v))) for v in extra_cond) if extra_cond else '1'
 
         rs = db.query(
             unicode.format(u'SELECT tag_name,mapping_list FROM products_tag_mapping WHERE {1}', extra_cond).encode(

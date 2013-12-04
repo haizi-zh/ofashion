@@ -1,5 +1,4 @@
 # coding=utf-8
-import json
 import re
 from scrapy import log
 from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
@@ -9,7 +8,6 @@ from scrapy.selector import Selector
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
 
 __author__ = 'Zephyre'
 

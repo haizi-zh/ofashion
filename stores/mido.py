@@ -106,7 +106,7 @@ def fetch_cities(data):
         d = data.copy()
         d['html'] = sub[len(m.group(0)):-len('</li>')]
         terms = m.group(1).strip().upper().split(' ')
-        if len(terms) > 1 and cm.is_chinese(terms[-1]):
+        if len(terms) > 1 and cm.is_cjk(terms[-1]):
             d['city_c'] = terms[-1].strip()
             terms = terms[:-1]
         d['city_e'] = ' '.join(terms)

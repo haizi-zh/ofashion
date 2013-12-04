@@ -1,13 +1,16 @@
 # coding=utf-8
 import json
 import re
-from scrapy import log
+import copy
+
 from scrapy.http import Request
 from scrapy.selector import Selector
+
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -45,13 +48,13 @@ class DolceSpider(MFashionSpider):
 
             for node2 in node1.xpath('.//ul/li/h3'):
                 m2 = copy.deepcopy(m1)
-                tag_text = self.reformat(cm.unicodify(node2._root.text))
+                tag_text = self.reformat(unicodify(node2._root.text))
                 m2['tags_mapping']['category-0'] = [{'name': tag_text.lower(), 'title': tag_text}]
                 m2['category'] = [tag_text.lower()]
 
                 for node3 in node2.xpath('../ul/li/a[@href]'):
                     m3 = copy.deepcopy(m2)
-                    tag_text = self.reformat(cm.unicodify(node3._root.text))
+                    tag_text = self.reformat(unicodify(node3._root.text))
                     m3['tags_mapping']['category-1'] = [{'name': tag_text.lower(), 'title': tag_text}]
 
                     yield Request(url=self.process_href(node3._root.attrib['href'], response.url),
@@ -77,7 +80,7 @@ class DolceSpider(MFashionSpider):
             if filter_nodes:
                 for node in filter_nodes:
                     m = copy.deepcopy(metadata)
-                    tag_text = self.reformat(cm.unicodify(node._root.text))
+                    tag_text = self.reformat(unicodify(node._root.text))
                     if xpath_list[level]['tag_type'] == 'category-2':
                         m['tags_mapping']['category-2'] = [{'name': tag_text.lower(), 'title': tag_text}]
                     elif xpath_list[level]['tag_type'] == 'color':
@@ -109,27 +112,27 @@ class DolceSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@id="itemDescription"]/div[@id="descriptionContent"]/*[@id="catTitle"]')
         if tmp:
-            metadata['name'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['name'] = self.reformat(unicodify(tmp[0]._root.text))
 
         tmp = sel.xpath('//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[contains(@class,"price")]')
         if tmp:
-            metadata['price'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['price'] = self.reformat(unicodify(tmp[0]._root.text))
 
         desc = ''
         tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]')
         if tmp:
-            desc = self.reformat(cm.unicodify(tmp[0]._root.text))
+            desc = self.reformat(unicodify(tmp[0]._root.text))
         if not desc:
             desc = ''
         tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]//ul/li')
         desc_list = [desc]
-        desc_list.extend(self.reformat(cm.unicodify(val._root.text)) for val in tmp)
+        desc_list.extend(self.reformat(unicodify(val._root.text)) for val in tmp)
         desc = '\r'.join(desc_list).strip()
         if desc:
             metadata['description'] = desc
 
         details_terms = [','.join(
-            re.sub(r'\s+', ' ', self.reformat(cm.unicodify(val)), flags=re.U) for val in
+            re.sub(r'\s+', ' ', self.reformat(unicodify(val)), flags=re.U) for val in
             (val._root.text, val._root.prefix, val._root.tail) if val) for val in
                          sel.xpath('//div[@id="detailsContent"]//div[@id="hideaway"]//*[not(@id)]')]
         details = '\r'.join(val for val in details_terms if val).strip()
@@ -138,11 +141,11 @@ class DolceSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@id="colorsBoxContent"]//ul[@id="ColorsList"]/li[@title]')
         if tmp:
-            metadata['color'] = [self.reformat(cm.unicodify(val._root.attrib['title'])) for val in tmp]
+            metadata['color'] = [self.reformat(unicodify(val._root.attrib['title'])) for val in tmp]
 
         tmp = sel.xpath('//div[@id="sizesBoxContent"]//ul[@id="SizeWList"]/li[@title]')
         if tmp:
-            metadata['tags_mapping']['size'] = [self.reformat(cm.unicodify(val._root.attrib['title'])).lower() for val
+            metadata['tags_mapping']['size'] = [self.reformat(unicodify(val._root.attrib['title'])).lower() for val
                                                 in tmp]
 
         tmp = sel.xpath('//img[@id="bigImage" and @src]')

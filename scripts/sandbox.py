@@ -17,6 +17,7 @@ from PIL import Image
 
 import csv
 from scripts.sync_product import SyncProducts
+from utils.utils import process_price, unicodify
 
 
 if glob.DEBUG_FLAG:
@@ -42,7 +43,7 @@ class Object(object):
         """
         格式化字符串，将多余的空格、换行、制表符等合并
         """
-        text = cm.unicodify(text)
+        text = unicodify(text)
         if text is None:
             return None
         text = cm.html2plain(text.strip())
@@ -147,11 +148,11 @@ class Object(object):
         for pid, price_str, region, brand, model in rs_tot:
             self.progress += 1
 
-            price = cm.process_price(price_str, region=region)
+            price = process_price(price_str, region=region)
             if not price:
                 continue
 
-            r = {'idproducts': int(pid), 'price': price['price'], 'brand_id': int(brand), 'model': cm.unicodify(model)}
+            r = {'idproducts': int(pid), 'price': price['price'], 'brand_id': int(brand), 'model': unicodify(model)}
             #db.insert({'idproducts': r['idproducts'], 'price': price['price'], 'currency': price['currency']},
             #          'products_price_history')
 

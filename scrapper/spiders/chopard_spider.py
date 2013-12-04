@@ -1,12 +1,14 @@
 # coding=utf-8
-import hashlib
-import re
+import copy
+
 from scrapy.http import Request
 from scrapy.selector import Selector
+
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -38,7 +40,7 @@ class ChopardSpider(MFashionSpider):
 
         for node in sel.xpath('//ul[@id="nav"]/li/a[@href]'):
             m = copy.deepcopy(metadata)
-            tag_text = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
+            tag_text = ', '.join(val for val in (self.reformat(unicodify(val.text)) for val in
                                                  node._root.iterdescendants()) if val)
             m['tags_mapping']['category-0'] = [{'name': tag_text.lower(), 'title': tag_text}]
             m['category'] = [tag_text.lower()]
@@ -52,7 +54,7 @@ class ChopardSpider(MFashionSpider):
         node_list = sel.xpath('//ul[@id="nav"]/li//ul/li/a[@href]')
         for node in node_list:
             m = copy.deepcopy(metadata)
-            tag_text = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
+            tag_text = ', '.join(val for val in (self.reformat(unicodify(val.text)) for val in
                                                  node._root.iterdescendants()) if val)
             m['tags_mapping']['category-1'] = [{'name': tag_text.lower(), 'title': tag_text}]
             yield Request(url=self.process_href(node._root.attrib['href'], response.url),
@@ -69,7 +71,7 @@ class ChopardSpider(MFashionSpider):
         node_list = sel.xpath('//ul[@id="nav"]/li//ul/li//ul[@class="drilldown-list"]/li/a[@href]')
         for node in node_list:
             m = copy.deepcopy(metadata)
-            tag_text = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
+            tag_text = ', '.join(val for val in (self.reformat(unicodify(val.text)) for val in
                                                  node._root.iterdescendants()) if val)
             m['tags_mapping']['category-2'] = [{'name': tag_text.lower(), 'title': tag_text}]
             yield Request(url=self.process_href(node._root.attrib['href'], response.url),
@@ -110,36 +112,36 @@ class ChopardSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@class="product-main-info"]/div[@class="product-name"]')
         if tmp:
-            metadata['name'] = ', '.join(val for val in (self.reformat(cm.unicodify(val.text)) for val in
+            metadata['name'] = ', '.join(val for val in (self.reformat(unicodify(val.text)) for val in
                                                          tmp[0]._root.iterdescendants()) if val)
 
         # TODO 这里需要注意一个网页：http://www.chopard.fr/fiancailles/bijoux-mariage/pendentifs/an-elegant-diamond-pendant-810374-1001
         tmp = sel.xpath(
             '//div[@class="product-essential"]//div[contains(@class,"description-content")]//div[@class="std"]')
         if tmp:
-            metadata['description'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['description'] = self.reformat(unicodify(tmp[0]._root.text))
 
         tmp = sel.xpath('//div[@id="features-content"]/*[contains(@class,"feature-value") and contains(@class,"ref")]')
         if not tmp:
             return
-        metadata['model'] = cm.unicodify(tmp[0]._root.text)
+        metadata['model'] = unicodify(tmp[0]._root.text)
         if not metadata['model']:
             return
         metadata['url'] = response.url
 
         tmp = sel.xpath('//div[contains(@class,"price-box")]//span[@class="price"]')
         if tmp:
-            metadata['price'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['price'] = self.reformat(unicodify(tmp[0]._root.text))
 
         def func(node):
             tmp = node.xpath('./*[@class="feature-title"]')
             if not tmp:
                 return None
-            title = self.reformat(cm.unicodify(tmp[0]._root.text))
+            title = self.reformat(unicodify(tmp[0]._root.text))
             tmp = node.xpath('./*[@class="feature-value"]')
             if not tmp:
                 return None
-            value = self.reformat(cm.unicodify(tmp[0]._root.text))
+            value = self.reformat(unicodify(tmp[0]._root.text))
             return ' '.join((title, value))
 
         metadata['details'] = '\r'.join(map(func, sel.xpath('//div[@id="features-content"]/div[@class="feature"]')))

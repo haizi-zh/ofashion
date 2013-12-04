@@ -5,8 +5,9 @@
 #
 #     http://doc.scrapy.org/en/latest/topics/settings.html
 #
-import global_settings as glob
 import sys
+
+import global_settings as glob
 import common as cm
 
 

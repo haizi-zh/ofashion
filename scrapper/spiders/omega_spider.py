@@ -1,13 +1,15 @@
 # coding=utf-8
-import json
-import re
+import copy
+
 from scrapy import log
 from scrapy.http import Request
 from scrapy.selector import Selector
+
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -70,7 +72,7 @@ class OmegaSpider(MFashionSpider):
 
         for node1 in sel.xpath(
                 '//div[@id="collection-hub"]/div[contains(@id,"collection_")]/div[@class="collection-title"]/h2'):
-            tag_text = self.reformat(cm.unicodify(node1.xpath('text()').extract()[0]))
+            tag_text = self.reformat(unicodify(node1.xpath('text()').extract()[0]))
             if not tag_text:
                 continue
             m1 = copy.deepcopy(metadata)
@@ -80,7 +82,7 @@ class OmegaSpider(MFashionSpider):
 
             for node2 in node1.xpath(
                     '../../div[@class="collection-detail"]//ul/li/div[@class="container-text"]//a[@href]'):
-                tag_text = self.reformat(cm.unicodify(node2.xpath('text()').extract()[0]))
+                tag_text = self.reformat(unicodify(node2.xpath('text()').extract()[0]))
                 if not tag_text:
                     continue
                 m2 = copy.deepcopy(m1)
@@ -102,7 +104,7 @@ class OmegaSpider(MFashionSpider):
             for node in sel.xpath('//div[@id="product-hub"]//ul[@class="list"]/li//a[@href and @class="hub-thumb"]'):
                 m = copy.deepcopy(metadata)
                 try:
-                    m['name'] = self.reformat(cm.unicodify(node.xpath('../../h2/text()').extract()[0]))
+                    m['name'] = self.reformat(unicodify(node.xpath('../../h2/text()').extract()[0]))
                 except IndexError:
                     pass
                 yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url),
@@ -113,7 +115,7 @@ class OmegaSpider(MFashionSpider):
 
             def func(val):
                 try:
-                    return self.reformat(cm.unicodify(val.xpath('text()').extract()[0])).lower() == catalogue_key
+                    return self.reformat(unicodify(val.xpath('text()').extract()[0])).lower() == catalogue_key
                 except (TypeError, IndexError):
                     return False
 
@@ -139,13 +141,13 @@ class OmegaSpider(MFashionSpider):
             metadata['model'] = model
         except IndexError:
             return
-        metadata['url'] = cm.unicodify(response.url)
+        metadata['url'] = unicodify(response.url)
 
         if 'name' not in metadata or not metadata['name']:
             tmp = sel.xpath('//div[@id="product-detail"]/div[@class="inner-detail"]//*[@class="format"]'
                             '/text()').extract()
             if tmp:
-                metadata['name'] = self.reformat(cm.unicodify(tmp[0]))
+                metadata['name'] = self.reformat(unicodify(tmp[0]))
 
         # 颜色
         sub_products = sel.xpath('//div[@id="product-detail"]/div[@class="inner-detail"]//ul[@class="color-list"]'
@@ -157,7 +159,7 @@ class OmegaSpider(MFashionSpider):
                           meta={'userdata': copy.deepcopy(metadata)})
 
         try:
-            metadata['description'] = self.reformat(cm.unicodify(sel.xpath('//div[@id="tabs-product-detail-overview"]'
+            metadata['description'] = self.reformat(unicodify(sel.xpath('//div[@id="tabs-product-detail-overview"]'
                                                                            '/div[@class="product-detail-tab-content"]'
                                                                            '/p[@class="slide-paragraph"]/text()').extract()[
                 0]))
@@ -168,7 +170,7 @@ class OmegaSpider(MFashionSpider):
                                   'div[@class="product-detail-tab-content"]//li/span[@class="tooltip" or '
                                   '@class="title"]/..')
         details = self.reformat(
-            cm.unicodify('\r'.join(': '.join(node.xpath('*/text()').extract()) for node in details_nodes)))
+            unicodify('\r'.join(': '.join(node.xpath('*/text()').extract()) for node in details_nodes)))
         if details:
             metadata['details'] = details
 
@@ -195,7 +197,7 @@ class OmegaSpider(MFashionSpider):
         sel = Selector(response)
 
         for node in sel.xpath('//div[@id="product-hub"]/ul[@class="list"]/li/a[@href and @title]'):
-            tag_text = self.reformat(cm.unicodify(node.xpath('@title').extract()[0]))
+            tag_text = self.reformat(unicodify(node.xpath('@title').extract()[0]))
             if not tag_text:
                 continue
             m = copy.deepcopy(metadata)
@@ -214,7 +216,7 @@ class OmegaSpider(MFashionSpider):
 
         for node in sel.xpath(
                 '//div[@id="product-hub"]/ul[@class="list"]/li/a[@href and @title and @class="hub-thumb"]'):
-            tag_text = self.reformat(cm.unicodify(node.xpath('@title').extract()[0]))
+            tag_text = self.reformat(unicodify(node.xpath('@title').extract()[0]))
             if not tag_text:
                 continue
             m = copy.deepcopy(metadata)
@@ -229,11 +231,11 @@ class OmegaSpider(MFashionSpider):
         # 判断是否已经是单品页面
         tmp = sel.xpath(
             '//div[@id="product-detail"]/div[@class="inner-detail"]//*[@class="reference-number"]/text()').extract()
-        if not tmp or not self.reformat(cm.unicodify(tmp[0])):
+        if not tmp or not self.reformat(unicodify(tmp[0])):
             # 这是一个列表页面
             for node in sel.xpath('//div[@id="product-hub"]/ul[@class="list"]/li/h2[@class="group"]'):
                 try:
-                    tag_text = self.reformat(cm.unicodify(node.xpath('text()').extract()[0]))
+                    tag_text = self.reformat(unicodify(node.xpath('text()').extract()[0]))
                     if not tag_text:
                         continue
                 except IndexError:

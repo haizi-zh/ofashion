@@ -1,12 +1,10 @@
 # coding=utf-8
-import inspect
 import logging
 import StringIO
 import gzip
 import json
 import re
 import socket
-import types
 import urllib
 import urllib2
 import _mysql
@@ -19,6 +17,7 @@ import sys
 import errno
 import imp
 import global_settings as glob
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -265,14 +264,6 @@ def norm_brand_name(brand_name):
     return re.sub(r'\s+', '_', brand_name).lower()
 
 
-def is_chinese(text):
-    """
-    是否为中文
-    :param text:
-    """
-    return len(re.findall(ur'[\u2e80-\u9fff]+', text)) != 0
-
-
 unescape_hlp = HTMLParser.HTMLParser()
 
 
@@ -368,35 +359,6 @@ def proc_response(response, binary_data=False):
                     continue
 
     return {'code': response.code, 'headers': hd, 'body': html, 'cookie': cookie_map}
-
-
-def product_merge(from_data, to_data):
-    """
-    to_data是products的某一条记录，需要把from_data中的字段合并到其中。
-    :param from_data:
-    :param to_data:
-    """
-    modified = False
-    for k in from_data.keys():
-        v = from_data[k]
-        if k not in to_data.keys():
-            to_data[k] = v
-            modified = True
-            continue
-
-        to_v = to_data[k]
-        if isinstance(to_v, str):
-            to_v = to_v.decode('utf-8')
-        if to_v != v:
-            modified = True
-            if to_v is None:
-                to_v = v
-            else:
-                temp = set(to_v.split(u'|'))
-                temp.add(v)
-                to_v = u'|'.join(temp)
-            to_data[k] = to_v
-    return modified
 
 
 def get_data(url, data=None, hdr=None, timeout=timeout, retry=3, cool_time=5, cookie=None, proxy=None, client='Desktop',
@@ -665,21 +627,6 @@ def retry_helper(func, param=None, logger=None, except_class=Exception, retry=5,
             else:
                 raise
     return None
-
-
-def iterable(val):
-    """
-    val是否iterable。注意：val为str的话，返回False。
-    :param val:
-    """
-    if isinstance(val, types.StringTypes):
-        return False
-    else:
-        try:
-            iter(val)
-            return True
-        except TypeError:
-            return False
 
 
 def post_data_cookie(url, data=None, hdr=None, timeout=timeout, retry=5, cookie=None, proxy=None, client='Desktop',
@@ -969,120 +916,6 @@ def update_record(db, cond, tbl, record):
             'utf-8'))
 
 
-def process_price(price, region, decimal=None, currency=None):
-    def func(val):
-        """
-        去掉多余的空格，以及首尾的非数字字符
-        :param val:
-        """
-        # val=unicode.format(u' {0} ',)
-        if not re.search(r'\d', val):
-            return ''
-        val = re.sub(r'\s', '', val, flags=re.U)
-        if val[0] in ('.', ','):
-            val = val[1:]
-        if val[-1] in ('.', ','):
-            val = val[:-1]
-        return val
-
-    if isinstance(price, int) or isinstance(price, float):
-        price = unicode(price)
-    if not price or not price.strip():
-        return None
-    val = unicode.format(u' {0} ', unicodify(price))
-
-    pre_currency = {'$': 'USD', 'HK$': 'HKD', '€': 'EUR', '£': 'GBP', '₩': 'KRW'}
-
-    if not currency:
-        # 如果price没有货币单位信息，则根据region使用默认值
-        mt = re.search(r'\b([A-Z]{3})\b', price)
-        if mt and mt.group(1) in glob.CURRENCY_RATE.keys():
-            currency = mt.group(1)
-        else:
-            currency = glob.REGION_INFO[region]['currency']
-
-    # 提取最长的数字，分隔符字符串
-    tmp = sorted([func(tmp) for tmp in re.findall(r'(?<=[^\d])[\d\s,\.]+(?=[^\d])', val, flags=re.U)],
-                 key=lambda tmp: len(tmp), reverse=True)
-    if not tmp:
-        return None
-        # 去除首尾的符号
-    while True:
-        tmp = tmp[0].strip()
-        if not tmp:
-            return None
-        elif tmp[0] in ('.', ','):
-            tmp = tmp[1:]
-            continue
-        elif tmp[-1] in ('.', ','):
-            tmp = tmp[:-1]
-            continue
-        break
-
-
-    # 判断小数点符号
-    # 方法：如果,和.都有，谁在后面，谁就是分隔符。否则的话，看该符号是否在三的倍数位置上
-    if decimal:
-        pass
-    elif (tmp.count('.') > 0 and tmp.count(',') == 1) or (tmp.count(',') > 0 and tmp.count('.') == 1):
-        decimal = re.search(r'[\.,]', tmp[::-1]).group()
-    elif (tmp.count('.') | tmp.count(',')) and not (tmp.count('.') & tmp.count(',')):
-        # 只有一种符号出现
-        c = re.search(r'[\.,]', tmp).group()
-        # 符号位的位置。如果相互之间间隔为4，则说明是千位分隔符。
-        pos = [val.start() for val in re.finditer(r'[\.,]', tmp)]
-        pos.append(len(tmp))
-        is_triple = reduce(lambda ret, val: ret and (val == 4), [pos[i + 1] - pos[i] for i in xrange(len(pos) - 1)],
-                           True)
-        if is_triple:
-            decimal = list({',', '.'} - {c})[0]
-        else:
-            if tmp.count(c) == 1:
-                decimal = c
-            else:
-                decimal = None
-    elif tmp.count('.') == 0 and tmp.count(',') == 0:
-        decimal = '.'
-    else:
-        decimal = None
-
-    if not decimal:
-        return None
-
-    part = tmp.split(decimal)
-    if len(part) == 1:
-        part = part[0], '0'
-
-    try:
-        val = int(re.sub(r'[\.,]', '', part[0])) + float('.' + re.sub(r'[\.,]', '', part[1]))
-    except (TypeError, ValueError):
-        return None
-
-    return {'currency': currency, 'price': val}
-
-
-def format_price_text(body, region=None):
-    """
-    格式化价格字段，需要处理多种格式
-    """
-    val = re.sub(ur'\s', u'', body if isinstance(body, unicode) else body.decode('utf-8'), flags=re.U)
-    term_list = re.split(u'[\s\.,]', val, flags=re.U)
-    if len(term_list) > 1:
-        part1 = term_list[:-1]
-        part2 = term_list[-1]
-    else:
-        part1 = term_list
-        part2 = u''
-
-    try:
-        val = float(u'.'.join((u''.join(re.sub(ur'[\s\.,]', u'', temp) for temp in part1),
-                               re.sub(ur'[\s\.,]', u'', part2))))
-    except ValueError:
-        val = None
-
-    return val
-
-
 def make_sure_path_exists(path):
     try:
         os.makedirs(path)
@@ -1090,21 +923,7 @@ def make_sure_path_exists(path):
         if exception.errno != errno.EEXIST:
             raise
 
-
-def unicodify(val):
-    """
-    Unicode化，并且strip
-    :param val:
-    :return:
-    """
-    if val is None:
-        return None
-    elif isinstance(val, str):
-        return val.decode('utf-8').strip()
-    else:
-        return unicode(val).strip()
-
-
+# TODO Needed to be removed.
 def norm_url(url, host=None):
     """
     去除多余的/
@@ -1127,24 +946,24 @@ def get_spider_module(spider_name):
     return imp.load_source(spider_name, spider_path)
 
 
+def is_cjk(val):
+    """
+    val是否为cjk字符集
+    @param val:
+    """
+    for c in val:
+        if c >= '\u4e00' and c < '\u9fff':
+            return True
+    else:
+        return False
+
+
 def guess_gender(desc, extra=None):
     """
     猜测desc所描述的信息为男性还是女性。返回'male'或者'female'，如果不能确定，返回None。
     @param desc: 额外的性别提示信息。满足以下格式：{'male': [u'男性', u'男人'], 'female': [u'女性']}
     @param extra:
     """
-
-    def is_cjk(val):
-        """
-        val是否为cjk字符集
-        @param val:
-        """
-        for c in val:
-            if c >= '\u4e00' and c < '\u9fff':
-                return True
-        else:
-            return False
-
     if not extra:
         extra = {'male': [], 'female': []}
 
@@ -1199,90 +1018,6 @@ def get_spider_info(brand_id=None, brand_name=None):
             return temp[brand_name]
 
     return func()
-
-
-def simplify_brand_name(val):
-    return re.sub(ur'\s+', u'_', unicodify(val).lower().strip(), flags=re.U)
-
-
-def touch_record(db, tbl, where_clause):
-    entry = {u'touch_time': unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}
-
-    def get_value_term(key, value):
-        if value is None:
-            ret = u'NULL'
-        else:
-            if isinstance(value, str):
-                value = value.decode('utf-8')
-            value = unicode(value)
-            ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
-        return unicode.format(u'{0}={1}', key, ret)
-
-    statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl,
-                               u', '.join(get_value_term(k, entry[k]) for k in entry.keys()),
-                               where_clause).encode('utf-8')
-    db.query(statement)
-
-
-def update_record(db, entry, tbl, where, touch_time=False, update_time=True):
-    # INSERT INTO tbl (...) VALUES (...)
-    if update_time:
-        entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    if touch_time:
-        entry[u'touch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    entry[u'modified'] = 1
-    fields = '(' + ', '.join(entry.keys()) + ')'
-
-    def get_value_term(key, value):
-        if value is None:
-            ret = u'NULL'
-        else:
-            if isinstance(value, str):
-                value = value.decode('utf-8')
-            value = unicode(value)
-            ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
-
-        return unicode.format(u'{0}={1}', key, ret)
-
-    statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', tbl,
-                               u', '.join(get_value_term(k, entry[k]) for k in entry.keys()), where).encode('utf-8')
-    db.query(statement)
-
-
-def insert_record(db, entry, tbl, update_time=True, touch_time=False, fetch_time=False, modified=True):
-    # INSERT INTO tbl (...) VALUES (...)
-    if update_time:
-        entry[u'update_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    if touch_time:
-        entry[u'touch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    if fetch_time:
-        entry[u'fetch_time'] = unicodify(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-
-    if modified:
-        entry[u'modified'] = 1
-
-    fields = '(' + ', '.join(entry.keys()) + ')'
-
-    def get_value_term(key, value):
-        if not value:
-            ret = u'NULL'
-        elif key == 'lng' or key == 'lat':
-            # if value == '':
-            #     ret = u'NULL'
-            # else:
-            ret = float(value)
-        else:
-            value = unicode(unicodify(value))
-            ret = unicode.format(u'"{0}"', value.replace(u'\\', ur'\\').replace(u'"', ur'\"'))
-            # re.sub(ur'(?<!\\)"', value, ur'\\"')
-            # ret = u'"%s"' % unicode(value).replace('"', '\\"')
-            # ret = u'"%s"' % unicode(value).replace('"', '').replace("'", '').replace('\\', '')
-        return unicode(ret).encode('utf-8')
-
-    values = '(' + ', '.join(get_value_term(k, entry[k]) for k in entry.keys()) + ')'
-    statement = str.format('INSERT INTO {0} {1} VALUES {2}', tbl, fields,
-                           values) # u'INSERT INTO %s %s VALUES %s' % (tbl, fields, values)
-    db.query(statement)
 
 
 # def geo_translate(c, level=-1):

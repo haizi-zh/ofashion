@@ -5,21 +5,22 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from cStringIO import StringIO
-import datetime
 import hashlib
 import json
 import os
 import re
-import shutil
+
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
 from scrapy.exceptions import DropItem
 from scrapy.http import Request
+from PIL import Image
+
 import common as cm
 from core import MySqlDb
-from scrapper import utils
-from PIL import Image
 import global_settings as glob
+from utils import utils
+from utils.utils import process_price, unicodify, iterable
 
 
 class ProductPipeline(object):
@@ -33,7 +34,8 @@ class ProductPipeline(object):
         self.db.conn(db_spec)
         self.processed_tags = set([])
 
-    def process_gender(self, entry):
+    @staticmethod
+    def process_gender(entry):
         """
         检查entry的gender字段。如果male/female都出现，说明该entry和性别无关，设置gender为None。
         :param entry:
@@ -98,6 +100,33 @@ class ProductPipeline(object):
                     tid = int(rs.fetch_row()[0][0])
                     self.db.insert({'idproducts': pid, 'id_original_tags': tid}, 'products_original_tags', ignore=True)
 
+    @staticmethod
+    def product_tags_merge(src, dest):
+        """
+        合并两个tag列表：把src中的内容合并到dest中
+        :param src:
+        :param dest:
+        """
+        def to_set(val):
+            """
+            如果val是iterable，则转为set，否则……
+            :param val:
+            :return:
+            """
+            return set(val) if iterable(val) else {val}
+
+        dest = {k: to_set(dest[k]) for k in dest if dest[k]}
+        src = {k: to_set(src[k]) for k in src if src[k]}
+
+        for k in src:
+            if k not in dest:
+                dest[k] = src[k]
+            else:
+                dest[k] = dest[k].union(src[k])
+
+        # 整理
+        return dict((k, list(dest[k])) for k in dest)
+
     def process_item(self, item, spider):
         entry = item['metadata']
         tags_mapping = entry.pop('tags_mapping')
@@ -132,13 +161,13 @@ class ProductPipeline(object):
                         try:
                             dest[k] = json.loads(tmp)
                         except ValueError:
-                            dest[k] = [cm.unicodify(tmp)]
+                            dest[k] = [unicodify(tmp)]
                     if k in entry:
                         tmp = entry[k]
                         if tmp:
-                            src[k] = tmp if cm.iterable(tmp) else [tmp]
+                            src[k] = tmp if iterable(tmp) else [tmp]
 
-                dest = utils.product_tags_merge(src, dest)
+                dest = self.product_tags_merge(src, dest)
                 dest = {k: json.dumps(dest[k], ensure_ascii=False) if dest[k] else None for k in dest}
                 self.process_gender(dest)
 
@@ -152,7 +181,7 @@ class ProductPipeline(object):
                 md5_n = hashlib.md5()
                 flag = True
                 for k in dest:
-                    tmp = cm.unicodify(dest[k])
+                    tmp = unicodify(dest[k])
                     if tmp:
                         md5_n.update((tmp if tmp else 'NULL').encode('utf-8'))
                     tmp = results[0][k]
@@ -170,7 +199,7 @@ class ProductPipeline(object):
                 if spider:
                     spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
 
-            # 处理价格变化
+            # 处理价格变化。其中，如果spider提供了货币信息，则优先使用之。
             if 'price' in entry:
                 currency = None
                 try:
@@ -178,7 +207,7 @@ class ProductPipeline(object):
                         currency = spider.spider_data['currency'][entry['region']]
                 except KeyError:
                     pass
-                tmp = cm.process_price(entry['price'], entry['region'], currency=currency)
+                tmp = process_price(entry['price'], entry['region'], currency=currency)
                 if tmp and tmp['price'] > 0:
                     price = tmp['price']
                     currency = tmp['currency']
@@ -361,7 +390,7 @@ class ProductImagePipeline(ImagesPipeline):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。
         results = self.preprocess(results, item)
         brand_id = item['metadata']['brand_id']
-        model = cm.unicodify(item['metadata']['model'])
+        model = unicodify(item['metadata']['model'])
         for status, r in filter(lambda val: val[0], results):
             path = r['path']    #.replace(u'\\', u'/')
 

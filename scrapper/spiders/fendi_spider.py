@@ -8,6 +8,7 @@ from scrapy.selector import Selector
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -62,8 +63,8 @@ class FendiSpider(MFashionSpider):
 
         sel = Selector(response)
         for item in sel.xpath("//header[@id='main-header']//ul[@class='links']/li/ul/li/a[@href]"):
-            href = cm.unicodify(item._root.attrib['href'])
-            title = cm.unicodify(item._root.text)
+            href = unicodify(item._root.attrib['href'])
+            title = unicodify(item._root.text)
 
             if not title:
                 continue
@@ -85,8 +86,8 @@ class FendiSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
         for item in sel.xpath("//div[@id='page']//ul[@class='links']//li/a[@href]"):
-            href = re.sub(ur'/cover/?', u'', cm.unicodify(item._root.attrib['href']))
-            title = cm.unicodify(item._root.text)
+            href = re.sub(ur'/cover/?', u'', unicodify(item._root.attrib['href']))
+            title = unicodify(item._root.text)
             if not title:
                 continue
             m = re.search(ur'/([^/]+)/?$', href)
@@ -108,8 +109,8 @@ class FendiSpider(MFashionSpider):
         ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='filter']//ul/li/a[@href]")
         if len(ret) > 0 and 'filter' not in metadata['extra']:
             for item in ret:
-                href = cm.unicodify(item._root.attrib['href'])
-                title = cm.unicodify(item._root.text)
+                href = unicodify(item._root.attrib['href'])
+                title = unicodify(item._root.text)
                 if not title:
                     continue
                 m = re.search(ur'/([^/]+)/?$', href)
@@ -126,7 +127,7 @@ class FendiSpider(MFashionSpider):
         else:
             for item in sel.xpath(
                     "//div[@id='page']/div[@class='view-all']/ul[@id='slider']/li/a[@href and @data-id]"):
-                href = cm.unicodify(item._root.attrib['href'])
+                href = unicodify(item._root.attrib['href'])
                 m = copy.deepcopy(metadata)
                 url = self.process_href(href, response.url)
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_details)
@@ -145,15 +146,15 @@ class FendiSpider(MFashionSpider):
         sel = Selector(response)
         ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='price']")
         if len(ret) > 0:
-            temp = cm.unicodify(ret[0]._root.text)
+            temp = unicodify(ret[0]._root.text)
             metadata['price'] = temp.strip() if temp else None
         ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='desc']")
         if len(ret) > 0:
-            temp = cm.unicodify(ret[0]._root.text)
+            temp = unicodify(ret[0]._root.text)
             metadata['description'] = temp.strip() if temp else None
         m = re.search(ur'/([^/]+)/?$', response.url)
         if m:
-            metadata['model'] = cm.unicodify(m.group(1))
+            metadata['model'] = unicodify(m.group(1))
         else:
             return
         metadata['url'] = response.url
@@ -182,7 +183,7 @@ class FendiSpider(MFashionSpider):
 
                 item['image_urls'] = [self.process_href(href, response.url)]
 
-            href = cm.unicodify(node._root.attrib['href'])
+            href = unicodify(node._root.attrib['href'])
             url = self.process_href(href, response.url)
             return Request(url=url, meta={'userdata': metadata, 'item': item}, callback=self.parse_image,
                            dont_filter=True)

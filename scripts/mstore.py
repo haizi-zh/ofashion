@@ -12,17 +12,16 @@ import _mysql
 import re
 import shutil
 from threading import Thread
-import time
-import urllib
 import urllib2
 import pydevd
 import global_settings as glob
 import common as cm
-from products import utils
+from products.utils import fetch_image
 from scripts import dbman
 from scripts.sync_product import SyncProducts
 from scripts.dbman import ProcessTags
 import core
+from utils.utils import process_price, unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -99,7 +98,7 @@ def import_tag_mapping(args):
         for row in rdr:
             if row[0][:3] == codecs.BOM_UTF8:
                 row[0] = row[0][3:]
-            data.append([cm.unicodify(val) for val in row])
+            data.append([unicodify(val) for val in row])
 
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
@@ -131,7 +130,7 @@ def import_tag_mapping(args):
     rs = db.store_result()
     for i in xrange(rs.num_rows()):
         record = rs.fetch_row(how=1)[0]
-        tag_text = cm.unicodify(record['tag_text'])
+        tag_text = unicodify(record['tag_text'])
         pid = record['idmappings']
         m_val = json.dumps([tag_text] if tag_text else [], ensure_ascii=False)
         db.query(
@@ -186,7 +185,7 @@ def editor_price_processor(args):
         if not price_body:
             continue
 
-        ret = cm.process_price(price_body, region)
+        ret = process_price(price_body, region)
 
         # 转换后的category
         clause = unicode.format(u'price_rev={0}, currency_rev="{1}"', ret['price'], ret['currency'])
@@ -378,7 +377,7 @@ class ImageDownloader(object):
             except Empty:
                 continue
 
-            response = utils.fetch_image(data['url'])
+            response = fetch_image(data['url'])
             callback = data['callback']
             if not response:
                 raise ValueError
@@ -454,7 +453,7 @@ class ImageCheck(object):
         self.progress = 0
         self.tot = 1
         if cond:
-            if cm.iterable(cond):
+            if iterable(cond):
                 self.cond = cond
             else:
                 self.cond = [cond]
@@ -481,18 +480,18 @@ class ImageCheck(object):
             if old_checksum != new_checksum:
                 if self.db.query(
                         str.format('SELECT * FROM images_store WHERE checksum="{0}"', new_checksum)).num_rows() == 0:
-                    record = {k: cm.unicodify(entry[k]) for k in entry}
+                    record = {k: unicodify(entry[k]) for k in entry}
                     record['checksum'] = new_checksum
                     self.db.update(record, 'images_store', str.format('checksum="{0}"', old_checksum))
                 else:
-                    record = {k: cm.unicodify(entry[k]) for k in entry}
+                    record = {k: unicodify(entry[k]) for k in entry}
                     if record:
                         self.db.update(record, 'images_store', str.format('checksum="{0}"', new_checksum))
                     self.db.update({'checksum': new_checksum}, 'products_image',
                                    str.format('checksum="{0}"', old_checksum))
                     self.db.execute(str.format('DELETE FROM images_store WHERE checksum="{0}"', old_checksum))
             else:
-                record = {k: cm.unicodify(entry[k]) for k in entry}
+                record = {k: unicodify(entry[k]) for k in entry}
                 self.db.update(record, 'images_store', str.format('checksum="{0}"', old_checksum))
             self.db.commit()
         except:

@@ -1,14 +1,14 @@
 # coding=utf-8
-import json
 import re
-import urlparse
-from scrapy import log
+import copy
+
 from scrapy.http import Request
 from scrapy.selector import Selector
+
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
+
 
 __author__ = 'Zephyre'
 

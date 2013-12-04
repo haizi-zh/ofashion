@@ -2,6 +2,7 @@
 import json
 import string
 import re
+import common as cm
 from stores import geosense as gs
 
 __author__ = 'Zephyre'
@@ -159,7 +160,7 @@ def fetch_stores(data):
     for s in json.loads(sub):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         name = s['Name']
-        if cm.is_chinese(name):
+        if cm.is_cjk(name):
             entry[cm.name_c] = name
         else:
             entry[cm.name_e] = name

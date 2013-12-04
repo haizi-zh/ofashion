@@ -1,10 +1,14 @@
 import re
+import copy
+
 from scrapy.http import Request
 from scrapy.selector import Selector
+
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -51,11 +55,11 @@ class McQueenSpider(MFashionSpider):
                                'contains(@class, "firstLevel")]/li'):
             tag_text = None
             if 'data-main-menu' in node1._root.attrib:
-                tag_text = self.reformat(cm.unicodify(node1._root.attrib['data-main-menu']))
+                tag_text = self.reformat(unicodify(node1._root.attrib['data-main-menu']))
             else:
                 tmp = node1.xpath('./a[@href]')
                 if tmp:
-                    tag_text = self.reformat(cm.unicodify(tmp[0]._root.text))
+                    tag_text = self.reformat(unicodify(tmp[0]._root.text))
             if not tag_text:
                 continue
 
@@ -66,7 +70,7 @@ class McQueenSpider(MFashionSpider):
                 m1['gender'] = [gender]
 
             for node2 in node1.xpath('./ul[contains(@class,"secondLevel")]/li/a[@href]'):
-                tag_text = self.reformat(cm.unicodify(node2._root.text))
+                tag_text = self.reformat(unicodify(node2._root.text))
                 if not tag_text:
                     continue
 
@@ -81,7 +85,7 @@ class McQueenSpider(MFashionSpider):
         sel = Selector(response)
 
         for node in sel.xpath('//nav[@id="categoriesMenu"]/ul[@class="level1"]//ul[@class="level2"]/li/a[@href]'):
-            tag_text = self.reformat(cm.unicodify(node._root.text))
+            tag_text = self.reformat(unicodify(node._root.text))
             if not tag_text:
                 continue
             m = copy.deepcopy(metadata)
@@ -97,7 +101,7 @@ class McQueenSpider(MFashionSpider):
                               'ul[@class="level2"]/li/a[@href]')
         if node_list:
             for node in node_list:
-                tag_text = self.reformat(cm.unicodify(node._root.text))
+                tag_text = self.reformat(unicodify(node._root.text))
                 if not tag_text:
                     continue
                 m = copy.deepcopy(metadata)
@@ -117,7 +121,7 @@ class McQueenSpider(MFashionSpider):
             tmp = node.xpath('./a[@href]/div[@class="modelName"]')
             url = None
             if tmp:
-                model_name = self.reformat(cm.unicodify(tmp[0]._root.text))
+                model_name = self.reformat(unicodify(tmp[0]._root.text))
                 if not model_name:
                     continue
                 m['name'] = model_name
@@ -127,10 +131,10 @@ class McQueenSpider(MFashionSpider):
 
             tmp = node.xpath('./div[contains(@class,"priceContainer")]//span[@class="priceValue"]')
             if tmp:
-                val = cm.unicodify(tmp[0]._root.text)
+                val = unicodify(tmp[0]._root.text)
                 if not val:
                     try:
-                        val = cm.unicodify(tmp[0]._root.iterdescendants().next().tail)
+                        val = unicodify(tmp[0]._root.iterdescendants().next().tail)
                     except StopIteration:
                         pass
                 m['price'] = val
@@ -145,7 +149,7 @@ class McQueenSpider(MFashionSpider):
         tmp = sel.xpath('//span[@id="modelFabricColorContainer"]')
         if not tmp:
             return
-        metadata['model'] = cm.unicodify(tmp[0]._root.text)
+        metadata['model'] = unicodify(tmp[0]._root.text)
         if not metadata['model']:
             return
 
@@ -164,18 +168,18 @@ class McQueenSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@id="description_pane"]')
         if tmp:
-            metadata['description'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+            metadata['description'] = self.reformat(unicodify(tmp[0]._root.text))
 
         tmp = sel.xpath('//div[@id="colorsContainer"]/ul[@id="colors"]/li[@data-title]')
         if tmp:
-            metadata['color'] = [self.reformat(cm.unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
+            metadata['color'] = [self.reformat(unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
 
         tmp = sel.xpath('//div[@id="sizesContainer"]/ul[@id="sizes"]/li[@data-title]')
         if tmp:
             metadata['tags_mapping']['size'] = [{'name': k, 'title': k} for k in
-                                                (self.reformat(cm.unicodify(val._root.attrib['data-title'])) for val in
+                                                (self.reformat(unicodify(val._root.attrib['data-title'])) for val in
                                                  tmp)]
-            metadata['color'] = [self.reformat(cm.unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
+            metadata['color'] = [self.reformat(unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
 
         item = ProductItem()
         item['image_urls'] = image_urls

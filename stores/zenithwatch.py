@@ -2,6 +2,7 @@
 import string
 import re
 from stores import geosense as gs
+import common as cm
 
 __author__ = 'Zephyre'
 
@@ -154,7 +155,7 @@ def fetch_store_details(url, data):
                     entry[cm.continent_c] = ret['continent']['name_c']
                     entry[cm.continent_e] = ret['continent']['name_e']
                 else:
-                    if cm.is_chinese(tmp):
+                    if cm.is_cjk(tmp):
                         entry[cm.addr_c] = tmp
                     else:
                         entry[cm.addr_e] = tmp

@@ -6,20 +6,20 @@ import re
 import os
 import socket
 import urllib
-import datetime
 from urllib2 import URLError
-from lxml.etree import ParserError
-import common as cm
-from pyquery import PyQuery as pq
 import json
-import Image
+
+from lxml.etree import ParserError
+from pyquery import PyQuery as pq
+
+import common as cm
 from core import MySqlDb
-from products import utils
-from scrapper import utils as sutils
+from products.utils import get_image_path, fetch_image, get_data_path
 import global_settings as glob
 from scrapper.items import ProductItem
 from scrapper.pipelines import ProductPipeline, ProductImagePipeline
-from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import process_price, unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -341,57 +341,57 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
         return None
 
     temp = pq(body)('td.priceValue')
-    price = cm.unicodify(temp[0].text) if temp else None
+    price = unicodify(temp[0].text) if temp else None
 
     product_name = ''
     temp = pq(body)('#productName h1')
     if temp:
-        product_name = cm.unicodify(temp[0].text)
+        product_name = unicodify(temp[0].text)
 
     description = ''
     temp = pq(body)('#productDescription')
     if temp:
-        description = cm.unicodify(temp[0].text)
+        description = unicodify(temp[0].text)
 
     details = ''
     temp = pq(body)('#productDescription div.productDescription')
     if temp:
-        details = reformat(cm.unicodify(temp[0].text_content()))
+        details = reformat(unicodify(temp[0].text_content()))
 
     post_data = filter_data['post_data']
     init_data = {}
-    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"])
+    temp = unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.color"])
     init_data['color'] = [temp] if temp else []
     extra = {}
-    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"])
+    temp = unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.lineik"])
     if temp:
         extra['texture'] = [temp]
-    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"])
+    temp = unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.pageId"])
     if temp:
         extra['category-0'] = [temp]
-    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.functionik"])
+    temp = unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.functionik"])
     if temp:
         extra['function'] = [temp]
-    temp = cm.unicodify(post_data[
+    temp = unicodify(post_data[
         "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.casematerialik"])
     if temp:
         extra['material'] = [temp]
-    temp = cm.unicodify(post_data[
+    temp = unicodify(post_data[
         "/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.collectionik"])
     if temp:
         extra['collection'] = [temp]
-    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.shapeik"])
+    temp = unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.shapeik"])
     if temp:
         extra['shape'] = [temp]
-    temp = cm.unicodify(
+    temp = unicodify(
         post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subcategoryik"])
     if temp:
         extra['category-1'] = [temp]
-    temp = cm.unicodify(post_data[
+    temp = unicodify(post_data[
         '/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.subsubcategoryik'])
     if temp:
         extra['category-2'] = [temp]
-    temp = cm.unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.typeik"])
+    temp = unicodify(post_data["/vuitton/ecommerce/commerce/catalog/FindProductsFormHandler.facetValues.typeik"])
     if temp:
         extra['typeik'] = [temp]
 
@@ -403,7 +403,7 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
     init_data['price'] = price
     init_data['description'] = description
     init_data['details'] = details
-    temp = cm.unicodify(filter_data['tags']['category'])
+    temp = unicodify(filter_data['tags']['category'])
     init_data['category'] = [temp] if temp else []
     init_data['brand_id'] = filter_data['tags']['brand_id']
 
@@ -420,7 +420,7 @@ def fetch_product_details(region, url, filter_data, download_image=True, extra=N
     init_data['url'] = product_url
     # product = init_product_item(init_data)
     product = init_data
-    price = cm.process_price(u'2 350,00 €', 'fr')
+    price = process_price(u'2 350,00 €', 'fr')
 
     if download_image:
         results = fetch_image(body, model)
@@ -498,7 +498,7 @@ def fetch_image(body, model, refetch=False):
     :param cool_time:
     :param refetch: 是否强制重新抓取图片
     """
-    temp = utils.get_image_path(brand_id)
+    temp = get_image_path(brand_id)
     image_dir = temp['full']
     image_thumb_dir = temp['thumb']
     brand_name = cm.norm_brand_name(cm.fetch_brand_by_id(brand_id)['brandname_e'])
@@ -526,7 +526,7 @@ def fetch_image(body, model, refetch=False):
         # flist = tuple(os.listdir(image_dir))
         # if refetch or fname not in flist:
 
-        response = utils.fetch_image(url_thumb, logger)
+        response = fetch_image(url_thumb, logger)
         if response is None or len(response['body']) == 0:
             continue
             # 写入图片文件
@@ -589,7 +589,7 @@ def fetch_products(region, category, gender, refresh_post_data=False):
     """
     # 获得过滤器的信息
     brand_name = cm.norm_brand_name(cm.fetch_brand_by_id(brand_id)['brandname_e'])
-    data_dir = utils.get_data_path(brand_id)
+    data_dir = get_data_path(brand_id)
     cm.make_sure_path_exists(data_dir)
     fname = os.path.normpath(
         os.path.join(data_dir,

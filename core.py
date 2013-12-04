@@ -6,6 +6,7 @@ import threading
 import time
 import sys
 import common as cm
+from utils.utils import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -90,7 +91,7 @@ class MySqlDb(object):
 
         def func(entry):
             return unicode.format(u'({0})',
-                                  ', '.join(unicode.format(u'"{0}"', self.sql_escape(cm.unicodify(entry[k])))
+                                  ', '.join(unicode.format(u'"{0}"', self.sql_escape(unicodify(entry[k])))
                                             if entry[k] is not None else 'NULL' for k in entry))
 
         statement = unicode.format(u'{3}{4}INTO {0} {1} VALUES {2}', table, fields, ', '.join(map(func, entry_list)),
@@ -113,7 +114,7 @@ class MySqlDb(object):
 
         values = ', '.join(
             unicode.format(u'{0}={1}', k,
-                           unicode.format(u'"{0}"', self.sql_escape(cm.unicodify(entry[k]))) if entry[
+                           unicode.format(u'"{0}"', self.sql_escape(unicodify(entry[k]))) if entry[
                                k] else 'NULL') for k in entry)
         statement = unicode.format(u'UPDATE {0} SET {1} WHERE {2}', table, values, cond)
         self.db.query(statement.encode('utf-8'))
@@ -135,10 +136,10 @@ class MySqlDb(object):
         """
         if not extra:
             extra = ['1']
-        elif not cm.iterable(extra):
+        elif not iterable(extra):
             extra = [extra]
 
-        if not cm.iterable(selects):
+        if not iterable(selects):
             selects = [selects]
 
         def func(arg):

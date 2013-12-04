@@ -1,15 +1,12 @@
 # coding=utf-8
 import copy
-import json
 import re
-from scrapy import log
-import scrapy.contrib.spiders
 from scrapy.http import Request
 from scrapy.selector import Selector
-import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -65,9 +62,9 @@ class PradaSpider(MFashionSpider):
             href = self.process_href(node._root.attrib['href'], response.url)
             mt = re.search('/([^/]+)$', href)
             if mt:
-                tag_name = cm.unicodify(mt.group(1)).lower()
+                tag_name = unicodify(mt.group(1)).lower()
                 tag_type = 'category-0'
-                tag_text = cm.unicodify(node._root.text).lower() if node._root.text else tag_name
+                tag_text = unicodify(node._root.text).lower() if node._root.text else tag_name
                 m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
 
             yield Request(url=href, callback=self.parse_cat_0, meta={'userdata': m}, errback=self.onerr)
@@ -83,7 +80,7 @@ class PradaSpider(MFashionSpider):
             temp = node.xpath('./figcaption/div[@class="name"]')
             if not temp:
                 continue
-            m['name'] = cm.unicodify(temp[0]._root.text)
+            m['name'] = unicodify(temp[0]._root.text)
             yield Request(url=href, callback=self.parse_details, meta={'userdata': m}, errback=self.onerr)
 
     def parse_details(self, response):
@@ -92,20 +89,20 @@ class PradaSpider(MFashionSpider):
 
         temp = sel.xpath('//section[@class="summary"]/div[@class="code"]')
         if temp and temp[0]._root.text:
-            metadata['model'] = cm.unicodify(temp[0]._root.text)
+            metadata['model'] = unicodify(temp[0]._root.text)
         else:
             return None
 
         temp = sel.xpath('//section[@class="summary"]/div[@class="price"]/span[@class="value"]')
         if temp:
-            metadata['price'] = cm.unicodify(temp[0]._root.text)
+            metadata['price'] = unicodify(temp[0]._root.text)
 
         temp = sel.xpath('//section[@class="summary"]/div[@class="color"]/div[@class="name"]')
         if temp:
-            metadata['color'] = [val.strip() for val in cm.unicodify(temp[0]._root.text).split('+')]
+            metadata['color'] = [val.strip() for val in unicodify(temp[0]._root.text).split('+')]
 
         temp = sel.xpath('//section[@class="details"]/figcaption[@class="description"]/ul/li')
-        metadata['description'] = '\n'.join(cm.unicodify(val._root.text) for val in temp if val._root.text)
+        metadata['description'] = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
 
         temp = sel.xpath('//article[@class="product"]/figure[@class="slider"]/img[@data-zoom-url]')
         image_urls = [self.process_href(val._root.attrib['data-zoom-url'], response.url) for val in temp]
@@ -158,8 +155,8 @@ class PradaSpider(MFashionSpider):
             href = node1._root.attrib['href']
             mt = re.search('/([^/]+)$', href)
             if mt:
-                tag_name = cm.unicodify(mt.group(1)).lower()
-                tag_text = cm.unicodify(node1._root.text).lower() if node1._root.text else tag_name
+                tag_name = unicodify(mt.group(1)).lower()
+                tag_text = unicodify(node1._root.text).lower() if node1._root.text else tag_name
                 m1['tags_mapping']['category-1'] = [{'name': tag_name, 'title': tag_text}]
 
             # 是否有子分类级别
@@ -169,8 +166,8 @@ class PradaSpider(MFashionSpider):
                 href = node2._root.attrib['href']
                 mt = re.search('/([^/]+)$', href)
                 if mt:
-                    tag_name = cm.unicodify(mt.group(1))
-                    tag_text = cm.unicodify(node2._root.text) if node2._root.text else tag_name
+                    tag_name = unicodify(mt.group(1))
+                    tag_text = unicodify(node2._root.text) if node2._root.text else tag_name
                     m2['tags_mapping']['category-2'] = [{'name': tag_name, 'title': tag_text}]
                 ret.append(Request(url=self.process_href(href, response.url), meta={'userdata': m2},
                                    callback=self.parse_list,

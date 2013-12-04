@@ -1,13 +1,15 @@
 # coding=utf-8
-import json
 import re
-from scrapy import log
+import copy
+
 from scrapy.http import Request
 from scrapy.selector import Selector
+
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-import copy
+from utils.utils import unicodify
+
 
 __author__ = 'Zephyre'
 
@@ -33,7 +35,7 @@ class MichaelKorsSpider(MFashionSpider):
         sel = Selector(response)
 
         for node1 in sel.xpath('//nav/ul/li[@class="category-parent"]/a[@href]'):
-            tag_text = self.reformat(cm.unicodify(node1._root.text))
+            tag_text = self.reformat(unicodify(node1._root.text))
             if not tag_text:
                 continue
             m1 = copy.deepcopy(metadata)
@@ -41,7 +43,7 @@ class MichaelKorsSpider(MFashionSpider):
             m1['category'] = [tag_text]
 
             for node2 in node1.xpath('../ul/li/a[@href]'):
-                tag_text = self.reformat(cm.unicodify(node2._root.text))
+                tag_text = self.reformat(unicodify(node2._root.text))
                 if not tag_text:
                     continue
                 m2 = copy.deepcopy(m1)
@@ -60,7 +62,7 @@ class MichaelKorsSpider(MFashionSpider):
             node_list = sel.xpath('//ul[@class="product-categories"]/ul/li/a[@href]')
             for node in node_list:
                 # 还有下级目录
-                tag_text = self.reformat(cm.unicodify(node._root.text))
+                tag_text = self.reformat(unicodify(node._root.text))
                 if not tag_text:
                     continue
                 m = copy.deepcopy(metadata)
@@ -75,10 +77,10 @@ class MichaelKorsSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
                 tmp = node.xpath('./span[@class="product-name"]')
                 if tmp:
-                    m['name'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+                    m['name'] = self.reformat(unicodify(tmp[0]._root.text))
                 tmp = node.xpath('.//span[@class="price"]')
                 if tmp:
-                    m['price'] = self.reformat(cm.unicodify(tmp[0]._root.text))
+                    m['price'] = self.reformat(unicodify(tmp[0]._root.text))
                 yield Request(url=self.process_href(node._root.attrib['href'], response.url), dont_filter=True,
                               callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
@@ -89,7 +91,7 @@ class MichaelKorsSpider(MFashionSpider):
 
         tmp = sel.xpath('//div[@class="product-info"]//span[@class="style-no"]')
         if tmp:
-            mt = re.search(r'[\s\d\-\._a-zA-Z]+', self.reformat(cm.unicodify(tmp[0]._root.text)), flags=re.U)
+            mt = re.search(r'[\s\d\-\._a-zA-Z]+', self.reformat(unicodify(tmp[0]._root.text)), flags=re.U)
             metadata['model'] = mt.group().strip() if mt else None
         if 'model' not in metadata or not metadata['model']:
             return

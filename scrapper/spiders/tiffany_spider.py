@@ -1,14 +1,12 @@
 # coding=utf-8
 import copy
 import re
-from scrapy import log
-import scrapy.contrib.spiders
 from scrapy.http import Request
 from scrapy.selector import Selector
-import global_settings as glob
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.utils import unicodify
 
 __author__ = 'Zephyre'
 
@@ -57,11 +55,11 @@ class TiffanySpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        node_map = {cm.unicodify(val._root.text).lower(): val.xpath('..')[0] for val in sel.xpath(
+        node_map = {unicodify(val._root.text).lower(): val.xpath('..')[0] for val in sel.xpath(
             '//div[@id="nav"]/div[@id="flydown"]//div[@class="flydown-item"]/div[@class="links"]/h2[@class="t4"]')}
 
         for node in sel.xpath('//div[@id="nav"]/div[@class="flydowns l1"]/a[@href]'):
-            cat = cm.unicodify(node._root.text)
+            cat = unicodify(node._root.text)
             if not cat:
                 continue
             m1 = copy.deepcopy(metadata)
@@ -72,7 +70,7 @@ class TiffanySpider(MFashionSpider):
                 continue
 
             for node2 in node_map[cat.lower()].xpath('./div[@class="l6"]/a[@href]'):
-                cat = cm.unicodify(node2._root.text)
+                cat = unicodify(node2._root.text)
                 if not cat:
                     continue
                 m2 = copy.deepcopy(m1)
@@ -86,7 +84,7 @@ class TiffanySpider(MFashionSpider):
 
         for node in sel.xpath('//noscript/ul/li/a[@href]'):
             m = copy.deepcopy(metadata)
-            temp = cm.unicodify(node._root.text)
+            temp = unicodify(node._root.text)
             if temp:
                 m['name'] = cm.reformat_addr(temp)
             yield Request(url=self.process_href(node._root.attrib['href'], response.url), callback=self.parse_details,
@@ -106,15 +104,15 @@ class TiffanySpider(MFashionSpider):
         if 'name' not in metadata or not metadata['name']:
             temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]/h1[@class="t1"]')
             if temp:
-                metadata['name'] = cm.unicodify(temp[0]._root.text)
+                metadata['name'] = unicodify(temp[0]._root.text)
 
         temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]//div[contains(@class,"item-desc")]')
         if temp:
-            metadata['description'] = cm.unicodify(temp[0]._root.text)
+            metadata['description'] = unicodify(temp[0]._root.text)
 
         temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]//div[@class="l4" or @class="t8"]')
         if temp:
-            metadata['price'] = cm.unicodify(temp[0]._root.text)
+            metadata['price'] = unicodify(temp[0]._root.text)
 
         re.search(r'"BaseImg"\s*:\s*"([^"]+)"', response.body)
 
