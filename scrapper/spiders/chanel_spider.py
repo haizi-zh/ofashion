@@ -329,14 +329,11 @@ class ChanelSpider(MFashionSpider):
             cat_idx += 1
             cat_list.append(cat.lower())
             metadata['tags_mapping'][str.format('category-{0}', cat_idx)] = [{'name': cat.lower(), 'title': cat}]
-            if u'男士' in cat:
+            gender = cm.guess_gender(cat)
+            if gender:
                 if 'gender' not in metadata:
-                    metadata['gender'] = set([])
-                metadata['gender'].add(u'male')
-            if u'女士' in cat:
-                if 'gender' not in metadata:
-                    metadata['gender'] = set([])
-                metadata['gender'].add(u'female')
+                    metadata['gender']=set([])
+                metadata['gender'].add(gender)
 
         temp = sel.xpath('//div[@class="productName"]')
         name_list = []
@@ -451,24 +448,11 @@ class ChanelSpider(MFashionSpider):
             cat_list.append(cat.lower())
             cat_name = str.format('category-{0}', cat_idx)
             metadata['tags_mapping'][cat_name] = [{'name': cat.lower(), 'title': cat}]
-            if u'男士' in cat or re.search(r'\bman\b', cat, flags=re.I) or re.search(r'\bmen\b', cat, flags=re.I) or \
-                    re.search(r'\bhomme\b', cat, flags=re.I) or re.search(r'\buomo\b', cat, flags=re.I) or \
-                    re.search(r'\bhombre\b', cat, flags=re.I) or u'男性' in cat or \
-                    re.search(r'\bherren\b', cat, flags=re.I) or re.search(r'\bmasculinos\b', cat, flags=re.I) or \
-                    re.search(r'\bhomens \b', cat, flags=re.I):
-                # Masculinos
+            gender = cm.guess_gender(cat)
+            if gender:
                 if 'gender' not in metadata:
-                    metadata['gender'] = set([])
-                metadata['gender'].add(u'male')
-            if u'女士' in cat or re.search(r'\bwoman\b', cat, flags=re.I) or re.search(r'\bwomen\b', cat, flags=re.I) or \
-                    re.search(r'\bfemme\b', cat, flags=re.I) or re.search(r'\bdonna\b', cat, flags=re.I) or \
-                    re.search(r'\bmujer\b', cat, flags=re.I) or u'女性' in cat or \
-                    re.search(r'\bdamen\b', cat, flags=re.I) or re.search(r'\bfemeninos\b', cat, flags=re.I) or \
-                    re.search(r'\bmulheres \b', cat, flags=re.I):
-                # Femeninos
-                if 'gender' not in metadata:
-                    metadata['gender'] = set([])
-                metadata['gender'].add(u'female')
+                    metadata['gender']=set([])
+                metadata['gender'].add(gender)
 
         temp = sel.xpath('//div[contains(@class, "product_detail_container")]')
         name_list = []

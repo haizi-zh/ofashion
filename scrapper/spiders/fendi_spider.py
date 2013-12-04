@@ -73,10 +73,9 @@ class FendiSpider(MFashionSpider):
             cat = temp.group(1).lower()
             m = copy.deepcopy(metadata)
             m['tags_mapping']['category-1'] = [{'name': cat, 'title': title}]
-            if cat in {'woman', 'women', 'femme', 'donna', 'mujer'}:
-                m['gender'] = [u'female']
-            elif cat in {'man', 'men', 'homme', 'uomo', 'hombre'}:
-                m['gender'] = [u'male']
+            gender = cm.guess_gender(cat)
+            if gender:
+                m['gender'] = [gender]
             url = self.process_href(href, metadata['region'])
             yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_1, dont_filter=True)
 

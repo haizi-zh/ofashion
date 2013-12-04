@@ -50,10 +50,9 @@ class BurberrySpider(MFashionSpider):
                 title = utils.unicodify(item._root.attrib['title'])
                 m = copy.deepcopy(metadata)
                 m['tags_mapping']['category-1'] = [{'name': cat, 'title': title}]
-                if cat in {'women', 'femme', 'donna'}:
-                    m['gender'] = [u'female']
-                elif cat in {'men', 'homme', 'uomo'}:
-                    m['gender'] = [u'male']
+                gender = cm.guess_gender(cat)
+                if gender:
+                    m['gender'] = [gender]
                 yield Request(url=self.process_href(href, response.url),
                               meta={'userdata': m}, dont_filter=True, callback=self.parse_category_1,
                               errback=self.onerr)

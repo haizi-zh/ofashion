@@ -115,14 +115,11 @@ class PradaSpider(MFashionSpider):
                                     'category-1' if 'category-1' in metadata['tags_mapping'] else 'category-0']
                                 if val]
 
-        if metadata['tags_mapping']['category-0'][0]['name'] in \
-                ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen'):
-            metadata['gender'] = ['female']
-        elif metadata['tags_mapping']['category-0'][0]['name'] in \
-                ('man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore'):
-            metadata['gender'] = ['male']
+        gender = cm.guess_gender(metadata['tags_mapping']['category-0'][0]['name'])
+        if gender:
+            metadata['gender'] = [gender]
 
-        metadata['url'] = response._url
+        metadata['url'] = response.url
         item = ProductItem()
         item['image_urls'] = image_urls
         item['url'] = metadata['url']

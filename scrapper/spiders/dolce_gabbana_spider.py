@@ -15,11 +15,11 @@ __author__ = 'Zephyre'
 class DolceSpider(MFashionSpider):
     spider_data = {'brand_id': 10109, 'gender_nav': {'male': 'home_U', 'female': 'home_D'},
                    'home_urls': {
-                   region: str.format('http://store.dolcegabbana.com/{0}', region if region != 'uk' else 'gb') for
-                   region in
-                   {'cn', 'us', 'fr', 'it', 'uk', 'au', 'at', 'bh', 'be', 'bg', 'cz', 'dk', 'fi', 'fr', 'de', 'gr',
-                    'hu', 'ie', 'lv', 'lt', 'lu', 'mx', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sa', 'sk', 'si', 'es',
-                    'se', 'ch', 'tr', 'ae', 'jp'}}}
+                       region: str.format('http://store.dolcegabbana.com/{0}', region if region != 'uk' else 'gb') for
+                       region in
+                       {'cn', 'us', 'fr', 'it', 'uk', 'au', 'at', 'bh', 'be', 'bg', 'cz', 'dk', 'fi', 'fr', 'de', 'gr',
+                        'hu', 'ie', 'lv', 'lt', 'lu', 'mx', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sa', 'sk', 'si', 'es',
+                        'se', 'ch', 'tr', 'ae', 'jp'}}}
 
     @classmethod
     def get_supported_regions(cls):

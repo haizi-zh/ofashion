@@ -61,11 +61,9 @@ class HermesSpider(MFashionSpider):
 
             m = copy.deepcopy(metadata)
             m['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
-
-            if tag_name in ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen'):
-                m['gender'] = ['female']
-            elif tag_name in ('man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore'):
-                m['gender'] = ['male']
+            gender=cm.guess_gender(tag_name)
+            if gender:
+                m['gender']=[gender]
 
             if not href or not href.strip():
                 continue
@@ -105,7 +103,7 @@ class HermesSpider(MFashionSpider):
             url = None
             for k, v in node.items():
                 if k == 'href':
-                    url = self.process_href(v, metadata['region'])
+                    url = self.process_href(v, response.url)
                 elif re.search(r'category-\d+', k):
                     m['tags_mapping'][k] = [{'name': v.lower(), 'title': v}]
             if url:
@@ -153,7 +151,7 @@ class HermesSpider(MFashionSpider):
             if product_id in data['links']:
                 m['url'] = data['links'][product_id]
             else:
-                m['url'] = response._url
+                m['url'] = response.url
 
             for attrib in data['attributes']:
                 attrib_name = attrib['code']

@@ -58,12 +58,9 @@ class McQueenSpider(MFashionSpider):
 
             m1 = copy.deepcopy(metadata)
             m1['tags_mapping']['category-0'] = [{'name': tag_text.lower(), 'title': tag_text}]
-            if tag_text.lower() in ('women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen',
-                                    'womenswear'):
-                m1['gender'] = ['female']
-            elif tag_text.lower() in ('man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore',
-                                      'menswear'):
-                m1['gender'] = ['male']
+            gender=cm.guess_gender(tag_text.lower())
+            if gender:
+                m1['gender']=[gender]
 
             for node2 in node1.xpath('./ul[contains(@class,"secondLevel")]/li/a[@href]'):
                 tag_text = self.reformat(cm.unicodify(node2._root.text))

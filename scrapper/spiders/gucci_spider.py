@@ -62,11 +62,9 @@ class GucciSpider(MFashionSpider):
 
                 m = copy.deepcopy(metadata)
                 m['tags_mapping']['category-1'] = [{'name': cat.lower(), 'title': cat}]
-                if cat in {u'woman', u'women', u'femme', u'donna', u'女士系列', u'shop women', u'여성 쇼핑', u'damen',
-                           u'mujer'}:
-                    m['gender'] = [u'female']
-                elif cat in {u'man', u'men', u'homme', u'uomo', u'男士系列', u'shop men', u'남성 쇼핑', u'herren', u'hombre'}:
-                    m['gender'] = [u'male']
+                gender = cm.guess_gender(cat)
+                if gender:
+                    m['gender'] = [gender]
 
                 for node2 in node1.xpath("./div/ul/li[not(@class='mega_promo')]/a[@href]"):
                     href = cm.unicodify(node2._root.attrib['href'])

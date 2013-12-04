@@ -143,7 +143,7 @@ class CartierSpider(MFashionSpider):
         temp = sel.xpath('//div[@class="column-images"]//a[@href and contains(@class,"zoom-trigger-link")]')
         image_urls = [self.process_href(val._root.attrib['href'], response.url) for val in temp]
 
-        metadata['url'] = response._url
+        metadata['url'] = response.url
         item = ProductItem()
         item['image_urls'] = image_urls
         item['url'] = metadata['url']
