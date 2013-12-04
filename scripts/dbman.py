@@ -112,7 +112,7 @@ class PublishRelease(object):
         self.tot = 0
         self.progress = 0
         # 国家的展示顺序
-        self.region_order = {k: gs.REGION_INFO[k]['weight'] for k in gs.REGION_INFO}
+        self.region_order = {k: gs.region_info()[k]['weight'] for k in gs.region_info}
 
         self.products_tbl = 'products'
         self.prod_mt_tbl = 'products_mfashion_tags'
@@ -150,8 +150,8 @@ class PublishRelease(object):
         entry['original_tags'] = json.dumps(original_tags, ensure_ascii=False)
 
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
-        entry['brandname_e'] = gs.BRAND_NAMES[int(entry['brand_id'])]['brandname_e']
-        entry['brandname_c'] = gs.BRAND_NAMES[int(entry['brand_id'])]['brandname_c']
+        entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
+        entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
 
         # pid和region之间的关系
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
@@ -174,7 +174,7 @@ class PublishRelease(object):
                 region = pid_region_dict[pid]
                 price_list[pid] = {'price': float(item['price']), 'currency': item['currency'],
                                    'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
-                                   'code': region, 'country': gs.REGION_INFO[region]['name_c']}
+                                   'code': region, 'country': gs.region_info()[region]['name_c']}
 
         # 如果没有价格信息，则不发布
         if not price_list:
@@ -187,7 +187,7 @@ class PublishRelease(object):
         # 取第一个国家的价格，转换成CNY
         price = entry['price_list'][0]['price']
         currency = entry['price_list'][0]['currency']
-        entry['price_cn'] = gs.CURRENCY_RATE[currency] * price
+        entry['price_cn'] = gs.currency_info()[currency] * price
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         image_list = []

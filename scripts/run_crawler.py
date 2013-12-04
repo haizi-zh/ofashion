@@ -108,20 +108,20 @@ def argument_parser(args):
 def get_job_path(brand_id):
     return os.path.normpath(
         os.path.join(glob.STORAGE_PATH,
-                     unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'])))
+                     unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.brand_info()[brand_id]['brandname_s'])))
 
 
 def get_log_path(brand_id):
     return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
                                          unicode.format(u'{0}_{1}_{2}.log', brand_id,
-                                                        glob.BRAND_NAMES[brand_id]['brandname_s'],
+                                                        glob.brand_info()[brand_id]['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))
 
 
 def get_images_store(brand_id):
     return os.path.normpath(os.path.join(
         glob.STORAGE_PATH, u'products/images', unicode.format(u'{0}_{1}', brand_id,
-                                                              glob.BRAND_NAMES[brand_id]['brandname_s'])))
+                                                              glob.brand_info()[brand_id]['brandname_s'])))
 
 
 def set_up_spider(spider_class, region, data):

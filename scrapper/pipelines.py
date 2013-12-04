@@ -409,7 +409,7 @@ class ProductImagePipeline(ImagesPipeline):
                 full_path = os.path.normpath(os.path.join(dir_path, file_name))
                 _, ext = os.path.splitext(file_name)
                 path_db = os.path.normpath(os.path.join(
-                    unicode.format(u'{0}_{1}/{2}{3}', brand_id, glob.BRAND_NAMES[brand_id]['brandname_s'],
+                    unicode.format(u'{0}_{1}/{2}{3}', brand_id, glob.brand_info()[brand_id]['brandname_s'],
                                    os.path.splitext(path)[0], ext)))
 
                 file_size = os.path.getsize(full_path)

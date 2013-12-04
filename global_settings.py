@@ -19,16 +19,9 @@ if sys.platform not in ('win32', ):
 
 DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
            'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
-#RELEASE_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-#                'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'release_stores'}
-#SPIDER_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-#               'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'spider_stores'}
-#TMP_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-#            'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'spider_stores_bkp'}
 
 # Email settings for notification
 EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
-
 
 # Port for remote debugging
 DEBUG_HOST = 'localhost'
@@ -62,16 +55,30 @@ def __fetch_region_info():
             for k in tmp}
 
 
-def __fetch_rate(region_info):
+__cached_region_info = None
+__cached_brand_info = None
+__cached_currency_rate = None
+
+
+def region_info():
+    global __cached_region_info
+    if not __cached_region_info:
+        __cached_region_info = __fetch_region_info()
+    return __cached_region_info
+
+
+def brand_info():
+    global __cached_brand_info
+    if not __cached_brand_info:
+        __cached_brand_info = __fetch_brand_info()
+    return __cached_brand_info
+
+
+def currency_info():
     rate_data = {}
-    for code, data in region_info.items():
+    for code, data in region_info().items():
         if data['currency'] in rate_data:
             continue
         rate_data[data['currency']] = data['rate']
     return rate_data
 
-
-BRAND_NAMES = __fetch_brand_info()
-REGION_INFO = __fetch_region_info()
-CURRENCY_RATE = __fetch_rate(REGION_INFO)
-#CURRENCY_LIST = set(val['currency'] for val in REGION_INFO.values())
