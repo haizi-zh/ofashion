@@ -211,6 +211,6 @@ if cmd:
         else:
             log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
 
-        spider = set_up_spider(sc, region_list, cmd['param'])
+        set_up_spider(sc, region_list, cmd['param'])
         reactor.run()   # the script will block here until the spider_closed signal was sent
 

@@ -32,7 +32,6 @@ class ChanelSpider(MFashionSpider):
                                     'hk': 'fashion', 'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion',
                                     'ca': 'fashion', 'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
                    'pricing': 'https://secure.chanel.com/global-service/frontend/pricing/%s/fashion/%s/?format=json',
-                   # 'host': 'http://www-cn.chanel.com',
                    'description_hdr': {u'产品介绍', u'Description'},
                    'details_hdr': {u'使用方法', u'How to use', u"Conseils d'utilisation", u'How-to'}}
     spider_data['hosts'] = {k: 'http://www-cn.chanel.com' for k in spider_data['base_url'].keys()}
