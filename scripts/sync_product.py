@@ -14,7 +14,7 @@ from core import MySqlDb
 
 
 class SyncProducts(object):
-    def __init__(self, src_spec=glob.SPIDER_SPEC, dst_spec=glob.DB_SPEC, cond=None):
+    def __init__(self, src_spec=glob.DB_SPEC, dst_spec=glob.DB_SPEC, cond=None):
         self.progress = 0
         self.tot = 1
         if cond:

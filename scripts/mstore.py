@@ -69,7 +69,7 @@ def import_tag_mapping(args):
     map_file = None
     region = 'cn'
     brand_id = None
-    db_spec = glob.SPIDER_SPEC
+    db_spec = glob.DB_SPEC
     while True:
         if idx >= len(args):
             break
@@ -404,7 +404,7 @@ class ImageDownloader(object):
 def sync(args):
     idx = 0
     cond = []
-    src_spec = glob.SPIDER_SPEC
+    src_spec = glob.DB_SPEC
     dst_spec = glob.DB_SPEC
     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
               'release': glob.RELEASE_SPEC}

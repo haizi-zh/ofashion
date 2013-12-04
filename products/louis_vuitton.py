@@ -160,7 +160,7 @@ categories = {'books--stationery', 'handbags', 'travel', 'watches', 'timepieces'
               'accessories/key-holders-and-other-accessories'}
 
 db = MySqlDb()
-db.conn(glob.SPIDER_SPEC)
+db.conn(glob.DB_SPEC)
 
 
 def make_post_str(post_data):

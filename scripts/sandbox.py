@@ -282,7 +282,12 @@ class Object(object):
         db.close()
 
 
-core.func_carrier(Object(), 0.3)
+#core.func_carrier(Object(), 0.3)
 
+for brand_id in [10057, 10074, 10226, 10135, 10300, 10066, 13084, 10029, 10093, 10264]:
+    print str.format('PROCESSING TAGS FOR {0}', brand_id)
+    os.system(str.format('scripts/mstore.py process-tags --cond brand_id={0}', brand_id))
+    print str.format('PUBLISHING {0}', brand_id)
+    os.system(str.format('scripts/mstore.py release --brand {0}', brand_id))
 
 

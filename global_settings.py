@@ -19,6 +19,9 @@ if sys.platform not in ('win32', ):
 
 DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
            'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
+SPIDER_SPEC = {}
+RELEASE_SPEC = {}
+TMP_SPEC = {}
 
 # Email settings for notification
 EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
@@ -48,7 +51,7 @@ def __fetch_region_info():
     db.conn(DB_SPEC)
     tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
     return {k['iso_code']: {'iso_code3': k['iso_code3'],
-                            'weight': k['weight'], 'rate': float(k['rate']),
+                            'weight': int(k['weight']), 'rate': float(k['rate']),
                             'name_e': k['name_e'].decode('utf-8'),
                             'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
                             'currency': k['currency'], 'decimal': k['decimal_mark']}

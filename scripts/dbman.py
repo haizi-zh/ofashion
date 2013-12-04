@@ -112,7 +112,7 @@ class PublishRelease(object):
         self.tot = 0
         self.progress = 0
         # 国家的展示顺序
-        self.region_order = {k: gs.region_info()[k]['weight'] for k in gs.region_info}
+        self.region_order = {k: gs.region_info()[k]['weight'] for k in gs.region_info()}
 
         self.products_tbl = 'products'
         self.prod_mt_tbl = 'products_mfashion_tags'
