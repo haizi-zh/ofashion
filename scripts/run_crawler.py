@@ -14,7 +14,8 @@ from twisted.internet import reactor
 import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider
-from utils.utils import iterable
+#from utils.utils import iterable
+from utils.utils import process_price, unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -186,7 +187,7 @@ def set_up_spider(spider_class, region, data):
                 region.pop(region.index(r))
 
     spider = spider_class.get_instance(region)
-    # living_spiders.add(spider)
+    spider.log(str.format('Spider started, processing the following regions: {0}', ', '.join(region)), log.INFO)
     crawler.crawl(spider)
     crawler.start()
 

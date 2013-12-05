@@ -16,10 +16,8 @@ from scrapy.exceptions import DropItem
 from scrapy.http import Request
 from PIL import Image
 
-import common as cm
 from core import MySqlDb
 import global_settings as glob
-from utils import utils
 from utils.utils import process_price, unicodify, iterable
 
 
