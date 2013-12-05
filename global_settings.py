@@ -1,4 +1,6 @@
 # coding=utf-8
+import ConfigParser
+import datetime
 
 __author__ = 'Zephyre'
 
@@ -26,18 +28,6 @@ DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
 SPIDER_SPEC = {}
 RELEASE_SPEC = {}
 TMP_SPEC = {}
-
-# Email settings for notification
-EMAIL_ADDRESSES = ['haizi.zh@gmail.com', 'buddy@mfashion.com.cn']
-
-# Port for remote debugging
-DEBUG_HOST = 'localhost'
-DEBUG_PORT = 7100
-DEBUG_FLAG = False
-WRITE_DATABASE = True
-
-# Log settings
-LOG_DEBUG = False
 
 
 def __fetch_brand_info():
@@ -89,3 +79,63 @@ def currency_info():
         rate_data[data['currency']] = data['rate']
     return rate_data
 
+
+def _load_user_cfg(cfg_file='mstore.cfg'):
+    # 加载mstore.cfg的设置内容
+    config = ConfigParser.ConfigParser()
+    config.optionxform = str
+
+    def read_settings(section, option, var=None, proc=lambda x: x):
+        """
+        从config文件中指定的section，读取指定的option，并写到全局变量var中。
+        @param section:
+        @param option:
+        @param var: 如果为None，则视为等同于option。
+        @param proc: 对读取到的option，应该如何处理？
+        @return:
+        """
+        if not var:
+            var = option
+        self_module = sys.modules[__name__]
+        if section in config.sections() and option in config.options(section):
+            setattr(self_module, var, proc(config.get(section, option)))
+            return True
+        else:
+            return False
+
+    conv_int = lambda val: int(val)
+    conv_bool = lambda val: val.lower() == 'true'
+
+    def conv_datetime(val):
+        try:
+            return datetime.datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return None
+
+    try:
+        with open(cfg_file, 'r') as cf:
+            config.readfp(cf)
+    except IOError:
+        pass
+
+    # SECTION: DEBUG
+    section = 'DEBUG'
+    read_settings(section, 'DEBUG_HOST')
+    read_settings(section, 'DEBUG_PORT', proc=conv_int)
+    read_settings(section, 'DEBUG_FLAG', proc=conv_bool)
+    read_settings(section, 'LOG_DEBUG', proc=conv_bool)
+
+    # SECTION: MISC
+    read_settings('MISC', 'EMAIL_ADDR', proc=lambda val: [email.strip() for email in val.split('|')])
+
+    # SECTION DATABASE
+    read_settings('DATABASE', 'WRITE_DATABASE', proc=conv_bool)
+
+    # SECTION CHECKPOINT
+    section = 'CHECKPOINT'
+    read_settings(section, 'LAST_CRAWLED', proc=conv_datetime)
+    read_settings(section, 'LAST_PROCESS_TAGS', proc=conv_datetime)
+
+
+_load_user_cfg()
+print 'haha'
