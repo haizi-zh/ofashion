@@ -24,8 +24,7 @@ from utils.utils import process_price, unicodify, iterable
 class ProductPipeline(object):
     @classmethod
     def from_crawler(cls, crawler):
-        db_spec = crawler.settings['EDITOR_SPEC']
-        return cls(db_spec)
+        return cls(glob.DB_SPEC)
 
     def __init__(self, db_spec):
         self.db = MySqlDb()
@@ -105,6 +104,7 @@ class ProductPipeline(object):
         :param src:
         :param dest:
         """
+
         def to_set(val):
             """
             如果val是iterable，则转为set，否则……
@@ -225,21 +225,11 @@ class ProductPipeline(object):
 
 
 class ProductImagePipeline(ImagesPipeline):
-    @classmethod
-    def from_crawler(cls, crawler):
-        settings = crawler.settings
-        db_spec = settings['EDITOR_SPEC']
-        images_store = settings.get('IMAGES_STORE')
-        ProductImagePipeline.DBSPEC = db_spec
-        ImagesPipeline.from_settings(crawler.settings)
-        return cls(images_store, crawler, db_spec)
-
-    def __init__(self, store_uri, crawler=None, db_spec=None):
-        self.crawler = crawler
+    def __init__(self, store_uri):
+        super(ProductImagePipeline, self).__init__(store_uri)
         self.url_map = {}
         self.db = MySqlDb()
-        self.db.conn(db_spec)
-        super(ProductImagePipeline, self).__init__(store_uri)
+        self.db.conn(glob.DB_SPEC)
 
     def get_images(self, response, request, info):
         media_guid = hashlib.sha1(request.url).hexdigest()
@@ -265,7 +255,7 @@ class ProductImagePipeline(ImagesPipeline):
             raise ImageException("Image too small (%dx%d < %dx%d)" %
                                  (width, height, self.MIN_WIDTH, self.MIN_HEIGHT))
 
-        image, buf = self.convert_image(orig_image)
+        self.convert_image(orig_image)
         image, buf = orig_image, StringIO(response.body)
 
         yield key, image, buf
@@ -278,9 +268,7 @@ class ProductImagePipeline(ImagesPipeline):
     def get_media_requests(self, item, info):
         if 'image_urls' in item:
             for url in item['image_urls']:
-                # self.url_map[url] = {'brand_id': m['brand_id'], 'brandname_e': m['brandname_e'], 'model': m['model']}
                 yield Request(url)
-                # yield Request(url, meta={'handle_httpstatus_list': [403]})
 
     def preprocess(self, results, item):
         brand_id = item['metadata']['brand_id']

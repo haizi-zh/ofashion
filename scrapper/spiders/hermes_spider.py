@@ -13,6 +13,7 @@ __author__ = 'Zephyre'
 
 
 class HermesSpider(MFashionSpider):
+    # TODO 部分字段有乱码，需要解决
     allowed_domains = ['hermes.com']
 
     spider_data = {'home_urls': {'us': 'http://usa.hermes.com', 'fr': 'http://france.hermes.com',

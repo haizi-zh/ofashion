@@ -1,22 +1,16 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import codecs
-import hashlib
-
-import json
 import os
 import re
 import shutil
+
 from _mysql_exceptions import OperationalError
-import global_settings as glob
-from core import MySqlDb
-import core
-import common as cm
 from PIL import Image
 
-import csv
-from scripts.sync_product import SyncProducts
+import global_settings as glob
+from core import MySqlDb
+import common as cm
 from utils.utils import process_price, unicodify
 
 

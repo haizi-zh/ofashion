@@ -79,33 +79,6 @@ def argument_parser(args):
     return {'spider': spider_name, 'param': param_dict}
 
 
-# living_spiders = set([])
-
-
-# def onsignal_term(a, b):
-#     log.msg('SIGTERM received!', log.INFO)
-#     reactor.stop()
-#
-#
-# signal.signal(signal.SIGTERM, onsignal_term)
-
-
-# def onsignal_int(a, b):
-#     log.msg('SIGINT received!', log.INFO)
-#     reactor.stop()
-#
-#
-# signal.signal(signal.SIGINT, onsignal_int)
-
-
-# def on_spider_closed(spider, reason):
-#     if spider in living_spiders:
-#         living_spiders.remove(spider)
-#
-#     if len(living_spiders) == 0:
-#         reactor.stop()
-
-
 def get_job_path(brand_id):
     return os.path.normpath(
         os.path.join(glob.STORAGE_PATH,
@@ -139,7 +112,7 @@ def set_up_spider(spider_class, region, data):
             shutil.rmtree(job_path, ignore_errors=True)
         crawler.settings.values['JOBDIR'] = job_path
 
-    crawler.settings.values['EDITOR_SPEC'] = glob.DB_SPEC
+    #crawler.settings.values['EDITOR_SPEC'] = glob.DB_SPEC
     #crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC
     #crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
 
