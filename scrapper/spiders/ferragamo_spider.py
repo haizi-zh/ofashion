@@ -20,14 +20,18 @@ class FerragamoSpider(MFashionSpider):
                    # 提取型号
                    'model_template': {'cn': ur'型号代码([\s\da-zA-Z]+)',
                                       'us': r'model code\s+([0-9A-Z]+\s+[0-9A-Z]+)',
-                                      'fr': '(.+)',
+                                      'fr': '(.+)', 'es': '(.+)', 'ca': '(.+)', 'mx': '(.+)', 'jp': '(.+)',
                                       'it': r'CODICE MODELLO\s+([0-9A-Z]+\s+[0-9A-Z]+)',
                                       'uk': '(.+)',
                    },
                    'home_urls': {'cn': 'http://www.ferragamo.cn',
                                  'us': 'http://www.ferragamo.com/shop/en/usa',
+                                 'es': 'http://www.ferragamo.com/shop/es/esp',
+                                 'ca': 'http://www.ferragamo.com/shop/en/can',
+                                 'mx': 'http://www.ferragamo.com/shop/es/mex',
                                  'fr': 'http://www.ferragamo.com/shop/fr/fra',
                                  'it': 'http://www.ferragamo.com/shop/it/ita',
+                                 'jp': 'http://www.ferragamo.com/shop/ja/jpn',
                                  'uk': 'http://www.ferragamo.com/shop/en/uk'}}
     # TODO 多国家支持
 
@@ -38,8 +42,12 @@ class FerragamoSpider(MFashionSpider):
     def __init__(self, region):
         self.spider_data['callbacks'] = {'cn': [self.parse_cn, self.parse_cat_cn, self.parse_details_cn],
                                          'us': [self.parse_us, self.parse_cat_us, self.parse_details_us],
+                                         'ca': [self.parse_fr, self.parse_cat_fr, self.parse_details_us],
+                                         'mx': [self.parse_fr, self.parse_cat_fr, self.parse_details_us],
                                          'fr': [self.parse_fr, self.parse_cat_fr, self.parse_details_us],
+                                         'jp': [self.parse_fr, self.parse_cat_fr, self.parse_details_us],
                                          'it': [self.parse_us, self.parse_cat_us, self.parse_details_us],
+                                         'es': [self.parse_fr, self.parse_cat_fr, self.parse_details_us],
                                          'uk': [self.parse_fr, self.parse_cat_fr, self.parse_details_us]
         }
         super(FerragamoSpider, self).__init__('ferragamo', region)
@@ -170,7 +178,8 @@ class FerragamoSpider(MFashionSpider):
             tmp = node.xpath('./div[@class="product_name"]/a/text()').extract()
             if tmp:
                 m['name'] = self.reformat(tmp[0])
-            tmp = node.xpath('./div[@class="product_price"]//*[@class="price"]/text()').extract()
+            tmp = node.xpath('./div[@class="product_price"]//*[@itemprop="price" and contains(@id,"offerPrice")]'
+                             '/text()').extract()
             if tmp:
                 m['price'] = self.reformat(tmp[0])
             yield Request(url=url, callback=self.spider_data['callbacks'][metadata['region']][2],
