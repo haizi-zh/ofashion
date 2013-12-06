@@ -968,10 +968,11 @@ def guess_gender(desc, extra=None):
         extra = {'male': [], 'female': []}
 
     gender_dict = {'male': ['man', 'men', 'homme', 'uomo', 'herren', 'hombre', 'heren', 'mann', 'signore', u'男性',
-                            u'男士', u'男人', u'男款', u'男装', 'for him', u'für ihn', 'per lui', 'mens', "men's"],
+                            u'男士', u'男人', u'男款', u'男装', 'for him', u'für ihn', 'per lui', 'mens', "men's",
+                            'hommes'],
                    'female': ['women', 'woman', 'femme', 'donna', 'damen', 'mujer', 'demes', 'vrouw', 'frauen', u'女性',
                               u'女士', u'女人', u'女款', u'女装', 'for her', u'für sie', 'per lei', 'pour elle', 'womens',
-                              "women's"]}
+                              "women's", 'femmes']}
     gender_dict = {'male': list(set(gender_dict['male']).union(set(extra['male']))),
                    'female': list(set(gender_dict['female']).union(set(extra['female']))), }
 
