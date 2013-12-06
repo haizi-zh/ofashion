@@ -18,10 +18,14 @@ import re
 class HogoBossSpider(MFashionSpider):
     allowed_domains = ['store.hugoboss.cn']
 
+    region = ''
+
     spider_data = {
         'brand_id': 10169,
         'home_urls': {
-            'cn': 'http://store.hugoboss.cn'
+            'cn': 'http://store.hugoboss.cn',
+            'us': 'http://store-us.hugoboss.com',
+            'fr': 'http://store-fr.hugoboss.com'
         }
     }
 
@@ -39,10 +43,8 @@ class HogoBossSpider(MFashionSpider):
     def start_requests(self):
         self.rules = (
             Rule(SgmlLinkExtractor(allow=r'.+/product.+$', allow_domains=['store.hugoboss.cn']),
-                 callback=self.parse_product,
-                 process_links=self.process_link),
-            Rule(SgmlLinkExtractor(allow=r'.+', allow_domains=['store.hugoboss.cn']),
-                 process_links=self.process_link)
+                 callback=self.parse_product),
+            Rule(SgmlLinkExtractor(allow=r'.+', allow_domains=['store.hugoboss.cn']))
         )
         self._compile_rules()
 
@@ -51,15 +53,9 @@ class HogoBossSpider(MFashionSpider):
                 self.log(str.format('No data for {0}', region), log.WARNING)
                 continue
 
+            self.region = region
+
             yield Request(url=self.spider_data['home_urls'][region])
-
-    def process_link(self, link):
-
-        for li in link:
-            li.url = li.url.replace('\\', '')
-            li.url = re.sub(r'//.+(\\)', '', li.url)
-
-        return link
 
     def parse_product(self, response):
         sel = Selector(response)
@@ -89,15 +85,16 @@ class HogoBossSpider(MFashionSpider):
         '''
         单品region
         '''
-        region = None
-        mt = re.search(r'hugoboss\.([^/]+)/', response.url)
-        for a in self.spider_data['home_urls'].keys():
-            if a == mt.group(1):
-                region = a
-                break
-        if not region:
-            return
-        metadata['region'] = region
+        #region = None
+        #mt = re.search('-(\w*)\.|\.(\w{2})/', response.url)
+        #for a in self.spider_data['home_urls'].keys():
+        #    if a == mt:
+        #        region = a
+        #        break
+        #if not region:
+        #    return
+        #metadata['region'] = region
+        metadata['region'] = self.region
 
         '''
         左上类型标签
@@ -193,6 +190,13 @@ class HogoBossSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        item['metadata'] = metadata
+
+        yield item
+
     '''
     处理单品图片
     '''
@@ -201,9 +205,20 @@ class HogoBossSpider(MFashionSpider):
         sel = Selector(response)
 
         image_urls = []
+
+        '''
+        中国网站
+        '''
         imageNodes = sel.xpath('//div[@id="gallery"]//a/img')
         for node in imageNodes:
             imageHref = node.xpath('./@big').extract()[0]
+            image_urls += [imageHref]
+        '''
+        美国和法国网站(估计其他也是)
+        '''
+        imageNodes = sel.xpath('//img[@data-detailurl]')
+        for node in imageNodes:
+            imageHref = node.xpath('./@data-detailurl').extract()[0]
             image_urls += [imageHref]
 
         item = ProductItem()
