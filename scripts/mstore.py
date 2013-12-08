@@ -15,7 +15,6 @@ from threading import Thread
 import urllib2
 import pydevd
 import global_settings as glob
-import common as cm
 from products.utils import fetch_image
 from scripts import dbman
 from scripts.sync_product import SyncProducts
