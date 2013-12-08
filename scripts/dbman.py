@@ -237,6 +237,7 @@ class PublishRelease(object):
         # 每一个model，对应哪些pid需要合并？
         model_list = {}
         for self.progress, record in enumerate(record_list):
+            record = {k: cm.unicodify(record[k]) for k in record}
             if record['model'] not in model_list:
                 if model_list.keys():
                     # 归并上一个model
