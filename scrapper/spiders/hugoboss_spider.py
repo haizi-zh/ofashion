@@ -17,14 +17,13 @@ import re
 
 class HogoBossSpider(MFashionSpider):
 
-    region = ''
-
     spider_data = {
         'brand_id': 10169,
         'home_urls': {
-            'cn': 'http://store.hugoboss.cn',
             'us': 'http://store-us.hugoboss.com',
-            'fr': 'http://store-fr.hugoboss.com'
+            'cn': 'http://store.hugoboss.cn',
+            'fr': 'http://store-fr.hugoboss.com',
+            'uk': 'http://store-uk.hugoboss.com/'
         }
     }
 
@@ -52,8 +51,6 @@ class HogoBossSpider(MFashionSpider):
                 self.log(str.format('No data for {0}', reg), log.WARNING)
                 continue
 
-            self.region = reg
-
             yield Request(url=self.spider_data['home_urls'][reg])
 
     def parse_product(self, response):
@@ -69,12 +66,12 @@ class HogoBossSpider(MFashionSpider):
         单品model
         '''
         model = None
-        mt = re.search(r'\+(\d+)_', response.url)
+        mt = re.search(r'\+(\d+)_,', response.url)
         if mt:
             model = mt.group(1)
         else:
             title = sel.xpath('//h2[@class="product-title"]/text()').extract()[0]
-            mt = re.search(r'\b(\d+)\b', title)
+            mt = re.search(r'(\d+)', title)
             if not mt:
                 return
             else:
@@ -84,16 +81,19 @@ class HogoBossSpider(MFashionSpider):
         '''
         单品region
         '''
-        #region = None
-        #mt = re.search('-(\w*)\.|\.(\w{2})/', response.url)
-        #for a in self.spider_data['home_urls'].keys():
-        #    if a == mt:
-        #        region = a
-        #        break
-        #if not region:
-        #    return
-        #metadata['region'] = region
-        metadata['region'] = self.region
+        region = None
+        mt = re.search('-(\w*)\.|\.(\w+)/', response.url)
+        if mt.group(1):
+            mt = mt.group(1)
+        else:
+            mt = mt.group(2)
+        for a in self.spider_data['home_urls'].keys():
+            if a == mt:
+                region = a
+                break
+        if not region:
+            return
+        metadata['region'] = region
 
         '''
         左上类型标签
