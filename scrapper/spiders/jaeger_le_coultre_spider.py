@@ -12,9 +12,9 @@ import copy
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10178,
-        #'currency': {
-        #    'cn': ''
-        #}
+        'currency': {
+            'cn': 'CNY',
+        },
         'home_urls': {
             'cn': 'http://www.jaeger-lecoultre.com/CN/zh/watch-finder',
         },
@@ -36,7 +36,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
         sel = Selector(response)
 
         # jaeger_le_coultre所有的产品都是腕表
-        metadata['tags_mapping']['category-0'] = [ur'腕表']
+        metadata['tags_mapping']['category-0'] = [{'name': ur'腕表', 'title': ur'腕表'}]
 
         collectionNodes = sel.xpath('//div[@class="collectionsList"]//a')
         for node in collectionNodes:
@@ -69,25 +69,29 @@ class JaegerLeCoultreSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        filter1Nodes = sel.xpath('//div[@class="filters"]//dt[2]/preceding-sibling::dd')
+        filter1Nodes = sel.xpath('//div[@class="filters"]//dd[following-sibling::dt[2]]')
         for node in filter1Nodes:
-            tag_text = node.xpath('.//span/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            tagNode = node.xpath('.//span')
+            if tagNode:
+                tag_text = tagNode.xpath('./text()')
+                if tag_text:
+                    tag_text = tagNode.xpath('./text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
 
-            if tag_text and tag_name:
-                m = copy.deepcopy(metadata)
-                m['tags_mapping']['category-1'] = [
-                    {'name': tag_name, 'title': tag_text,},
-                ]
+                    if tag_text and tag_name:
+                        m = copy.deepcopy(metadata)
+                        m['tags_mapping']['category-1'] = [
+                            {'name': tag_name, 'title': tag_text,},
+                        ]
 
-                href = node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                        href = node.xpath('./a/@href').extract()[0]
+                        href = self.process_href(href, response.url)
 
-                yield Request(url=href,
-                              callback=self.parse_filter2,
-                              errback=self.onerr,
-                              meta={'userdata': m})
+                        yield Request(url=href,
+                                      callback=self.parse_filter2,
+                                      errback=self.onerr,
+                                      meta={'userdata': m})
 
         for val in self.parse_filter2(response):
             yield val
@@ -102,23 +106,25 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         filter2Nodes = sel.xpath('//div[@class="filters"]//dd[preceding-sibling::dt[2] and following-sibling::dt]')
         for node in filter2Nodes:
-            tag_text = node.xpath('.//span/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            tagNode = node.xpath('.//span')
+            if tagNode:
+                tag_text = tagNode.xpath('./text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
 
-            if tag_text and tag_name:
-                m = copy.deepcopy(metadata)
-                m['tags_mapping']['category-2'] = [
-                    {'name': tag_name, 'title': tag_text,},
-                ]
+                if tag_text and tag_name:
+                    m = copy.deepcopy(metadata)
+                    m['tags_mapping']['category-2'] = [
+                        {'name': tag_name, 'title': tag_text,},
+                    ]
 
-                href = node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                    href = node.xpath('./a/@href').extract()[0]
+                    href = self.process_href(href, response.url)
 
-                yield Request(url=href,
-                              callback=self.parse_filter3,
-                              errback=self.onerr,
-                              meta={'userdata': m})
+                    yield Request(url=href,
+                                  callback=self.parse_filter3,
+                                  errback=self.onerr,
+                                  meta={'userdata': m})
 
         for val in self.parse_filter3(response):
             yield val
@@ -134,23 +140,25 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         filter3Nodes = sel.xpath('//div[@class="filters"]//dd[preceding-sibling::dt[3]]')
         for node in filter3Nodes:
-            tag_text = node.xpath('.//span/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            tagNode = node.xpath('.//span')
+            if tagNode:
+                tag_text = tagNode.xpath('./text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
 
-            if tag_text and tag_name:
-                m = copy.deepcopy(metadata)
-                m['tags_mapping']['category-3'] = [
-                    {'name': tag_name, 'title': tag_text,},
-                ]
+                if tag_text and tag_name:
+                    m = copy.deepcopy(metadata)
+                    m['tags_mapping']['category-3'] = [
+                        {'name': tag_name, 'title': tag_text,},
+                    ]
 
-                href = node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                    href = node.xpath('./a/@href').extract()[0]
+                    href = self.process_href(href, response.url)
 
-                yield Request(url=href,
-                              callback=self.parse_prductList,
-                              errback=self.onerr,
-                              meta={'userdata': m})
+                    yield Request(url=href,
+                                  callback=self.parse_productList,
+                                  errback=self.onerr,
+                                  meta={'userdata': m})
 
         for val in self.parse_productList(response):
             yield val
@@ -167,25 +175,31 @@ class JaegerLeCoultreSpider(MFashionSpider):
         for node in productListNodes:
             m = copy.deepcopy(metadata)
 
-            model = node.xpath('.//h5//div[@style]').extract()[0]
-            model = self.reformat(model)
-            if model:
-                m['model'] = model
+            modelNode = node.xpath('.//h5')
+            if modelNode:
+                model = modelNode.xpath('.//div').extract()[0]
+                model = self.reformat(model)
+                if model:
+                    m['model'] = model
+                else:
+                    continue
             else:
                 continue
 
-            name = node.xpath('.//h5/text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                m['name'] = name
+            nameNode = node.xpath('.//h5')
+            if nameNode:
+                nameText = nameNode.xpath('./text()').extract()[0]
+                nameText = self.reformat(nameText)
+                if nameText:
+                    m['name'] = nameText
 
             href = node.xpath('.//a/@href').extract()[0]
-            href = self.process_href(href)
+            href = self.process_href(href, response.url)
 
             yield Request(url=href,
                           callback=self.parse_product,
                           errback=self.onerr,
-                          meta={'userdata': metadata})
+                          meta={'userdata': m})
 
     def parse_product(self, response):
         '''
@@ -197,7 +211,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        productDescriptionNode = sel.xpath('//p[@class="description"]')
+        productDescriptionNode = sel.xpath('//p[contains(@class,"description")]')
         if productDescriptionNode:
             description = productDescriptionNode.xpath('./text()').extract()[0]
             description = self.reformat(description)
@@ -205,23 +219,24 @@ class JaegerLeCoultreSpider(MFashionSpider):
             if description:
                 metadata['description'] = description
 
-        imageNode = sel.xpath('//a[@class="lightbox_recto"]')
-        if imageNode:
-            imageHref = imageNode.xpath('./@href')
-            imageHref = self.process_href(imageHref)
+        imageUrls = []
+        imageNodes = sel.xpath('//a[@class="lightbox_recto"]')
+        for node in imageNodes:
+            imageHref = node.xpath('./@href').extract()[0]
+            imageHref = self.process_href(imageHref, response.url)
 
             if imageHref:
-                metadata['image_urls'] = imageHref
+                imageUrls += [imageHref]
 
         priceNode = sel.xpath('//div[@class="price"]')
         if priceNode:
-            price = priceNode.xpath('./h3/text()')
+            price = priceNode.xpath('./h3/text()').extract()[0]
             if price:
                 metadata['price'] = price
 
         item = ProductItem()
-        if metadata['image_urls']:
-            item['image_urls'] = metadata['image_urls']
+        if imageUrls:
+            item['image_urls'] = imageUrls
         item['url'] = metadata['url']
         item['model'] = metadata['model']
         item['metadata'] = metadata
