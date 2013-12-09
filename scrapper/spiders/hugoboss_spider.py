@@ -19,11 +19,19 @@ class HogoBossSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10169,
+        'currency': {
+            'us': 'USD',
+            'cn': 'CNY',
+            'fr': 'EUR',
+            'uk': 'GBP',
+            'it': 'EUR'
+        },
         'home_urls': {
-            'us': 'http://store-us.hugoboss.com',
             'cn': 'http://store.hugoboss.cn',
+            'us': 'http://store-us.hugoboss.com',
             'fr': 'http://store-fr.hugoboss.com',
-            'uk': 'http://store-uk.hugoboss.com/'
+            'uk': 'http://store-uk.hugoboss.com',
+            'it': 'http://store-it.hugoboss.com'
         }
     }
 
@@ -40,9 +48,9 @@ class HogoBossSpider(MFashionSpider):
 
     def start_requests(self):
         self.rules = (
-            Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$', allow_domains=['store.hugoboss.cn']),
+            Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$'),
                  callback=self.parse_product),
-            Rule(SgmlLinkExtractor(allow=r'.+', allow_domains=['store.hugoboss.cn']))
+            Rule(SgmlLinkExtractor(allow=r'.+'))
         )
         self._compile_rules()
 
