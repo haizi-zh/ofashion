@@ -8,6 +8,7 @@ from scrapy.http import Request
 from scrapy.selector import Selector
 
 import copy
+import common
 
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
@@ -192,6 +193,11 @@ class JaegerLeCoultreSpider(MFashionSpider):
                 nameText = self.reformat(nameText)
                 if nameText:
                     m['name'] = nameText
+
+            if m['name']:
+                gender = common.guess_gender(m['name'])
+                if gender:
+                    m['gender'] = [gender]
 
             href = node.xpath('.//a/@href').extract()[0]
             href = self.process_href(href, response.url)
