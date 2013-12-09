@@ -78,7 +78,7 @@ class HogoBossSpider(MFashionSpider):
         if mt:
             model = mt.group(1)
         else:
-            title = sel.xpath('//h2[@class="product-title"]/text()').extract()[0]
+            title = sel.xpath('//*[@class="product-title" or @class="model"]/text()').extract()[0]
             mt = re.search(r'(\d+)', title)
             if not mt:
                 return
