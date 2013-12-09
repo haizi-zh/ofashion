@@ -48,9 +48,11 @@ class HogoBossSpider(MFashionSpider):
 
     def start_requests(self):
         self.rules = (
-            Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$'),
+            Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$',
+                                   allow_domains=['store.hugoboss.cn', 'hugoboss.com']),
                  callback=self.parse_product),
-            Rule(SgmlLinkExtractor(allow=r'.+'))
+            Rule(SgmlLinkExtractor(allow=r'.+',
+                                   allow_domains=['store.hugoboss.cn', 'hugoboss.com']))
         )
         self._compile_rules()
 
@@ -79,7 +81,7 @@ class HogoBossSpider(MFashionSpider):
             model = mt.group(1)
         else:
             title = sel.xpath('//*[@class="product-title" or @class="model"]/text()').extract()[0]
-            mt = re.search(r'(\d+)', title)
+            mt = re.search(r'(\d{6,})', title)
             if not mt:
                 return
             else:
@@ -106,12 +108,16 @@ class HogoBossSpider(MFashionSpider):
         '''
         左上类型标签
         '''
+        #中国
         typesNodes = sel.xpath('//ul[@class="container clearfix"]/li[not(contains(text(), "/"))]')[0:-1]
+        #其他
+        if not typesNodes:
+            typesNodes = sel.xpath('//a[contains(@name, "breadcrump")]')
         categoryIndex = 0
         for node in typesNodes:
 
             '''
-            前两个标签，字写在下属的a里边
+            中国，前两个标签，字写在下属的a里边
             '''
             typeNode = node.xpath('./a')
             if not typeNode:
@@ -135,7 +141,7 @@ class HogoBossSpider(MFashionSpider):
         '''
         价格标签
         '''
-        priceNode = sel.xpath('//dd[@class="saleprice"]')
+        priceNode = sel.xpath('//*[@class="saleprice"]')
         if priceNode:
             price = priceNode.xpath(ur'./text()').extract()[0]
             metadata['price'] = price
@@ -143,7 +149,7 @@ class HogoBossSpider(MFashionSpider):
         '''
         单品名称
         '''
-        nameNode = sel.xpath('//h1[@class="product-name"]')
+        nameNode = sel.xpath('//h1[@class="product-name" or @class="productname label"]')
         if nameNode:
             name = nameNode.xpath('./text()').extract()[0]
             name = self.reformat(name)
@@ -152,18 +158,32 @@ class HogoBossSpider(MFashionSpider):
         '''
         颜色标签
         '''
+        #中国
         colorNodes = sel.xpath('//dl[@class="product-colors"]//li')
         for node in colorNodes:
             color_text = node.xpath('.//a/@title').extract()[0]
+            color_text = self.reformat(color_text)
+            metadata['color'] += [color_text]
+        #其他
+        colorNodes = sel.xpath('//a[@class="swatchanchor"]')
+        for node in colorNodes:
+            color_text = node.xpath('./text()').extract()[0]
             color_text = self.reformat(color_text)
             metadata['color'] += [color_text]
 
         '''
         描述标签
         '''
+        #中国
         descriptionNode = sel.xpath('//div[@class="tabpage description"]')
         if descriptionNode:
             desctiption = descriptionNode.xpath('./text()').extract()[0]
+            desctiption = self.reformat(desctiption)
+            metadata['description'] = desctiption
+        #其他
+        descriptionNode = sel.xpath('//meta[@property="og:description"]')
+        if descriptionNode:
+            desctiption = descriptionNode.xpath('./@content').extract()[0]
             desctiption = self.reformat(desctiption)
             metadata['description'] = desctiption
 
@@ -185,10 +205,26 @@ class HogoBossSpider(MFashionSpider):
         '''
         图片
         '''
+        #中国
         imageNodes = sel.xpath('//dl[@class="product-colors"]//li/a')
         for node in imageNodes:
             href = node.xpath('./@href').extract()[0]
             href = self.process_href(href, response.url)
+
+            m = copy.deepcopy(metadata)
+
+            yield Request(url=href,
+                          callback=self.parse_images,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+        #其他
+        imageNodes = sel.xpath('//a[@class="swatchanchor"]')
+        for node in imageNodes:
+            href = node.xpath('./@href').extract()[0]
+            if re.search('#.+', response.url):
+                href = re.sub('#.+', href, response.url);
+            else:
+                href = str.format('{0}{1}', response.url, href)
 
             m = copy.deepcopy(metadata)
 
@@ -201,7 +237,6 @@ class HogoBossSpider(MFashionSpider):
         item['url'] = metadata['url']
         item['model'] = metadata['model']
         item['metadata'] = metadata
-
         yield item
 
     '''
