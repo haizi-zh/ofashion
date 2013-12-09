@@ -16,7 +16,6 @@ import re
 
 
 class HogoBossSpider(MFashionSpider):
-    allowed_domains = ['store.hugoboss.cn']
 
     region = ''
 
@@ -42,20 +41,20 @@ class HogoBossSpider(MFashionSpider):
 
     def start_requests(self):
         self.rules = (
-            Rule(SgmlLinkExtractor(allow=r'.+/product.+$', allow_domains=['store.hugoboss.cn']),
+            Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$', allow_domains=['store.hugoboss.cn']),
                  callback=self.parse_product),
             Rule(SgmlLinkExtractor(allow=r'.+', allow_domains=['store.hugoboss.cn']))
         )
         self._compile_rules()
 
-        for region in self.region_list:
-            if region not in self.get_supported_regions():
-                self.log(str.format('No data for {0}', region), log.WARNING)
+        for reg in self.region_list:
+            if reg not in self.get_supported_regions():
+                self.log(str.format('No data for {0}', reg), log.WARNING)
                 continue
 
-            self.region = region
+            self.region = reg
 
-            yield Request(url=self.spider_data['home_urls'][region])
+            yield Request(url=self.spider_data['home_urls'][reg])
 
     def parse_product(self, response):
         sel = Selector(response)
