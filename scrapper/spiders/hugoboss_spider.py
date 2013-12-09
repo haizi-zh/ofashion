@@ -24,14 +24,26 @@ class HogoBossSpider(MFashionSpider):
             'cn': 'CNY',
             'fr': 'EUR',
             'uk': 'GBP',
-            'it': 'EUR'
+            'it': 'EUR',
+            'de': 'EUR',
+            'nl': 'EUR',
+            'at': 'EUR',
+            'ch': 'CHF',
+            'es': 'EUR',
+            'be': 'EUR',
         },
         'home_urls': {
             'cn': 'http://store.hugoboss.cn',
             'us': 'http://store-us.hugoboss.com',
             'fr': 'http://store-fr.hugoboss.com',
             'uk': 'http://store-uk.hugoboss.com',
-            'it': 'http://store-it.hugoboss.com'
+            'it': 'http://store-it.hugoboss.com',
+            'de': 'http://store-de.hugoboss.com',
+            'nl': 'http://store-nl.hugoboss.com',
+            'at': 'http://store-at.hugoboss.com',
+            'ch': 'http://store-ch.hugoboss.com',
+            'es': 'http://store-es.hugoboss.com',
+            'be': 'http://store-be.hugoboss.com'
         }
     }
 
