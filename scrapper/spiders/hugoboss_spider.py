@@ -101,7 +101,10 @@ class HogoBossSpider(MFashionSpider):
                     model = mt.group(1)
             except(TypeError, IndexError):
                 return
-        metadata['model'] = model
+        if model:
+            metadata['model'] = model
+        else:
+            return
 
         '''
         单品region
@@ -140,12 +143,13 @@ class HogoBossSpider(MFashionSpider):
 
             try:
                 type_text = typeNode.xpath('./text()').extract()[0]
-                type_name = self.reformat(type_text).lower()
-                categoryType = str.format('category-{0}', categoryIndex)
-                metadata['tags_mapping'][categoryType] = [
-                    {'name': type_name, 'title': type_text}
-                ]
-                categoryIndex+=1
+                if type_text:
+                    type_name = self.reformat(type_text).lower()
+                    categoryType = str.format('category-{0}', categoryIndex)
+                    metadata['tags_mapping'][categoryType] = [
+                        {'name': type_name, 'title': type_text}
+                    ]
+                    categoryIndex+=1
             except(TypeError, IndexError):
                 continue
 
@@ -163,7 +167,8 @@ class HogoBossSpider(MFashionSpider):
         if priceNode:
             try:
                 price = priceNode.xpath(ur'./text()').extract()[0]
-                metadata['price'] = price
+                if price:
+                    metadata['price'] = price
             except(TypeError, IndexError):
                 pass
 
@@ -174,8 +179,9 @@ class HogoBossSpider(MFashionSpider):
         if nameNode:
             try:
                 name = nameNode.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-                metadata['name'] = name
+                if name:
+                    name = self.reformat(name)
+                    metadata['name'] = name
             except(TypeError, IndexError):
                 pass
 
@@ -187,8 +193,9 @@ class HogoBossSpider(MFashionSpider):
         for node in colorNodes:
             try:
                 color_text = node.xpath('.//a/@title').extract()[0]
-                color_text = self.reformat(color_text)
-                metadata['color'] += [color_text]
+                if color_text:
+                    color_text = self.reformat(color_text)
+                    metadata['color'] += [color_text]
             except(TypeError, IndexError):
                 continue
         #其他
@@ -196,8 +203,9 @@ class HogoBossSpider(MFashionSpider):
         for node in colorNodes:
             try:
                 color_text = node.xpath('./text()').extract()[0]
-                color_text = self.reformat(color_text)
-                metadata['color'] += [color_text]
+                if color_text:
+                    color_text = self.reformat(color_text)
+                    metadata['color'] += [color_text]
             except(TypeError, IndexError):
                 continue
 
@@ -209,8 +217,9 @@ class HogoBossSpider(MFashionSpider):
         if descriptionNode:
             try:
                 desctiption = descriptionNode.xpath('./text()').extract()[0]
-                desctiption = self.reformat(desctiption)
-                metadata['description'] = desctiption
+                if desctiption:
+                    desctiption = self.reformat(desctiption)
+                    metadata['description'] = desctiption
             except(TypeError, IndexError):
                 pass
         #其他
@@ -218,8 +227,9 @@ class HogoBossSpider(MFashionSpider):
         if descriptionNode:
             try:
                 desctiption = descriptionNode.xpath('./@content').extract()[0]
-                desctiption = self.reformat(desctiption)
-                metadata['description'] = desctiption
+                if desctiption:
+                    desctiption = self.reformat(desctiption)
+                    metadata['description'] = desctiption
             except(TypeError, IndexError):
                 pass
 
@@ -231,8 +241,9 @@ class HogoBossSpider(MFashionSpider):
             try:
                 # TODO 详情不全，被<br>分开了
                 detail = detailNode.xpath('./text()').extract()[0]
-                detail = self.reformat(detail)
-                metadata['details'] = detail
+                if detail:
+                    detail = self.reformat(detail)
+                    metadata['details'] = detail
             except(TypeError, IndexError):
                 pass
 
@@ -300,7 +311,8 @@ class HogoBossSpider(MFashionSpider):
         for node in imageNodes:
             try:
                 imageHref = node.xpath('./@big').extract()[0]
-                image_urls += [imageHref]
+                if imageHref:
+                    image_urls += [imageHref]
             except(TypeError, IndexError):
                 continue
         '''
@@ -310,7 +322,8 @@ class HogoBossSpider(MFashionSpider):
         for node in imageNodes:
             try:
                 imageHref = node.xpath('./@data-detailurl').extract()[0]
-                image_urls += [imageHref]
+                if imageHref:
+                    image_urls += [imageHref]
             except(TypeError, IndexError):
                 continue
 
