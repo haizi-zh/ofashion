@@ -1,6 +1,7 @@
 # coding=utf-8
 import ConfigParser
 import datetime
+import os
 
 __author__ = 'Zephyre'
 
@@ -80,7 +81,10 @@ def currency_info():
     return rate_data
 
 
-def _load_user_cfg(cfg_file='mstore.cfg'):
+def _load_user_cfg(cfg_file=None):
+    if not cfg_file:
+        cfg_file = os.path.join(os.path.split(__file__)[0], 'mstore.cfg')
+
     # 加载mstore.cfg的设置内容
     config = ConfigParser.ConfigParser()
     config.optionxform = str
