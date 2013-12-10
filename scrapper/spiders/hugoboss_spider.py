@@ -59,12 +59,19 @@ class HogoBossSpider(MFashionSpider):
         return cls(region)
 
     def start_requests(self):
+
+        domains = list(
+            str.format('store-{0}.hugoboss.com', reg)
+            if reg != 'cn' else 'store.hugoboss.cn'
+            for reg in self.region_list
+        )
+
         self.rules = (
             Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$',
-                                   allow_domains=['store.hugoboss.cn', 'hugoboss.com']),
+                                   allow_domains=domains),
                  callback=self.parse_product),
             Rule(SgmlLinkExtractor(allow=r'.+', deny=r'.*prefn.*',
-                                   allow_domains=['store.hugoboss.cn', 'hugoboss.com'])),
+                                   allow_domains=domains)),
         )
         self._compile_rules()
 
