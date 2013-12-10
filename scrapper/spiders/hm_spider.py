@@ -74,6 +74,7 @@ class HMSpider(MFashionSpider):
         mt = re.search(r'.+/product/(\d+).*', response.url)
         if mt:
             model = mt.group(1)
+        model = self.reformat(model)
         if model:
             metadata['model'] = model
         else:
@@ -87,6 +88,7 @@ class HMSpider(MFashionSpider):
         #替换gb为uk
         if region == 'gb':
             region = 'uk'
+        region = self.reformat(region)
         if region:
             metadata['region'] = region
         else:
@@ -125,19 +127,26 @@ class HMSpider(MFashionSpider):
         nameNode = sel.xpath('//h1')
         if nameNode:
             name = nameNode.xpath('./text()').extract()[0]
+            name = self.reformat(name)
             if name:
                 metadata['name'] = name
 
         #详情标签
         descriptionNode = sel.xpath('//div[@class="description"]')
         if descriptionNode:
-            description = descriptionNode.xpath('.//p[1]/text()').extract()[0]
-            if description:
-                metadata['description'] = description
+            descriptionTextNode = descriptionNode.xpath('.//p[1]')
+            if descriptionTextNode:
+                description = descriptionTextNode.xpath('./text()').extract()[0]
+                description = self.reformat(description)
+                if description:
+                    metadata['description'] = description
 
-            detail = descriptionNode.xpath('.//p[2]/text()').extract()[0]
-            if detail:
-                metadata['details'] = detail
+            detailTextNode = descriptionNode.xpath('.//*[preceding::h2[2]]')
+            if detailTextNode:
+                detail = ''.join(detailTextNode.xpath('./text()').extract())
+                detail = self.reformat(detail)
+                if detail:
+                    metadata['details'] = detail
 
         #颜色标签，获取各种颜色的图片
         colorNodes = sel.xpath('//*[@id="options-articles"]//li')
@@ -156,10 +165,10 @@ class HMSpider(MFashionSpider):
 
                 m = copy.deepcopy(metadata)
 
-                Request(url=colorImageHref,
-                        callback=self.parse_images,
-                        errback=self.onerr,
-                        meta={'userdata': m})
+                yield Request(url=colorImageHref,
+                              callback=self.parse_images,
+                              errback=self.onerr,
+                              meta={'userdata': m})
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -176,12 +185,12 @@ class HMSpider(MFashionSpider):
         image_urls = []
         imageNodes = sel.xpath('//div[@class="thumbs"]//img')
         for node in imageNodes:
-            href = node.xpath('./@href').extract()[0]
-            href = re.sub(r'.+/(thumb).+', 'full', href)
+            href = node.xpath('./@src').extract()[0]
+            href = re.sub(ur'thumb', 'full', href)
             href = self.process_href(href, response.url)
 
             if href:
-                image_urls += href
+                image_urls += [href]
 
         item = ProductItem()
         item['image_urls'] = image_urls
