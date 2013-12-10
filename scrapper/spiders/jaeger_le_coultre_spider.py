@@ -49,23 +49,26 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         collectionNodes = sel.xpath('//div[@class="collectionsList"]//a')
         for node in collectionNodes:
-            tag_text = node.xpath('./h3/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./h3/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
 
-            if tag_text and tag_name:
-                m = copy.deepcopy(metadata)
-                m['tags_mapping']['collection'] = [
-                    {'name': tag_name, 'title': tag_text,},
-                ]
+                if tag_text and tag_name:
+                    m = copy.deepcopy(metadata)
+                    m['tags_mapping']['collection'] = [
+                        {'name': tag_name, 'title': tag_text,},
+                    ]
 
-                href = node.xpath('./@href').extract()[0]
-                href = self.process_href(href, response.url)
+                    href = node.xpath('./@href').extract()[0]
+                    href = self.process_href(href, response.url)
 
-                yield Request(url=href,
-                              callback=self.parse_filter1,
-                              errback=self.onerr,
-                              meta={'userdata': m})
+                    yield Request(url=href,
+                                  callback=self.parse_filter1,
+                                  errback=self.onerr,
+                                  meta={'userdata': m})
+            except(TypeError, IndexError):
+                continue
 
         for val in self.parse_filter1(response):
             yield val
@@ -80,27 +83,30 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         filter1Nodes = sel.xpath('//div[@class="filters"]//dd[following-sibling::dt[2]]')
         for node in filter1Nodes:
-            tagNode = node.xpath('.//span')
-            if tagNode:
-                tag_text = tagNode.xpath('./text()')
-                if tag_text:
-                    tag_text = tagNode.xpath('./text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+            try:
+                tagNode = node.xpath('.//span')
+                if tagNode:
+                    tag_text = tagNode.xpath('./text()')
+                    if tag_text:
+                        tag_text = tagNode.xpath('./text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
 
-                    if tag_text and tag_name:
-                        m = copy.deepcopy(metadata)
-                        m['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
-                        ]
+                        if tag_text and tag_name:
+                            m = copy.deepcopy(metadata)
+                            m['tags_mapping']['category-1'] = [
+                                {'name': tag_name, 'title': tag_text,},
+                            ]
 
-                        href = node.xpath('./a/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                            href = node.xpath('./a/@href').extract()[0]
+                            href = self.process_href(href, response.url)
 
-                        yield Request(url=href,
-                                      callback=self.parse_filter2,
-                                      errback=self.onerr,
-                                      meta={'userdata': m})
+                            yield Request(url=href,
+                                          callback=self.parse_filter2,
+                                          errback=self.onerr,
+                                          meta={'userdata': m})
+            except(TypeError, IndexError):
+                continue
 
         for val in self.parse_filter2(response):
             yield val
@@ -115,25 +121,28 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         filter2Nodes = sel.xpath('//div[@class="filters"]//dd[preceding-sibling::dt[2] and following-sibling::dt]')
         for node in filter2Nodes:
-            tagNode = node.xpath('.//span')
-            if tagNode:
-                tag_text = tagNode.xpath('./text()').extract()[0]
-                tag_text = self.reformat(tag_text)
-                tag_name = tag_text.lower()
+            try:
+                tagNode = node.xpath('.//span')
+                if tagNode:
+                    tag_text = tagNode.xpath('./text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
 
-                if tag_text and tag_name:
-                    m = copy.deepcopy(metadata)
-                    m['tags_mapping']['category-2'] = [
-                        {'name': tag_name, 'title': tag_text,},
-                    ]
+                    if tag_text and tag_name:
+                        m = copy.deepcopy(metadata)
+                        m['tags_mapping']['category-2'] = [
+                            {'name': tag_name, 'title': tag_text,},
+                        ]
 
-                    href = node.xpath('./a/@href').extract()[0]
-                    href = self.process_href(href, response.url)
+                        href = node.xpath('./a/@href').extract()[0]
+                        href = self.process_href(href, response.url)
 
-                    yield Request(url=href,
-                                  callback=self.parse_filter3,
-                                  errback=self.onerr,
-                                  meta={'userdata': m})
+                        yield Request(url=href,
+                                      callback=self.parse_filter3,
+                                      errback=self.onerr,
+                                      meta={'userdata': m})
+            except(TypeError, IndexError):
+                continue
 
         for val in self.parse_filter3(response):
             yield val
@@ -149,25 +158,28 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         filter3Nodes = sel.xpath('//div[@class="filters"]//dd[preceding-sibling::dt[3]]')
         for node in filter3Nodes:
-            tagNode = node.xpath('.//span')
-            if tagNode:
-                tag_text = tagNode.xpath('./text()').extract()[0]
-                tag_text = self.reformat(tag_text)
-                tag_name = tag_text.lower()
+            try:
+                tagNode = node.xpath('.//span')
+                if tagNode:
+                    tag_text = tagNode.xpath('./text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
 
-                if tag_text and tag_name:
-                    m = copy.deepcopy(metadata)
-                    m['tags_mapping']['category-3'] = [
-                        {'name': tag_name, 'title': tag_text,},
-                    ]
+                    if tag_text and tag_name:
+                        m = copy.deepcopy(metadata)
+                        m['tags_mapping']['category-3'] = [
+                            {'name': tag_name, 'title': tag_text,},
+                        ]
 
-                    href = node.xpath('./a/@href').extract()[0]
-                    href = self.process_href(href, response.url)
+                        href = node.xpath('./a/@href').extract()[0]
+                        href = self.process_href(href, response.url)
 
-                    yield Request(url=href,
-                                  callback=self.parse_productList,
-                                  errback=self.onerr,
-                                  meta={'userdata': m})
+                        yield Request(url=href,
+                                      callback=self.parse_productList,
+                                      errback=self.onerr,
+                                      meta={'userdata': m})
+            except(TypeError, IndexError):
+                continue
 
         for val in self.parse_productList(response):
             yield val
@@ -182,38 +194,41 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         productListNodes = sel.xpath('//div[@class="models-list"]//li')
         for node in productListNodes:
-            m = copy.deepcopy(metadata)
+            try:
+                m = copy.deepcopy(metadata)
 
-            modelNode = node.xpath('.//h5')
-            if modelNode:
-                model = modelNode.xpath('.//div').extract()[0]
-                model = self.reformat(model)
-                if model:
-                    m['model'] = model
+                modelNode = node.xpath('.//h5')
+                if modelNode:
+                    model = modelNode.xpath('.//div').extract()[0]
+                    model = self.reformat(model)
+                    if model:
+                        m['model'] = model
+                    else:
+                        continue
                 else:
                     continue
-            else:
+
+                nameNode = node.xpath('.//h5')
+                if nameNode:
+                    nameText = nameNode.xpath('./text()').extract()[0]
+                    nameText = self.reformat(nameText)
+                    if nameText:
+                        m['name'] = nameText
+
+                if m['name']:
+                    gender = common.guess_gender(m['name'])
+                    if gender:
+                        m['gender'] = [gender]
+
+                href = node.xpath('.//a/@href').extract()[0]
+                href = self.process_href(href, response.url)
+
+                yield Request(url=href,
+                              callback=self.parse_product,
+                              errback=self.onerr,
+                              meta={'userdata': m})
+            except(TypeError, IndexError):
                 continue
-
-            nameNode = node.xpath('.//h5')
-            if nameNode:
-                nameText = nameNode.xpath('./text()').extract()[0]
-                nameText = self.reformat(nameText)
-                if nameText:
-                    m['name'] = nameText
-
-            if m['name']:
-                gender = common.guess_gender(m['name'])
-                if gender:
-                    m['gender'] = [gender]
-
-            href = node.xpath('.//a/@href').extract()[0]
-            href = self.process_href(href, response.url)
-
-            yield Request(url=href,
-                          callback=self.parse_product,
-                          errback=self.onerr,
-                          meta={'userdata': m})
 
     def parse_product(self, response):
         '''
@@ -227,26 +242,35 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         productDescriptionNode = sel.xpath('//p[contains(@class,"description")]')
         if productDescriptionNode:
-            description = productDescriptionNode.xpath('./text()').extract()[0]
-            description = self.reformat(description)
+            try:
+                description = productDescriptionNode.xpath('./text()').extract()[0]
+                description = self.reformat(description)
 
-            if description:
-                metadata['description'] = description
+                if description:
+                    metadata['description'] = description
+            except(TypeError, IndexError):
+                pass
 
         imageUrls = []
         imageNodes = sel.xpath('//a[@class="lightbox_recto"]')
         for node in imageNodes:
-            imageHref = node.xpath('./@href').extract()[0]
-            imageHref = self.process_href(imageHref, response.url)
+            try:
+                imageHref = node.xpath('./@href').extract()[0]
+                imageHref = self.process_href(imageHref, response.url)
 
-            if imageHref:
-                imageUrls += [imageHref]
+                if imageHref:
+                    imageUrls += [imageHref]
+            except(TypeError, IndexError):
+                pass
 
         priceNode = sel.xpath('//div[@class="price"]')
         if priceNode:
-            price = priceNode.xpath('./h3/text()').extract()[0]
-            if price:
-                metadata['price'] = price
+            try:
+                price = priceNode.xpath('./h3/text()').extract()[0]
+                if price:
+                    metadata['price'] = price
+            except(TypeError, IndexError):
+                pass
 
         item = ProductItem()
         if imageUrls:
