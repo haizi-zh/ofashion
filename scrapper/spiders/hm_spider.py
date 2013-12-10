@@ -43,7 +43,7 @@ class HMSpider(MFashionSpider):
         return cls(region)
 
     def start_requests(self):
-        self.urles = (
+        self.rules = (
             Rule(SgmlLinkExtractor(allow=r'.+/product/.+',
                                    allow_domains=['hm.com']),
                  callback=self.parse_product),
@@ -58,7 +58,7 @@ class HMSpider(MFashionSpider):
                 self.log(str.format('No data for {0}', reg), log.WARNING)
                 continue
 
-            yield  Request(url=self.spider_data['home_urls'][reg])
+            yield Request(url=self.spider_data['home_urls'][reg])
 
     def parse_product(self, response):
         sel = Selector(response)
@@ -131,13 +131,13 @@ class HMSpider(MFashionSpider):
         #详情标签
         descriptionNode = sel.xpath('//div[@class="description"]')
         if descriptionNode:
-            description = descriptionNode.xpath('.//p[1]').extract()[0]
+            description = descriptionNode.xpath('.//p[1]/text()').extract()[0]
             if description:
                 metadata['description'] = description
 
-            detail = descriptionNode.xpath('.//p[2]').extract()[0]
+            detail = descriptionNode.xpath('.//p[2]/text()').extract()[0]
             if detail:
-                metadata['detail'] = detail
+                metadata['details'] = detail
 
         #颜色标签，获取各种颜色的图片
         colorNodes = sel.xpath('//*[@id="options-articles"]//li')
@@ -152,7 +152,7 @@ class HMSpider(MFashionSpider):
             colorImageNode = node.xpath('.//a')
             if colorImageNode:
                 colorImageHref = colorImageNode.xpath('./@href').extract()[0]
-                colorImageHref = self.process_href(colorImageHref, response.url)
+                colorImageHref = re.sub(ur'\?.+', colorImageHref, response.url)
 
                 m = copy.deepcopy(metadata)
 
