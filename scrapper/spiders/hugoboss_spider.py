@@ -63,8 +63,8 @@ class HogoBossSpider(MFashionSpider):
             Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$',
                                    allow_domains=['store.hugoboss.cn', 'hugoboss.com']),
                  callback=self.parse_product),
-            Rule(SgmlLinkExtractor(allow=r'.+',
-                                   allow_domains=['store.hugoboss.cn', 'hugoboss.com']))
+            Rule(SgmlLinkExtractor(allow=r'.+', deny=r'.*prefn.*',
+                                   allow_domains=['store.hugoboss.cn', 'hugoboss.com'])),
         )
         self._compile_rules()
 
