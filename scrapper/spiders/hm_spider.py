@@ -39,7 +39,6 @@ class HMSpider(MFashionSpider):
             self.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k)}
 
 
-
         super(HMSpider, self).__init__('H&M', region)
 
     @classmethod
@@ -47,13 +46,16 @@ class HMSpider(MFashionSpider):
         return cls(region)
 
     def start_requests(self):
+
+        domains = list(str.format('hm.com/{0}', k if k != 'uk' else 'gb') for k in self.region_list)
+
         self.rules = (
             Rule(SgmlLinkExtractor(allow=r'.+/product/.+',
-                                   allow_domains=['hm.com']),
+                                   allow_domains=domains),
                  callback=self.parse_product),
             Rule(SgmlLinkExtractor(allow=r'.+',
                                    deny=r'.+#.*N.+',
-                                   allow_domains=['hm.com']))
+                                   allow_domains=domains))
         )
         self._compile_rules()
 
