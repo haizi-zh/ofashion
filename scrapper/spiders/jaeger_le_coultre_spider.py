@@ -9,24 +9,12 @@ from scrapy.selector import Selector
 
 import copy
 import common
+from utils.utils import iterable
 
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10178,
-        'currency': {
-            'it': 'EUR',
-            'fr': 'EUR',
-            'uk': 'GBP',
-            'us': 'USD',
-            'cn': 'CNY',
-        },
-        'home_urls': {
-            'it': 'http://www.jaeger-lecoultre.com/IT/en/watch-finder',
-            'fr': 'http://www.jaeger-lecoultre.com/FR/en/watch-finder',
-            'uk': 'http://www.jaeger-lecoultre.com/GB/en/watch-finder',
-            'us': 'http://www.jaeger-lecoultre.com/US/en/watch-finder',
-            'cn': 'http://www.jaeger-lecoultre.com/CN/zh/watch-finder',
-        },
+        'home_urls': {},
     }
 
     @classmethod
@@ -34,6 +22,14 @@ class JaegerLeCoultreSpider(MFashionSpider):
         return JaegerLeCoultreSpider.spider_data['home_urls'].keys()
 
     def __init__(self, region):
+        if iterable(region):
+            self.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/en/watch-finder', k.upper() if k != 'uk' else 'GB')  for k in region}
+        else:
+            k = region
+            if region == 'uk':
+                k = 'GB'
+            self.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/en/watch-finder', k)}
+
         super(JaegerLeCoultreSpider, self).__init__('jaeger_le_coultre', region)
 
     @classmethod
