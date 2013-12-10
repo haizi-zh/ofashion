@@ -14,27 +14,31 @@ from scrapy import log
 import re
 import common
 import copy
+from utils.utils import iterable
+
 
 class HMSpider(MFashionSpider):
-    supported_regions = {
-        'cn', 'us', 'fr', 'uk', 'it',
-    }
-
     spider_data = {
         'brand_id': 10155,
-        'currency': {
-            'cn': 'CNY',
-        },
+        'home_urls': {},
     }
 
     allow_domains = ['hm.com']
 
     @classmethod
     def get_supported_regions(cls):
-        return list(HMSpider.supported_regions)
+        return cls.spider_data['home_urls'].keys()
 
     def __init__(self, region):
-        self.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k) for k in self.get_supported_regions()}
+        if iterable(region):
+            self.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k if k != 'uk' else 'gb') for k in region}
+        else:
+            k = region
+            if region == 'uk':
+                k = 'gb'
+            self.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k)}
+
+
 
         super(HMSpider, self).__init__('H&M', region)
 
