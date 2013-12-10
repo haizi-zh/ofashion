@@ -9,7 +9,7 @@ from scrapy.selector import Selector
 
 import copy
 import common
-from utils.utils import iterable
+from utils.utils import unicodify, iterable
 
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
@@ -254,6 +254,26 @@ class JaegerLeCoultreSpider(MFashionSpider):
                     metadata['description'] = description
             except(TypeError, IndexError):
                 pass
+
+        detailNode = sel.xpath('//div[@class="specifications"]')
+        if detailNode:
+
+            def func(node):
+                nodeName = node.xpath('./name()').extract()[0]
+                allText = ''.join(self.reformat(val) for val in node.xpath('.//text()'))
+                # dt标签说明他是一行的开头
+                if nodeName == 'dt':
+                    return '\r'+allText
+                elif nodeName == 'dd':
+                    return allText
+                return allText
+
+            nodes = detailNode.xpath('.dl/child::*')
+            detail = ''.join(func(node) for node in nodes)
+            detail = self.reformat(detail)
+            if detail:
+                metadata['details'] = detail
+
 
         imageUrls = []
         imageNodes = sel.xpath('//a[@class="lightbox_recto"]')
