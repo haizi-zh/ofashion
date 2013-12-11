@@ -111,7 +111,7 @@ class MiumiuSpider(MFashionSpider):
 
         for node in sel.xpath('//div[@id="color-variants"]//ul/li[contains(@class,"single_item")]/a[@href]'):
             m = copy.deepcopy(metadata)
-            yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url), dont_filter=True,
+            yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url),
                           callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
         try:
