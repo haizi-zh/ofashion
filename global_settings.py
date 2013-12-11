@@ -10,7 +10,7 @@ import core
 
 if sys.platform in ('win32', ):
     STORAGE_PATH = u'd:/Users/Zephyre/Development/mstore/storage'
-    HOME_PATH = u'd:/Users/Zephyre/Dropbox/Freelance/MStore/src'
+    HOME_PATH = u'd:/Users/Zephyre/RoseVision/MStore_src'
 elif sys.platform in ('darwin', ):  # MAC
     STORAGE_PATH = u'/Users/Ryan/Desktop/MStoreSpiderStorage'
     HOME_PATH = u'/Users/Ryan/Desktop/MStoreSpiderGit'
