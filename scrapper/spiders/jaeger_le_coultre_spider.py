@@ -14,7 +14,17 @@ from utils.utils import unicodify, iterable
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10178,
-        'home_urls': {},
+        'home_urls': {
+            k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder',
+                          k.upper() if k != 'uk' else 'GB',
+                          'en' if k != 'cn' else 'zh')
+            for k in {
+                'cn', 'us', 'fr', 'uk', 'hk',
+                'jp', 'it', 'ae', 'sg', 'de',
+                'es', 'ch', 'ru', 'kr', 'my',
+                'nl', 'au',
+            }
+        },
     }
 
     @classmethod
@@ -22,22 +32,6 @@ class JaegerLeCoultreSpider(MFashionSpider):
         return JaegerLeCoultreSpider.spider_data['home_urls'].keys()
 
     def __init__(self, region):
-        if iterable(region):
-            JaegerLeCoultreSpider.spider_data['home_urls'] = {
-                k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder',
-                              k.upper() if k != 'uk' else 'GB',
-                              'en' if k != 'cn' else 'zh')
-                for k in region
-            }
-        else:
-            k = region
-            language = 'en'
-            if region == 'uk':
-                k = 'GB'
-            if region == 'cn':
-                language = 'zh'
-            JaegerLeCoultreSpider.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder', k, language)}
-
         super(JaegerLeCoultreSpider, self).__init__('jaeger_le_coultre', region)
 
     @classmethod

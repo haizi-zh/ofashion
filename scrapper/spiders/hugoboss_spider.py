@@ -20,7 +20,14 @@ class HogoBossSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10169,
-        'home_urls': {},
+        'home_urls': {
+            reg: str.format('http://store-{0}.hugoboss.com', reg)
+            if reg != 'cn' else 'http://store.hugoboss.cn'
+            for reg in {
+                'cn', 'us', 'fr', 'uk', 'de',
+                'it', 'es', 'ch','nl',
+            }
+        },
     }
 
     @classmethod

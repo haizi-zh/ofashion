@@ -20,7 +20,16 @@ from utils.utils import iterable
 class HMSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10155,
-        'home_urls': {},
+        'home_urls': {
+            k: str.format('http://www.hm.com/{0}', k if k != 'uk' else 'gb')
+            for k in {
+                # 'au', 'br',
+                'cn', 'us', 'fr', 'uk', 'hk',
+                'jp', 'it', 'ae', 'sg', 'de',
+                'ca', 'es', 'ch', 'ru', 'th',
+                'kr', 'my', 'nl',
+            }
+        },
     }
 
     allow_domains = ['hm.com']
@@ -30,15 +39,6 @@ class HMSpider(MFashionSpider):
         return HMSpider.spider_data['home_urls'].keys()
 
     def __init__(self, region):
-        if iterable(region):
-            HMSpider.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k if k != 'uk' else 'gb') for k in region}
-        else:
-            k = region
-            if region == 'uk':
-                k = 'gb'
-            HMSpider.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k)}
-
-
         super(HMSpider, self).__init__('H&M', region)
 
     @classmethod
