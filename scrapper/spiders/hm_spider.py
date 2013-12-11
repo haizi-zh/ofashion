@@ -47,7 +47,7 @@ class HMSpider(MFashionSpider):
 
     def start_requests(self):
 
-        domains = list(str.format('hm.com/{0}', k if k != 'uk' else 'gb') for k in self.region_list)
+        domains = list(str.format('hm\\.com/{0}', k if k != 'uk' else 'gb') for k in self.region_list)
 
         allowFilter = set(str.format('.+{0}.*', val) for val in domains)
         allowProductFilter = set(str.format('.+{0}.*/product/.+', val) for val in domains)
