@@ -49,13 +49,16 @@ class HMSpider(MFashionSpider):
 
         domains = list(str.format('hm.com/{0}', k if k != 'uk' else 'gb') for k in self.region_list)
 
+        allowFilter = set(str.format('.+{0}.*', val) for val in domains)
+        allowProductFilter = set(str.format('.+{0}.*/product/.+', val) for val in domains)
+
         self.rules = (
-            Rule(SgmlLinkExtractor(allow=r'.+/product/.+',
-                                   allow_domains=domains),
+            Rule(SgmlLinkExtractor(allow=allowProductFilter,
+                                   allow_domains=['hm.com']),
                  callback=self.parse_product),
-            Rule(SgmlLinkExtractor(allow=r'.+',
-                                   deny=r'.+#.*N.+',
-                                   allow_domains=domains))
+            Rule(SgmlLinkExtractor(allow=allowFilter,
+                                   deny=r'.+(#|\?).*N=.+',
+                                   allow_domains=['hm.com']))
         )
         self._compile_rules()
 

@@ -70,7 +70,8 @@ class HogoBossSpider(MFashionSpider):
             Rule(SgmlLinkExtractor(allow=r'.+/product.+$|.+pd\..+$',
                                    allow_domains=domains),
                  callback=self.parse_product),
-            Rule(SgmlLinkExtractor(allow=r'.+', deny=r'.*prefn.*',
+            Rule(SgmlLinkExtractor(allow=r'.+',
+                                   deny=r'.*(prefn|filter)=.*',
                                    allow_domains=domains)),
         )
         self._compile_rules()
