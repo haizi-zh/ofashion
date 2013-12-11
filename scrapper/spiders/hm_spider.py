@@ -162,8 +162,10 @@ class HMSpider(MFashionSpider):
         for node in colorNodes:
             colorNode = node.xpath('.//span')
             if colorNode:
-                color_text = colorNode.xpath('./text()').extract()[0]
-                color_text = self.reformat(color_text)
+                tmp = colorNode.xpath('./text()').extract()
+                if not tmp:
+                    continue
+                color_text = self.reformat(tmp[0])
                 if color_text:
                     metadata['color'] += [color_text]
 
