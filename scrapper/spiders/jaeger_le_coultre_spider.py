@@ -9,7 +9,7 @@ from scrapy.selector import Selector
 
 import copy
 import common
-from utils.utils import iterable
+from utils.utils import unicodify, iterable
 
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
@@ -23,12 +23,20 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
     def __init__(self, region):
         if iterable(region):
-            self.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/en/watch-finder', k.upper() if k != 'uk' else 'GB')  for k in region}
+            self.spider_data['home_urls'] = {
+                k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder',
+                              k.upper() if k != 'uk' else 'GB',
+                              'en' if k != 'cn' else 'zh')
+                for k in region
+            }
         else:
             k = region
+            language = 'en'
             if region == 'uk':
                 k = 'GB'
-            self.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/en/watch-finder', k)}
+            if region == 'cn':
+                language = 'zh'
+            self.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder', k, language)}
 
         super(JaegerLeCoultreSpider, self).__init__('jaeger_le_coultre', region)
 
@@ -246,6 +254,26 @@ class JaegerLeCoultreSpider(MFashionSpider):
                     metadata['description'] = description
             except(TypeError, IndexError):
                 pass
+
+        detailNode = sel.xpath('//div[@class="specifications"]')
+        if detailNode:
+
+            def func(node):
+                nodeName = node.xpath('./name()').extract()[0]
+                allText = ''.join(self.reformat(val) for val in node.xpath('.//text()'))
+                # dt标签说明他是一行的开头
+                if nodeName == 'dt':
+                    return '\r'+allText
+                elif nodeName == 'dd':
+                    return allText
+                return allText
+
+            nodes = detailNode.xpath('.dl/child::*')
+            detail = ''.join(func(node) for node in nodes)
+            detail = self.reformat(detail)
+            if detail:
+                metadata['details'] = detail
+
 
         imageUrls = []
         imageNodes = sel.xpath('//a[@class="lightbox_recto"]')
