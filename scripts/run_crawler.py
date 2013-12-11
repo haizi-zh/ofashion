@@ -25,6 +25,7 @@ def default_error():
 
 
 def argument_parser(args):
+    supported_params = {'r', 'exclude-region', 'D', 'P', 'v', 'debug'}
     if len(args) < 2:
         default_error()
         return
@@ -62,6 +63,11 @@ def argument_parser(args):
                     param_value = [tmp]
     if param_name:
         param_dict[param_name] = param_value
+
+    # 检查params是否有效
+    ret = filter(lambda val: val not in supported_params, param_dict.keys())
+    if ret:
+        raise SyntaxError(str.format('Unknown paramter: {0}', ret[0]))
 
     if 'debug' in param_dict or 'D' in param_dict:
         if 'P' in param_dict:
@@ -163,7 +169,12 @@ def set_up_spider(spider_class, region_list, data):
 
 
 def main():
-    cmd = argument_parser(sys.argv)
+    try:
+        cmd = argument_parser(sys.argv)
+    except SyntaxError as e:
+        print e.msg
+        return
+
     if cmd:
         spider_module = cm.get_spider_module(cmd['spider'])
         sc_list = list(ifilter(lambda val:
