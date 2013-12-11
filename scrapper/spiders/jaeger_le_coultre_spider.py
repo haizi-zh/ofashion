@@ -259,8 +259,8 @@ class JaegerLeCoultreSpider(MFashionSpider):
         if detailNode:
 
             def func(node):
-                nodeName = node.xpath('./name()').extract()[0]
-                allText = ''.join(self.reformat(val) for val in node.xpath('.//text()'))
+                nodeName = node._root.tag
+                allText = ''.join(self.reformat(val) for val in node.xpath('.//text()').extract())
                 # dt标签说明他是一行的开头
                 if nodeName == 'dt':
                     return '\r'+allText
@@ -268,7 +268,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                     return allText
                 return allText
 
-            nodes = detailNode.xpath('.dl/child::*')
+            nodes = detailNode.xpath('./dl/child::*')
             detail = ''.join(func(node) for node in nodes)
             detail = self.reformat(detail)
             if detail:
