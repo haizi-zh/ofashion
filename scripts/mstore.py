@@ -19,10 +19,13 @@ from products.utils import fetch_image
 from scripts import dbman
 from scripts.sync_product import SyncProducts
 from scripts.dbman import ProcessTags
+from scripts.report_core import spider_prog_report
 import core
 from utils.utils import process_price, unicodify, iterable
 
 __author__ = 'Zephyre'
+
+# 目前支持的命令有：help, image-check, process-tags, release, gen-reports
 
 import sys
 from PIL import Image
@@ -679,7 +682,7 @@ def argument_parser(args):
             pass
 
     cmd_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
-                'currency-update': dbman.currency_update}
+                'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report}
 
     return lambda: cmd_dict[cmd](param_dict)
 

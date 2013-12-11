@@ -1,6 +1,7 @@
 # coding=utf-8
 import ConfigParser
 import datetime
+import json
 import os
 
 __author__ = 'Zephyre'
@@ -130,7 +131,7 @@ def _load_user_cfg(cfg_file=None):
     read_settings(section, 'LOG_DEBUG', proc=conv_bool)
 
     # SECTION: MISC
-    read_settings('MISC', 'EMAIL_ADDR', proc=lambda val: [email.strip() for email in val.split('|')])
+    read_settings('MISC', 'EMAIL_ADDR', proc=lambda val: json.loads(val))
 
     # SECTION DATABASE
     read_settings('DATABASE', 'WRITE_DATABASE', proc=conv_bool)
