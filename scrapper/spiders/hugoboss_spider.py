@@ -13,38 +13,14 @@ from scrapy import log
 import common
 import copy
 import re
+from utils.utils import iterable
 
 
 class HogoBossSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10169,
-        'currency': {
-            'us': 'USD',
-            'cn': 'CNY',
-            'fr': 'EUR',
-            'uk': 'GBP',
-            'it': 'EUR',
-            'de': 'EUR',
-            'nl': 'EUR',
-            'at': 'EUR',
-            'ch': 'CHF',
-            'es': 'EUR',
-            'be': 'EUR',
-        },
-        'home_urls': {
-            'cn': 'http://store.hugoboss.cn',
-            'us': 'http://store-us.hugoboss.com',
-            'fr': 'http://store-fr.hugoboss.com',
-            'uk': 'http://store-uk.hugoboss.com',
-            'it': 'http://store-it.hugoboss.com',
-            'de': 'http://store-de.hugoboss.com',
-            'nl': 'http://store-nl.hugoboss.com',
-            'at': 'http://store-at.hugoboss.com',
-            'ch': 'http://store-ch.hugoboss.com',
-            'es': 'http://store-es.hugoboss.com',
-            'be': 'http://store-be.hugoboss.com'
-        }
+        'home_urls': {},
     }
 
     @classmethod
@@ -52,6 +28,19 @@ class HogoBossSpider(MFashionSpider):
         return HogoBossSpider.spider_data['home_urls'].keys()
 
     def __init__(self, region):
+        if iterable(region):
+            self.spider_data['home_urls'] = {
+                reg: str.format('http://store-{0}.hugoboss.com', reg)
+                if reg != 'cn' else 'http://store.hugoboss.cn'
+                for reg in region
+            }
+        else:
+            k = region
+            self.spider_data['home_urls'] = {
+                k: str.format('http://store-{0}.hugoboss.com', k)
+                if k != 'cn' else 'http://store.hugoboss.cn'
+            }
+
         super(HogoBossSpider, self).__init__('Hugo Boss', region)
 
     @classmethod
