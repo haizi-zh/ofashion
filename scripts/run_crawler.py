@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 from Queue import Queue
+from itertools import ifilter
 import os
 import re
 import shutil
@@ -14,8 +15,7 @@ from twisted.internet import reactor
 import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider
-#from utils.utils import iterable
-from utils.utils import process_price, unicodify, iterable
+from utils.utils import iterable
 
 __author__ = 'Zephyre'
 
@@ -98,7 +98,7 @@ def get_images_store(brand_id):
                                                               glob.brand_info()[brand_id]['brandname_s'])))
 
 
-def set_up_spider(spider_class, region, data):
+def set_up_spider(spider_class, region_list, data):
     crawler = Crawler(Settings())
     crawler.settings.values['BOT_NAME'] = 'mstore_bot'
 
@@ -112,12 +112,7 @@ def set_up_spider(spider_class, region, data):
             shutil.rmtree(job_path, ignore_errors=True)
         crawler.settings.values['JOBDIR'] = job_path
 
-    #crawler.settings.values['EDITOR_SPEC'] = glob.DB_SPEC
-    #crawler.settings.values['SPIDER_SPEC'] = glob.SPIDER_SPEC
-    #crawler.settings.values['RELEASE_SPEC'] = glob.RELEASE_SPEC
-
     crawler.settings.values['AUTOTHROTTLE_ENABLED'] = True
-
     crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
     if 'telnet' in data and data['telnet']:
         start_port = int(data['telnet'][0])
@@ -140,7 +135,7 @@ def set_up_spider(spider_class, region, data):
 
     crawler.settings.values['COOKIES_ENABLED'] = (data['cookie'].lower() == 'true') if 'cookie' in data else True
 
-    crawler.settings.values['IMAGES_STORE'] = get_images_store(sc.spider_data['brand_id'])
+    crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_class.spider_data['brand_id'])
     crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
     crawler.settings.values['IMAGES_MIN_HEIGHT'] = 64
     crawler.settings.values['IMAGES_MIN_WIDTH'] = 64
@@ -149,43 +144,48 @@ def set_up_spider(spider_class, region, data):
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
-    if not region:
-        region = spider_class.get_supported_regions()
-    elif not iterable(region):
-        region = [region]
+    if not region_list:
+        region_list = spider_class.get_supported_regions()
+    elif not iterable(region_list):
+        region_list = [region_list]
 
     if 'exclude-region' in data:
         for r in data['exclude-region']:
-            if r in region:
-                region.pop(region.index(r))
+            if r in region_list:
+                region_list.pop(region_list.index(r))
 
-    spider = spider_class.get_instance(region)
-    spider.log(str.format('Spider started, processing the following regions: {0}', ', '.join(region)), log.INFO)
+    spider = spider_class(region_list)
+    spider.log(str.format('Spider started, processing the following regions: {0}', ', '.join(region_list)), log.INFO)
     crawler.crawl(spider)
     crawler.start()
 
     return spider
 
 
-cmd = argument_parser(sys.argv)
-if cmd:
-    spider_module = cm.get_spider_module(cmd['spider'])
-    sc_list = filter(lambda val: isinstance(val, type) and issubclass(val, MFashionSpider) and val != MFashionSpider,
-                     (getattr(spider_module, tmp) for tmp in dir(spider_module)))
+def main():
+    cmd = argument_parser(sys.argv)
+    if cmd:
+        spider_module = cm.get_spider_module(cmd['spider'])
+        sc_list = list(ifilter(lambda val:
+                               isinstance(val, type) and issubclass(val, MFashionSpider) and val != MFashionSpider,
+                               (getattr(spider_module, tmp) for tmp in dir(spider_module))))
 
-    try:
-        region_list = cmd['param']['r']
-    except KeyError:
-        region_list = []
+        try:
+            region_list = cmd['param']['r']
+        except KeyError:
+            region_list = []
 
-    if sc_list:
-        sc = sc_list[0]
+        if sc_list:
+            sc = sc_list[0]
 
-        if 'v' in cmd['param'] or glob.LOG_DEBUG:
-            log.start(loglevel='DEBUG')
-        else:
-            log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
+            if 'v' in cmd['param'] or glob.LOG_DEBUG:
+                log.start(loglevel='DEBUG')
+            else:
+                log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
 
-        set_up_spider(sc, region_list, cmd['param'])
-        reactor.run()   # the script will block here until the spider_closed signal was sent
+            set_up_spider(sc, region_list, cmd['param'])
+            reactor.run()   # the script will block here until the spider_closed signal was sent
+
+
+main()
 

@@ -16,11 +16,13 @@ __author__ = 'Zephyre'
 
 
 class GucciSpider(MFashionSpider):
-    spider_data = {'brand_id': 10152}
-    spider_data['home_urls'] = {k: str.format('http://www.gucci.com/{0}/home', k) for k in
-                                ['cn', 'us', 'fr', 'de', 'es', 'it', 'nl', 'ae', 'jp', 'kr', 'au', 'bg', 'cz', 'dk',
-                                 'fi', 'hu', 'ie', 'no', 'pl', 'pt', 'ro', 'si', 'se', 'ch', 'tr', 'uk', 'at', 'ca',
-                                 'be']}
+    spider_data = {'brand_id': 10152,
+                   'home_urls': {k: str.format('http://www.gucci.com/{0}/home', k) for k in
+                                 ['cn', 'us', 'fr', 'de', 'es', 'it', 'nl', 'ae', 'jp', 'kr', 'au',
+                                  'bg', 'cz', 'dk',
+                                  'fi', 'hu', 'ie', 'no', 'pl', 'pt', 'ro', 'si', 'se', 'ch', 'tr',
+                                  'uk', 'at', 'ca',
+                                  'be']}}
     spider_data['hosts'] = {k: 'http://www.gucci.com' for k in spider_data['home_urls'].keys()}
 
     @classmethod
@@ -28,7 +30,6 @@ class GucciSpider(MFashionSpider):
         return GucciSpider.spider_data['hosts'].keys()
 
     def __init__(self, region):
-
         super(GucciSpider, self).__init__('gucci', region)
 
     @classmethod

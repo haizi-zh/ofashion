@@ -12,27 +12,12 @@ __author__ = 'Zephyre'
 
 
 class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
-    # def get_host_url(self, region):
-    #     """
-    #     根据region，获得对应的host地址
-    #     :param region:
-    #     """
-    #     return self.spider_data['hosts'][region]
-
-    @classmethod
-    def get_instance(cls, region=None):
-        """
-        获得spider实例。
-        :param region: 如果region=None，则对所有支持的region进行爬取。如果region为iterable，则对指定地区批量爬取。
-        """
-        pass
-
     @classmethod
     def get_supported_regions(cls):
         """
         获得爬虫支持的区域列表
         """
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def process_href(href, referer):
@@ -61,30 +46,25 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         return text
 
     def __init__(self, name, region, *a, **kw):
-        # self.name = str.format('{0}-{1}', name, region) if region else name
         self.name = name
         super(MFashionSpider, self).__init__(*a, **kw)
 
         if not region:
             self.region_list = self.get_supported_regions()
-        elif iterable(region):
-            self.region_list = region
         else:
-            self.region_list = [region]
+            self.region_list = list((set(region) if iterable(region) else
+                                     {region}).intersection(set(self.get_supported_regions())))
 
     def start_requests(self):
         for region in self.region_list:
-            if region in self.get_supported_regions():
-                metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                            'tags_mapping': {}, 'category': []}
+            metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
+                        'tags_mapping': {}, 'category': []}
 
-                tmp = self.spider_data['home_urls'][region]
-                start_urls = tmp if iterable(tmp) else [tmp]
-                for url in start_urls:
-                    m = copy.deepcopy(metadata)
-                    yield Request(url=url, meta={'userdata': m}, callback=self.parse, errback=self.onerr)
-            else:
-                self.log(str.format('No data for {0}', region), log.WARNING)
+            tmp = self.spider_data['home_urls'][region]
+            start_urls = tmp if iterable(tmp) else [tmp]
+            for url in start_urls:
+                m = copy.deepcopy(metadata)
+                yield Request(url=url, meta={'userdata': m}, callback=self.parse, errback=self.onerr)
 
     def onerr(self, reason):
         url_main = None

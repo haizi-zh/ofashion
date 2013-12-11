@@ -22,6 +22,11 @@ def process_price(price, region, decimal=None, currency=None):
             val = val[:-1]
         return val
 
+    # 如果包含了appel, call等字符，说明不是这不是价格信息
+    for term in ['appel', 'call']:
+        if term in price.lower():
+            return None
+
     if isinstance(price, int) or isinstance(price, float):
         price = unicode(price)
     if not price or not price.strip():
