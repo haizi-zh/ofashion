@@ -29,14 +29,14 @@ class HogoBossSpider(MFashionSpider):
 
     def __init__(self, region):
         if iterable(region):
-            self.spider_data['home_urls'] = {
+            HogoBossSpider.spider_data['home_urls'] = {
                 reg: str.format('http://store-{0}.hugoboss.com', reg)
                 if reg != 'cn' else 'http://store.hugoboss.cn'
                 for reg in region
             }
         else:
             k = region
-            self.spider_data['home_urls'] = {
+            HogoBossSpider.spider_data['home_urls'] = {
                 k: str.format('http://store-{0}.hugoboss.com', k)
                 if k != 'cn' else 'http://store.hugoboss.cn'
             }
@@ -70,7 +70,7 @@ class HogoBossSpider(MFashionSpider):
                 self.log(str.format('No data for {0}', reg), log.WARNING)
                 continue
 
-            yield Request(url=self.spider_data['home_urls'][reg])
+            yield Request(url=HogoBossSpider.spider_data['home_urls'][reg])
 
     def parse_product(self, response):
         sel = Selector(response)
@@ -112,7 +112,7 @@ class HogoBossSpider(MFashionSpider):
             mt = mt.group(1)
         else:
             mt = mt.group(2)
-        for a in self.spider_data['home_urls'].keys():
+        for a in HogoBossSpider.spider_data['home_urls'].keys():
             if a == mt:
                 region = a
                 break

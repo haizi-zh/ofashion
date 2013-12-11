@@ -23,7 +23,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
     def __init__(self, region):
         if iterable(region):
-            self.spider_data['home_urls'] = {
+            JaegerLeCoultreSpider.spider_data['home_urls'] = {
                 k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder',
                               k.upper() if k != 'uk' else 'GB',
                               'en' if k != 'cn' else 'zh')
@@ -36,7 +36,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                 k = 'GB'
             if region == 'cn':
                 language = 'zh'
-            self.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder', k, language)}
+            JaegerLeCoultreSpider.spider_data['home_urls'] = {k: str.format('http://www.jaeger-lecoultre.com/{0}/{1}/watch-finder', k, language)}
 
         super(JaegerLeCoultreSpider, self).__init__('jaeger_le_coultre', region)
 

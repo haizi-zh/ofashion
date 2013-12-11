@@ -27,16 +27,16 @@ class HMSpider(MFashionSpider):
 
     @classmethod
     def get_supported_regions(cls):
-        return cls.spider_data['home_urls'].keys()
+        return HMSpider.spider_data['home_urls'].keys()
 
     def __init__(self, region):
         if iterable(region):
-            self.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k if k != 'uk' else 'gb') for k in region}
+            HMSpider.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k if k != 'uk' else 'gb') for k in region}
         else:
             k = region
             if region == 'uk':
                 k = 'gb'
-            self.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k)}
+            HMSpider.spider_data['home_urls'] = {k: str.format('http://www.hm.com/{0}', k)}
 
 
         super(HMSpider, self).__init__('H&M', region)
@@ -67,7 +67,7 @@ class HMSpider(MFashionSpider):
                 self.log(str.format('No data for {0}', reg), log.WARNING)
                 continue
 
-            yield Request(url=self.spider_data['home_urls'][reg])
+            yield Request(url=HMSpider.spider_data['home_urls'][reg])
 
     def parse_product(self, response):
         sel = Selector(response)
