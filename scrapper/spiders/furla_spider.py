@@ -9,6 +9,7 @@ from scrapy.selector import Selector
 
 import copy
 import re
+import common
 
 class FurlaSpider(MFashionSpider):
     """
@@ -72,6 +73,11 @@ class FurlaSpider(MFashionSpider):
                 {'name': tag_name, 'title': tag_text},
             ]
 
+            # 猜男女
+            gender = common.guess_gender(tag_name)
+            if gender:
+                m['gender'] = [gender]
+
             # 左边导航栏的第二级解析
             subNodes = node.xpath('.//li')
             for subNode in subNodes:
@@ -83,6 +89,11 @@ class FurlaSpider(MFashionSpider):
                 mc['tags_mapping']['category-1']= [
                     {'name': tag_name, 'title': tag_text},
                 ]
+
+                # 猜男女
+                gender = common.guess_gender(tag_name)
+                if gender:
+                    mc['gender'] = [gender]
 
                 href = subNode.xpath('./a/@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -134,13 +145,14 @@ class FurlaSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        #解析model，页面上叫description，但是看起来像model
+        #解析model，页面上叫description，但是看起来像model，也像name
         model = ''.join(
             self.reformat(val)
             for val in sel.xpath('//div[@class="description_product"]//h1/text()').extract()
         )
         if model:
             metadata['model'] = model
+            metadata['name'] = model
         else:
             return
 
@@ -154,10 +166,11 @@ class FurlaSpider(MFashionSpider):
             metadata['details'] = size
 
         #解析材质
-        #materials = filter(None, {
-        #    self.reformat(val)
+        #materials = {
+        #    self.reformat(val): self.reformat(val)
         #    for val in sel.xpath('//ul[@class="colors_materials"]/li/text()').extract()
-        #})
+        #}
+        #materials = dict((k, v) for k, v in materials.iteritems() if k)
         #if materials:
         #    metadata['tags_mapping']['materials'] = [materials]
 
@@ -194,7 +207,7 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         imageUrls = list(
-            self.process_href(re.sub(r'/350/', r'/2048/', src), response.url)
+            self.process_href(re.sub(r'350/', r'2048/', src), response.url)
             for src in sel.xpath('//div[@class="foto_product"]//img/@src').extract()
         )
 
