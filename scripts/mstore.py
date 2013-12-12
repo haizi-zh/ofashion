@@ -18,7 +18,7 @@ import global_settings as glob
 from products.utils import fetch_image
 from scripts import dbman
 from scripts.sync_product import SyncProducts
-from scripts.dbman import ProcessTags
+from scripts.dbman import ProcessTags, PriceCheck
 from scripts.report_core import spider_prog_report
 import core
 from utils.utils import process_price, unicodify, iterable
@@ -504,14 +504,16 @@ class ImageCheck(object):
         downloader = ImageDownloader()
         downloader.run()
 
-        rs = self.db.query(str.format('SELECT COUNT(DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model) FROM images_store AS p1 '
-                                      'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
-                                      ' AND '.join(self.cond)), use_result=True)
+        rs = self.db.query(str.format(
+            'SELECT COUNT(DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model) FROM images_store AS p1 '
+            'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
+            ' AND '.join(self.cond)), use_result=True)
         self.tot = int(rs.fetch_row(maxrows=0)[0][0])
         storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
-        rs = self.db.query(str.format('SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
-                                      'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
-                                      ' AND '.join(self.cond)), use_result=True)
+        rs = self.db.query(str.format(
+            'SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
+            'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
+            ' AND '.join(self.cond)), use_result=True)
         #self.tot = rs.num_rows()
         self.progress = 0
 
@@ -594,6 +596,12 @@ class ImageCheck(object):
 def release(param_dict):
     for brand in param_dict['brand']:
         core.func_carrier(dbman.PublishRelease(brand), 1)
+
+
+def price_check(param_dict):
+    obj = PriceCheck()
+    obj.run()
+    #core.func_carrier(PriceCheck(), 1)
 
 
 def image_check(param_dict):
@@ -682,7 +690,7 @@ def argument_parser(args):
             pass
 
     cmd_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
-                'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report}
+                'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report, 'price-check': price_check}
 
     return lambda: cmd_dict[cmd](param_dict)
 

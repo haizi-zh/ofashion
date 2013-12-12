@@ -12,6 +12,67 @@ from utils.utils import unicodify, iterable
 __author__ = 'Zephyre'
 
 
+class PriceCheck(object):
+    """
+    检查单品价格是否存在可能的错误
+    """
+
+    def __init__(self):
+        self.tot = 1
+        self.progress = 0
+        self.threshold = 10
+
+    def get_msg(self):
+        return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
+                          float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
+
+    def run(self):
+        db = MySqlDb()
+        db.conn(gs.DB_SPEC)
+
+        rs = db.query_match(['brand_id'], 'products', distinct=True)
+        brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
+
+        self.progress = 0
+        self.tot = len(brand_list)
+        for brand in brand_list:
+            print unicode.format(u'PROCESSING {0} / {1}', brand, gs.brand_info()[brand]['brandname_e'])
+            self.progress += 1
+            rs = db.query(str.format(
+                'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
+                'p1.region,p1.name,p1.model FROM products AS p1 JOIN products_price_history AS p2 ON '
+                'p1.idproducts=p2.idproducts '
+                'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
+                brand))
+
+            records = rs.fetch_row(maxrows=0, how=1)
+            price_data = {}
+            for r in records:
+                model = r['model']
+                if model not in price_data:
+                    price_data[model] = []
+                price_data[model].append(r)
+
+            # 最大值和最小值之间，如果差别过大，则说明价格可能有问题
+            for model in price_data:
+                for item in price_data[model]:
+                    price = float(item['price'])
+                    item['nprice'] = gs.currency_info()[item['currency']] * price
+
+                # 按照nprice大小排序
+                sorted_data = sorted(price_data[model], key=lambda item: item['nprice'])
+                max_price = sorted_data[-1]['nprice']
+                min_price = sorted_data[0]['nprice']
+                if min_price > 0 and max_price / min_price > self.threshold:
+                    print unicode.format(u'WARNING: {0}:{6} MODEL={1}, {2} / {3} => {4} / {5}',
+                                         brand, model,
+                                         sorted_data[0]['nprice'], sorted_data[0]['region'],
+                                         sorted_data[-1]['nprice'], sorted_data[-1]['region'],
+                                         gs.brand_info()[brand]['brandname_e'])
+
+        db.close()
+
+
 class ProcessTags(object):
     """
     标签的映射规则有变动，需要更新
