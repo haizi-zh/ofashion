@@ -1,5 +1,6 @@
 # coding=utf-8
 import json
+import os
 import re
 import copy
 
@@ -25,10 +26,10 @@ class ChanelSpider(MFashionSpider):
 
     spider_data = {'brand_id': 10074,
                    'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': 'it_IT', 'uk': 'en_GB',
-                                'hk': 'en_HK',
-                                'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG', 'ca': 'en_CA',
-                                'de': 'de_DE',
-                                'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
+                                'hk': 'en_HK', 'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG',
+                                'ca': 'en_CA', 'de': 'de_DE', 'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
+                   'watch_term': {'cn': ['%E8%85%95%E8%A1%A8', u'腕表'], 'us': ['Watches'], 'uk': ['Watches'],
+                                  'fr': ['Horlogerie'], 'it': ['orologeria']},
                    'fashion_term': {'cn': 'fashion', 'us': 'fashion', 'it': 'moda', 'fr': 'mode', 'uk': 'fashion',
                                     'hk': 'fashion', 'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion',
                                     'ca': 'fashion', 'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
@@ -44,6 +45,7 @@ class ChanelSpider(MFashionSpider):
 
     def __init__(self, region):
         super(ChanelSpider, self).__init__('chanel', region)
+        self.rules = None
 
     @classmethod
     def get_instance(cls, region=None):
@@ -54,7 +56,13 @@ class ChanelSpider(MFashionSpider):
 
     def start_requests(self):
         region_code = '|'.join(self.spider_data['base_url'][region] for region in self.region_list)
+        watch_code = []
+        for r in self.region_list:
+            watch_code.extend(self.spider_data['watch_term'][r])
+        watch_code = '|'.join(watch_code)
         self.rules = (
+            Rule(SgmlLinkExtractor(allow=(unicode.format(ur'chanel\.com/({0})/({1})/.+', region_code, watch_code),)),
+                 callback=self.parse_watch),
             Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+\?sku=\d+$', region_code), )),
                  callback=self.parse_sku1),
             Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+/sku/\d+$', region_code), )),
@@ -62,17 +70,80 @@ class ChanelSpider(MFashionSpider):
             Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+(?<=/)s\.[^/]+\.html', region_code), )),
                  callback=self.parse_fashion),
             Rule(SgmlLinkExtractor(allow=(r'.+', ), ))
-            # deny=(str.format(r'chanel\.com(?!/{0}/)', region_code), )))
         )
         self._compile_rules()
 
         for region in self.region_list:
-            if region not in self.get_supported_regions():
-                self.log(str.format('No data for {0}', region), log.WARNING)
-                return
-
             yield Request(
                 url=str.format('{0}/{1}/', self.spider_data['hosts'][region], self.spider_data['base_url'][region]))
+
+    def parse_watch(self, response):
+        mt = re.search(r'chanel\.com/([^/]+)/', response.url)
+        region = None
+        for a, b in self.spider_data['base_url'].items():
+            if b == mt.group(1):
+                region = a
+                break
+        if not region:
+            return
+
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'image_urls': [], 'url': response.url,
+                    'tags_mapping': {'category-0': [{'name': 'watches', 'title': 'Watches'}]}}
+        sel = Selector(response)
+        data_list = sel.xpath('//div[@data-ref]')
+        if data_list:
+            for node in data_list:
+                m = copy.deepcopy(metadata)
+                m['model'] = self.reformat(node.xpath('@data-ref').extract()[0])
+                tmp = sel.xpath(str.format('//li[@data-ref="{0}"]/a[@href]/@href', m['model'])).extract()
+                if tmp:
+                    m['url'] = self.process_href(tmp[0], response.url)
+                try:
+                    data = json.loads(node.xpath('text()').extract()[0])
+                except (IndexError, TypeError, ValueError):
+                    pass
+
+                if 'label' in data:
+                    m['name'] = self.reformat(data['label'])
+                if 'other_models' in data:
+                    m['description'] = self.reformat(data['other_models'])
+                elif 'description' in data:
+                    m['description'] = self.reformat(data['description'])
+
+                try:
+                    tmp = data['images']['large']
+                    if tmp[0] != '/':
+                        tmp = '/' + tmp
+                    m['image_urls'].append('http://www-cn.chanel.com/watches-finejewelry' + tmp)
+                except KeyError:
+                    pass
+
+                price_url = str.format(
+                    'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
+                    self.spider_data['base_url'][region], self.spider_data['watch_term'][region][0], m['model'])
+                yield Request(url=price_url, callback=self.parse_watch_price, errback=self.onerr, meta={'userdata': m})
+        else:
+            for node in sel.xpath('//*[@href]'):
+                url = self.process_href(node.xpath('@href').extract()[0], response.url)
+                if re.search(unicode.format(ur'chanel\.com/{0}/({1})/.+', self.spider_data['base_url'][region],
+                                            '|'.join(self.spider_data['watch_term'][region])), url, flags=re.I | re.U):
+                    yield Request(url=url, callback=self.parse_watch, errback=self.onerr)
+
+    @staticmethod
+    def parse_watch_price(response):
+        metadata = response.meta['userdata']
+        try:
+            data = json.loads(response.body)
+            metadata['price'] = data['product'][0]['price']
+        except (IndexError, KeyError, ValueError):
+            pass
+
+        item = ProductItem()
+        item['image_urls'] = list(metadata.pop('image_urls'))
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        item['metadata'] = metadata
+        return item
 
     def parse_fashion(self, response):
         self.log(str.format('PARSE_FASHION: {0}', response.url), level=log.DEBUG)
@@ -87,7 +158,7 @@ class ChanelSpider(MFashionSpider):
             return
 
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
-                    'url': response.url, 'tags_mapping': {}, 'category': set([])}
+                    'url': response.url, 'tags_mapping': {}}
 
         mt = re.search(r'var\s+settings', response.body)
         if not mt:
@@ -157,8 +228,8 @@ class ChanelSpider(MFashionSpider):
                 cat_idx += 1
                 cat_list.append(cat.lower())
                 metadata['tags_mapping'][str.format('category-{0}', cat_idx)] = [{'name': cat.lower(), 'title': cat}]
-            if len(cat_list) > 0 and cat_list[-1]:
-                metadata['category'].add(cat_list[-1])
+                #if len(cat_list) > 0 and cat_list[-1]:
+            #    metadata['category'].add(cat_list[-1])
 
             # images
             image_data = product_info['data']
@@ -236,7 +307,6 @@ class ChanelSpider(MFashionSpider):
         text = re.subn(ur'(?:[\r\n])+', ', ', text)[0]
         return text
 
-
     def func1(self, metadata, info):
         pricing_service = metadata.pop('pricing_service')
 
@@ -246,7 +316,7 @@ class ChanelSpider(MFashionSpider):
             temp = self.reformat(info['title'])
             if temp:
                 metadata['name'] = temp.lower()
-                metadata['category'] = [metadata['name']]
+                #metadata['category'] = [metadata['name']]
 
         if 'ref' in info:
             metadata['model'] = unicodify(info['ref'])
@@ -263,12 +333,13 @@ class ChanelSpider(MFashionSpider):
             for val in self.func2(metadata):
                 yield val
 
-    def init_item(self, metadata):
+    @staticmethod
+    def init_item(metadata):
         if 'color' in metadata:
             metadata['color'] = list(metadata['color'])
         if 'gender' in metadata:
             metadata['gender'] = list(metadata['gender'])
-        metadata['category'] = list(metadata['category'])
+            #metadata['category'] = list(metadata['category'])
 
         item = ProductItem()
         item['image_urls'] = list(metadata.pop('image_urls'))
@@ -319,10 +390,10 @@ class ChanelSpider(MFashionSpider):
             cat = unicodify(node._root.text)
             if not cat:
                 continue
-            if node._root.attrib['class'] == 'WT_cg_s':
-                if 'category' not in metadata:
-                    metadata['category'] = set([])
-                metadata['category'].add(cat.lower())
+                #if node._root.attrib['class'] == 'WT_cg_s':
+            #    if 'category' not in metadata:
+            #        metadata['category'] = set([])
+            #    metadata['category'].add(cat.lower())
             if cat.lower() in cat_list:
                 continue
 
@@ -403,7 +474,7 @@ class ChanelSpider(MFashionSpider):
             metadata['color'] = list(metadata['color'])
         if 'gender' in metadata:
             metadata['gender'] = list(metadata['gender'])
-        metadata['category'] = list(metadata['category'])
+            #metadata['category'] = list(metadata['category'])
 
         if 'model' in metadata:
             item = ProductItem()
@@ -430,7 +501,7 @@ class ChanelSpider(MFashionSpider):
         model = mt.group(1)
 
         metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'model': model, 'url': response.url,
-                    'tags_mapping': {}, 'category': set([])}
+                    'tags_mapping': {}}
 
         sel = Selector(response)
         cat_idx = 0
@@ -439,8 +510,8 @@ class ChanelSpider(MFashionSpider):
             cat = unicodify(node._root.text)
             if not cat:
                 continue
-            if node._root.attrib['class'] == 'WT_cg_s':
-                metadata['category'].add(cat.lower())
+                #if node._root.attrib['class'] == 'WT_cg_s':
+            #    metadata['category'].add(cat.lower())
             if cat.lower() in cat_list:
                 continue
 
@@ -510,7 +581,7 @@ class ChanelSpider(MFashionSpider):
             metadata['color'] = list(metadata['color'])
         if 'gender' in metadata:
             metadata['gender'] = list(metadata['gender'])
-        metadata['category'] = list(metadata['category'])
+            #metadata['category'] = list(metadata['category'])
 
         if 'model' in metadata:
             item = ProductItem()
