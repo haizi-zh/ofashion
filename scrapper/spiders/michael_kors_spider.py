@@ -17,7 +17,9 @@ __author__ = 'Zephyre'
 class MichaelKorsSpider(MFashionSpider):
     spider_data = {'brand_id': 10259,
                    'home_urls': {'cn': 'http://www.michaelkors.cn/catalog/',
-                                 'jp': 'http://www.michaelkors.jp/catalog/'}}
+                                 'jp': 'http://www.michaelkors.jp/catalog/',
+                                 'kr': 'http://kr.michaelkors.com/catalog/',
+                                 'br': 'http://br.michaelkors.com/catalog/'}}
 
     @classmethod
     def get_supported_regions(cls):
