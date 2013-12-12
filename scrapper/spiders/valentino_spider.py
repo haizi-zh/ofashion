@@ -17,7 +17,7 @@ class ValentinoSpider(MFashionSpider):
     spider_data = {'brand_id': 10367,
                    'currency': {'cn': 'EUR', 'hk': 'EUR', 'tw': 'EUR', 'au': 'EUR', 'ca': 'USD', 'cz': 'EUR',
                                 'my': 'EUR', 'ru': 'EUR', 'nz': 'EUR', 'no': 'EUR', 'sg': 'EUR', 'se': 'EUR',
-                                'ch': 'EUR', 'th': 'EUR'},
+                                'ch': 'EUR', 'th': 'EUR', 'dk': 'EUR'},
                    'home_urls': {'cn': 'http://store.valentino.com/VALENTINO/home/tskay/5A81B803/mm/112',
                                  'us': 'http://store.valentino.com/VALENTINO/home/tskay/B60ACEA7/mm/112',
                                  'fr': 'http://store.valentino.com/VALENTINO/home/tskay/D5C4AA66/mm/112',

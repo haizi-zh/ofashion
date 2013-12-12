@@ -17,6 +17,7 @@ __author__ = 'Zephyre'
 
 class GucciSpider(MFashionSpider):
     spider_data = {'brand_id': 10152,
+                   'currency': {k: 'EUR' for k in ('hu', 'bg', 'cz', 'dk', 'no', 'pl', 'ro', 'se')},
                    'home_urls': {k: str.format('http://www.gucci.com/{0}/home', k) for k in
                                  ['cn', 'us', 'fr', 'de', 'es', 'it', 'nl', 'ae', 'jp', 'kr', 'au',
                                   'bg', 'cz', 'dk',
