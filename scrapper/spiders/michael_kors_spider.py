@@ -16,6 +16,10 @@ __author__ = 'Zephyre'
 
 class MichaelKorsSpider(MFashionSpider):
     spider_data = {'brand_id': 10259,
+                   'ref_notation': {'cn': u'款号',
+                                    'kr': u'스타일 번호',
+                                    'br': u'Número do modelo',
+                                    'jp': u'スタイルナンバー'},
                    'home_urls': {'cn': 'http://www.michaelkors.cn/catalog/',
                                  'jp': 'http://www.michaelkors.jp/catalog/',
                                  'kr': 'http://kr.michaelkors.com/catalog/',
@@ -91,10 +95,10 @@ class MichaelKorsSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@class="product-info"]//span[@class="style-no"]')
+        tmp = sel.xpath('//div[@class="product-info"]//span[@class="style-no"]/text()').extract()
         if tmp:
-            mt = re.search(r'[\s\d\-\._a-zA-Z]+', self.reformat(unicodify(tmp[0]._root.text)), flags=re.U)
-            metadata['model'] = mt.group().strip() if mt else None
+            model = self.reformat(re.sub(self.spider_data['ref_notation'][metadata['region']], '', tmp[0]))
+            metadata['model'] = model
         if 'model' not in metadata or not metadata['model']:
             return
 
