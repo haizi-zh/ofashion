@@ -67,7 +67,7 @@ class HogoBossSpider(MFashionSpider):
                                    allow_domains=domains),
                  callback=self.parse_product),
             Rule(SgmlLinkExtractor(allow=r'.+',
-                                   deny=r'.*(prefn|filter)=.*',
+                                   deny=r'.+(#|\?).*(pre(\w+)|filter)=.*',
                                    allow_domains=domains)),
         )
         self._compile_rules()
