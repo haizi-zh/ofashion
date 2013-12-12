@@ -6,6 +6,21 @@ import global_settings as glob
 __author__ = 'Zephyre'
 
 
+def guess_currency(price):
+    symbols = {'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD'}
+    # 按照符号提取
+    for s in symbols:
+        if s in price:
+            return symbols[s]
+
+    mt = re.search(r'\b([A-Z]{3})\b', price, flags=re.U)
+    if mt and mt.group(1) in glob.currency_info().keys():
+        return mt.group(1)
+    else:
+        # 未找到货币信息
+        return None
+
+
 def process_price(price, region, decimal=None, currency=None):
     def func(val):
         """
@@ -36,11 +51,10 @@ def process_price(price, region, decimal=None, currency=None):
     val = unicode.format(u' {0} ', unicodify(price))
 
     if not currency:
-        # 如果price没有货币单位信息，则根据region使用默认值
-        mt = re.search(r'\b([A-Z]{3})\b', price)
-        if mt and mt.group(1) in glob.currency_info().keys():
-            currency = mt.group(1)
-        else:
+        # 如果price没有货币单位信息，则根据根据price内容，尝试提取货币信息。
+        currency = guess_currency(price)
+        if not currency:
+            # 如果无法提取货币信息，则使用region的默认值
             currency = glob.region_info()[region]['currency']
 
     # 提取最长的数字，分隔符字符串

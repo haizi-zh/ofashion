@@ -74,6 +74,10 @@ def brand_info():
 
 
 def currency_info():
+    """
+    得到货币的汇率信息
+    @return:
+    """
     rate_data = {}
     for code, data in region_info().items():
         if data['currency'] in rate_data:
