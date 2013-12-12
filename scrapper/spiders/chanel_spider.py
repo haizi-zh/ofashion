@@ -356,9 +356,9 @@ class ChanelSpider(MFashionSpider):
             if len(price_data) > 0:
                 try:
                     price_data = price_data[0]['price']
-                    if 'amount' in price_data and 'currency-symbol' in price_data:
+                    if 'amount' in price_data and 'currency-symbol' in price_data and price_data['amount']:
                         metadata['price'] = price_data['amount']
-                    else:
+                    elif price_data['formatted-amount']:
                         metadata['price'] = price_data['formatted-amount']
                 except (IndexError, KeyError):
                     pass
