@@ -23,7 +23,19 @@ class FurlaSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10142,
         'home_urls': {
-            'cn': 'http://www.furla.com/cn/collections/slide'
+            #'cn': 'http://www.furla.com/cn/collections/slide',
+            #'uk': 'http://www.furla.com/en/eshop',
+            k: str.format('http://www.furla.com/{0}/eshop', k if k != 'uk' else 'en')
+            if k != 'cn' else 'http://www.furla.com/cn/collections/slide'
+            for k in {
+                'cn', 'uk', 'us', 'fr', 'jp',
+                'it', 'oc', 'bg', 'ke', 'fi',
+                'ie', 'lt', 'nl', 'cz', 'si',
+                'hu', 'at', 'dk', 'lu', 'pl',
+                'ro', 'es', 'be', 'cy', 'ee',
+                'de', 'el', 'lv', 'mt', 'pt',
+                'sk', 'se',
+            }
         },
     }
 
@@ -36,6 +48,7 @@ class FurlaSpider(MFashionSpider):
     def __init__(self, region):
         self.spider_data['callbacks'] = {
             'cn': self.parse_cn,
+            'other': self.parse_other,
         }
 
         super(FurlaSpider, self).__init__('furla', region)
@@ -50,8 +63,13 @@ class FurlaSpider(MFashionSpider):
         """
 
         metadata = response.meta['userdata']
-        for val in self.spider_data['callbacks'][metadata['region']](response):
-            yield val
+        key = metadata['region']
+        if key in self.spider_data['callbacks'].keys():
+            for val in self.spider_data['callbacks'][key](response):
+                yield val
+        else:
+            for val in self.spider_data['callbacks']['other'](response):
+                yield val
 
     def parse_cn(self, response):
         """
@@ -209,6 +227,179 @@ class FurlaSpider(MFashionSpider):
         imageUrls = list(
             self.process_href(re.sub(r'350/', r'2048/', src), response.url)
             for src in sel.xpath('//div[@class="foto_product"]//img/@src').extract()
+        )
+
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        item['image_urls'] = imageUrls
+        item['metadata'] = metadata
+
+        yield item
+
+    def parse_other(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        navNodes = sel.xpath('//ul[@class="nav long"]/li')
+        for node in navNodes:
+            tag_text = node.xpath('./a/text()').extract()[0]
+            tag_text = self.reformat(tag_text)
+            tag_name = tag_text.lower()
+
+            m = copy.deepcopy(metadata)
+            m['tags_mapping']['category-0'] = [
+                {'name': tag_name, 'title': tag_text},
+            ]
+
+            subNodes = node.xpath('./ul/li')
+            for subNode in subNodes:
+                tag_text = subNode.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+
+                mc = copy.deepcopy(m)
+                mc['tags_mapping']['category-1'] = [
+                    {'name': tag_name, 'title': tag_text},
+                ]
+
+                href = subNode.xpath('./a/@href').extract()[0]
+                href = self.process_href(href, response.url)
+
+                yield Request(url=href,
+                              callback=self.parse_other_product_list,
+                              errback=self.onerr,
+                              meta={'userdata': mc})
+
+            href = node.xpath('./a/@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_other_filter,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+    def parse_other_filter(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        sidebarNodes = sel.xpath('//div[@class="sidebar"]//li')
+        for node in sidebarNodes:
+            tag_text = node.xpath('./a/text()').extract()[0]
+            tag_text = self.reformat(tag_text)
+            tag_name = tag_text.lower()
+
+            m = copy.deepcopy(metadata)
+            m['tags_mapping']['category-1'] = [
+                {'name': tag_name, 'title': tag_text},
+            ]
+
+            href = node.xpath('./a/@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_other_product_list,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+    def parse_other_product_list(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        productNodes = sel.xpath('//div[@id="listing"]//li')
+        for node in productNodes:
+            name = node.xpath('//p[@class="title"]/a/text()').extract()[0]
+            name = self.reformat(name)
+
+            price = node.xpath('//p[@class="price"]/text()').extract()[0]
+
+            m = copy.deepcopy(metadata)
+            if name:
+                m['name'] = name
+            if price:
+                m['price'] = price
+
+            href = node.xpath('./a/@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_other_product,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+        #页面底部的页数链接
+        pageNodes = sel.xpath('//div[@class="paginazione bottom"]//a')
+        for node in pageNodes:
+            href = node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_other_product_list,
+                          errback=self.onerr,
+                          meta={'userdata': metadata})
+
+    def parse_other_product(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        # 这样不能得到颜色
+        #colorImgSrc = sel.xpath('//div[@class="select"]/p[@class="colors"]//img[@class="selected"]/@src').extract()[0]
+        #result = re.search(r'/\d*([a-zA-Z]+)\d*\.', colorImgSrc)
+        #if result:
+        #    color = result.group(1).lower()
+        #    metadata['color'] = [color]
+        # TODO 怎样找到颜色
+
+        colorNodes = sel.xpath('//div[@class="select"]/p[@class="colors"]//a')
+        for node in colorNodes:
+            href = node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            m = copy.deepcopy(metadata)
+
+            yield Request(url=href,
+                          callback=self.parse_other_product,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+        #尝试从页面中取得model
+        model = None
+        modelNode = sel.xpath('//div[@class="select"]/p[contains(text(), "code")]')
+        if modelNode:
+            productCodeText = modelNode.xpath('./text()').extract()[0]
+            mt = re.search(r'\b(\d+)\b', productCodeText)
+            if mt:
+                model = mt.group(1)
+        #尝试从url取得model
+        if not model:
+            mt = re.search(r'_(\d+)\.', response.url)
+            if mt:
+                model = mt.group(1)
+
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+        metadata['url'] = response.url
+
+        description = '\r'.join(self.reformat(val) for val in sel.xpath('//p[contains(@id, "prod")]//text()').extract())
+        description = self.reformat(description)
+        if description:
+            metadata['description'] = description
+
+        detail = '\r'.join(self.reformat(val) for val in sel.xpath('//div[@class="select"]/p[preceding-sibling::p[1]][following-sibling::p[contains(text(), "code")]]//text()').extract())
+        detail = self.reformat(detail)
+        if detail:
+            metadata['details'] = detail
+
+        imageUrls = list(
+            self.process_href(re.sub(r'90/', r'2048/', val), response.url)
+            for val in sel.xpath('//div[@class="prodotto_dettagli"]//img/@src').extract()
         )
 
         item = ProductItem()
