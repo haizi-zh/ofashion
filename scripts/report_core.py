@@ -24,11 +24,11 @@ def get_fetched_report(db, time_range_str):
 
     def proc_by_brand(brand):
         if time_range_str:
-            rs = db.query_match(['COUNT(*)'], 'products', {'brand_id': brand},
+            rs = db.query_match(['COUNT(DISTINCT model)'], 'products', {'brand_id': brand},
                                 extra=[str.format('update_time>"{0}"', time_range_str[0]),
                                        str.format('update_time<"{0}"', time_range_str[1])])
         else:
-            rs = db.query_match(['COUNT(*)'], 'products', {'brand_id': brand})
+            rs = db.query_match(['COUNT(DISTINCT model)'], 'products', {'brand_id': brand})
         cnt_tot = int(rs.fetch_row()[0][0])
 
         def func1(region):
