@@ -26,6 +26,11 @@ class TodsSpider(MFashionSpider):
         'brand_id': 10354,
         'home_urls': {
             'uk': 'http://www.tods.com/uk/',
+            'us': 'http://www.tods.com/us/',
+            'it': 'http://www.tods.com/it/',
+            'fr': 'http://www.tods.com/fr/',
+            'de': 'http://www.tods.com/de/',
+            'es': 'http://www.tods.com/es/',
         },
     }
 
@@ -36,6 +41,11 @@ class TodsSpider(MFashionSpider):
     def __init__(self, region):
         self.spider_data['callbacks'] = {
             'uk': self.parse_left_nav_withshop,
+            'us': self.parse_left_nav_withshop,
+            'it': self.parse_left_nav_withshop,
+            'fr': self.parse_left_nav_withshop,
+            'de': self.parse_left_nav_withshop,
+            'es': self.parse_left_nav_withshop,
         }
 
         super(TodsSpider, self).__init__('tod\'s', region)
@@ -180,10 +190,12 @@ class TodsSpider(MFashionSpider):
             href = node.xpath('.//a/@href').extract()[0]
             href = self.process_href(href, response.url)
 
+            # 这里dont_filter保证从不同路径进入单品，他们可能标签不同
             yield Request(url=href,
                           callback=self.parse_product_withshop,
                           errback=self.onerr,
-                          meta={'userdata': m})
+                          meta={'userdata': m},
+                          dont_filter=True)
 
         # 解析右下角下一页，和showall
         pageNodes = sel.xpath('//div[@class="bottomOrder"]//a')
