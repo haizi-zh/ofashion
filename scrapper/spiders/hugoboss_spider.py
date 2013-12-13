@@ -164,13 +164,16 @@ class HogoBossSpider(MFashionSpider):
             if gender:
                 metadata['gender'] = [gender]
 
-        '''
-        价格标签
-        '''
-        priceNode = sel.xpath('//*[@class="saleprice" or @class="salesprice"]')
+        # 价格标签，中国和其他还是分开抓，太不一样了
+        # 中国
+        priceNode = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
+        if not priceNode:
+            # 其他
+            priceNode = sel.xpath('//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
+
         if priceNode:
             try:
-                price = priceNode.xpath(ur'./text()').extract()[0]
+                price = priceNode.xpath('./text()').extract()[0]
                 if price:
                     metadata['price'] = price
             except(TypeError, IndexError):
