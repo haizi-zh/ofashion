@@ -404,6 +404,7 @@ class FurlaSpider(MFashionSpider):
                 continue
 
             price = node.xpath('//p[@class="price"]/text()').extract()[0]
+            price = self.reformat(price)
 
             m = copy.deepcopy(metadata)
             if name:

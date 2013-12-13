@@ -174,6 +174,7 @@ class HogoBossSpider(MFashionSpider):
         if priceNode:
             try:
                 price = priceNode.xpath('./text()').extract()[0]
+                price = self.reformat(price)
                 if price:
                     metadata['price'] = price
             except(TypeError, IndexError):

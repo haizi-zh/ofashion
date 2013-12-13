@@ -129,6 +129,7 @@ class HMSpider(MFashionSpider):
         priceNode = sel.xpath('//span[@id="text-price"]//span')
         if priceNode:
             price = priceNode.xpath('./text()').extract()[0]
+            price = self.reformat(price)
             if price:
                 metadata['price'] = price
 

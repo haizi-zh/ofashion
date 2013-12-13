@@ -285,6 +285,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
         if priceNode:
             try:
                 price = priceNode.xpath('./h3/text()').extract()[0]
+                price = self.reformat(price)
                 if price:
                     metadata['price'] = price
             except(TypeError, IndexError):
