@@ -74,9 +74,12 @@ class TodsSpider(MFashionSpider):
         subNodeNumber = 1
         navNodes = sel.xpath('//div[@class="nav-container"]/ul[@id="mega-dropdown-menu"]//li')
         for node in navNodes:
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -93,9 +96,12 @@ class TodsSpider(MFashionSpider):
                 subxpath = str.format('//div[@id="maga-dropdown-inner"]/ul[{0}]/li//li', subNodeNumber)
                 subNodes = sel.xpath(subxpath)
                 for subNode in subNodes:
-                    tag_text = subNode.xpath('./a/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = subNode.xpath('./a/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -108,8 +114,11 @@ class TodsSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = subNode.xpath('./a/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = subNode.xpath('./a/@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         callbackFunc = self.spider_data['callbacks'][metadata['region']]
 
@@ -120,8 +129,11 @@ class TodsSpider(MFashionSpider):
 
                 subNodeNumber += 1
 
-                href = node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                try:
+                    href = node.xpath('./a/@href').extract()[0]
+                    href = self.process_href(href, response.url)
+                except(TypeError, IndexError):
+                    continue
 
                 callbackFunc = self.spider_data['callbacks'][metadata['region']]
 
@@ -147,9 +159,12 @@ class TodsSpider(MFashionSpider):
         # 解析当前打开的标签的下一级标签，作为第三级tag
         currentOpenNodes = sel.xpath('//div[@class="leftNavBarfashionList"]//div[contains(@class, "item")]/div[contains(@class, "select")]//a')
         for node in currentOpenNodes:
-            tag_text = ''.join(self.reformat(val) for val in node.xpath('.//text()').extract())
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = ''.join(self.reformat(val) for val in node.xpath('.//text()').extract())
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -158,8 +173,11 @@ class TodsSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text},
                 ]
 
-                href = node.xpath('./@href').extract()[0]
-                href = self.process_href(href, response.url)
+                try:
+                    href = node.xpath('./@href').extract()[0]
+                    href = self.process_href(href, response.url)
+                except(TypeError, IndexError):
+                    continue
 
                 yield Request(url=href,
                               callback=self.parse_product_list_withshop,
@@ -182,21 +200,30 @@ class TodsSpider(MFashionSpider):
         for node in productNodes:
             m = copy.deepcopy(metadata)
 
-            name = node.xpath('./h2/a/text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                m['name'] = name
+            try:
+                name = node.xpath('./h2/a/text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    m['name'] = name
+            except(TypeError, IndexError):
+                pass
 
             # 这里有两个涉及价格的标签，listPrice和listPrice_discount，
             # 但是我看见的几个，只有listPrice有值
-            price = node.xpath('.//a[@class="listPrice"]/text()').extract()[0]
-            price = self.reformat(price)
-            if price:
-                m['price'] = price
+            try:
+                price = node.xpath('.//a[@class="listPrice"]/text()').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    m['price'] = price
+            except(TypeError, IndexError):
+                pass
 
             # 这里有很多链接，都一样，都是指向单品页的
-            href = node.xpath('.//a/@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a/@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             # 这里dont_filter保证从不同路径进入单品，他们可能标签不同
             yield Request(url=href,
@@ -208,8 +235,11 @@ class TodsSpider(MFashionSpider):
         # 解析右下角下一页，和showall
         pageNodes = sel.xpath('//div[@class="bottomOrder"]//a')
         for node in pageNodes:
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product_list_withshop,
@@ -229,8 +259,11 @@ class TodsSpider(MFashionSpider):
         for node in colorNodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product_withshop,
@@ -252,44 +285,59 @@ class TodsSpider(MFashionSpider):
 
         # 如果metadata中没有name，尝试从页面中找到name
         if not metadata['name']:
-            name = ''.join(self.reformat(val) for val in sel.xpath('//div[@id="productName"]/h1/text()').extract())
-            name = self.reformat(name)
-            if name:
-                metadata['name'] = name
+            try:
+                name = ''.join(self.reformat(val) for val in sel.xpath('//div[@id="productName"]/h1/text()').extract())
+                name = self.reformat(name)
+                if name:
+                    metadata['name'] = name
+            except(TypeError, IndexError):
+                pass
 
         # 如果metadata里边没有price，尝试从页面找到price，
         # 这里的价格，源码里既有final-price也有full-price，
         # 我看的几个，都是final-price有价格，full-price没有东西，
         # 这里抓这个显示出来的final-price先
         if not metadata['price']:
-            price = sel.xpath('//div[contains(@class, "right_container")]//span[@class="final-price"]').extract()[0]
-            price = self.reformat(price)
-            if price:
-                metadata['price'] = price
+            try:
+                price = sel.xpath('//div[contains(@class, "right_container")]//span[@class="final-price"]').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    metadata['price'] = price
+            except(TypeError, IndexError):
+                pass
 
 
         descriptionNode = sel.xpath('//div[@id="body1"]//div[@class="text"]')
         if descriptionNode:
-            description = descriptionNode.xpath('./text()').extract()[0]
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
+            try:
+                description = descriptionNode.xpath('./text()').extract()[0]
+                description = self.reformat(description)
+                if description:
+                    metadata['description'] = description
+            except(TypeError, IndexError):
+                pass
 
         detailNode = sel.xpath('//div[@id="body2"]//div[@class="text"]')
         if detailNode:
-            detail = '\r'.join(self.reformat(val) for val in detailNode.xpath('.//text()').extract())
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
+            try:
+                detail = '\r'.join(self.reformat(val) for val in detailNode.xpath('.//text()').extract())
+                detail = self.reformat(detail)
+                if detail:
+                    metadata['details'] = detail
+            except(TypeError, IndexError):
+                pass
 
         # 取的imageURL，每个缩略图的标签中，有一个放大图的链接
         imageUrls = None
         imageNodes = sel.xpath('//div[@id="zoomProductDetail"]//div[@id="thumbImage"]//a[@data-imagezoomedurl]')
         if imageNodes:
-            imageUrls = list(
-                self.process_href(val, response.url)
-                for val in imageNodes.xpath('./@data-imagezoomedurl').extract()
-            )
+            try:
+                imageUrls = list(
+                    self.process_href(val, response.url)
+                    for val in imageNodes.xpath('./@data-imagezoomedurl').extract()
+                )
+            except(TypeError, IndexError):
+                pass
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -317,9 +365,12 @@ class TodsSpider(MFashionSpider):
         # 解析当前打开的标签的下一级标签，作为第三级tag
         currentOpenNodes = sel.xpath('//ul[@id="vert-nav"]/li[@class="second-level-group"][contains(@style, "display")]//a[@title]')
         for node in currentOpenNodes:
-            tag_text = node.xpath('./text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -351,13 +402,16 @@ class TodsSpider(MFashionSpider):
         for node in productNodes:
             m = copy.deepcopy(metadata)
 
-            name = node.xpath('./@title').extract()[0]
-            name = self.reformat(name)
-            if name:
-                m['name'] = name
+            try:
+                name = node.xpath('./@title').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    m['name'] = name
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product_withoutshop,
@@ -408,24 +462,33 @@ class TodsSpider(MFashionSpider):
             return
 
         # 如果metadata中没有name，尝试从页面中找到name
-        if not metadata['name']:
-            name = ''.join(self.reformat(val) for val in sel.xpath('//div[@class="product-name"]/h1/text()').extract())
-            name = self.reformat(name)
-            if name:
-                metadata['name'] = name
+        try:
+            if not metadata['name']:
+                name = ''.join(self.reformat(val) for val in sel.xpath('//div[@class="product-name"]/h1/text()').extract())
+                name = self.reformat(name)
+                if name:
+                    metadata['name'] = name
+        except(TypeError, IndexError):
+            pass
 
-        description = '\r'.join(self.reformat(val) for val in sel.xpath('//div[contains(@class, "description")]/div[@class="std"]//text()').extract())
-        description = self.reformat(description)
-        if description:
-            metadata['description'] = description
+        try:
+            description = '\r'.join(self.reformat(val) for val in sel.xpath('//div[contains(@class, "description")]/div[@class="std"]//text()').extract())
+            description = self.reformat(description)
+            if description:
+                metadata['description'] = description
+        except(TypeError, IndexError):
+            pass
 
         imageUrls = None
-        imageNodes = sel.xpath('//div[@class="more-views"]/ul[@class="thumnail-images"]/li/a/img[@data-zoom-image]')
-        if imageNodes:
-            imageUrls = list(
-                self.process_href(val, response.url)
-                for val in imageNodes.xpath('./@data-zoom-image').extract()
-            )
+        try:
+            imageNodes = sel.xpath('//div[@class="more-views"]/ul[@class="thumnail-images"]/li/a/img[@data-zoom-image]')
+            if imageNodes:
+                imageUrls = list(
+                    self.process_href(val, response.url)
+                    for val in imageNodes.xpath('./@data-zoom-image').extract()
+                )
+        except(TypeError, IndexError):
+            pass
 
         item = ProductItem()
         item['url'] = metadata['url']
