@@ -15,9 +15,15 @@ __author__ = 'Zephyre'
 
 
 class CoachSpider(MFashionSpider):
-    spider_data = {'hosts': {'cn': 'http://china.coach.com'},
-                   'home_urls': {},
-                   'domains': {'cn': 'china.coach.com'},
+    spider_data = {'domains': {'cn': 'china.coach.com',
+                               'hk': 'hongkong.coach.com',
+                               'jp': 'japan.coach.com',
+                               'kr': 'korea.coach.com',
+                               'my': 'malaysia.coach.com',
+                               'sg': 'singapore.coach.com',
+                               'tw': 'taiwan.coach.com',
+                               'us': 'www.coach.com',
+                               'uk': 'uk.coach.com'},
                    'price_url': {'cn': 'http://china.coach.com/loadSkuDynamicInfo.json'},
                    'desc_url': {'cn': 'http://china.coach.com/getSkuDesInfo.json'},
                    'image_url': {'cn': 'http://china.coach.com/getImagesInfo.json'},
@@ -30,34 +36,23 @@ class CoachSpider(MFashionSpider):
 
     @classmethod
     def get_supported_regions(cls):
-        return CoachSpider.spider_data['hosts'].keys()
+        return CoachSpider.spider_data['domains'].keys()
 
     def __init__(self, region):
-        self.spider_data['home_urls'] = self.spider_data['hosts']
-
-        if not region:
-            region_list = self.get_supported_regions()
-        elif iterable(region):
-            region_list = region
-        else:
-            region_list = [region]
-        self.region = region
-        self.allowed_domains = [self.spider_data['domains'][val] for val in region_list]
+        super(CoachSpider, self).__init__('coach', region)
+        self.allowed_domains = [self.spider_data['domains'][val] for val in self.region_list]
         # 每个单品页面的referer，都对应于某些category
         self.url_cat_dict = {}
-
-        super(CoachSpider, self).__init__('coach', region)
+        self.rules = ()
 
     @classmethod
     def get_instance(cls, region=None):
         return cls(region)
 
-    def get_host_url(self, region):
-        return self.spider_data['hosts'][region]
-
     def start_requests(self):
         self.rules = (
-            Rule(SgmlLinkExtractor(allow=(r'detail\.htm\?[^/]+$',)), callback=self.parse_details),
+            Rule(SgmlLinkExtractor(allow=(r'detail\.htm\?[^/]+$',)), callback=self.parse_details_cn),
+            Rule(SgmlLinkExtractor(allow=(r'/Product-[^/]+$', )), callback=self.parse_details),
             Rule(SgmlLinkExtractor(allow=(r'.+', )))
         )
         self._compile_rules()
@@ -67,7 +62,7 @@ class CoachSpider(MFashionSpider):
                 self.log(str.format('No data for {0}', region), log.WARNING)
                 continue
 
-            yield Request(url=self.spider_data['home_urls'][region])
+            yield Request(url='http://' + self.spider_data['domains'][region])
 
     def onerr(self, reason):
         url_main = None
@@ -96,7 +91,10 @@ class CoachSpider(MFashionSpider):
 
     def parse_cat(self, response):
         def func(node):
-            return self.reformat(unicodify(node._root.text))
+            try:
+                return self.reformat(node.xpath('text()').extract()[0])
+            except (IndexError, TypeError):
+                return None
 
         sel = Selector(response)
         tags = filter(lambda val: val,
@@ -104,16 +102,20 @@ class CoachSpider(MFashionSpider):
                           '//div[@class="noheaderBreadcrumb" or @class="pageBreadcrumb"]/a[@href]')))
         if not tags:
             # 美国样式
-            tmp = sel.xpath('//div[@id="breadcrumbs"]')
-            if tmp:
-                tag = unicodify(tmp[0]._root.text)
+            term_list = []
+            for tmp in sel.xpath('//div[@id="breadcrumbs"]/a[@href]/text()').extract():
+                term_list.append(tmp)
+            for tmp in sel.xpath('//div[@id="breadcrumbs"]/text()').extract():
+                term_list.append(tmp)
+
+            tags = []
+            for tmp in term_list:
+                tmp = self.reformat(tmp)
+                if not tmp:
+                    continue
+                tag = self.reformat(re.sub(r'^\s*/\s*', '', tmp))
                 if tag:
-                    tag = re.sub(r'^\s*/\s*', '', tag)
-                    tags = [tag]
-                else:
-                    tags = []
-                tags.extend(
-                    filter(lambda val: val, (unicodify(val._root.text) for val in tmp[0].xpath('.//a[@href]'))))
+                    tags.append(tag)
 
         tag_list = []
         for idx, tag_name in enumerate(tags):
@@ -124,16 +126,95 @@ class CoachSpider(MFashionSpider):
 
         if not tag_list:
             self.log(str.format('No category info found in referer: {0}', referer), log.WARNING)
-        return self.parse_details(response.meta['stash'])
+        return response.meta['callback'](response.meta['stash'])
 
     def parse_details(self, response):
-        metadata = {'region': self.region, 'brand_id': self.spider_data['brand_id'],
-                    'tags_mapping': {}, 'category': []}
+        # 确定所属国家
+        region = None
+        for tmp in self.spider_data['domains']:
+            if self.spider_data['domains'][tmp] in response.url:
+                region = tmp
+                break
+        if not region:
+            return
+
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'tags_mapping': {}, 'url': response.url}
 
         # 根据referer，获得category信息
         referer = response.request.headers['Referer']
         if referer not in self.url_cat_dict:
-            return Request(url=referer, callback=self.parse_cat, meta={'stash': response, 'coach-referer': referer},
+            return Request(url=referer, callback=self.parse_cat,
+                           meta={'stash': response, 'coach-referer': referer, 'callback': self.parse_details},
+                           errback=self.onerr, dont_filter=True)
+        tag_list = self.url_cat_dict[referer]
+        for tag in tag_list:
+            metadata['tags_mapping'][tag['type']] = [{'name': tag['name'], 'title': tag['title']}]
+
+        # 商品信息在var productJSONObject中
+        mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+        if not mt:
+            return
+        data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                            '"').replace(r"\'", "'"))
+        if 'style' not in data:
+            return
+        metadata['model'] = data['style']
+        if 'productName' in data:
+            metadata['name'] = self.reformat(data['productName'])
+
+        try:
+            metadata['color'] = [self.reformat(swatch['color']).lower() for swatch in data['swatchGroup']['swatches']
+                                 if 'color' in swatch]
+        except KeyError:
+            pass
+
+        # 价格信息
+        try:
+            for item in data['swatchGroup']['swatches']:
+                if 'listPrice' in item:
+                    metadata['price'] = self.reformat(item['listPrice'])
+                    break
+                elif 'unitPrice' in item:
+                    metadata['price'] = self.reformat(item['unitPrice'])
+                    break
+        except KeyError:
+            pass
+
+        # 图像链接
+        image_urls = []
+        try:
+            image_host = 'http://s7d2.scene7.com/is/image/Coach/{0}{1}'
+            style_for_images = data['styleForImages']
+            for item in data['swatchGroup']['swatches']:
+                for subimg in ('aImages', 'nImages', 'mImages'):
+                    for tmp in [val['imageName'] for val in item[subimg]]:
+                        if tmp not in image_urls:
+                            image_urls.append(tmp)
+            image_urls = [str.format(image_host, style_for_images, val) for val in image_urls]
+        except KeyError:
+            pass
+
+        item = ProductItem()
+        item['image_urls'] = image_urls
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        item['metadata'] = metadata
+        return item
+
+    def parse_details_cn(self, response):
+        """
+        抓取中国的数据
+        @param response:
+        @return:
+        """
+        region = 'cn'
+        metadata = {'region': region, 'brand_id': self.spider_data['brand_id'], 'tags_mapping': {}}
+
+        # 根据referer，获得category信息
+        referer = response.request.headers['Referer']
+        if referer not in self.url_cat_dict:
+            return Request(url=referer, callback=self.parse_cat,
+                           meta={'stash': response, 'coach-referer': referer, 'callback': self.parse_details_cn},
                            errback=self.onerr, dont_filter=True)
         tag_list = self.url_cat_dict[referer]
         for tag in tag_list:
@@ -167,7 +248,7 @@ class CoachSpider(MFashionSpider):
             metadata['name'] = unicodify(tmp[0]._root.attrib['value'])
 
         # 价格信息
-        return Request(url=self.spider_data['price_url'][self.region], method='POST', dont_filter=True,
+        return Request(url=self.spider_data['price_url'][region], method='POST', dont_filter=True,
                        body=str.format('skuCode={0}', sku_code), callback=self.get_info, errback=self.onerr,
                        headers={'Content-Type': 'application/x-www-form-urlencoded',
                                 'Accept-Encoding': 'gzip,deflate,sdch',
