@@ -34,7 +34,7 @@ class TodsSpider(MFashionSpider):
 
             'cn': 'http://www.tods.com/cn/',
             'jp': 'http://www.tods.com/jp/',
-            'ke': 'http://www.tods.com/rok/',
+            'kr': 'http://www.tods.com/rok/',
         },
     }
 
