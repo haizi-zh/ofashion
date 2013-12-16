@@ -113,7 +113,7 @@ def set_up_spider(spider_class, region_list, data):
         if glob.WRITE_DATABASE else {}
 
     if 'job' in data:
-        job_path = get_job_path(sc.spider_data['brand_id']) + '-1'
+        job_path = get_job_path(spider_class.spider_data['brand_id']) + '-1'
         if 'rst-job' in data:
             shutil.rmtree(job_path, ignore_errors=True)
         crawler.settings.values['JOBDIR'] = job_path
