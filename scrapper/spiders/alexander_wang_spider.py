@@ -17,6 +17,7 @@ class AlexanderWangSpider(MFashionSpider):
         'brand_id': 10009,
         'currency': {
             'hk': 'USD',
+            'tw': 'USD',
         },
         'home_urls': {
             'cn': 'http://www.alexanderwang.cn/',
@@ -37,21 +38,21 @@ class AlexanderWangSpider(MFashionSpider):
             'nl': 'http://store.alexanderwang.com/nl',
             'kr': 'http://store.alexanderwang.com/kr',
 
-            'ar': 'http://store.alexanderwang.com/ar',
+            # 'ar': 'http://store.alexanderwang.com/ar',
             'at': 'http://store.alexanderwang.com/at',
             'be': 'http://store.alexanderwang.com/be',
             'bg': 'http://store.alexanderwang.com/bg',
-            'cl': 'http://store.alexanderwang.com/cl',
-            'co': 'http://store.alexanderwang.com/co',
-            'hr': 'http://store.alexanderwang.com/hr',
+            # 'cl': 'http://store.alexanderwang.com/cl',
+            # 'co': 'http://store.alexanderwang.com/co',
+            # 'hr': 'http://store.alexanderwang.com/hr',
             'cz': 'http://store.alexanderwang.com/cz',
             'dk': 'http://store.alexanderwang.com/dk',
             'eg': 'http://store.alexanderwang.com/eg',
-            'ee': 'http://store.alexanderwang.com/ee',
+            # 'ee': 'http://store.alexanderwang.com/ee',
             'fi': 'http://store.alexanderwang.com/fi',
             'hu': 'http://store.alexanderwang.com/hu',
             'in': 'http://store.alexanderwang.com/in',
-            'id': 'http://store.alexanderwang.com/id',
+            # 'id': 'http://store.alexanderwang.com/id',
             'ie': 'http://store.alexanderwang.com/ie',
             'il': 'http://store.alexanderwang.com/il',
             'lv': 'http://store.alexanderwang.com/lv',
@@ -59,19 +60,19 @@ class AlexanderWangSpider(MFashionSpider):
             'lu': 'http://store.alexanderwang.com/lu',
             'nz': 'http://store.alexanderwang.com/nz',
             'no': 'http://store.alexanderwang.com/no',
-            'ph': 'http://store.alexanderwang.com/ph',
+            # 'ph': 'http://store.alexanderwang.com/ph',
             'pl': 'http://store.alexanderwang.com/pl',
             'ro': 'http://store.alexanderwang.com/ro',
             'sk': 'http://store.alexanderwang.com/sk',
             'si': 'http://store.alexanderwang.com/si',
-            'za': 'http://store.alexanderwang.com/za',
+            # 'za': 'http://store.alexanderwang.com/za',
             'se': 'http://store.alexanderwang.com/se',
             'tw': 'http://store.alexanderwang.com/tw',
             'th': 'http://store.alexanderwang.com/th',
-            'tn': 'http://store.alexanderwang.com/tn',
+            # 'tn': 'http://store.alexanderwang.com/tn',
             'tr': 'http://store.alexanderwang.com/tr',
-            'ua': 'http://store.alexanderwang.com/ua',
-            'vn': 'http://store.alexanderwang.com/vn',
+            # 'ua': 'http://store.alexanderwang.com/ua',
+            # 'vn': 'http://store.alexanderwang.com/vn',
         }
     }
 
@@ -268,7 +269,7 @@ class AlexanderWangSpider(MFashionSpider):
         # 这里主要是针对有些商品打折，有些没打折
         # 如果没打折，那么，在parse_product_list中的那个price_node会为None
         # 此处针对没打折商品，找到价格
-        if not metadata['price']:
+        if (not 'price' in metadata.keys()) or (not metadata['price']):
             price_node = sel.xpath('//div[@id="mainContent"]//span[@class="priceValue"]')
             if price_node:
                 price = price_node.xpath('./text()').extract()[0]
