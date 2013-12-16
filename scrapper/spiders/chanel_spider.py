@@ -29,7 +29,7 @@ class ChanelSpider(MFashionSpider):
                                 'hk': 'en_HK', 'jp': 'ja_JP', 'kr': 'ko_KR', 'au': 'en_AU', 'sg': 'en_SG',
                                 'ca': 'en_CA', 'de': 'de_DE', 'es': 'es_ES', 'ru': 'ru_RU', 'br': 'pt_BR'},
                    'watch_term': {'cn': ['%E8%85%95%E8%A1%A8', u'腕表'], 'us': ['Watches'], 'uk': ['Watches'],
-                                  'fr': ['Horlogerie'], 'it': ['orologeria']},
+                                  'fr': ['Horlogerie'], 'it': ['Orologeria']},
                    'fashion_term': {'cn': 'fashion', 'us': 'fashion', 'it': 'moda', 'fr': 'mode', 'uk': 'fashion',
                                     'hk': 'fashion', 'jp': 'fashion', 'kr': 'fashion', 'au': 'fashion', 'sg': 'fashion',
                                     'ca': 'fashion', 'de': 'mode', 'es': 'moda', 'ru': 'fashion', 'br': 'moda'},
@@ -58,7 +58,8 @@ class ChanelSpider(MFashionSpider):
         region_code = '|'.join(self.spider_data['base_url'][region] for region in self.region_list)
         watch_code = []
         for r in self.region_list:
-            watch_code.extend(self.spider_data['watch_term'][r])
+            if r in self.spider_data['watch_term']:
+                watch_code.extend(self.spider_data['watch_term'][r])
         watch_code = '|'.join(watch_code)
         self.rules = (
             Rule(SgmlLinkExtractor(allow=(unicode.format(ur'chanel\.com/({0})/({1})/.+', region_code, watch_code),)),
