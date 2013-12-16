@@ -248,14 +248,14 @@ class AlexanderWangSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # 页面中的货号栏，注意前边会有没用的字符（比如 货号：）
+        # 页面中的货号栏，注意前边会有没用的字符（比如 货号：,style：等）
         model = None
         model_node = sel.xpath('//li[@id="description_container"]/div[@id="description_pane"]/div[@class="style"]')
         if model_node:
             model_text = model_node.xpath('./text()').extract()[0]
             model_text = self.reformat(model_text)
             if model_text:
-                mt = re.search(r'\b(\w+)\b', model_text)
+                mt = re.search(r'\b([0-9]+\w*)\b', model_text)
                 if mt:
                     model = mt.group(1)
 
@@ -263,6 +263,18 @@ class AlexanderWangSpider(MFashionSpider):
             metadata['model'] = model
         else:
             return
+
+
+        # 这里主要是针对有些商品打折，有些没打折
+        # 如果没打折，那么，在parse_product_list中的那个price_node会为None
+        # 此处针对没打折商品，找到价格
+        if not metadata['price']:
+            price_node = sel.xpath('//div[@id="mainContent"]//span[@class="priceValue"]')
+            if price_node:
+                price = price_node.xpath('./text()').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    metadata['price'] = price
 
 
         colors = [
