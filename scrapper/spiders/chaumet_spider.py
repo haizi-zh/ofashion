@@ -19,8 +19,8 @@ class ChaumetSpider(MFashionSpider):
                    'model_pattern': {'cn': u'(参考|产品)(编号|型号)\s*(：|:)?\s*',
                                      'jp': u'商品番号\s*(：|:)?\s*',
                                      'us': 'Reference\s*:?\s*',
-                                     'tw': u'参考编号\s*(：|:)?\s*',
-                                     'fr': u'Référence\s*:?\s*'},
+                                     'hk': u'(參考|参考|產品|产品)(编号|型號|編號)\s*(：|:)?\s*',
+                                     'fr': u'(Reference|Référence)\s*:?\s*'},
                    'home_urls': {'cn': 'http://www.chaumet.cn',
                                  'jp': 'http://www.chaumet.jp',
                                  'fr': 'http://www.chaumet.fr',
@@ -147,8 +147,8 @@ class ChaumetSpider(MFashionSpider):
         details_terms = filter(lambda val: val,
                                (self.reformat(val) for val in
                                 sel.xpath(
-                                    '//div[@id="description"]//div[@class="contentProductLayer"]/div[@class="rte"]'
-                                    '/descendant-or-self::text()').extract()))
+                                    '//div[@id="description"]//div[@class="contentProductLayer"]/div[@class="rte" or '
+                                    '@class="intro"]/descendant-or-self::text()').extract()))
         if 'model' not in metadata:
             tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), details_terms))
             if not tmp:
