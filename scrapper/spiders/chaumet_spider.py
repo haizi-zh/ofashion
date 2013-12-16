@@ -30,9 +30,9 @@ class ChaumetSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        for node in sel.xpath('//div[@id="nav"]/ul[@class="hList"]/li[contains(@id,"section")]/a[@href and @title'):
+        for node in sel.xpath('//div[@id="nav"]/ul[@class="hList"]/li[contains(@id,"section")]/a[@href]'):
             try:
-                tag_text = self.reformat(node.xpath('@title').extract()[0])
+                tag_text = self.reformat(node.xpath('text()').extract()[0])
                 tag_name = tag_text.lower()
                 m = copy.deepcopy(metadata)
                 m['tags_mapping']['category-0'] = [{'name': tag_name, 'title': tag_text}]
@@ -65,10 +65,10 @@ class ChaumetSpider(MFashionSpider):
                     prod_node = node.xpath('../div[contains(@class,"layerProduit")]/div[@class="inner"]')
                     if prod_node:
                         # 单品
-                        prod_node=prod_node[0]
+                        prod_node = prod_node[0]
                         tmp = self.reformat(prod_node.xpath('./a[@class="title" and @title]/@title').extract()[0])
                         if tmp:
-                            m['name']=tmp
+                            m['name'] = tmp
 
 
                     # 尝试查找分类信息
@@ -95,5 +95,16 @@ class ChaumetSpider(MFashionSpider):
     def parse_details(self, response):
         metadata = response.meta['userdata']
         sel = Selector(response)
+
+        metadata['url'] = response.url
+
+        sel.xpath('//div[@class="mod productInfosMod"]')
+
+        try:
+            tmp = self.reformat(sel.xpath('//div[@class="productHead"]/*[@itemprop="name"]/text()').extract()[0])
+            if tmp and 'name' not in metadata:
+                metadata['name'] = tmp
+        except IndexError:
+            pass
 
         yield None
