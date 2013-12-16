@@ -290,7 +290,7 @@ class AlexanderWangSpider(MFashionSpider):
         # 如果没打折，那么，在parse_product_list中的那个price_node会为None
         # 此处针对没打折商品，找到价格
         try:
-            if (not 'price' in metadata.keys()) or (not metadata['price']):
+            if not metadata.get('price'):
                 price_node = sel.xpath('//div[@id="mainContent"]//span[@class="priceValue"]')
                 if price_node:
                     price = price_node.xpath('./text()').extract()[0]
