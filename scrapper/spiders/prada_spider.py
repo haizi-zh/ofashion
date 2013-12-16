@@ -13,10 +13,11 @@ __author__ = 'Zephyre'
 
 class PradaSpider(MFashionSpider):
     spider_data = {'brand_id': 10300,
+                   'currency': {'dk': 'EUR'},
                    'home_urls': {'cn': 'http://store.prada.com/hans/CN/',
                                  'us': 'http://store.prada.com/en/US/',
                                  'ap': 'http://store.prada.com/hant/AP/',
-                                 'au': 'http://store.prada.com/en/AT/',
+                                 'at': 'http://store.prada.com/en/AT/',
                                  'be': 'http://store.prada.com/en/BE/',
                                  'dk': 'http://store.prada.com/en/DK/',
                                  'fi': 'http://store.prada.com/en/FI/',
