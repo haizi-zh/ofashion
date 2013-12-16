@@ -90,9 +90,12 @@ class AlexanderWangSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//nav[@id="sitenav"]/ul/li[child::a[@href]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -107,9 +110,12 @@ class AlexanderWangSpider(MFashionSpider):
 
                 sub_nodes = node.xpath('.//li[child::a[@href]]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./a/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./a/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -146,9 +152,12 @@ class AlexanderWangSpider(MFashionSpider):
         # 有些类别有第三级展开，比如中国，促销，女装
         nav_nodes = sel.xpath('//nav[@id="navMenu"]//ul//ul//ul//li//a[@href]')
         for node in nav_nodes:
-            tag_text = node.xpath('./text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -184,27 +193,35 @@ class AlexanderWangSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            name = node.xpath('.//div[@class="description"]/a/div[@class="title"]/text()').extract()[0]
-            name = self.reformat(name)
+            try:
+                name = node.xpath('.//div[@class="description"]/a/div[@class="title"]/text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    m['name'] = name
+            except(TypeError, IndexError):
+                pass
 
-            if name:
-                m['name'] = name
+            try:
+                price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
+                if price_node:
+                    price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
+                    price = self.reformat(price)
+                    if price:
+                        m['price'] = price
+            except(TypeError, IndexError):
+                pass
 
-            price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
-            if price_node:
-                price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
-
-            color_nodes = node.xpath('.//div[@class="colorsList"]//div[@class="color"]//img[@title]')
-            if color_nodes:
-                colors = [
-                    self.reformat(val)
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-                if colors:
-                    m['color'] = colors
+            try:
+                color_nodes = node.xpath('.//div[@class="colorsList"]//div[@class="color"]//img[@title]')
+                if color_nodes:
+                    colors = [
+                        self.reformat(val)
+                        for val in color_nodes.xpath('./@title').extract()
+                    ]
+                    if colors:
+                        m['color'] = colors
+            except(TypeError, IndexError):
+                pass
 
             # 这个li的node里边，随便一个a标签，都可以到单品页面
             href = node.xpath('.//a[@href]/@href').extract()[0]
@@ -250,58 +267,73 @@ class AlexanderWangSpider(MFashionSpider):
         metadata['url'] = response.url
 
         # 页面中的货号栏，注意前边会有没用的字符（比如 货号：,style：等）
-        model = None
-        model_node = sel.xpath('//li[@id="description_container"]/div[@id="description_pane"]/div[@class="style"]')
-        if model_node:
-            model_text = model_node.xpath('./text()').extract()[0]
-            model_text = self.reformat(model_text)
-            if model_text:
-                mt = re.search(r'\b([0-9]+\w*)\b', model_text)
-                if mt:
-                    model = mt.group(1)
+        try:
+            model = None
+            model_node = sel.xpath('//li[@id="description_container"]/div[@id="description_pane"]/div[@class="style"]')
+            if model_node:
+                model_text = model_node.xpath('./text()').extract()[0]
+                model_text = self.reformat(model_text)
+                if model_text:
+                    mt = re.search(r'\b([0-9]+\w*)\b', model_text)
+                    if mt:
+                        model = mt.group(1)
 
-        if model:
-            metadata['model'] = model
-        else:
+            if model:
+                metadata['model'] = model
+            else:
+                return
+        except(TypeError, IndexError):
             return
 
 
         # 这里主要是针对有些商品打折，有些没打折
         # 如果没打折，那么，在parse_product_list中的那个price_node会为None
         # 此处针对没打折商品，找到价格
-        if (not 'price' in metadata.keys()) or (not metadata['price']):
-            price_node = sel.xpath('//div[@id="mainContent"]//span[@class="priceValue"]')
-            if price_node:
-                price = price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
+        try:
+            if (not 'price' in metadata.keys()) or (not metadata['price']):
+                price_node = sel.xpath('//div[@id="mainContent"]//span[@class="priceValue"]')
+                if price_node:
+                    price = price_node.xpath('./text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        metadata['price'] = price
+        except(TypeError, IndexError):
+            pass
 
 
-        colors = [
-            self.reformat(val)
-            for val in sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@title]/@title').extract()
-        ]
-        if colors:
-            metadata['color'] = colors
+        try:
+            colors = [
+                self.reformat(val)
+                for val in sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@title]/@title').extract()
+            ]
+            if colors:
+                metadata['color'] = colors
+        except(TypeError, IndexError):
+            pass
 
 
-        description = '\r'.join(
-            self.reformat(val)
-            for val in sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]//text()').extract()
-        )
-        description = self.reformat(description)
-        if description:
-            metadata['description'] = description
+        try:
+            description = '\r'.join(
+                self.reformat(val)
+                for val in sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]//text()').extract()
+            )
+            description = self.reformat(description)
+            if description:
+                metadata['description'] = description
+        except(TypeError, IndexError):
+            pass
 
 
-        detail = '\r'.join(
-            self.reformat(val)
-            for val in sel.xpath('//div[@id="description_pane"]/div[@class="details"]//text()').extract()
-        )
-        detail = self.reformat(detail)
-        if detail:
-            metadata['details'] = detail
+        try:
+            detail = '\r'.join(
+                self.reformat(val)
+                for val in sel.xpath('//div[@id="description_pane"]/div[@class="details"]//text()').extract()
+            )
+            detail = self.reformat(detail)
+            if detail:
+                metadata['details'] = detail
+        except(TypeError, IndexError):
+            pass
 
 
         # 下边是取的图片url
@@ -319,8 +351,11 @@ class AlexanderWangSpider(MFashionSpider):
         # 例如：http://www.alexanderwang.cn/cn/%E7%9F%AD%E6%AC%BE%E8%BF%9E%E8%A1%A3%E8%A3%99_cod34283023ab.html
         image_nodes = sel.xpath('//div[@class="itemImages"]/ul[@id="imageList"]/li/img[@src]')
         for node in image_nodes:
-            origin_src = node.xpath('./@src').extract()[0]
-            origin_src = self.process_href(origin_src, response.url)
+            try:
+                origin_src = node.xpath('./@src').extract()[0]
+                origin_src = self.process_href(origin_src, response.url)
+            except(TypeError, IndexError):
+                continue
 
             # 其他颜色的图片src
             all_color_srcs = [
