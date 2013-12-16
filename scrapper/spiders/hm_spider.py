@@ -115,7 +115,7 @@ class HMSpider(MFashionSpider):
             type_text = self.reformat(type_text)
             type_name = type_text.lower()
             if type_text and type_name:
-                category_type = str.format('category={0}', category_index)
+                category_type = str.format('category-{0}', category_index)
                 metadata['tags_mapping'][category_type] = [
                     {'name': type_name, 'title': type_text}
                 ]
