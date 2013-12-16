@@ -88,9 +88,7 @@ class HogoBossSpider(MFashionSpider):
             'color': []
         }
 
-        '''
-        单品model
-        '''
+        # 从url和页面中找到model
         model = None
         mt = re.search(r'\+(\d+)_,', response.url)
         if mt:
@@ -110,9 +108,6 @@ class HogoBossSpider(MFashionSpider):
         else:
             return
 
-        '''
-        单品region
-        '''
         region = None
         mt = re.search('-(\w*)\.|\.(\w+)/', response.url)
         if mt.group(1):
@@ -127,78 +122,69 @@ class HogoBossSpider(MFashionSpider):
             return
         metadata['region'] = region
 
-        '''
-        左上类型标签
-        '''
+        # 解析左上角标签
         #中国
-        typesNodes = sel.xpath('//ul[@class="container clearfix"]/li[not(contains(text(), "/"))]')[0:-1]
+        types_nodes = sel.xpath('//ul[@class="container clearfix"]/li[not(contains(text(), "/"))]')[0:-1]
         #其他
-        if not typesNodes:
-            typesNodes = sel.xpath('//a[contains(@name, "breadcrump")]')
-        categoryIndex = 0
-        for node in typesNodes:
+        if not types_nodes:
+            types_nodes = sel.xpath('//a[contains(@name, "breadcrump")]')
+        category_index = 0
+        for node in types_nodes:
 
-            '''
-            中国，前两个标签，字写在下属的a里边
-            '''
-            typeNode = node.xpath('./a')
-            if not typeNode:
-                typeNode = node
+            # 中国，前两个标签，字写在下属的a里边
+            type_node = node.xpath('./a')
+            if not type_node:
+                type_node = node
 
+            type_name = None
             try:
-                type_text = typeNode.xpath('./text()').extract()[0]
+                type_text = type_node.xpath('./text()').extract()[0]
                 if type_text:
                     type_name = self.reformat(type_text).lower()
-                    categoryType = str.format('category-{0}', categoryIndex)
-                    metadata['tags_mapping'][categoryType] = [
+                    category_type = str.format('category-{0}', category_index)
+                    metadata['tags_mapping'][category_type] = [
                         {'name': type_name, 'title': type_text}
                     ]
-                    categoryIndex+=1
+                    category_index+=1
             except(TypeError, IndexError):
                 continue
 
-            '''
-            顺便猜男女
-            '''
+            # 顺便猜男女
             gender = common.guess_gender(type_name)
             if gender:
                 metadata['gender'] = [gender]
 
         # 价格标签，中国和其他还是分开抓，太不一样了
         # 中国
-        priceNode = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
-        if not priceNode:
+        price_node = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
+        if not price_node:
             # 其他
-            priceNode = sel.xpath('//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
+            price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
 
-        if priceNode:
+        if price_node:
             try:
-                price = priceNode.xpath('./text()').extract()[0]
+                price = price_node.xpath('./text()').extract()[0]
                 price = self.reformat(price)
                 if price:
                     metadata['price'] = price
             except(TypeError, IndexError):
                 pass
 
-        '''
-        单品名称
-        '''
-        nameNode = sel.xpath('//h1[@class="product-name" or @class="productname label"]')
-        if nameNode:
+        # 单品名称
+        name_node = sel.xpath('//h1[@class="product-name" or @class="productname label"]')
+        if name_node:
             try:
-                name = nameNode.xpath('./text()').extract()[0]
+                name = name_node.xpath('./text()').extract()[0]
                 if name:
                     name = self.reformat(name)
                     metadata['name'] = name
             except(TypeError, IndexError):
                 pass
 
-        '''
-        颜色标签
-        '''
+        # 颜色标签
         #中国
-        colorNodes = sel.xpath('//dl[@class="product-colors"]//li')
-        for node in colorNodes:
+        color_nodes = sel.xpath('//dl[@class="product-colors"]//li')
+        for node in color_nodes:
             try:
                 color_text = node.xpath('.//a/@title').extract()[0]
                 if color_text:
@@ -207,8 +193,8 @@ class HogoBossSpider(MFashionSpider):
             except(TypeError, IndexError):
                 continue
         #其他
-        colorNodes = sel.xpath('//a[@class="swatchanchor"]')
-        for node in colorNodes:
+        color_nodes = sel.xpath('//a[@class="swatchanchor"]')
+        for node in color_nodes:
             try:
                 color_text = node.xpath('./text()').extract()[0]
                 if color_text:
@@ -217,55 +203,46 @@ class HogoBossSpider(MFashionSpider):
             except(TypeError, IndexError):
                 continue
 
-        '''
-        描述标签
-        '''
+        # 描述标签
         #中国
-        descriptionNode = sel.xpath('//div[@class="tabpage description"]')
-        if descriptionNode:
+        description_node = sel.xpath('//div[@class="tabpage description"]')
+        if description_node:
             try:
-                desctiption = descriptionNode.xpath('./text()').extract()[0]
+                desctiption = description_node.xpath('./text()').extract()[0]
                 if desctiption:
                     desctiption = self.reformat(desctiption)
                     metadata['description'] = desctiption
             except(TypeError, IndexError):
                 pass
         #其他
-        descriptionNode = sel.xpath('//meta[@property="og:description"]')
-        if descriptionNode:
+        description_node = sel.xpath('//meta[@property="og:description"]')
+        if description_node:
             try:
-                desctiption = descriptionNode.xpath('./@content').extract()[0]
+                desctiption = description_node.xpath('./@content').extract()[0]
                 if desctiption:
                     desctiption = self.reformat(desctiption)
                     metadata['description'] = desctiption
             except(TypeError, IndexError):
                 pass
 
-        '''
-        详情标签
-        '''
-        detailNode = sel.xpath('//div[@class="tabpage inc"]')
-        if detailNode:
+        # 详情标签
+        detail_node = sel.xpath('//div[@class="tabpage inc"]')
+        if detail_node:
             try:
                 # TODO 详情不全，被<br>分开了
-                detail = detailNode.xpath('./text()').extract()[0]
+                detail = detail_node.xpath('./text()').extract()[0]
                 if detail:
                     detail = self.reformat(detail)
                     metadata['details'] = detail
             except(TypeError, IndexError):
                 pass
 
-        '''
-        材料及护理标签
-        '''
-        # TODO 这里该用什么标签名
+        # TODO 材料及护理标签
 
-        '''
-        图片
-        '''
+        # 解析图片地址
         #中国
-        imageNodes = sel.xpath('//dl[@class="product-colors"]//li/a')
-        for node in imageNodes:
+        image_nodes = sel.xpath('//dl[@class="product-colors"]//li/a')
+        for node in image_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -279,8 +256,8 @@ class HogoBossSpider(MFashionSpider):
             except(TypeError, IndexError):
                 continue
         #其他
-        imageNodes = sel.xpath('//a[@class="swatchanchor"]')
-        for node in imageNodes:
+        image_nodes = sel.xpath('//a[@class="swatchanchor"]')
+        for node in image_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
                 if re.search('#.+', response.url):
@@ -303,35 +280,32 @@ class HogoBossSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
-    '''
-    处理单品图片
-    '''
     def parse_images(self, response):
+        """
+        处理单品图片
+        """
+
         metadata = response.meta['userdata']
         sel = Selector(response)
 
         image_urls = []
 
-        '''
-        中国网站
-        '''
-        imageNodes = sel.xpath('//div[@id="gallery"]//a/img')
-        for node in imageNodes:
+        # 中国网站
+        image_nodes = sel.xpath('//div[@id="gallery"]//a/img')
+        for node in image_nodes:
             try:
-                imageHref = node.xpath('./@big').extract()[0]
-                if imageHref:
-                    image_urls += [imageHref]
+                image_href = node.xpath('./@big').extract()[0]
+                if image_href:
+                    image_urls += [image_href]
             except(TypeError, IndexError):
                 continue
-        '''
-        其他网站
-        '''
-        imageNodes = sel.xpath('//img[@data-detailurl]')
-        for node in imageNodes:
+        # 其他国家网站
+        image_nodes = sel.xpath('//img[@data-detailurl]')
+        for node in image_nodes:
             try:
-                imageHref = node.xpath('./@data-detailurl').extract()[0]
-                if imageHref:
-                    image_urls += [imageHref]
+                image_href = node.xpath('./@data-detailurl').extract()[0]
+                if image_href:
+                    image_urls += [image_href]
             except(TypeError, IndexError):
                 continue
 

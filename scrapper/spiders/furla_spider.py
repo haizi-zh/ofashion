@@ -80,8 +80,8 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         # 左边导航栏的第一级解析
-        sidebarNodes = sel.xpath('//div[@class="sidebar"]/ul/li')
-        for node in sidebarNodes:
+        sidebar_nodes = sel.xpath('//div[@class="sidebar"]/ul/li')
+        for node in sidebar_nodes:
             try:
                 tag_text= node.xpath('./a/text()').extract()[0]
                 tag_text = self.reformat(tag_text)
@@ -101,10 +101,10 @@ class FurlaSpider(MFashionSpider):
                     m['gender'] = [gender]
 
                 # 左边导航栏的第二级解析
-                subNodes = node.xpath('.//li')
-                for subNode in subNodes:
+                sub_nodes = node.xpath('.//li')
+                for sub_node in sub_nodes:
                     try:
-                        tag_text = subNode.xpath('./a/text()').extract()[0]
+                        tag_text = sub_node.xpath('./a/text()').extract()[0]
                         tag_text = self.reformat(tag_text)
                         tag_name = tag_text.lower()
                     except(TypeError, IndexError):
@@ -122,7 +122,7 @@ class FurlaSpider(MFashionSpider):
                             mc['gender'] = [gender]
 
                         try:
-                            href = subNode.xpath('./a/@href').extract()[0]
+                            href = sub_node.xpath('./a/@href').extract()[0]
                             href = self.process_href(href, response.url)
                         except(TypeError, IndexError):
                             continue
@@ -155,8 +155,8 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         # 这个xpath是去掉一些指向微博，facebook或它自己注册页面的链接
-        productNodes = sel.xpath('//ul[@class="collection_list"]//li[not(contains(@class, "big"))]//a[contains(@href, "furla.com")]')
-        for node in productNodes:
+        product_nodes = sel.xpath('//ul[@class="collection_list"]//li[not(contains(@class, "big"))]//a[contains(@href, "furla.com")]')
+        for node in product_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -180,8 +180,8 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         #解析不同颜色的单品
-        colorNodes = sel.xpath('//ul[@class="colors_materials"]//ul//li//a')
-        for node in colorNodes:
+        color_nodes = sel.xpath('//ul[@class="colors_materials"]//ul//li//a')
+        for node in color_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -262,9 +262,9 @@ class FurlaSpider(MFashionSpider):
             metadata['color'] = colors
 
         #解析图片
-        imageUrls = None
+        image_urls = None
         try:
-            imageUrls = list(
+            image_urls = list(
                 self.process_href(re.sub(r'350/', r'2048/', src), response.url)
                 for src in sel.xpath('//div[@class="foto_product"]//img/@src').extract()
             )
@@ -274,8 +274,8 @@ class FurlaSpider(MFashionSpider):
         item = ProductItem()
         item['url'] = metadata['url']
         item['model'] = metadata['model']
-        if imageUrls:
-            item['image_urls'] = imageUrls
+        if image_urls:
+            item['image_urls'] = image_urls
         item['metadata'] = metadata
 
         yield item
@@ -289,8 +289,8 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         # nav一级标签
-        navNodes = sel.xpath('//ul[@class="nav long"]/li')
-        for node in navNodes:
+        nav_nodes = sel.xpath('//ul[@class="nav long"]/li')
+        for node in nav_nodes:
             try:
                 tag_text = node.xpath('./a/text()').extract()[0]
                 tag_text = self.reformat(tag_text)
@@ -310,10 +310,10 @@ class FurlaSpider(MFashionSpider):
                     m['gender'] = [gender]
 
                 # nav下拉的二级标签
-                subNodes = node.xpath('./ul/li')
-                for subNode in subNodes:
+                sub_nodes = node.xpath('./ul/li')
+                for sub_node in sub_nodes:
                     try:
-                        tag_text = subNode.xpath('./a/text()').extract()[0]
+                        tag_text = sub_node.xpath('./a/text()').extract()[0]
                         tag_text = self.reformat(tag_text)
                         tag_name = tag_text.lower()
                     except(TypeError, IndexError):
@@ -331,7 +331,7 @@ class FurlaSpider(MFashionSpider):
                             mc['gender'] = [gender]
 
                         try:
-                            href = subNode.xpath('./a/@href').extract()[0]
+                            href = sub_node.xpath('./a/@href').extract()[0]
                             href = self.process_href(href, response.url)
                         except(TypeError, IndexError):
                             continue
@@ -361,8 +361,8 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         # 左边分类标签
-        sidebarNodes = sel.xpath('//div[@class="sidebar"]//li')
-        for node in sidebarNodes:
+        sidebar_nodes = sel.xpath('//div[@class="sidebar"]//li')
+        for node in sidebar_nodes:
             try:
                 tag_text = node.xpath('./a/text()').extract()[0]
                 tag_text = self.reformat(tag_text)
@@ -395,8 +395,8 @@ class FurlaSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        productNodes = sel.xpath('//div[@id="listing"]//li')
-        for node in productNodes:
+        product_nodes = sel.xpath('//div[@id="listing"]//li')
+        for node in product_nodes:
             try:
                 name = node.xpath('//p[@class="title"]/a/text()').extract()[0]
                 name = self.reformat(name)
@@ -424,8 +424,8 @@ class FurlaSpider(MFashionSpider):
                           meta={'userdata': m})
 
         #页面底部的页数链接
-        pageNodes = sel.xpath('//div[@class="paginazione bottom"]//a')
-        for node in pageNodes:
+        page_nodes = sel.xpath('//div[@class="paginazione bottom"]//a')
+        for node in page_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -454,8 +454,8 @@ class FurlaSpider(MFashionSpider):
         # TODO 可以尝试在description中找到颜色
 
         # 解析其他颜色单品
-        colorNodes = sel.xpath('//div[@class="select"]/p[@class="colors"]//a')
-        for node in colorNodes:
+        color_nodes = sel.xpath('//div[@class="select"]/p[@class="colors"]//a')
+        for node in color_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -471,12 +471,12 @@ class FurlaSpider(MFashionSpider):
 
         #尝试从页面中取得model
         model = None
-        modelNode = sel.xpath('//div[@class="select"]/p[contains(text(), "code")]')
-        if modelNode:
+        model_node = sel.xpath('//div[@class="select"]/p[contains(text(), "code")]')
+        if model_node:
             mt = None
             try:
-                productCodeText = modelNode.xpath('./text()').extract()[0]
-                mt = re.search(r'\b(\d+)\b', productCodeText)
+                product_code_text = model_node.xpath('./text()').extract()[0]
+                mt = re.search(r'\b(\d+)\b', product_code_text)
             except(TypeError, IndexError):
                 pass
             if mt:
@@ -512,9 +512,9 @@ class FurlaSpider(MFashionSpider):
         if detail:
             metadata['details'] = detail
 
-        imageUrls = None
+        image_urls = None
         try:
-            imageUrls = list(
+            image_urls = list(
                 self.process_href(re.sub(r'90/', r'2048/', val), response.url)
                 for val in sel.xpath('//div[@class="prodotto_dettagli"]//img/@src').extract()
             )
@@ -524,8 +524,8 @@ class FurlaSpider(MFashionSpider):
         item = ProductItem()
         item['url'] = metadata['url']
         item['model'] = metadata['model']
-        if imageUrls:
-            item['image_urls'] = imageUrls
+        if image_urls:
+            item['image_urls'] = image_urls
         item['metadata'] = metadata
 
         yield item
