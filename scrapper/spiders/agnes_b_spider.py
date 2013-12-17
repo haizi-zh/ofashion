@@ -17,6 +17,8 @@ class AgnesBSpider(MFashionSpider):
         'brand_id': 10006,
         'home_urls': {
             'us': 'http://usa.agnesb.com/en/',
+            'uk': 'http://europe.agnesb.com/en/',
+            'fr': 'http://europe.agnesb.com/fr/',
         },
     }
 
@@ -35,8 +37,6 @@ class AgnesBSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        metadata['gender'] = []
-
         # 左侧边栏第一栏中带连接的那些node
         nav_nodes = sel.xpath('//div[@id="sidebar"]/ul/ul/li/a[@href]')
         for node in nav_nodes:
@@ -53,7 +53,7 @@ class AgnesBSpider(MFashionSpider):
 
                 gender = common.guess_gender(tag_name)
                 if gender:
-                    m['gender'] += [gender]
+                    m['gender'] = [gender]
 
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -87,7 +87,7 @@ class AgnesBSpider(MFashionSpider):
 
                 gender = common.guess_gender(tag_name)
                 if gender:
-                    m['gender'] += [gender]
+                    m['gender'] = [gender]
 
                 href = sub_node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -124,7 +124,7 @@ class AgnesBSpider(MFashionSpider):
 
                 gender = common.guess_gender(tag_name)
                 if gender:
-                    m['gender'] += [gender]
+                    m['gender'] = [gender]
 
                 href = sub_node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
