@@ -136,7 +136,9 @@ class ChanelSpider(MFashionSpider):
         metadata = response.meta['userdata']
         try:
             data = json.loads(response.body)
-            metadata['price'] = data['product'][0]['price']
+            tmp = data['product'][0]['price']
+            if not re.search(r'^\s*-1', tmp):
+                metadata['price'] = data['product'][0]['price']
         except (IndexError, KeyError, ValueError):
             pass
 
