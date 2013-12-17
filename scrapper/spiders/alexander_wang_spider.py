@@ -244,10 +244,23 @@ class AlexanderWangSpider(MFashionSpider):
             try:
                 price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
                 if price_node:
+
+                    new_price_node = node.xpath('.//div[@class="productPrice"]/div[@class="newprice"]')
+                    new_price = None
+                    if new_price_node:
+                        new_price = ''.join(self.reformat(val) for val in new_price_node.xpath('.//text()').extract())
+                        new_price = self.reformat(new_price)
+
                     price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
                     price = self.reformat(price)
+                    # 这里，用这个price是否有值来判断是不是在打折
+                    # new_price应该是总能取到的，否则说明xpath有问题
+                    # 有price说明它在打折
                     if price:
                         m['price'] = price
+                        m['price_discount'] = new_price
+                    elif new_price:
+                        m['price'] = new_price
             except(TypeError, IndexError):
                 pass
 
@@ -331,12 +344,25 @@ class AlexanderWangSpider(MFashionSpider):
         # 此处针对没打折商品，找到价格
         try:
             if not metadata.get('price'):
-                price_node = sel.xpath('//div[@id="mainContent"]//span[@class="priceValue"]')
+                price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="oldprice"]')
                 if price_node:
-                    price = price_node.xpath('./text()').extract()[0]
+
+                    new_price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="newprice"]')
+                    new_price = None
+                    if new_price_node:
+                        new_price = ''.join(self.reformat(val) for val in new_price_node.xpath('.//text()').extract())
+                        new_price = self.reformat(new_price)
+
+                    price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
                     price = self.reformat(price)
+                    # 这里，同样用这个price是否有值来判断是不是在打折
+                    # new_price应该是总能取到的，否则说明xpath有问题
+                    # 有price说明它在打折
                     if price:
                         metadata['price'] = price
+                        metadata['price_discount'] = new_price
+                    elif new_price:
+                        metadata['price'] = new_price
         except(TypeError, IndexError):
             pass
 
