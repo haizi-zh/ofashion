@@ -217,15 +217,15 @@ class PublishRelease(object):
         # pid和region之间的关系
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
         price_list = {}
-        for item in self.db.query_match(['price', 'currency', 'date', 'idproducts'], self.price_hist, {},
-                                        str.format('idproducts IN ({0})',
-                                                   ','.join(val['idproducts'] for val in prods))).fetch_row(maxrows=0,
-                                                                                                            how=1):
+        for item in self.db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
+                                        self.price_hist, {}, str.format('idproducts IN ({0})', ','.join(
+                        val['idproducts'] for val in prods))).fetch_row(maxrows=0, how=1):
             pid = int(item.pop('idproducts'))
             updated = False
             if pid not in price_list:
                 updated = True
             else:
+                # 保证price_list中，任何pid对应的价格，都是最新的版本。
                 old_ts = price_list[pid]['date']
                 new_ts = datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S")
                 if new_ts > old_ts:
@@ -234,6 +234,7 @@ class PublishRelease(object):
             if updated:
                 region = pid_region_dict[pid]
                 price_list[pid] = {'price': float(item['price']), 'currency': item['currency'],
+                                   'price_discount': float(item['price_discount']) if item['price_discount'] else None,
                                    'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
                                    'code': region, 'country': gs.region_info()[region]['name_c']}
 
@@ -245,10 +246,17 @@ class PublishRelease(object):
             val.pop('date')
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
 
-        # 取第一个国家的价格，转换成CNY
-        price = entry['price_list'][0]['price']
-        currency = entry['price_list'][0]['currency']
-        entry['price_cn'] = gs.currency_info()[currency] * price
+        # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
+        discounts = [val for val in entry['price_list'] if val['price_discount']]
+        if discounts:
+            price = discounts[0]['price_discount']
+            currency = discounts[0]['currency']
+        else:
+            price = entry['price_list'][0]['price']
+            # 取第一个国家的价格，转换成CNY
+            currency = entry['price_list'][0]['currency']
+
+        entry['price'] = gs.currency_info()[currency] * price
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         image_list = []
