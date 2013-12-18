@@ -16,7 +16,15 @@ class BallySpider(MFashionSpider):
     spider_data = {
         'brand_id': 10030,
         'home_urls': {
-            'cn': 'http://www.bally.cn/index.aspx?sitecode=BALLY_CN',
+            k: str.format('http://www.bally.com/index.aspx?sitecode=BALLY_{0}', k.upper() if k != 'uk' else 'GB')
+            for k in [
+                'cn', 'us', 'it',
+                'at', 'be', 'bg', 'cz', 'dk',
+                'fi', 'fr', 'de', 'gr', 'hu',
+                'ie', 'lv', 'lt', 'lu', 'nl',
+                'pl', 'pt', 'ro', 'sk', 'si',
+                'es', 'se', 'ch',
+            ]
         },
     }
 
