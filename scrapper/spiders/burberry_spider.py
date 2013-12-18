@@ -66,7 +66,6 @@ class BurberrySpider(MFashionSpider):
             title = self.reformat(item.xpath('@title').extract()[0])
             m = copy.deepcopy(metadata)
             m['tags_mapping']['category-2'] = [{'name': cat, 'title': title}]
-            m['category'] = [cat]
             yield Request(url=self.process_href(href, response.url), meta={'userdata': m}, dont_filter=True,
                           callback=self.parse_category_2, errback=self.onerr)
 
@@ -112,20 +111,27 @@ class BurberrySpider(MFashionSpider):
         metadata = response.meta['userdata']
 
         hxs = Selector(response)
-        ret = hxs.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]/"
-                        "li[contains(@class,'color')]/a[@title and @data-color-link]")
         # 访问商品的其它颜色版本
-        for node in (val for val in ret if val.xpath('@data-color-link').extract()[0] not in metadata['url']):
+        ret = hxs.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]"
+                        "/li[contains(@class,'color') and not(contains(@class,'color-selected'))]"
+                        "/a[@title and @data-color-link]")
+        for node in ret:
+        # for node in (val for val in ret if val.xpath('@data-color-link').extract()[0] not in metadata['url']):
             m = copy.deepcopy(metadata)
             m['color'] = [self.reformat(unicodify(node.xpath('@title').extract()[0])).lower()]
             url = self.process_href(node.xpath('@data-color-link').extract()[0], response.url)
             m['url'] = url
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
+        # 当前选择地商品
+        ret = hxs.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]"
+                        "/li[contains(@class,'color') and contains(@class,'color-selected')]"
+                        "/a[@title and @data-color-link]/@title").extract()
         # 本页面商品的颜色
-        tmp = [val for val in ret if val.xpath('@data-color-link').extract()[0] in metadata['url']]
-        if tmp:
-            metadata['color'] = [self.reformat(unicodify(tmp[0].xpath('@title').extract()[0])).lower()]
+        try:
+            metadata['color'] = [self.reformat(val).lower() for val in ret]
+        except (IndexError, TypeError):
+            pass
 
         tmp = hxs.xpath('//p[contains(@class,"product-id")]/text()').extract()
         if tmp and tmp[0]:
@@ -133,26 +139,29 @@ class BurberrySpider(MFashionSpider):
             if mt:
                 metadata['model'] = mt.group(1)
 
-        tmp = hxs.xpath("//div[@class='price']//span[@class='price-amount']/text()")
+        tmp = hxs.xpath("//div[@class='price']//span[@class='price-amount']/text()").extract()
         if tmp and tmp[0]:
             metadata['price'] = self.reformat(tmp[0])
+        tmp = hxs.xpath("//div[@class='price']//span[@class='price-sale']/text()").extract()
+        if tmp and tmp[0]:
+            metadata['price_discount'] = self.reformat(tmp[0])
 
         tmp = hxs.xpath("//li[@id='description-panel']//ul//li/text()").extract()
         if tmp:
             metadata['description'] = ', '.join(self.reformat(val) for val in tmp if val)
 
-        tmp = hxs.xpath("//li[@id='feature-care-panel']//ul//li/text()")
+        tmp = hxs.xpath("//li[@id='feature-care-panel']//ul//li/text()").extract()
         if tmp:
             metadata['details'] = ', '.join(self.reformat(val) for val in tmp if val)
 
-        tmp = hxs.xpath("//div[@class='product-title-container']/h1/text()")
+        tmp = hxs.xpath("//div[@class='product-title-container']/h1/text()").extract()
         if tmp:
             metadata['name'] = self.reformat(tmp[0])
 
         # TODO Images might have various versions due to different color selections. Fetch them all.
         if 'name' in metadata and 'details' in metadata and 'description' in metadata:
             ret = hxs.xpath("//div[@class='product_detail_container']/div[@class='product_viewer']"
-                            "//ul[@class='product-media-set']/li[@class='product-image']/img[@src]/@src")
+                            "//ul[@class='product-media-set']/li[@class='product-image']/img[@src]/@src").extract()
             image_urls = [self.process_href(val, response.url) for val in ret]
             item = ProductItem()
             item['image_urls'] = image_urls
