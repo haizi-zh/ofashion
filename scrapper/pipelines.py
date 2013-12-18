@@ -138,22 +138,19 @@ class ProductPipeline(object):
             if not results:
                 if 'color' in entry and entry['color']:
                     entry['color'] = json.dumps(entry['color'], ensure_ascii=False)
-                if 'category' in entry and entry['category']:
-                    entry['category'] = json.dumps(entry['category'], ensure_ascii=False)
                 if 'gender' in entry and entry['gender']:
                     entry['gender'] = json.dumps(entry['gender'], ensure_ascii=False)
                     self.process_gender(entry)
 
                 self.db.insert(entry, 'products', ['touch_time', 'update_time', 'fetch_time'])
                 pid = int(self.db.query('SELECT LAST_INSERT_ID()').fetch_row()[0][0])
-                if spider:
-                    spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
+                spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
             else:
                 pid = results[0]['idproducts']
                 # 需要处理合并的字段
                 dest = {}
                 src = {}
-                for k in ('category', 'color', 'gender'):
+                for k in ('color', 'gender'):
                     tmp = results[0][k]
                     if tmp:
                         try:
@@ -169,7 +166,7 @@ class ProductPipeline(object):
                 dest = {k: json.dumps(dest[k], ensure_ascii=False) if dest[k] else None for k in dest}
                 self.process_gender(dest)
 
-                for k in ('name', 'url', 'description', 'details', 'price'):
+                for k in ('name', 'url', 'description', 'details', 'price', 'price_discount'):
                     if k in entry:
                         dest[k] = entry[k]
 
@@ -194,25 +191,39 @@ class ProductPipeline(object):
                 else:
                     self.db.update(dest, 'products', str.format('idproducts={0}', pid), ['update_time', 'touch_time'])
 
-                if spider:
-                    spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
+                spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
 
             # 处理价格变化。其中，如果spider提供了货币信息，则优先使用之。
             if 'price' in entry:
-                currency = None
                 try:
-                    if spider:
-                        currency = spider.spider_data['currency'][entry['region']]
+                    currency = spider.spider_data['currency'][entry['region']]
                 except KeyError:
-                    pass
-                tmp = process_price(entry['price'], entry['region'], currency=currency)
-                if tmp and tmp['price'] > 0:
-                    price = tmp['price']
-                    currency = tmp['currency']
-                    rs = self.db.query_match('price', 'products_price_history', {'idproducts': pid},
+                    currency = None
+
+                price = process_price(entry['price'], entry['region'], currency=currency)
+                try:
+                    discount = process_price(entry['price_discount'], entry['region'], currency=currency)
+                except KeyError:
+                    discount = None
+
+                if price and price['price'] > 0:
+                    # 该单品最后的价格信息
+                    price_value = price['price']
+                    rs = self.db.query_match(['price', 'price_discount'], 'products_price_history', {'idproducts': pid},
                                              tail_str='ORDER BY date DESC LIMIT 1')
-                    if rs.num_rows() == 0 or float(rs.fetch_row()[0][0]) != price:
-                        self.db.insert({'idproducts': pid, 'price': price, 'currency': currency},
+                    insert_flag = False
+                    if rs.num_rows() == 0:
+                        insert_flag = True
+                    else:
+                        db_entry = [float(val) if val else None for val in rs.fetch_row()[0]]
+                        if db_entry[0] != price_value:
+                            insert_flag = True
+                        else:
+                            if db_entry[1] != (discount['price'] if discount else None):
+                                insert_flag = True
+                    if insert_flag:
+                        self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
+                                        'price_discount': (discount['price'] if discount else None)},
                                        'products_price_history')
 
             # 处理标签变化

@@ -26,7 +26,7 @@ if sys.platform not in ('win32', ):
     REMOTE_CONN = False
 
 DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-           'port': 1228 if REMOTE_CONN else 3306 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
+           'port': 1228 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
 SPIDER_SPEC = {}
 RELEASE_SPEC = {}
 TMP_SPEC = {}
