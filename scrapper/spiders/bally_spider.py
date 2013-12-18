@@ -47,9 +47,12 @@ class BallySpider(MFashionSpider):
         for node in nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -65,9 +68,12 @@ class BallySpider(MFashionSpider):
             for sub_node in sub_nodes:
                 mc = copy.deepcopy(m)
 
-                tag_text = sub_node.xpath('../h3/text()').extract()[0]
-                tag_text = self.reformat(tag_text)
-                tag_name = tag_text.lower()
+                try:
+                    tag_text = sub_node.xpath('../h3/text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
+                except(TypeError, IndexError):
+                    continue
 
                 if tag_text and tag_name:
                     mc['tags_mapping']['category-1'] = [
@@ -83,9 +89,12 @@ class BallySpider(MFashionSpider):
                 for third_node in third_nodes:
                     mcc = copy.deepcopy(mc)
 
-                    tag_text = third_node.xpath('./a/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = third_node.xpath('./a/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mcc['tags_mapping']['category-2'] = [
@@ -96,8 +105,11 @@ class BallySpider(MFashionSpider):
                         if gender:
                             mcc['gender'] = [gender]
 
-                    href = third_node.xpath('./a/@href').extract()[0]
-                    href = self.process_href(href, response.url)
+                    try:
+                        href = third_node.xpath('./a/@href').extract()[0]
+                        href = self.process_href(href, response.url)
+                    except(TypeError, IndexError):
+                        continue
 
                     yield Request(url=href,
                                   callback=self.parse_product_list,
@@ -113,10 +125,13 @@ class BallySpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            name = node.xpath('.//div[@class="infoItem"]//div[@class="macroBmode"]/text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                m['name'] = name
+            try:
+                name = node.xpath('.//div[@class="infoItem"]//div[@class="macroBmode"]/text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    m['name'] = name
+            except(TypeError, IndexError):
+                pass
 
             # 这里区分是否打折，price_node不打折的下一级是span，打折的是div
             price_node = node.xpath('.//div[@class="infoItem"]//div[@class="price"]/div[@class="prodPrice"]')
@@ -128,36 +143,50 @@ class BallySpider(MFashionSpider):
                     new_price = None
                     new_price_node = price_node.xpath('/div[@class="newprice"]')
                     if new_price_node:
-                        new_price = ''.join(
-                            self.reformat(val)
-                            for val in new_price_node.xpath('.//text()').extract()
-                        )
-                        new_price = self.reformat(new_price)
+                        try:
+                            new_price = ''.join(
+                                self.reformat(val)
+                                for val in new_price_node.xpath('.//text()').extract()
+                            )
+                            new_price = self.reformat(new_price)
+                        except(TypeError, IndexError):
+                            pass
 
-                    old_price = ''.join(
-                        self.reformat(val)
-                        for val in old_price_node.xpath('.//text()').extract()
-                    )
-                    old_price = self.reformat(old_price)
+                    old_price = None
+                    try:
+                        old_price = ''.join(
+                            self.reformat(val)
+                            for val in old_price_node.xpath('.//text()').extract()
+                        )
+                        old_price = self.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
 
                     if old_price:
                         m['price'] = old_price
                     if new_price:
                         m['price_discount'] = new_price
                 else:
-                    price = ''.join(
-                        self.reformat(val)
-                        for val in price_node.xpath('.//text()').extract()
-                    )
-                    price = self.reformat(price)
+                    price = None
+                    try:
+                        price = ''.join(
+                            self.reformat(val)
+                            for val in price_node.xpath('.//text()').extract()
+                        )
+                        price = self.reformat(price)
+                    except(TypeError, IndexError):
+                        pass
 
                     if price:
                         m['price'] = price
 
             # 这个取到的链接里边，居然包含\t啥的
-            href = node.xpath('.//a[@href]/@href').extract()[0]
-            href = re.sub(r'\r|\n|\t', '', href)
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]/@href').extract()[0]
+                href = re.sub(r'\r|\n|\t', '', href)
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -173,43 +202,55 @@ class BallySpider(MFashionSpider):
 
         # 从url中找到model
         model = None
-        mt = re.search(r'cod10/(\w+)/', response.url)
-        if mt:
-            model = mt.group(1)
-        if model:
-            metadata['model'] = model
-        else:
+        try:
+            mt = re.search(r'cod10/(\w+)/', response.url)
+            if mt:
+                model = mt.group(1)
+            if model:
+                metadata['model'] = model
+            else:
+                return
+        except(TypeError, IndexError):
             return
 
-        descripton_node = sel.xpath('//div[@id="descr_content"]/div[@id="EditorialDescription"]')
-        if descripton_node:
-            descripton = descripton_node.xpath('./text()').extract()[0]
-            descripton = self.reformat(descripton)
-            if descripton:
-                metadata['description'] = descripton
+        try:
+            descripton_node = sel.xpath('//div[@id="descr_content"]/div[@id="EditorialDescription"]')
+            if descripton_node:
+                descripton = descripton_node.xpath('./text()').extract()[0]
+                descripton = self.reformat(descripton)
+                if descripton:
+                    metadata['description'] = descripton
+        except(TypeError, IndexError):
+            pass
 
         # TODO 这个看起来好像应该有不同颜色的单品，没找到
         color_node = sel.xpath('//div[@id="colorsBoxContainer"]//ul[@id="colorsContainer"]/li/div[@title]')
         if color_node:
-            colors = [
-                self.reformat(val)
-                for val in color_node.xpath('./@title').extract()
-            ]
-            if colors:
-                metadata['color'] = colors
+            try:
+                colors = [
+                    self.reformat(val)
+                    for val in color_node.xpath('./@title').extract()
+                ]
+                if colors:
+                    metadata['color'] = colors
+            except(TypeError, IndexError):
+                pass
 
         image_urls = None
         image_nodes = sel.xpath('//div[@id="col2"]//div[@class="innerCol"]//div[@id="innerThumbs"]/div/img[@src]')
         if image_nodes:
-            thumb_srcs = [
-                val for val in image_nodes.xpath('./@src').extract()
-            ]
+            try:
+                thumb_srcs = [
+                    val for val in image_nodes.xpath('./@src').extract()
+                ]
 
-            image_urls = [
-                re.sub(r'_\d+_', str.format('_{0}_', val), src)
-                for val in xrange(17, 20)
-                for src in thumb_srcs
-            ]
+                image_urls = [
+                    re.sub(r'_\d+_', str.format('_{0}_', val), src)
+                    for val in xrange(17, 20)
+                    for src in thumb_srcs
+                ]
+            except(TypeError, IndexError):
+                pass
 
         item = ProductItem()
         item['url'] = metadata['url']
