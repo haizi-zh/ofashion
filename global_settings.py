@@ -50,7 +50,7 @@ def __fetch_region_info():
                             'weight': int(k['weight']), 'rate': float(k['rate']),
                             'name_e': k['name_e'].decode('utf-8'),
                             'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
-                            'currency': k['currency'], 'decimal': k['decimal_mark']}
+                            'currency': k['currency']}
             for k in tmp}
 
 

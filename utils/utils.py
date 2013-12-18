@@ -75,7 +75,6 @@ def process_price(price, region, decimal=None, currency=None):
             continue
         break
 
-
     # 判断小数点符号
     # 方法：如果,和.都有，谁在后面，谁就是分隔符。否则的话，看该符号是否在三的倍数位置上
     if decimal:
