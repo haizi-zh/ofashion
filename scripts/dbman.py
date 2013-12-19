@@ -249,14 +249,18 @@ class PublishRelease(object):
         # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
         discounts = [val for val in entry['price_list'] if val['price_discount']]
         if discounts:
-            price = discounts[0]['price_discount']
+            price = discounts[0]['price']
+            price_discount = discounts[0]['price_discount']
             currency = discounts[0]['currency']
         else:
             price = entry['price_list'][0]['price']
+            price_discount = None
             # 取第一个国家的价格，转换成CNY
             currency = entry['price_list'][0]['currency']
 
         entry['price'] = gs.currency_info()[currency] * price
+        if price_discount:
+            entry['price_discount'] = gs.currency_info()[currency] * price_discount
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         image_list = []
