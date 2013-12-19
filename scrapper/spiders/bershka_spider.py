@@ -162,6 +162,7 @@ class BershkaSpider(MFashionSpider):
 
             href = self.process_href(url, response.url)
 
+            # dont_filter保证从不同路径进来的url都进入单品页，生成不同的item标签
             yield Request(url=href,
                           callback=self.parse_product,
                           errback=self.onerr,
@@ -176,7 +177,7 @@ class BershkaSpider(MFashionSpider):
         metadata['url'] = response.url
 
         model = None
-        model_node = sel.xpath('//div[@id="info1"]/div[@class="padding15"]/table//td[not(child::*)][2]')
+        model_node = sel.xpath('//div[@id="info1"]/div[@class="padding15"]/table//tr[2]/td[not(child::*)][2]')
         if model_node:
             model = model_node.xpath('./text()').extract()[0]
             model = self.reformat(model)
@@ -186,3 +187,52 @@ class BershkaSpider(MFashionSpider):
         else:
             return
 
+        name_node = sel.xpath('//div[@id="info1"]//h1')
+        if name_node:
+            name = name_node.xpath('./text()').extract()[0]
+            name = self.reformat(name)
+            if name:
+                metadata['name'] = name
+
+        # 价格是用js后加载的
+        default_price = None
+        default_price_re = re.search(r'defaultPrice: "(.*)"', response.body)
+        if default_price_re:
+            default_price = default_price_re.group(1)
+            default_price = self.reformat(default_price)
+            default_price = re.sub(ur'&nbsp', ur' ', default_price)
+        # 这里这个defaultComparePrice是原价
+        # 如果没有，就是没有打折
+        old_price = None
+        old_price_re = re.search(r'defaultComparePrice: "(.*)"', response.body)
+        if old_price_re:
+            old_price = old_price_re.group(1)
+            old_price = self.reformat(old_price)
+            old_price = re.sub(ur'&nbsp', ur' ', old_price)
+
+        if old_price:
+            # 有打折
+            metadata['price'] = old_price
+            if default_price:
+                metadata['price_discount'] = default_price
+        elif default_price:
+            # 没打折
+            metadata['price'] = default_price
+
+        # 这个所有放大图片的地址，实在源码中找到的
+        image_urls = None
+        image_nodes = sel.xpath('//div[contains(@id, "superzoom_")]/div[@rel]')
+        if image_nodes:
+            image_urls = [
+                self.process_href(val, response.url)
+                for val in image_nodes.xpath('./@rel').extract()
+            ]
+
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        if image_urls:
+            item['image_urls'] = image_urls
+        item['metadata'] = metadata
+
+        yield item
