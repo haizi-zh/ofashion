@@ -310,6 +310,12 @@ class ProductImagePipeline(ImagesPipeline):
             # 处理Bottega的图片链接特征值，即url变量文件名部分的最后两个字母
             return os.path.splitext(r[1]['url'])[0][-2:]
 
+        def garmani_chrt(r):
+            # Giorgio Armani的特征：最后几个字母
+            url = r[1]['url']
+            mt = re.search(r'\d+([_a-z]+)\.[a-z]+$', url)
+            return mt.group(1)
+
         def func(chrt_func):
             url_dict = {}
             for item in list(filter(lambda val: val[0], results)):
@@ -332,6 +338,7 @@ class ProductImagePipeline(ImagesPipeline):
                     10008: lambda: func(mcqueen_chrt),
                     10109: lambda: func(dolce_chrt),
                     10049: lambda: func(bottega_chrt),
+                    10149: lambda: func(garmani_chrt),
                     10367: lambda: func(valentino_chrt)}
 
         if brand_id in func_map:

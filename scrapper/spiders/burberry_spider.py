@@ -116,7 +116,6 @@ class BurberrySpider(MFashionSpider):
                         "/li[contains(@class,'color') and not(contains(@class,'color-selected'))]"
                         "/a[@title and @data-color-link]")
         for node in ret:
-        # for node in (val for val in ret if val.xpath('@data-color-link').extract()[0] not in metadata['url']):
             m = copy.deepcopy(metadata)
             m['color'] = [self.reformat(unicodify(node.xpath('@title').extract()[0])).lower()]
             url = self.process_href(node.xpath('@data-color-link').extract()[0], response.url)
