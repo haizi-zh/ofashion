@@ -16,7 +16,11 @@ __author__ = 'Zephyre'
 
 class GiorgioArmaniSpider(MFashionSpider):
     spider_data = {'brand_id': 10149,
-                   'home_urls': {'cn': 'http://www.armani.cn/cn/giorgioarmani/accessories_section'}}
+                   'home_urls': {'cn': 'http://www.armani.cn/cn/giorgioarmani/accessories_section',
+                                 'us': ['http://www.armani.com/us/giorgioarmani/accessories_section',
+                                        'http://www.armani.com/us/giorgioarmani/sunglasses_section'],
+                                 'uk':['http://www.armani.com/gb/giorgioarmani/accessories_section',
+                                       'http://www.armani.com/gb/giorgioarmani/sunglasses_section']}}
 
     @classmethod
     def get_supported_regions(cls):
