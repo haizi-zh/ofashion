@@ -186,4 +186,5 @@ class ChaumetSpider(MFashionSpider):
         item['url'] = metadata['url']
         item['model'] = metadata['model']
         item['metadata'] = metadata
+        item['image_urls'] = image_urls
         yield item
