@@ -56,12 +56,15 @@ class BershkaSpider(MFashionSpider):
         for node in nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = ''.join(
-                self.reformat(val)
-                for val in node.xpath('.//text()').extract()
-            )
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = ''.join(
+                    self.reformat(val)
+                    for val in node.xpath('.//text()').extract()
+                )
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -95,9 +98,12 @@ class BershkaSpider(MFashionSpider):
         for node in left_nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = node.xpath('./a[text()]/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a[text()]/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
@@ -143,9 +149,12 @@ class BershkaSpider(MFashionSpider):
         for sub_node in sub_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = sub_node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = sub_node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
@@ -198,8 +207,11 @@ class BershkaSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//div[@id="info1"]/div[@class="padding15"]/table//tr[2]/td[not(child::*)][2]')
         if model_node:
-            model = model_node.xpath('./text()').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -208,26 +220,35 @@ class BershkaSpider(MFashionSpider):
 
         name_node = sel.xpath('//div[@id="info1"]//h1')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                metadata['name'] = name
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    metadata['name'] = name
+            except(TypeError, IndexError):
+                pass
 
         # 价格是用js后加载的
         default_price = None
         default_price_re = re.search(r'defaultPrice: "(.*)"', response.body)
         if default_price_re:
-            default_price = default_price_re.group(1)
-            default_price = self.reformat(default_price)
-            default_price = re.sub(ur'&nbsp', ur' ', default_price)
+            try:
+                default_price = default_price_re.group(1)
+                default_price = self.reformat(default_price)
+                default_price = re.sub(ur'&nbsp', ur' ', default_price)
+            except(TypeError, IndexError):
+                pass
         # 这里这个defaultComparePrice是原价
         # 如果没有，就是没有打折
         old_price = None
         old_price_re = re.search(r'defaultComparePrice: "(.*)"', response.body)
         if old_price_re:
-            old_price = old_price_re.group(1)
-            old_price = self.reformat(old_price)
-            old_price = re.sub(ur'&nbsp', ur' ', old_price)
+            try:
+                old_price = old_price_re.group(1)
+                old_price = self.reformat(old_price)
+                old_price = re.sub(ur'&nbsp', ur' ', old_price)
+            except(TypeError, IndexError):
+                pass
 
         if old_price:
             # 有打折
@@ -242,10 +263,13 @@ class BershkaSpider(MFashionSpider):
         colors = None
         color_nodes = sel.xpath('//div[@id="tallasdiv"]/div[@class="colors_detail"]/div[@title]')
         if color_nodes:
-            colors = [
-                self.reformat(val)
-                for val in color_nodes.xpath('./@title').extract()
-            ]
+            try:
+                colors = [
+                    self.reformat(val)
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
         if colors:
             metadata['color'] = colors
 
@@ -253,10 +277,13 @@ class BershkaSpider(MFashionSpider):
         image_urls = None
         image_nodes = sel.xpath('//div[contains(@id, "superzoom_")]/div[@rel]')
         if image_nodes:
-            image_urls = [
-                self.process_href(val, response.url)
-                for val in image_nodes.xpath('./@rel').extract()
-            ]
+            try:
+                image_urls = [
+                    self.process_href(val, response.url)
+                    for val in image_nodes.xpath('./@rel').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
         item = ProductItem()
         item['url'] = metadata['url']
