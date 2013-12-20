@@ -107,10 +107,10 @@ class ChaumetSpider(MFashionSpider):
                     except (TypeError, IndexError):
                         pass
                     yield Request(url=url, meta={'userdata': m}, callback=self.parse_cat, errback=self.onerr)
-            # else:
-            #     # 到达叶节点
-            #     for val in self.parse_details(response):
-            #         yield val
+                    # else:
+                    #     # 到达叶节点
+                    #     for val in self.parse_details(response):
+                    #         yield val
 
     def parse_details(self, response):
         metadata = response.meta['userdata']
@@ -144,9 +144,9 @@ class ChaumetSpider(MFashionSpider):
 
         tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), desc_terms))
         if tmp:
-            tmp = self.reformat(re.sub(pattern, '', tmp[0]))
-            if tmp:
-                metadata['model'] = tmp
+            model = tmp[0][re.search(pattern, tmp[0], flags=re.U | re.I).end():]
+            if model:
+                metadata['model'] = model
 
         details_terms = filter(lambda val: val,
                                (self.reformat(val) for val in
