@@ -15,8 +15,7 @@ import json
 class BershkaSpider(MFashionSpider):
 
     spider_data = {
-        'brand_id': 10040,
-        'currency': {
+        'brand_id': 10040,        'currency': {
             'hk': 'USD',
             'sg': 'USD',
         },
@@ -71,7 +70,7 @@ class BershkaSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text,},
                 ]
 
-                gender = common.guess_gender(tag_name)
+                gender = common.guess_gender(tag_name, {'male': [], 'female': [u'少女']})
                 if gender:
                     m['gender'] = [gender]
 
@@ -110,7 +109,7 @@ class BershkaSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text,},
                 ]
 
-                gender = common.guess_gender(tag_name)
+                gender = common.guess_gender(tag_name, {'male': [], 'female': [u'少女']})
                 if gender:
                     m['gender'] = [gender]
 
@@ -161,7 +160,7 @@ class BershkaSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text,},
                 ]
 
-                gender = common.guess_gender(tag_name)
+                gender = common.guess_gender(tag_name, {'male': [], 'female': [u'少女']})
                 if gender:
                     m['gender'] = [gender]
 
