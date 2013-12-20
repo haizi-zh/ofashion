@@ -144,8 +144,8 @@ class HermesSpider(MFashionSpider):
             elif zoom_image_url.replace('/', r'\/') in unicodify(response.body):
                 image_url = zoom_image_url
 
-            m['description'] = data['descriptions'][product_id]
-            m['name'] = data['names'][product_id]
+            m['description'] = self.reformat(data['descriptions'][product_id])
+            m['name'] = self.reformat(data['names'][product_id])
             m['model'] = data['skus'][product_id]
             if product_id in data['links']:
                 m['url'] = data['links'][product_id]
