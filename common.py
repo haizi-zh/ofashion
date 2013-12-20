@@ -952,7 +952,7 @@ def is_cjk(val):
     @param val:
     """
     for c in val:
-        if c >= '\u4e00' and c < '\u9fff':
+        if ord(c) >= 0x4e00 and ord(c) < 0x9ffff:
             return True
     else:
         return False
