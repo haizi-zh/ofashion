@@ -16,8 +16,27 @@ class BershkaSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10040,
+        'currency': {
+            'hk': 'USD',
+            'sg': 'USD',
+        },
         'home_urls': {
             'cn': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkacn/zh/40109502',
+            'fr': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkafr/fr/40109502',
+            'uk': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkagb/en/40109502',
+            'hk': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkahk/en/40109502',
+            'jp': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkajp/en/40109502',
+            'it': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkait/it/40109502',
+            'ae': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkaae/en/40109502',
+            'sg': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkasg/en/40109502',
+            'de': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkade/de/40109502',
+            'es': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkaes/es/40109502',
+            'ch': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkach/en/40109502',
+            'ru': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkaru/ru/40109502',
+            'th': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkath/en/40109502',
+            'kr': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkakr/en/40109502',
+            'my': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkamy/en/40109502',
+            'nl': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkanl/nl/40109502',
         },
     }
 
