@@ -219,6 +219,17 @@ class BershkaSpider(MFashionSpider):
             # 没打折
             metadata['price'] = default_price
 
+        # 颜色标签
+        colors = None
+        color_nodes = sel.xpath('//div[@id="tallasdiv"]/div[@class="colors_detail"]/div[@title]')
+        if color_nodes:
+            colors = [
+                self.reformat(val)
+                for val in color_nodes.xpath('./@title').extract()
+            ]
+        if colors:
+            metadata['color'] = colors
+
         # 这个所有放大图片的地址，实在源码中找到的
         image_urls = None
         image_nodes = sel.xpath('//div[contains(@id, "superzoom_")]/div[@rel]')
