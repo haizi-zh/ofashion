@@ -52,61 +52,65 @@ class ChaumetSpider(MFashionSpider):
     def parse_cat(self, response):
         metadata = response.meta['userdata']
         sel = Selector(response)
+        checked_all = ('checked-all' in response.meta)
 
-        # 右边是否有”显示所有“之类的按钮？
-        node_list = filter(lambda node: self.reformat(node.xpath('@title').extract()[0]).lower() in \
-                                        (u'显示所有', 'view all', 'show all', u'すべて表示する', 'tout afficher'),
-                           sel.xpath('//div[contains(@id,"pageContent")]/div[@class="btnCtn right"]'
-                                     '/a[@title and @href]'))
-        if node_list:
-            yield Request(url=self.process_href(node_list[0].xpath('@href').extract()[0], response.url),
-                          meta={'userdata': metadata}, callback=self.parse_cat, errback=self.onerr)
+        if not checked_all:
+            # 右边是否有”显示所有“之类的按钮？
+            node_list = filter(lambda node: self.reformat(node.xpath('@title').extract()[0]).lower() in \
+                                            (u'显示所有', 'view all', 'show all', u'すべて表示する', 'tout afficher'),
+                               sel.xpath('//div[contains(@id,"pageContent")]/div[@class="btnCtn right"]'
+                                         '/a[@title and @href]'))
+            if node_list:
+                yield Request(url=self.process_href(node_list[0].xpath('@href').extract()[0], response.url),
+                              meta={'userdata': metadata, 'checked-all': True}, callback=self.parse_cat,
+                              errback=self.onerr)
+                return
+
+        # 查找grid内容
+        prod_nodes = sel.xpath('//div[contains(@id,"pageContent")]/div[contains(@class,"grid")]'
+                               '/div[contains(@class,"Cell")]/div[contains(@class,"layerProduit")]'
+                               '/div[@class="inner"]/a[@href]')
+        if prod_nodes:
+            # 这是单品节点
+            for node in prod_nodes:
+                href = node.xpath('@href').extract()[0]
+                m = copy.deepcopy(metadata)
+                # 尝试查找价格信息
+                try:
+                    tmp = self.reformat(node.xpath('../*[@class="price"]/text()').extract()[0])
+                    if tmp:
+                        m['price'] = tmp
+                except IndexError:
+                    pass
+                yield Request(url=self.process_href(href, response.url), callback=self.parse_details,
+                              errback=self.onerr, meta={'userdata': m})
         else:
-            # 查找grid内容
-            prod_nodes = sel.xpath('//div[contains(@id,"pageContent")]/div[contains(@class,"grid")]'
-                                   '/div[contains(@class,"Cell")]/div[contains(@class,"layerProduit")]'
-                                   '/div[@class="inner"]/a[@href]')
-            if prod_nodes:
-                # 这是单品节点
-                for node in prod_nodes:
-                    href = node.xpath('@href').extract()[0]
+            # 这是类别节点
+            cat_nodes = sel.xpath('//div[contains(@id,"pageContent")]/div[contains(@class,"grid")]'
+                                  '/div[contains(@class,"Cell")]/a[@href]')
+            if cat_nodes:
+                for node in cat_nodes:
                     m = copy.deepcopy(metadata)
-                    # 尝试查找价格信息
+                    url = self.process_href(node.xpath('@href').extract()[0], response.url)
+                    # 尝试查找分类信息
+                    tmp = node.xpath('./img[@title]/@title').extract()
                     try:
-                        tmp = self.reformat(node.xpath('../*[@class="price"]/text()').extract()[0])
-                        if tmp:
-                            m['price'] = tmp
-                    except IndexError:
+                        tag_text = self.reformat(tmp[0])
+                        tag_name = tag_text.lower()
+                        if tag_text:
+                            # 目前metadata中最深层次的category
+                            deepest = sorted(filter(lambda val: re.search(r'^category-\d+', val),
+                                                    m['tags_mapping'].keys()))[-1]
+                            new_level = int(re.search(r'^category-(\d+)', deepest).group(1)) + 1
+                            m['tags_mapping'][str.format('category-{0}', new_level)] = [
+                                {'name': tag_name, 'title': tag_text}]
+                    except (TypeError, IndexError):
                         pass
-                    yield Request(url=self.process_href(href, response.url), callback=self.parse_details,
-                                  errback=self.onerr, meta={'userdata': m})
-            else:
-                # 这是类别节点
-                cat_nodes = sel.xpath('//div[contains(@id,"pageContent")]/div[contains(@class,"grid")]'
-                                      '/div[contains(@class,"Cell")]/a[@href]')
-                if cat_nodes:
-                    for node in cat_nodes:
-                        m = copy.deepcopy(metadata)
-                        url = self.process_href(node.xpath('@href').extract()[0], response.url)
-                        # 尝试查找分类信息
-                        tmp = node.xpath('./img[@title]/@title').extract()
-                        try:
-                            tag_text = self.reformat(tmp[0])
-                            tag_name = tag_text.lower()
-                            if tag_text:
-                                # 目前metadata中最深层次的category
-                                deepest = sorted(filter(lambda val: re.search(r'^category-\d+', val),
-                                                        m['tags_mapping'].keys()))[-1]
-                                new_level = int(re.search(r'^category-(\d+)', deepest).group(1)) + 1
-                                m['tags_mapping'][str.format('category-{0}', new_level)] = [
-                                    {'name': tag_name, 'title': tag_text}]
-                        except (TypeError, IndexError):
-                            pass
-                        yield Request(url=url, meta={'userdata': m}, callback=self.parse_cat, errback=self.onerr)
-                else:
-                    # 到达叶节点
-                    for val in self.parse_details(response):
-                        yield val
+                    yield Request(url=url, meta={'userdata': m}, callback=self.parse_cat, errback=self.onerr)
+            # else:
+            #     # 到达叶节点
+            #     for val in self.parse_details(response):
+            #         yield val
 
     def parse_details(self, response):
         metadata = response.meta['userdata']
@@ -169,6 +173,7 @@ class ChaumetSpider(MFashionSpider):
             item['url'] = metadata['url']
             item['model'] = metadata['model']
             item['metadata'] = metadata
+            item['image_urls'] = []
             yield item
 
     def parse_image(self, response):
