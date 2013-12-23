@@ -45,7 +45,7 @@ class ChristianLouboutinSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text,},
                 ]
 
-                gender = common.guess_gender(tag_name)
+                gender = common.guess_gender(tag_name, extra={'male': [], 'female': ['lady']})
                 if gender:
                     m['gender'] = [gender]
 
@@ -79,7 +79,7 @@ class ChristianLouboutinSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text,},
                 ]
 
-                gender = common.guess_gender(tag_name)
+                gender = common.guess_gender(tag_name, extra={'male': [], 'female': ['lady']})
                 if gender:
                     m['gender'] = [gender]
 
@@ -116,7 +116,7 @@ class ChristianLouboutinSpider(MFashionSpider):
                     {'name': tag_name, 'title': tag_text,},
                 ]
 
-                gender = common.guess_gender(tag_name)
+                gender = common.guess_gender(tag_name, extra={'male': [], 'female': ['lady']})
                 if gender:
                     m['gender'] = [gender]
 
@@ -150,13 +150,9 @@ class ChristianLouboutinSpider(MFashionSpider):
 
                 m['name'] = name
 
-            # # 这个detail，比如高跟鞋，记录了跟高，还有点用感觉
-            # detail_node = node.xpath('.//span[text()]')
-            # if detail_node:
-            #     detail = detail_node.xpath('./text()').extract()[0]
-            #     detail = self.reformat(detail)
-            #
-            #     m['details'] = detail
+                gender = common.guess_gender(name, extra={'male': [], 'female': ['lady']})
+                if gender:
+                    m['gender'] = [gender]
 
             href = node.xpath('./@href').extract()[0]
             href = self.process_href(href, response.url)
@@ -204,6 +200,10 @@ class ChristianLouboutinSpider(MFashionSpider):
                 name = self.reformat(name)
                 if name:
                     metadata['name'] = name
+
+                    gender = common.guess_gender(name, extra={'male': [], 'female': ['lady']})
+                    if gender:
+                        metadata['gender'] = [gender]
 
         # 它这个颜色只写一个，多种颜色会写multi
         color_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[2]/strong[text()]')
