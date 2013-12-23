@@ -15,8 +15,31 @@ class ChristianLouboutinSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10084,
+        'currency': {
+            'mo': 'HKD',
+        },
         'home_urls': {
-            'us': 'http://us.christianlouboutin.com/us_en',
+            'us': 'http://us.christianlouboutin.com/us_en/',
+            'ca': 'http://us.christianlouboutin.com/ca_en/',
+            'fr': 'http://eu.christianlouboutin.com/fr_fr/',
+            'uk': 'http://eu.christianlouboutin.com/uk_en/',
+            'it': 'http://eu.christianlouboutin.com/it_en/',
+            'de': 'http://eu.christianlouboutin.com/de_en/',
+            'es': 'http://eu.christianlouboutin.com/es_en/',
+            'ch': 'http://eu.christianlouboutin.com/ch_en/',
+            'at': 'http://eu.christianlouboutin.com/at_en/',
+            'be': 'http://eu.christianlouboutin.com/be_fr/',
+            'gr': 'http://eu.christianlouboutin.com/gr_en/',
+            'ie': 'http://eu.christianlouboutin.com/ie_en/',
+            'lu': 'http://eu.christianlouboutin.com/lu_fr/',
+            'mc': 'http://eu.christianlouboutin.com/mc_fr/',
+            'nl': 'http://eu.christianlouboutin.com/nl_en/',
+            'pt': 'http://eu.christianlouboutin.com/pt_en/',
+            'hk': 'http://asia.christianlouboutin.com/hk_en/',
+            'mo': 'http://asia.christianlouboutin.com/hk_en/',  # 它这个和香港用了一个地址
+            'my': 'http://asia.christianlouboutin.com/my_en/',
+            'sg': 'http://asia.christianlouboutin.com/sg_en/',
+            'tw': 'http://asia.christianlouboutin.com/tw_tc/',
         },
     }
 
