@@ -87,6 +87,43 @@ class ChristianLouboutinSpider(MFashionSpider):
             href = self.process_href(href, response.url)
 
             yield Request(url=href,
+                          callback=self.parse_third_nav,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+        for val in self.parse_procut_list(response):
+            yield val
+
+    def parse_third_nav(self, response):
+        """
+        有些二级分类有三级
+        比如：http://us.christianlouboutin.com/us_en/shop-online-3/women/platforms.html
+        """
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        third_nav_nodes = sel.xpath('//div[@id="main"]/div/div[contains(@class, "navigation")]/ul/li/ul/li/ul/li/ul/li/a[text()]')
+        for sub_node in third_nav_nodes:
+            m = copy.deepcopy(metadata)
+
+            tag_text = sub_node.xpath('./text()').extract()[0]
+            tag_text = self.reformat(tag_text)
+            tag_name = tag_text.lower()
+
+            if tag_text and tag_name:
+                m['tags_mapping']['category-2'] = [
+                    {'name': tag_name, 'title': tag_text,},
+                ]
+
+                gender = common.guess_gender(tag_name)
+                if gender:
+                    m['gender'] = [gender]
+
+            href = sub_node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
                           callback=self.parse_procut_list,
                           errback=self.onerr,
                           meta={'userdata': m})
@@ -135,8 +172,18 @@ class ChristianLouboutinSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        # TODO 进入不同颜色的单品页，它给了不同的单品号
+        # 进入不同颜色的单品页，它给了不同的单品号
+        other_nodes = sel.xpath('//dl[@id="media-tabs"]/dd[2]//a')
+        for other_node in other_nodes:
+            m = copy.deepcopy(metadata)
 
+            href = other_node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_product,
+                          errback=self.onerr,
+                          meta={'userdata': m})
 
         metadata['url'] = response.url
 
@@ -150,7 +197,21 @@ class ChristianLouboutinSpider(MFashionSpider):
         else:
             return
 
-        # TODO 自己的颜色和名字
+        if not metadata.get('name'):
+            name_node = sel.xpath('//div[@class="product-view"]/form/hgroup/h1[text()]')
+            if name_node:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    metadata['name'] = name
+
+        # 它这个颜色只写一个，多种颜色会写multi
+        color_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[2]/strong[text()]')
+        if color_node:
+            color = color_node.xpath('./text()').extract()[0]
+            color = self.reformat(color)
+            if color:
+                metadata['color'] = [color]
 
         description_node = sel.xpath('//div[@id="product-description"][text()]')
         if description_node:
