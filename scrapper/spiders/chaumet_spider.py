@@ -144,9 +144,10 @@ class ChaumetSpider(MFashionSpider):
 
         tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), desc_terms))
         if tmp:
-            model = tmp[0][re.search(pattern, tmp[0], flags=re.U | re.I).end():]
-            if model:
-                metadata['model'] = model
+            tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
+            mt = re.search(r'[a-zA-Z\d\-]+', tmp)
+            if mt:
+                metadata['model'] = mt.group()
 
         details_terms = filter(lambda val: val,
                                (self.reformat(val) for val in
@@ -157,10 +158,13 @@ class ChaumetSpider(MFashionSpider):
             tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), details_terms))
             if not tmp:
                 return
-            tmp = self.reformat(re.sub(pattern, '', tmp[0]))
+            tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
             if not tmp:
                 return
-            metadata['model'] = tmp
+            mt = re.search(r'[a-zA-Z\d\-]+', tmp)
+            if not mt:
+                return
+            metadata['model'] = mt.group()
         if details_terms:
             metadata['details'] = '\r'.join(details_terms)
 
