@@ -15,9 +15,9 @@ class ChristianLouboutinSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10084,
-        'currency': {
-            'mo': 'HKD',
-        },
+        # 'currency': {
+        #     'mo': 'HKD',
+        # },
         'home_urls': {
             'us': 'http://us.christianlouboutin.com/us_en/',
             'ca': 'http://us.christianlouboutin.com/ca_en/',
@@ -36,7 +36,7 @@ class ChristianLouboutinSpider(MFashionSpider):
             'nl': 'http://eu.christianlouboutin.com/nl_en/',
             'pt': 'http://eu.christianlouboutin.com/pt_en/',
             'hk': 'http://asia.christianlouboutin.com/hk_en/',
-            'mo': 'http://asia.christianlouboutin.com/hk_en/',  # 它这个和香港用了一个地址
+            # 'mo': 'http://asia.christianlouboutin.com/hk_en/',  # 它这个和香港用了一个地址
             'my': 'http://asia.christianlouboutin.com/my_en/',
             'sg': 'http://asia.christianlouboutin.com/sg_en/',
             'tw': 'http://asia.christianlouboutin.com/tw_tc/',
