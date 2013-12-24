@@ -62,7 +62,7 @@ class AlexanderWangSpider(MFashionSpider):
         'home_urls': {
             'cn': 'http://www.alexanderwang.cn/',
             'it': 'http://store.alexanderwang.com/it',
-            'us': 'http://store.alexanderwang.com/',
+            'us': 'http://store.alexanderwang.com/us',  # 虽然此页不存在，但可以避免被重定向到中国官网
             'fr': 'http://store.alexanderwang.com/fr',
             'uk': 'http://store.alexanderwang.com/gb',
             'hk': 'http://store.alexanderwang.com/hk',
@@ -129,6 +129,8 @@ class AlexanderWangSpider(MFashionSpider):
         sel = Selector(response)
 
         nav_nodes = sel.xpath('//nav[@id="sitenav"]/ul/li[child::a[@href]]')
+        if not nav_nodes:   # 针对美国官网
+            nav_nodes = sel.xpath('//div[@class="global-nav"]/ul/li')
         for node in nav_nodes:
             try:
                 tag_text = node.xpath('./a/text()').extract()[0]
@@ -191,6 +193,8 @@ class AlexanderWangSpider(MFashionSpider):
 
         # 有些类别有第三级展开，比如中国，促销，女装
         nav_nodes = sel.xpath('//nav[@id="navMenu"]//ul//ul//ul//li//a[@href]')
+        if not nav_nodes:   # 针对美国官网
+            nav_nodes = sel.xpath('//div[@class="left-navigation"]//ul/li/ul/li/a[@href]')
         for node in nav_nodes:
             try:
                 tag_text = node.xpath('./text()').extract()[0]
@@ -230,9 +234,12 @@ class AlexanderWangSpider(MFashionSpider):
         sel = Selector(response)
 
         product_nodes = sel.xpath('//div[contains(@class, "content")]//ul[@class="productsContainer"]//li')
+        if not product_nodes:   # 针对美国官网
+            product_nodes = sel.xpath('//div[@class="fixer products-grid"]/ul/li')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
+            name = None
             try:
                 name = node.xpath('.//div[@class="description"]/a/div[@class="title"]/text()').extract()[0]
                 name = self.reformat(name)
@@ -240,6 +247,14 @@ class AlexanderWangSpider(MFashionSpider):
                     m['name'] = name
             except(TypeError, IndexError):
                 pass
+            if not name:    # 针对美国官网
+                try:
+                    name = node.xpath('./div[@class="product-info"]//a[@class="product-name"]/text()').extract()[0]
+                    name = self.reformat(name)
+                    if name:
+                        m['name'] = name
+                except(TypeError, IndexError):
+                    pass
 
             try:
                 price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
@@ -261,9 +276,28 @@ class AlexanderWangSpider(MFashionSpider):
                         m['price_discount'] = new_price
                     elif new_price:
                         m['price'] = new_price
+                else:   # 针对美国官网
+                    price_node = node.xpath('.//li[@class="product-price"]/cite[text()]')
+                    if price_node:  # 这是无折扣的
+                        price = price_node.xpath('./text()').extract()[0]
+                        price = self.reformat(price)
+                        if price:
+                            m['price'] = price
+                    else:   # 这是有折扣的
+                        price_node = node.xpath('.//li[@class="product-price"]//li[contains(@class, "retail")][text()]')
+                        price = price_node.xpath('./text()').extract()[0]
+                        price = self.reformat(price)
+                        if price:
+                            m['price'] = price
+                        price_discount_node = node.xpath('.//li[@class="product-price"]//li[contains(@class, "markdown")][text()]')
+                        price_disount = price_discount_node.xpath('./text()').extract()[0]
+                        price_disount = self.reformat(price_disount)
+                        if price_disount:
+                            m['price_discount'] = price_disount
             except(TypeError, IndexError):
                 pass
 
+            # 这里只有非美国的，美国官网的那个，这里列表的颜色，没有一个描述
             try:
                 color_nodes = node.xpath('.//div[@class="colorsList"]//div[@class="color"]//img[@title]')
                 if color_nodes:
@@ -323,6 +357,8 @@ class AlexanderWangSpider(MFashionSpider):
         try:
             model = None
             model_node = sel.xpath('//li[@id="description_container"]/div[@id="description_pane"]/div[@class="style"]')
+            if not model_node:  # 针对美国官网
+                model_node = sel.xpath('//div[@class="accordion"]//span[@class="product-style"]')
             if model_node:
                 model_text = model_node.xpath('./text()').extract()[0]
                 model_text = self.reformat(model_text)
@@ -342,6 +378,7 @@ class AlexanderWangSpider(MFashionSpider):
         # 这里主要是针对有些商品打折，有些没打折
         # 如果没打折，那么，在parse_product_list中的那个price_node会为None
         # 此处针对没打折商品，找到价格
+        # 美国的价格已经在上一层找到，这里不找一次了再
         try:
             if not metadata.get('price'):
                 price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="oldprice"]')
@@ -376,12 +413,33 @@ class AlexanderWangSpider(MFashionSpider):
                 metadata['color'] = colors
         except(TypeError, IndexError):
             pass
+        # 这里要特别找到美国官网上，单品的颜色
+        try:
+            colors = [
+                self.reformat(val)
+                for val in sel.xpath('//div[@id="product_options"]//img[@alt]/@alt').extract()
+            ]
+            if colors:
+                metadata['color'] = colors
+        except(TypeError, IndexError):
+            pass
 
 
         try:
             description = '\r'.join(
                 self.reformat(val)
                 for val in sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]//text()').extract()
+            )
+            description = self.reformat(description)
+            if description:
+                metadata['description'] = description
+        except(TypeError, IndexError):
+            pass
+        # 这里针对美国官网
+        try:
+            description = '\r'.join(
+                self.reformat(val)
+                for val in sel.xpath('//div[@class="product-information"]//div[contains(@class, "first")]//div[@class="accordion-inner"]/p/text()').extract()
             )
             description = self.reformat(description)
             if description:
@@ -400,10 +458,21 @@ class AlexanderWangSpider(MFashionSpider):
                 metadata['details'] = detail
         except(TypeError, IndexError):
             pass
+        # 这里针对美国官网
+        try:
+            detail = '\r'.join(
+                self.reformat(val)
+                for val in sel.xpath('//div[@class="product-information"]//div[@class="accordion-group"][not(child::ul)]//div[@class="accordion-inner"]/p/text()').extract()
+            )
+            detail = self.reformat(detail)
+            if detail:
+                metadata['details'] = detail
+        except(TypeError, IndexError):
+            pass
 
 
         # 下边是取的图片url
-        image_urls = []
+        image_urls = None
 
         # 另一些颜色的url，与当前node的url区别在于一个叫data-cod10的东西
         # 根据从颜色标签中取的的data-cod10，生成另一种颜色的图片url
@@ -430,11 +499,32 @@ class AlexanderWangSpider(MFashionSpider):
             ]
 
             # 不同尺寸的图片
-            image_urls += [
+            image_urls = [
                 re.sub(r'_\d+_', str.format('_{0}_', val), src)
                 for val in xrange(12, 17)
                 for src in all_color_srcs
             ]
+
+        # 针对美国官网，取图片url
+        image_nodes = sel.xpath('//div[@id="product-right"]//div[@class="image-pdp-wrapper"]/img[@data-zoomed]')
+        if image_nodes:
+            image_urls = [
+                self.process_href(val, response.url)
+                for val in image_nodes.xpath('./@data-zoomed').extract()
+            ]
+
+            # 这里进入链接，取不同颜色图片
+            other_nodes = sel.xpath('//div[@id="product_options"]//div[@class="swatchWrapper"]//a[@href]')
+            for node in other_nodes:
+                m = copy.deepcopy(metadata)
+
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+
+                yield Request(url=href,
+                              callback=self.parse_product,
+                              errback=self.onerr,
+                              meta={'userdata': m})
 
         item = ProductItem()
         item['url'] = metadata['url']
