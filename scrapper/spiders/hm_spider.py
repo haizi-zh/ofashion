@@ -180,7 +180,8 @@ class HMSpider(MFashionSpider):
                 yield Request(url=color_image_href,
                               callback=self.parse_images,
                               errback=self.onerr,
-                              meta={'userdata': m})
+                              meta={'userdata': m},
+                              dont_filter=True)
 
         item = ProductItem()
         item['url'] = metadata['url']
