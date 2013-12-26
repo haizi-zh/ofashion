@@ -17,7 +17,8 @@ class JimmyChooSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10184,
         'home_urls': {
-            'us': 'http://us.jimmychoo.com/',
+            'us': 'http://us.jimmychoo.com/?geoip=geoip&siteid=jchus',
+            'uk': 'http://www.jimmychoo.com/?geoip=geoip&siteid=jchgb',
         },
     }
 
