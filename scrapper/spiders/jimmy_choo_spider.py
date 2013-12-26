@@ -38,9 +38,12 @@ class JimmyChooSpider(MFashionSpider):
         for node in nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -56,9 +59,12 @@ class JimmyChooSpider(MFashionSpider):
             for sub_node in sub_nodes:
                 mc = copy.deepcopy(m)
 
-                tag_text = sub_node.xpath('./a/text()').extract()[0]
-                tag_text = self.reformat(tag_text)
-                tag_name = tag_text.lower()
+                try:
+                    tag_text = sub_node.xpath('./a/text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
+                except(TypeError, IndexError):
+                    continue
 
                 if tag_text and tag_name:
                     mc['tags_mapping']['category-1'] = [
@@ -74,9 +80,12 @@ class JimmyChooSpider(MFashionSpider):
                 for third_node in third_nodes:
                     mcc = copy.deepcopy(mc)
 
-                    tag_text = third_node.xpath('./text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = third_node.xpath('./text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mcc['tags_mapping']['category-2'] = [
@@ -87,16 +96,22 @@ class JimmyChooSpider(MFashionSpider):
                         if gender:
                             mcc['gender'] = [gender]
 
-                    href = third_node.xpath('./@href').extract()[0]
-                    href = self.process_href(href, response.url)
+                    try:
+                        href = third_node.xpath('./@href').extract()[0]
+                        href = self.process_href(href, response.url)
+                    except(TypeError, IndexError):
+                        continue
 
                     yield Request(url=href,
                                   callback=self.parse_product_list,
                                   errback=self.onerr,
                                   meta={'userdata': mcc})
 
-                href = sub_node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                try:
+                    href = sub_node.xpath('./a/@href').extract()[0]
+                    href = self.process_href(href, response.url)
+                except(TypeError, IndexError):
+                    continue
 
                 yield Request(url=href,
                               callback=self.parse_product_list,
@@ -121,42 +136,54 @@ class JimmyChooSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            name = node.xpath('./div[@class="name"]/a/text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                m['name'] = name
+            try:
+                name = node.xpath('./div[@class="name"]/a/text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    m['name'] = name
+            except(TypeError, IndexError):
+                pass
 
-            price_node = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="salesprice"]')
-            # 非打折商品
-            if price_node:
-                price = price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
-            # 打折商品
-            else:
-                price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="standardprice"]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
+            try:
+                price_node = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="salesprice"]')
+                # 非打折商品
+                if price_node:
+                    price = price_node.xpath('./text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        m['price'] = price
+                # 打折商品
+                else:
+                    price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="standardprice"]/text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        m['price'] = price
 
-                discount_price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="salesprice"]/text()').extract()[0]
-                discount_price = self.reformat(discount_price)
-                if discount_price:
-                    m['price_discount'] = discount_price
+                    discount_price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="salesprice"]/text()').extract()[0]
+                    discount_price = self.reformat(discount_price)
+                    if discount_price:
+                        m['price_discount'] = discount_price
+            except(TypeError, IndexError):
+                pass
 
-            colors = None
-            color_nodes = node.xpath('./div[@class="swatches"]/div[@class="palette"]/div[@class="innerpalette"]/a[@title]')
-            if color_nodes:
-                colors = [
-                    self.reformat(val).lower()
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-            if colors:
-                m['color'] = colors
+            try:
+                colors = None
+                color_nodes = node.xpath('./div[@class="swatches"]/div[@class="palette"]/div[@class="innerpalette"]/a[@title]')
+                if color_nodes:
+                    colors = [
+                        self.reformat(val).lower()
+                        for val in color_nodes.xpath('./@title').extract()
+                    ]
+                if colors:
+                    m['color'] = colors
+            except(TypeError, IndexError):
+                pass
 
-            href = node.xpath('.//a[@href]/@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]/@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -186,14 +213,17 @@ class JimmyChooSpider(MFashionSpider):
 
         # model隐藏在源码的一个link里边
         model = None
-        model_link_node = sel.xpath('//link[@rel="canonical"][@href]')
-        if model_link_node:
-            model_link = model_link_node.xpath('./@href').extract()[0]
-            model_link = self.reformat(model_link)
-            if model_link:
-                mt = re.search(r'-(\w+)\.', model_link)
-                if mt:
-                    model = mt.group(1).upper()
+        try:
+            model_link_node = sel.xpath('//link[@rel="canonical"][@href]')
+            if model_link_node:
+                model_link = model_link_node.xpath('./@href').extract()[0]
+                model_link = self.reformat(model_link)
+                if model_link:
+                    mt = re.search(r'-(\w+)\.', model_link)
+                    if mt:
+                        model = mt.group(1).upper()
+        except(TypeError, IndexError):
+            pass
         if model:
             metadata['model'] = model
         else:
@@ -203,49 +233,61 @@ class JimmyChooSpider(MFashionSpider):
         # 这里在单品页再取一次
         # 比如：http://row.jimmychoo.com/en/women/handbags/cross-body-bags/rebel/black--grainy-calf-leather-cross-body-bag-247rebelgrc.html?start=5&dwvar_247rebelgrc_size=One%20Size&dwvar_247rebelgrc_color=Black
         colors = None
-        color_nodes = sel.xpath('//div[@class="variationattributes"]/div[@class="swatches color"]/ul/li/a[@title]')
-        if color_nodes:
-            colors = [
-                self.reformat(val)
-                for val in color_nodes.xpath('./@title').extract()
-            ]
-        if (not metadata.get('color')) and colors:
+        try:
+            color_nodes = sel.xpath('//div[@class="variationattributes"]/div[@class="swatches color"]/ul/li/a[@title]')
+            if color_nodes:
+                colors = [
+                    self.reformat(val)
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+        except(TypeError, IndexError):
+            pass
+        if colors:
             metadata['color'] = colors
 
-        description_node = sel.xpath('//div[@id="descriptionAccordian"]/p[text()]')
-        if description_node:
-            description = description_node.xpath('./text()').extract()[0]
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
+        try:
+            description_node = sel.xpath('//div[@id="descriptionAccordian"]/p[text()]')
+            if description_node:
+                description = description_node.xpath('./text()').extract()[0]
+                description = self.reformat(description)
+                if description:
+                    metadata['description'] = description
+        except(TypeError, IndexError):
+            pass
 
         # 这里包含了页面上 DELIVERY AND RETURNS 和 SIZE AND FIT 两部分
         # 感觉都有点儿用
-        detail_node = sel.xpath('//div[@id="deliveryAccordian" or @id="sizeAccordian"]/p[text()]')
-        if detail_node:
-            detail = '\r'.join(
-                self.reformat(val)
-                for val in detail_node.xpath('./text()').extract()
-            )
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
+        try:
+            detail_node = sel.xpath('//div[@id="deliveryAccordian" or @id="sizeAccordian"]/p[text()]')
+            if detail_node:
+                detail = '\r'.join(
+                    self.reformat(val)
+                    for val in detail_node.xpath('./text()').extract()
+                )
+                detail = self.reformat(detail)
+                if detail:
+                    metadata['details'] = detail
+        except(TypeError, IndexError):
+            pass
 
         image_urls = []
-        start = 0
-        while 1:
-            mt = re.search(r'xlarge:', response.body[start:])
-            if mt:
-                result = common.extract_closure(response.body[mt.start():], '\[', '\]')
-                content = result[0]
-                start = result[2]
-                if 0 == start:
+        try:
+            start = 0
+            while 1:
+                mt = re.search(r'xlarge:', response.body[start:])
+                if mt:
+                    result = common.extract_closure(response.body[mt.start():], '\[', '\]')
+                    content = result[0]
+                    start = result[2]
+                    if 0 == start:
+                        break
+                    url_list = re.findall('"url":.*\'(.+)\?.*\'', content)
+                    for url in url_list:
+                        image_urls += [self.process_href(url, response.url)]
+                else:
                     break
-                url_list = re.findall('"url":.*\'(.+)\?.*\'', content)
-                for url in url_list:
-                    image_urls += [self.process_href(url, response.url)]
-            else:
-                break
+        except(TypeError, IndexError):
+            pass
 
         item = ProductItem()
         item['url'] = metadata['url']
