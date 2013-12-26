@@ -23,7 +23,7 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
     def process_href(href, referer):
         ret = urlparse.urlparse(href)
         netloc = ret.netloc if ret.netloc else urlparse.urlparse(referer).netloc
-        scheme = ret.scheme if ret.scheme else 'http'
+        scheme = ret.scheme if ret.scheme else urlparse.urlparse(referer).scheme
         return urlparse.urlunparse((scheme, netloc, ret.path, ret.params, ret.query, ret.fragment))
 
     def reformat(self, text):
