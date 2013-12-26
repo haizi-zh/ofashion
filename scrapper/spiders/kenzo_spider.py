@@ -22,9 +22,11 @@ class KenzoSpider(MFashionSpider):
         },
         'home_urls': {
             'uk': 'https://www.kenzo.com/en/',
+            'fr': 'https://www.kenzo.com/fr/',
         },
         'server_urls': {
             'uk': 'https://www.kenzo.com/en/services/product/',
+            'fr': 'https://www.kenzo.com/fr/services/product/',
         },
     }
 
