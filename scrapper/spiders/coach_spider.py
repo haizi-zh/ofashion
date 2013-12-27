@@ -173,9 +173,8 @@ class CoachSpider(MFashionSpider):
             for item in data['swatchGroup']['swatches']:
                 if 'listPrice' in item:
                     metadata['price'] = self.reformat(item['listPrice'])
-                    break
-                elif 'unitPrice' in item:
-                    metadata['price'] = self.reformat(item['unitPrice'])
+                    if 'unitPrice' in item:
+                        metadata['price_discount'] = self.reformat(item['unitPrice'])
                     break
         except KeyError:
             pass
@@ -260,12 +259,24 @@ class CoachSpider(MFashionSpider):
         if prev_success:
             try:
                 data = json.loads(response.body)
-                metadata['price'] = data['skuPrice'] or data['retailPrice']
+                price_set = set([])
+                for key in ['retailPrice', 'skuPrice']:
+                    if key not in data:
+                        continue
+                    try:
+                        price_set.add(float(data[key]))
+                    except (ValueError, TypeError):
+                        continue
+                if len(price_set) >= 2:
+                    metadata['price'] = str(max(price_set))
+                    metadata['price_discount'] = str(min(price_set))
+                elif len(price_set) == 1:
+                    metadata['price'] = str(list(price_set)[0])
             except (ValueError, KeyError):
                 pass
 
         # 说明信息
-        yield Request(url=self.spider_data['desc_url'][self.region], method='POST', dont_filter=True,
+        yield Request(url=self.spider_data['desc_url'][metadata['region']], method='POST', dont_filter=True,
                       body=str.format('styleCode={0}', metadata['model']), callback=self.get_images,
                       headers={'Content-Type': 'application/x-www-form-urlencoded',
                                'Accept-Encoding': 'gzip,deflate,sdch',
@@ -287,7 +298,7 @@ class CoachSpider(MFashionSpider):
                 pass
 
         # 说明信息
-        yield Request(url=self.spider_data['image_url'][self.region], method='POST', dont_filter=True,
+        yield Request(url=self.spider_data['image_url'][metadata['region']], method='POST', dont_filter=True,
                       body=str.format('styleCode={0}', metadata['model'].lower()), callback=self.parse_final,
                       headers={'Content-Type': 'application/x-www-form-urlencoded',
                                'Accept-Encoding': 'gzip,deflate,sdch',
