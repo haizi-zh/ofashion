@@ -155,6 +155,8 @@ class HogoBossSpider(MFashionSpider):
                 metadata['gender'] = [gender]
 
         # 价格标签，中国和其他还是分开抓，太不一样了
+        # 折扣标签
+        pre_price_node = sel.xpath('//div[@class="product-prices"]//dd[not(@class)]')
         # 中国
         price_node = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
         if not price_node:
@@ -165,8 +167,25 @@ class HogoBossSpider(MFashionSpider):
             try:
                 price = price_node.xpath('./text()').extract()[0]
                 price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
+                if not pre_price_node:
+                    if price:
+                        metadata['price'] = price
+
+                        # 其他国家一样找不到pre_price_node，摒弃price_node找到的是原售价
+                        # 这里检查是不是有折扣价
+                        discount_price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="salesprice issalesprice"]')
+                        if discount_price_node:
+                            discount_price = discount_price_node.xpath('./text()').extract()[0]
+                            discount_price = self.reformat(discount_price)
+                            if discount_price:
+                                metadata['price_discount'] = discount_price
+                else:
+                    if price:
+                        metadata['price_discount'] = price
+                    pre_price = pre_price_node.xpath('./text()').extract()[0]
+                    pre_price = self.reformat(pre_price)
+                    if pre_price:
+                        metadata['price'] = pre_price
             except(TypeError, IndexError):
                 pass
 
