@@ -27,7 +27,7 @@ class JimmyChooSpider(MFashionSpider):
         return cls.spider_data['home_urls'].keys()
 
     def __init__(self, region):
-        super(JimmyChooSpider, self).__init__('jimmy choo', region)
+        super(JimmyChooSpider, self).__init__('jimmy_choo', region)
 
     def parse(self, response):
 
