@@ -180,7 +180,8 @@ class HMSpider(MFashionSpider):
                 yield Request(url=color_image_href,
                               callback=self.parse_images,
                               errback=self.onerr,
-                              meta={'userdata': m})
+                              meta={'userdata': m},
+                              dont_filter=True)
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -197,7 +198,15 @@ class HMSpider(MFashionSpider):
         image_urls = []
         image_nodes = sel.xpath('//div[@class="thumbs"]//img')
         for node in image_nodes:
+
             href = node.xpath('./@src').extract()[0]
+
+            # 有些单品，就没给图
+            # 比如：http://www.hm.com/ca/product/19493?article=19493-B#article=19493-B
+            mt = re.search(ur'noImageThumb', href)
+            if mt:
+                continue
+
             href = re.sub(ur'thumb', 'full', href)
             href = self.process_href(href, response.url)
 
@@ -205,7 +214,8 @@ class HMSpider(MFashionSpider):
                 image_urls += [href]
 
         item = ProductItem()
-        item['image_urls'] = image_urls
+        if image_urls:
+            item['image_urls'] = image_urls
         item['url'] = metadata['url']
         item['model'] = metadata['model']
         item['metadata'] = metadata
