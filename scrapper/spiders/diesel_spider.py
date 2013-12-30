@@ -332,7 +332,7 @@ class DieselSpider(MFashionSpider):
         metadata['url'] = response.url
 
         model = None
-        mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)&', response.url)
+        mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)', response.url)
         if mt:
             model = mt.group(1)
             if not model:
@@ -389,9 +389,31 @@ class DieselSpider(MFashionSpider):
         for node in nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = node.xpath('./span/a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            # 日本网站，有一个没有这个tag的顶级标签
+            tag_node = node.xpath('./span/a[text()]')
+            if tag_node:
+                tag_text = tag_node.xpath('./text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            else:
+                href_nodes = node.xpath('.//a[@href]')
+                for href_node in href_nodes:
+                    mc = copy.deepcopy(m)
+
+                    tag_text = ''.join(
+                        self.reformat(val)
+                        for val in href_node.xpath('.//text()').extract()
+                    )
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
+
+                    href = href_node.xpath('./@href').extract()[0]
+                    href = self.process_href(href, response.url)
+
+                    Request(url=href,
+                            callback=self.parse_other_product_list,
+                            errback=self.onerr,
+                            meta={'userdata': mc})
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -525,8 +547,25 @@ class DieselSpider(MFashionSpider):
                                                           callback=self.parse_other_product_list,
                                                           errback=self.onerr,
                                                           meta={'userdata': mcc})
-                    else:   # TODO 第4，5个顶级标签
-                        pass
+                    else:   # 第4，5个顶级标签
+                        href_nodes = node.xpath('.//a[@href]')
+                        for href_node in href_nodes:
+                            mc = copy.deepcopy(m)
+
+                            tag_text = ''.join(
+                                self.reformat(val)
+                                for val in href_node.xpath('.//text()').extract()
+                            )
+                            tag_text = self.reformat(tag_text)
+                            tag_name = tag_text.lower()
+
+                            href = href_node.xpath('./@href').extract()[0]
+                            href = self.process_href(href, response.url)
+
+                            Request(url=href,
+                                    callback=self.parse_other_product_list,
+                                    errback=self.onerr,
+                                    meta={'userdata': mc})
 
         # 第7个sale标签
         sale_nav_node = sel.xpath('//div[@id="lowerHeader"]/ul[@id="navMenu"]/li[@class="navSALES"]')
@@ -632,7 +671,28 @@ class DieselSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
-        # TODO 有下拉加载更多，至少英国有，get请求
+        # 页面下拉到底部会自动加载更多，需要模拟请求，解析返回的json
+        # 测试发现，在原有url后边添加 ?page=2 也可以取到第二页内容
+        # 如果当前页有内容，再考虑请求下一页
+        if product_nodes:
+            # 取的当前页数
+            current_page = 1
+            mt = re.search(r'page=(\d+)', response.url)
+            if mt:
+                current_page = (int)(mt.group(1))
+
+            next_page = current_page + 1
+            # 拼下一页的url
+            if mt:
+                next_url = re.sub(r'page=\d+', str.format('page={0}', next_page), response.url)
+            else:
+                next_url = str.format('{0}?page={1}', response.url, next_page)
+
+            # 请求下一页
+            yield Request(url=next_url,
+                          callback=self.parse_other_product_list,
+                          errback=self.onerr,
+                          meta={'userdata': metadata})
 
     def parse_other_procut(self, response):
 
