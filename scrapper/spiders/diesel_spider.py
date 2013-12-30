@@ -52,9 +52,12 @@ class DieselSpider(MFashionSpider):
         for nav_node in nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = nav_node.xpath('./a/span/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = nav_node.xpath('./a/span/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -73,9 +76,12 @@ class DieselSpider(MFashionSpider):
                     # 前两个和第四个二级标签的标题是这种取法，第三个标签的处理在下边
                     tag_node = sub_node.xpath('./div/a')
                     if tag_node:
-                        tag_text = sub_node.xpath('./div/a/text()').extract()[0]
-                        tag_text = self.reformat(tag_text)
-                        tag_name = tag_text.lower()
+                        try:
+                            tag_text = sub_node.xpath('./div/a/text()').extract()[0]
+                            tag_text = self.reformat(tag_text)
+                            tag_name = tag_text.lower()
+                        except(TypeError, IndexError):
+                            continue
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
@@ -92,9 +98,12 @@ class DieselSpider(MFashionSpider):
                                 for third_node in third_nodes:
                                     mcc = copy.deepcopy(mc)
 
-                                    tag_text = third_node.xpath('./a/text()').extract()[0]
-                                    tag_text = self.reformat(tag_text)
-                                    tag_name = tag_text.lower()
+                                    try:
+                                        tag_text = third_node.xpath('./a/text()').extract()[0]
+                                        tag_text = self.reformat(tag_text)
+                                        tag_name = tag_text.lower()
+                                    except(TypeError, IndexError):
+                                        continue
 
                                     if tag_text and tag_name:
                                         mcc['tags_mapping']['category-2'] = [
@@ -105,16 +114,22 @@ class DieselSpider(MFashionSpider):
                                         if gender:
                                             mcc['gender'] = [gender]
 
-                                        href = third_node.xpath('./a/@href').extract()[0]
-                                        href = self.process_href(href, response.url)
+                                        try:
+                                            href = third_node.xpath('./a/@href').extract()[0]
+                                            href = self.process_href(href, response.url)
+                                        except(TypeError, IndexError):
+                                            continue
 
                                         yield Request(url=href,
                                                       callback=self.parse_product_list,
                                                       errback=self.onerr,
                                                       meta={'userdata': mcc})
                             else:   # 第四个标签的下属处理
-                                href = sub_node.xpath('./div/a/@href').extract()[0]
-                                href = self.process_href(href, response.url)
+                                try:
+                                    href = sub_node.xpath('./div/a/@href').extract()[0]
+                                    href = self.process_href(href, response.url)
+                                except(TypeError, IndexError):
+                                    continue
 
                                 yield Request(url=href,
                                               callback=self.parse_product_list,
@@ -124,9 +139,12 @@ class DieselSpider(MFashionSpider):
                     else:   # 第三个标签的下属标签处理
                         tag_node = sub_node.xpath('./div/h2[text()]')
                         if tag_node:
-                            tag_text = sub_node.xpath('./div/h2/text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = sub_node.xpath('./div/h2/text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
                         else:
                             continue
 
@@ -143,9 +161,12 @@ class DieselSpider(MFashionSpider):
                             for third_node in third_nodes:
                                 mcc = copy.deepcopy(mc)
 
-                                tag_text = third_node.xpath('./a/text()').extract()[0]
-                                tag_text = self.reformat(tag_text)
-                                tag_name = tag_text.lower()
+                                try:
+                                    tag_text = third_node.xpath('./a/text()').extract()[0]
+                                    tag_text = self.reformat(tag_text)
+                                    tag_name = tag_text.lower()
+                                except(TypeError, IndexError):
+                                    continue
 
                                 if tag_text and tag_name:
                                     mcc['tags_mapping']['category-2'] = [
@@ -156,9 +177,12 @@ class DieselSpider(MFashionSpider):
                                     for fourth_node in fourth_nodes:
                                         mccc = copy.deepcopy(mcc)
 
-                                        tag_text = fourth_node.xpath('./a/text()').extract()[0]
-                                        tag_text = self.reformat(tag_text)
-                                        tag_name = tag_text.lower()
+                                        try:
+                                            tag_text = fourth_node.xpath('./a/text()').extract()[0]
+                                            tag_text = self.reformat(tag_text)
+                                            tag_name = tag_text.lower()
+                                        except(TypeError, IndexError):
+                                            continue
 
                                         if tag_text and tag_name:
                                             mccc['tags_mapping']['category-3'] = [
@@ -169,8 +193,11 @@ class DieselSpider(MFashionSpider):
                                             if gender:
                                                 mccc['gender'] = [gender]
 
-                                            href = fourth_node.xpath('./a/@href').extract()[0]
-                                            href = self.process_href(href, response.url)
+                                            try:
+                                                href = fourth_node.xpath('./a/@href').extract()[0]
+                                                href = self.process_href(href, response.url)
+                                            except(TypeError, IndexError):
+                                                continue
 
                                             yield Request(url=href,
                                                           callback=self.parse_product_list,
@@ -182,9 +209,12 @@ class DieselSpider(MFashionSpider):
                 for sub_node in sub_nodes:
                     mc = copy.deepcopy(m)
 
-                    tag_text = sub_node.xpath('./text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
@@ -195,8 +225,11 @@ class DieselSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_product_list,
@@ -208,9 +241,14 @@ class DieselSpider(MFashionSpider):
         if sale_node:
             m = copy.deepcopy(metadata)
 
-            tag_text = sale_node.xpath('./a/span/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = sale_node.xpath('./a/span/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                tag_text = None
+                tag_name = None
+                pass
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -225,9 +263,12 @@ class DieselSpider(MFashionSpider):
                 for sub_node in sub_nodes:
                     mc = copy.deepcopy(m)
 
-                    tag_text = sub_node.xpath('./div/a/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./div/a/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
@@ -242,17 +283,23 @@ class DieselSpider(MFashionSpider):
                         for third_node in third_nodes:
                             mcc = copy.deepcopy(mc)
 
-                            tag_text = third_node.xpath('./a/text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = third_node.xpath('./a/text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mcc['tags_mapping']['category-2'] = [
                                     {'name': tag_name, 'title': tag_text,},
                                 ]
 
-                                href = third_node.xpath('./a/@href').extract()[0]
-                                href = self.process_href(href, response.url)
+                                try:
+                                    href = third_node.xpath('./a/@href').extract()[0]
+                                    href = self.process_href(href, response.url)
+                                except(TypeError, IndexError):
+                                    continue
 
                                 yield Request(url=href,
                                               callback=self.parse_product_list,
@@ -268,41 +315,53 @@ class DieselSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            name = ''.join(
-                self.reformat(val)
-                for val in node.xpath('.//div[@class="product-name"]//text()').extract()
-            )
-            name = self.reformat(name)
-            if name:
-                m['name'] = name
+            try:
+                name = ''.join(
+                    self.reformat(val)
+                    for val in node.xpath('.//div[@class="product-name"]//text()').extract()
+                )
+                name = self.reformat(name)
+                if name:
+                    m['name'] = name
+            except(TypeError, IndexError):
+                pass
 
-            colors = [
-                self.reformat(val)
-                for val in node.xpath('.//div[@class="grid-swatch-list"]/ul/li/div[@title]/@title').extract()
-            ]
-            if colors:
-                m['color'] = colors
+            try:
+                colors = [
+                    self.reformat(val)
+                    for val in node.xpath('.//div[@class="grid-swatch-list"]/ul/li/div[@title]/@title').extract()
+                ]
+                if colors:
+                    m['color'] = colors
+            except(TypeError, IndexError):
+                pass
 
-            discount_node = node.xpath('.//div[@class="product-pricing"]/div[@class="product-discounted-price clearfix"]')
-            # 有折扣
-            if discount_node:
-                discount_price = discount_node.xpath('./span[@class="product-sales-price"]/text()').extract()[0]
-                discount_price = self.reformat(discount_price)
-                if discount_price:
-                    m['price_discount'] = discount_price
+            try:
+                discount_node = node.xpath('.//div[@class="product-pricing"]/div[@class="product-discounted-price clearfix"]')
+                # 有折扣
+                if discount_node:
+                    discount_price = discount_node.xpath('./span[@class="product-sales-price"]/text()').extract()[0]
+                    discount_price = self.reformat(discount_price)
+                    if discount_price:
+                        m['price_discount'] = discount_price
 
-                price = discount_node.xpath('./span[@class="product-standard-price"]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
-            else:
-                price = node.xpath('.//div[@class="product-pricing"]/span[@class="product-sales-price"]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
+                    price = discount_node.xpath('./span[@class="product-standard-price"]/text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        m['price'] = price
+                else:
+                    price = node.xpath('.//div[@class="product-pricing"]/span[@class="product-sales-price"]/text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        m['price'] = price
+            except(TypeError, IndexError):
+                pass
 
-            href = node.xpath('.//a[@href]/@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]/@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -321,8 +380,11 @@ class DieselSpider(MFashionSpider):
         for node in color_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -332,41 +394,54 @@ class DieselSpider(MFashionSpider):
         metadata['url'] = response.url
 
         model = None
-        mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)', response.url)
-        if mt:
-            model = mt.group(1)
-            if not model:
-                model = mt.group(2)
+        try:
+            mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)', response.url)
+            if mt:
+                model = mt.group(1)
+                if not model:
+                    model = mt.group(2)
+        except(TypeError, IndexError):
+            model = None
+            pass
         if model:
             metadata['model'] = model
         else:
             return
 
-        description_node = sel.xpath('//div[@id="pdpMain"]//div[@class="detail-content"]/p/span[@class="para-content"][text()]')
-        if description_node:
-            description = '\r'.join(
-                self.reformat(val)
-                for val in description_node.xpath('.//text()').extract()
-            )
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
+        try:
+            description_node = sel.xpath('//div[@id="pdpMain"]//div[@class="detail-content"]/p/span[@class="para-content"][text()]')
+            if description_node:
+                description = '\r'.join(
+                    self.reformat(val)
+                    for val in description_node.xpath('.//text()').extract()
+                )
+                description = self.reformat(description)
+                if description:
+                    metadata['description'] = description
+        except(TypeError, IndexError):
+            pass
 
-        detail = ''.join(
-            self.reformat(val)
-            for val in sel.xpath('//div[@id="product-content-detail"]//ul[@class="product-description-list"]/li[text()]/text()').extract()
-        )
-        detail = self.reformat(detail)
-        if detail:
-            metadata['details'] = detail
+        try:
+            detail = ''.join(
+                self.reformat(val)
+                for val in sel.xpath('//div[@id="product-content-detail"]//ul[@class="product-description-list"]/li[text()]/text()').extract()
+            )
+            detail = self.reformat(detail)
+            if detail:
+                metadata['details'] = detail
+        except(TypeError, IndexError):
+            pass
 
         image_urls = []
-        image_nodes = sel.xpath('//div[@id="pdpMain"]//ul[@class="product-slides-list"]/li/a/img[@src]')
-        for image_node in image_nodes:
-            image_url = image_node.xpath('./@src').extract()[0]
-            image_url = re.sub(r'\?.*', '', image_url)
-            if image_url:
-                image_urls += [image_url]
+        try:
+            image_nodes = sel.xpath('//div[@id="pdpMain"]//ul[@class="product-slides-list"]/li/a/img[@src]')
+            for image_node in image_nodes:
+                image_url = image_node.xpath('./@src').extract()[0]
+                image_url = re.sub(r'\?.*', '', image_url)
+                if image_url:
+                    image_urls += [image_url]
+        except(TypeError, IndexError):
+            pass
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -392,23 +467,32 @@ class DieselSpider(MFashionSpider):
             # 日本网站，有一个没有这个tag的顶级标签
             tag_node = node.xpath('./span/a[text()]')
             if tag_node:
-                tag_text = tag_node.xpath('./text()').extract()[0]
-                tag_text = self.reformat(tag_text)
-                tag_name = tag_text.lower()
+                try:
+                    tag_text = tag_node.xpath('./text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
+                except(TypeError, IndexError):
+                    continue
             else:
                 href_nodes = node.xpath('.//a[@href]')
                 for href_node in href_nodes:
                     mc = copy.deepcopy(m)
 
-                    tag_text = ''.join(
-                        self.reformat(val)
-                        for val in href_node.xpath('.//text()').extract()
-                    )
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = ''.join(
+                            self.reformat(val)
+                            for val in href_node.xpath('.//text()').extract()
+                        )
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
-                    href = href_node.xpath('./@href').extract()[0]
-                    href = self.process_href(href, response.url)
+                    try:
+                        href = href_node.xpath('./@href').extract()[0]
+                        href = self.process_href(href, response.url)
+                    except(TypeError, IndexError):
+                        continue
 
                     Request(url=href,
                             callback=self.parse_other_product_list,
@@ -436,9 +520,12 @@ class DieselSpider(MFashionSpider):
                         # 第六个顶级标签没有下属
                         tag_node = sub_node.xpath('./div[@class="titleColumn"]')
                         if tag_node:
-                            tag_text = tag_node.xpath('./text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = tag_node.xpath('./text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
@@ -453,9 +540,12 @@ class DieselSpider(MFashionSpider):
                                 for third_node in third_nodes:
                                     mcc = copy.deepcopy(mc)
 
-                                    tag_text = third_node.xpath('./text()').extract()[0]
-                                    tag_text = self.reformat(tag_text)
-                                    tag_name = tag_text.lower()
+                                    try:
+                                        tag_text = third_node.xpath('./text()').extract()[0]
+                                        tag_text = self.reformat(tag_text)
+                                        tag_name = tag_text.lower()
+                                    except(TypeError, IndexError):
+                                        continue
 
                                     if tag_text and tag_name:
                                         mcc['tags_mapping']['category-2'] = [
@@ -466,17 +556,23 @@ class DieselSpider(MFashionSpider):
                                         if gender:
                                             mcc['gender'] = [gender]
 
-                                        href = third_node.xpath('./@href').extract()[0]
-                                        href = self.process_href(href, response.url)
+                                        try:
+                                            href = third_node.xpath('./@href').extract()[0]
+                                            href = self.process_href(href, response.url)
+                                        except(TypeError, IndexError):
+                                            continue
 
                                         yield Request(url=href,
                                                       callback=self.parse_other_product_list,
                                                       errback=self.onerr,
                                                       meta={'userdata': mcc})
                         else:
-                            tag_text = sub_node.xpath('./a/div[@class="labelMacroLifestyle"]/text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = sub_node.xpath('./a/div[@class="labelMacroLifestyle"]/text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
@@ -487,8 +583,11 @@ class DieselSpider(MFashionSpider):
                                 if gender:
                                     mc['gender'] = [gender]
 
-                                href = sub_node.xpath('./a/@href').extract()[0]
-                                href = self.process_href(href, response.url)
+                                try:
+                                    href = sub_node.xpath('./a/@href').extract()[0]
+                                    href = self.process_href(href, response.url)
+                                except(TypeError, IndexError):
+                                    continue
 
                                 yield Request(url=href,
                                               callback=self.parse_product_list,
@@ -504,9 +603,12 @@ class DieselSpider(MFashionSpider):
                         for sub_node in sub_nodes:
                             mc = copy.deepcopy(m)
 
-                            tag_text = sub_node.xpath('./span/text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = sub_node.xpath('./span/text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
@@ -527,9 +629,12 @@ class DieselSpider(MFashionSpider):
                                     for href_node in href_nodes:
                                         mcc  = copy.deepcopy(mc)
 
-                                        tag_text = href_node.xpath('./text()').extract()[0]
-                                        tag_text = self.reformat(tag_text)
-                                        tag_name = tag_text.lower()
+                                        try:
+                                            tag_text = href_node.xpath('./text()').extract()[0]
+                                            tag_text = self.reformat(tag_text)
+                                            tag_name = tag_text.lower()
+                                        except(TypeError, IndexError):
+                                            continue
 
                                         if tag_text and tag_name:
                                             mcc['tags_mapping']['category-2'] = [
@@ -540,8 +645,11 @@ class DieselSpider(MFashionSpider):
                                             if gender:
                                                 mcc['gender'] = [gender]
 
-                                            href = href_node.xpath('./@href').extract()[0]
-                                            href = self.process_href(href, response.url)
+                                            try:
+                                                href = href_node.xpath('./@href').extract()[0]
+                                                href = self.process_href(href, response.url)
+                                            except(TypeError, IndexError):
+                                                continue
 
                                             yield Request(url=href,
                                                           callback=self.parse_other_product_list,
@@ -552,15 +660,18 @@ class DieselSpider(MFashionSpider):
                         for href_node in href_nodes:
                             mc = copy.deepcopy(m)
 
-                            tag_text = ''.join(
-                                self.reformat(val)
-                                for val in href_node.xpath('.//text()').extract()
-                            )
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = ''.join(
+                                    self.reformat(val)
+                                    for val in href_node.xpath('.//text()').extract()
+                                )
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
 
-                            href = href_node.xpath('./@href').extract()[0]
-                            href = self.process_href(href, response.url)
+                                href = href_node.xpath('./@href').extract()[0]
+                                href = self.process_href(href, response.url)
+                            except(TypeError, IndexError):
+                                continue
 
                             Request(url=href,
                                     callback=self.parse_other_product_list,
@@ -572,9 +683,14 @@ class DieselSpider(MFashionSpider):
         if sale_nav_node:
             m = copy.deepcopy(metadata)
 
-            tag_text = sale_nav_node.xpath('./span[text()]/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = sale_nav_node.xpath('./span[text()]/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                tag_text = None
+                tag_name = None
+                pass
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -591,9 +707,12 @@ class DieselSpider(MFashionSpider):
                     for sub_node in sub_nodes:
                         mc = copy.deepcopy(m)
 
-                        tag_text = sub_node.xpath('./div[@class="titleColumn"]/text()').extract()[0]
-                        tag_text = self.reformat(tag_text)
-                        tag_name = tag_text.lower()
+                        try:
+                            tag_text = sub_node.xpath('./div[@class="titleColumn"]/text()').extract()[0]
+                            tag_text = self.reformat(tag_text)
+                            tag_name = tag_text.lower()
+                        except(TypeError, IndexError):
+                            continue
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
@@ -608,12 +727,15 @@ class DieselSpider(MFashionSpider):
                             for third_node in third_nodes:
                                 mcc = copy.deepcopy(mc)
 
-                                tag_text = ''.join(
-                                    self.reformat(val)
-                                    for val in third_node.xpath('.//text()').extract()
-                                )
-                                tag_text = self.reformat(tag_text)
-                                tag_name = tag_text.lower()
+                                try:
+                                    tag_text = ''.join(
+                                        self.reformat(val)
+                                        for val in third_node.xpath('.//text()').extract()
+                                    )
+                                    tag_text = self.reformat(tag_text)
+                                    tag_name = tag_text.lower()
+                                except(TypeError, IndexError):
+                                    continue
 
                                 if tag_text and tag_name:
                                     mcc['tags_mapping']['category-2'] = [
@@ -624,8 +746,11 @@ class DieselSpider(MFashionSpider):
                                     if gender:
                                         mcc['gender'] = [gender]
 
-                                    href = third_node.xpath('./@href').extract()[0]
-                                    href = self.process_href(href, response.url)
+                                    try:
+                                        href = third_node.xpath('./@href').extract()[0]
+                                        href = self.process_href(href, response.url)
+                                    except(TypeError, IndexError):
+                                        continue
 
                                     yield Request(url=href,
                                                   callback=self.parse_other_product_list,
@@ -643,28 +768,40 @@ class DieselSpider(MFashionSpider):
 
             # 有些商品没有名字居然
             # 比如：http://store.diesel.com/gb/men/jewellery
-            name_node = node.xpath('./a[@class="prodInfo"]//strong[@class="itemName"][text()]')
-            if name_node:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
+            try:
+                name_node = node.xpath('./a[@class="prodInfo"]//strong[@class="itemName"][text()]')
+                if name_node:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = self.reformat(name)
+                    if name:
+                        m['name'] = name
+            except(TypeError, IndexError):
+                pass
 
-            price = node.xpath('./a[@class="prodInfo"]//em[contains(@class, "itemPrice")]/text()').extract()[0]
-            price = self.reformat(price)
-            if price:
-                m['price'] = price
+            try:
+                price = node.xpath('./a[@class="prodInfo"]//em[contains(@class, "itemPrice")]/text()').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    m['price'] = price
+            except(TypeError, IndexError):
+                pass
 
             # 判断是否打折
-            discount_node = node.xpath('./a[@class="prodInfo"]//span[@class="itemDiscountedPrice"][text()]')
-            if discount_node:
-                discount_price = discount_node.xpath('./text()').extract()[0]
-                discount_price = self.reformat(discount_price)
-                if discount_price:
-                    m['price_discount'] = discount_price
+            try:
+                discount_node = node.xpath('./a[@class="prodInfo"]//span[@class="itemDiscountedPrice"][text()]')
+                if discount_node:
+                    discount_price = discount_node.xpath('./text()').extract()[0]
+                    discount_price = self.reformat(discount_price)
+                    if discount_price:
+                        m['price_discount'] = discount_price
+            except(TypeError, IndexError):
+                pass
 
-            href = node.xpath('.//a[@href]/@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]/@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_other_procut,
@@ -702,48 +839,64 @@ class DieselSpider(MFashionSpider):
         metadata['url'] = response.url
 
         model = None
-        mt = re.search(r'_cod(\w+)\.', response.url)
-        if mt:
-            model = mt.group(1)
+        try:
+            mt = re.search(r'_cod(\w+)\.', response.url)
+            if mt:
+                model = mt.group(1)
+        except(TypeError, IndexError):
+            model = None
+            pass
         if model:
             metadata['model'] = model
         else:
             return
 
-        name_node = sel.xpath('//aside[@class="itemSidebar"]/h1[text()]')
-        if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                metadata['name'] = name
+        try:
+            name_node = sel.xpath('//aside[@class="itemSidebar"]/h1[text()]')
+            if name_node:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    metadata['name'] = name
+        except(TypeError, IndexError):
+            pass
 
-        description_node = sel.xpath('//div[@id="tabs"]/ul/li/div/p')
-        if description_node:
-            description = '\r'.join(
+        try:
+            description_node = sel.xpath('//div[@id="tabs"]/ul/li/div/p')
+            if description_node:
+                description = '\r'.join(
+                    self.reformat(val)
+                    for val in description_node.xpath('.//text()').extract()
+                )
+                description = self.reformat(description)
+                if description:
+                    metadata['description'] = description
+        except(TypeError, IndexError):
+            pass
+
+        try:
+            detail = ''.join(
                 self.reformat(val)
-                for val in description_node.xpath('.//text()').extract()
+                for val in sel.xpath('//aside[@class="itemSidebar"]/ul/li//text()').extract()
             )
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
-
-        detail = ''.join(
-            self.reformat(val)
-            for val in sel.xpath('//aside[@class="itemSidebar"]/ul/li//text()').extract()
-        )
-        detail = self.reformat(detail)
-        if detail:
-            metadata['details'] = detail
+            detail = self.reformat(detail)
+            if detail:
+                metadata['details'] = detail
+        except(TypeError, IndexError):
+            pass
 
         colors = None
-        color_nodes = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colorMask"]/ul/li//span[text()]')
-        if color_nodes:
-            colors = [
-                self.reformat(val)
-                for val in color_nodes.xpath('./text()').extract()
-            ]
-        if colors:
-            metadata['color'] = colors
+        try:
+            color_nodes = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colorMask"]/ul/li//span[text()]')
+            if color_nodes:
+                colors = [
+                    self.reformat(val)
+                    for val in color_nodes.xpath('./text()').extract()
+                ]
+            if colors:
+                metadata['color'] = colors
+        except(TypeError, IndexError):
+            pass
 
         # 这里会有比需要的图片多
         image_fix_list = re.findall(r'"(\d{2}_[a-z])"', response.body)
@@ -763,13 +916,16 @@ class DieselSpider(MFashionSpider):
         # 用页面中图片的地址取的他们图片服务器的地址
         # 顺便用它里边已经写好的单品的id和颜色的id
         image_urls = None
-        image_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colors"]/div[@class="colorSizeContent colorSlider"]/div[@class="colorMask"]//img[@src]')
-        if image_node:
-            image_urls = [
-                re.sub('\d{2}_[a-z]', val, src)
-                for val in image_fix_list
-                for src in image_node.xpath('./@src').extract()
-            ]
+        try:
+            image_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colors"]/div[@class="colorSizeContent colorSlider"]/div[@class="colorMask"]//img[@src]')
+            if image_node:
+                image_urls = [
+                    re.sub('\d{2}_[a-z]', val, src)
+                    for val in image_fix_list
+                    for src in image_node.xpath('./@src').extract()
+                ]
+        except(TypeError, IndexError):
+            pass
 
         item = ProductItem()
         item['url'] = metadata['url']
