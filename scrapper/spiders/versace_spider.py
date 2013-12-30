@@ -85,6 +85,11 @@ class VersaceSpider(MFashionSpider):
                 tmp = self.reformat(tmp[0])
                 if tmp:
                     m['price'] = tmp
+            tmp = node.xpath('.//div[@class="standardprice"]/text()').extract()
+            if tmp:
+                tmp = self.reformat(tmp[0])
+                if tmp:
+                    m['price_discount'] = tmp
 
             yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url),
                           callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
