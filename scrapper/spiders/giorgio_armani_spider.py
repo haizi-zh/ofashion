@@ -19,8 +19,8 @@ class GiorgioArmaniSpider(MFashionSpider):
                    'home_urls': {'cn': 'http://www.armani.cn/cn/giorgioarmani/accessories_section',
                                  'us': ['http://www.armani.com/us/giorgioarmani/accessories_section',
                                         'http://www.armani.com/us/giorgioarmani/sunglasses_section'],
-                                 'uk':['http://www.armani.com/gb/giorgioarmani/accessories_section',
-                                       'http://www.armani.com/gb/giorgioarmani/sunglasses_section']}}
+                                 'uk': ['http://www.armani.com/gb/giorgioarmani/accessories_section',
+                                        'http://www.armani.com/gb/giorgioarmani/sunglasses_section']}}
 
     @classmethod
     def get_supported_regions(cls):
@@ -85,11 +85,14 @@ class GiorgioArmaniSpider(MFashionSpider):
             if tmp:
                 m['name'] = self.reformat(tmp[0])
             tmp = node.xpath('./div[@class="itemPrice"]/*[@data-pricewithoutpromotion]/text()').extract()
-            if tmp:
-                m['price'] = self.reformat(tmp[0])
+            price_without = self.reformat(tmp[0]) if tmp else None
             tmp = node.xpath('./div[@class="itemPrice"]/*[@data-price]/text()').extract()
-            if tmp:
-                m['price_discount'] = self.reformat(tmp[0])
+            price_norm = self.reformat(tmp[0]) if tmp else None
+            if price_without:
+                m['price'] = price_without
+                m['price_discount'] = price_norm
+            elif price_norm:
+                m['price'] = price_norm
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
     def parse_details(self, response):
