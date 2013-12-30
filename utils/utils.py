@@ -7,7 +7,7 @@ __author__ = 'Zephyre'
 
 
 def guess_currency(price):
-    symbols = {u'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD'}
+    symbols = {u'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD', 'US$': 'USD'}
     # 按照符号提取
     for s in symbols:
         if s in price:
