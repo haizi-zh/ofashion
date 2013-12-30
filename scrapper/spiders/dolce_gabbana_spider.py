@@ -114,9 +114,18 @@ class DolceSpider(MFashionSpider):
         if tmp:
             metadata['name'] = self.reformat(unicodify(tmp[0]._root.text))
 
-        tmp = sel.xpath('//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[contains(@class,"price")]')
-        if tmp:
-            metadata['price'] = self.reformat(unicodify(tmp[0]._root.text))
+        tmp = sel.xpath(
+            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price newprice"]/text()').extract()
+        new_price = self.reformat(tmp[0]) if tmp else None
+        tmp = sel.xpath(
+            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price sconto"]/text()').extract()
+        sconto = self.reformat(tmp[0]) if tmp else None
+        if sconto:
+            metadata['price'] = sconto
+            if new_price:
+                metadata['price_discount'] = new_price
+        elif new_price:
+            metadata['price'] = new_price
 
         desc = ''
         tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]')
