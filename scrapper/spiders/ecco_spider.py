@@ -28,7 +28,7 @@ class EccoSpider(MFashionSpider):
             'pl': 'http://shopeu.ecco.com/pl/pl',
             # 美国，加拿大，中国，各不相同
             # 'cn': 'http://ecco.tmall.com/',
-            # 'us': 'http://us.shop.ecco.com/',
+            'us': 'http://us.shop.ecco.com/',
             'ca': 'http://www.eccocanada.com/',
         },
     }
@@ -47,6 +47,10 @@ class EccoSpider(MFashionSpider):
 
         if metadata['region'] == 'ca':
             for val in self.parse_ca(response):
+                yield val
+            return
+        elif metadata['region'] == 'us':
+            for val in self.parse_us(response):
                 yield val
             return
 
@@ -511,6 +515,217 @@ class EccoSpider(MFashionSpider):
                 ]
             except(TypeError, IndexError):
                 pass
+
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        if image_urls:
+            item['image_urls'] = image_urls
+        item['metadata'] = metadata
+
+        yield item
+
+    def parse_us(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        nav_nodes = sel.xpath('//div[@id="navigation"]/nav/ul/li')
+        for nav_node in nav_nodes:
+            m = copy.deepcopy(metadata)
+
+            tag_text = nav_node.xpath('./a/text()').extract()[0]
+            tag_text = self.reformat(tag_text)
+            tag_name = tag_text.lower()
+
+            if tag_text and tag_name:
+                m['tags_mapping']['category-0'] = [
+                    {'name': tag_name, 'title': tag_text,},
+                ]
+
+                gender = common.guess_gender(tag_name)
+                if gender:
+                    m['gender'] = [gender]
+
+                sub_nodes = nav_node.xpath('./ul/li')
+                for sub_node in sub_nodes:
+                    mc = copy.deepcopy(m)
+
+                    tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
+
+                    if tag_text and tag_name:
+                        mc['tags_mapping']['category-1'] = [
+                            {'name': tag_name, 'title': tag_text,},
+                        ]
+
+                        gender = common.guess_gender(tag_name)
+                        if gender:
+                            mc['gender'] = [gender]
+
+                        third_nodes = sub_node.xpath('./ul/li')
+                        for third_node in third_nodes:
+                            mcc = copy.deepcopy(mc)
+
+                            tag_text = third_node.xpath('./a[text()]/text()').extract()[0]
+                            tag_text = self.reformat(tag_text)
+                            tag_name = tag_text.lower()
+
+                            if tag_text and tag_name:
+                                mcc['tags_mapping']['category-2'] = [
+                                    {'name': tag_name, 'title': tag_text,},
+                                ]
+
+                                gender = common.guess_gender(tag_name)
+                                if gender:
+                                    mcc['gender'] = [gender]
+
+                                href = third_node.xpath('./a[@href]/@href').extract()[0]
+                                href = self.process_href(href, response.url)
+
+                                yield Request(url=href,
+                                              callback=self.parse_product_list_us,
+                                              errback=self.onerr,
+                                              meta={'userdata': mcc})
+
+                        href = sub_node.xpath('./a[@href]/@href').extract()[0]
+                        href = self.process_href(href, response.url)
+
+                        yield Request(url=href,
+                                      callback=self.parse_product_list_us,
+                                      errback=self.onerr,
+                                      meta={'userdata': mc})
+
+    def parse_product_list_us(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        product_nodes = sel.xpath('//div[@id="primary"]//div[@class="search-result-content"]/ul/li')
+        for node in product_nodes:
+            m = copy.deepcopy(metadata)
+
+            href = node.xpath('.//a[@href]').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_product_us,
+                          errback=self.onerr,
+                          meta={'userdata': m},
+                          dont_filter=True)
+
+        page_nodes = sel.xpath('//div[@id="primary"]//div[@class="pagination"]/ul/li/a[@href]')
+        for node in page_nodes:
+            m = copy.deepcopy(metadata)
+
+            href = node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_product_list_us,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+    def parse_product_us(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        other_nodes = sel.xpath('//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@href]')
+        for node in other_nodes:
+            m = copy.deepcopy(metadata)
+
+            href = node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_product_us,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
+        metadata['url'] = response.url
+
+        model = None
+        model_node = sel.xpath('//div[@id="product-content"]//span[@itemprop="productID"][text()]')
+        if model_node:
+            model_text = model_node.xpath('./text()').extract()[0]
+            model_text = self.reformat(model_text)
+            if model_text:
+                mt = re.search(r'^(\d+)-?', model_text)
+                if mt:
+                    model = mt.group(1)
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+        price_node = sel.xpath('//div[@id="product-content"]/div[contains(@class, "product-price")]')
+        if price_node:
+            discount_node = price_node.xpath('./span[@class="price-sales"][text()]')
+            if discount_node:
+                discount_price = discount_node.xpath('./text()').extract()[0]
+                discount_price = self.reformat(discount_price)
+                if discount_price:
+                    metadata['price_discount'] = discount_price
+                price = price_node.xpath('./span[@class="price-standard"][text()]/text()').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    metadata['price'] = price
+            else:
+                price = price_node.xpath('./span[@class="price-normal"]/text()').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    metadata['price'] = price
+
+        name_node = sel.xpath('//div[@id="primary"]//h1[@class="product-name"][text()]')
+        if name_node:
+            name = name_node.xpath('./text()').extract()[0]
+            name = self.reformat(name)
+            if name:
+                metadata['name'] = name
+
+        colors = []
+        color_nodes = sel.xpath('//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@title]')
+        for node in color_nodes:
+            color_text = node.xpath('./@title').extract()[0]
+            color = re.sub(r'\(\d+\)', '', color_text)
+            if color:
+                colors += [color]
+        if colors:
+            metadata['color'] = colors
+
+        description_node = sel.xpath('//div[@id="tabDescription"]')
+        if description_node:
+            description = '\r'.join(
+                self.reformat(val)
+                for val in description_node.xpath('.//text()').extract()
+            )
+            description = self.reformat(description)
+            if description:
+                metadata['description'] = description
+
+        image_urls = []
+        image_nodes = sel.xpath('//div[@id="primary"]//div[@class="product-thumbnails"]/ul/li/a[@href]')
+        for node in image_nodes:
+            href = node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            href = re.sub(r'\?.*', '', href)
+
+            if href:
+                image_urls += [href]
+        if not image_urls:
+            image_node = sel.xpath('//div[@id="primary-image"]/a[@href]')
+            href = image_node.xpath('./@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            href = re.sub(r'\?.*', '', href)
+
+            mt = re.search(r'noimage', href)
+            if not mt:
+                if href:
+                    image_urls += [href]
 
         item = ProductItem()
         item['url'] = metadata['url']
