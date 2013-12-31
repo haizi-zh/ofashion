@@ -17,6 +17,19 @@ class EccoSpider(MFashionSpider):
         'brand_id': 10105,
         'home_urls': {
             'uk': 'http://shopeu.ecco.com/uk/en',
+            'de': 'http://shopeu.ecco.com/de/de',
+            'be': 'http://shopeu.ecco.com/be/nl-be',
+            'fr': 'http://shopeu.ecco.com/fr/fr',
+            'ie': 'http://shopeu.ecco.com/ie/en-ie',
+            'se': 'http://shopeu.ecco.com/se/sv',
+            'no': 'http://shopeu.ecco.com/no/no',
+            'fi': 'http://shopeu.ecco.com/fi/fi',
+            'nl': 'http://shopeu.ecco.com/nl/nl',
+            'pl': 'http://shopeu.ecco.com/pl/pl',
+            # 美国，加拿大，中国，各不相同
+            # 'cn': 'http://ecco.tmall.com/',
+            # 'us': 'http://www.eccocanada.com/',
+            # 'ca': 'http://www.eccocanada.com/',
         },
     }
 
