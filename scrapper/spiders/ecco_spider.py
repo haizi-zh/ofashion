@@ -534,9 +534,12 @@ class EccoSpider(MFashionSpider):
         for nav_node in nav_nodes:
             m = copy.deepcopy(metadata)
 
-            tag_text = nav_node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = nav_node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
@@ -551,9 +554,12 @@ class EccoSpider(MFashionSpider):
                 for sub_node in sub_nodes:
                     mc = copy.deepcopy(m)
 
-                    tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
@@ -568,9 +574,12 @@ class EccoSpider(MFashionSpider):
                         for third_node in third_nodes:
                             mcc = copy.deepcopy(mc)
 
-                            tag_text = third_node.xpath('./a[text()]/text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = third_node.xpath('./a[text()]/text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mcc['tags_mapping']['category-2'] = [
@@ -581,16 +590,22 @@ class EccoSpider(MFashionSpider):
                                 if gender:
                                     mcc['gender'] = [gender]
 
-                                href = third_node.xpath('./a[@href]/@href').extract()[0]
-                                href = self.process_href(href, response.url)
+                                try:
+                                    href = third_node.xpath('./a[@href]/@href').extract()[0]
+                                    href = self.process_href(href, response.url)
+                                except(TypeError, IndexError):
+                                    continue
 
                                 yield Request(url=href,
                                               callback=self.parse_product_list_us,
                                               errback=self.onerr,
                                               meta={'userdata': mcc})
 
-                        href = sub_node.xpath('./a[@href]/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./a[@href]/@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_product_list_us,
@@ -606,8 +621,11 @@ class EccoSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('.//a[@href]').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product_us,
@@ -619,8 +637,11 @@ class EccoSpider(MFashionSpider):
         for node in page_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product_list_us,
@@ -636,8 +657,11 @@ class EccoSpider(MFashionSpider):
         for node in other_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product_us,
@@ -646,86 +670,113 @@ class EccoSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        model_node = sel.xpath('//div[@id="product-content"]//span[@itemprop="productID"][text()]')
-        if model_node:
-            model_text = model_node.xpath('./text()').extract()[0]
-            model_text = self.reformat(model_text)
-            if model_text:
-                mt = re.search(r'^(\d+)-?', model_text)
-                if mt:
-                    model = mt.group(1)
-        if model:
-            metadata['model'] = model
-        else:
+        try:
+            model = None
+            model_node = sel.xpath('//div[@id="product-content"]//span[@itemprop="productID"][text()]')
+            if model_node:
+                model_text = model_node.xpath('./text()').extract()[0]
+                model_text = self.reformat(model_text)
+                if model_text:
+                    mt = re.search(r'^(\d+)-?', model_text)
+                    if mt:
+                        model = mt.group(1)
+            if model:
+                metadata['model'] = model
+            else:
+                return
+        except(TypeError, IndexError):
             return
 
         price_node = sel.xpath('//div[@id="product-content"]/div[contains(@class, "product-price")]')
         if price_node:
             discount_node = price_node.xpath('./span[@class="price-sales"][text()]')
             if discount_node:
-                discount_price = discount_node.xpath('./text()').extract()[0]
-                discount_price = self.reformat(discount_price)
-                if discount_price:
-                    metadata['price_discount'] = discount_price
-                price = price_node.xpath('./span[@class="price-standard"][text()]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
+                try:
+                    discount_price = discount_node.xpath('./text()').extract()[0]
+                    discount_price = self.reformat(discount_price)
+                    if discount_price:
+                        metadata['price_discount'] = discount_price
+                except(TypeError, IndexError):
+                    pass
+                try:
+                    price = price_node.xpath('./span[@class="price-standard"][text()]/text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        metadata['price'] = price
+                except(TypeError, IndexError):
+                    pass
             else:
-                price = price_node.xpath('./span[@class="price-normal"]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
+                try:
+                    price = price_node.xpath('./span[@class="price-normal"]/text()').extract()[0]
+                    price = self.reformat(price)
+                    if price:
+                        metadata['price'] = price
+                except(TypeError, IndexError):
+                    pass
 
         name_node = sel.xpath('//div[@id="primary"]//h1[@class="product-name"][text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                metadata['name'] = name
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+                if name:
+                    metadata['name'] = name
+            except(TypeError, IndexError):
+                pass
 
         colors = []
         color_nodes = sel.xpath('//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@title]')
         for node in color_nodes:
-            color_text = node.xpath('./@title').extract()[0]
-            color = re.sub(r'\(\d+\)', '', color_text)
-            if color:
-                colors += [color]
+            try:
+                color_text = node.xpath('./@title').extract()[0]
+                color = re.sub(r'\(\d+\)', '', color_text)
+                if color:
+                    colors += [color]
+            except(TypeError, IndexError):
+                continue
         if colors:
             metadata['color'] = colors
 
         description_node = sel.xpath('//div[@id="tabDescription"]')
         if description_node:
-            description = '\r'.join(
-                self.reformat(val)
-                for val in description_node.xpath('.//text()').extract()
-            )
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
+            try:
+                description = '\r'.join(
+                    self.reformat(val)
+                    for val in description_node.xpath('.//text()').extract()
+                )
+                description = self.reformat(description)
+                if description:
+                    metadata['description'] = description
+            except(TypeError, IndexError):
+                pass
 
         image_urls = []
         image_nodes = sel.xpath('//div[@id="primary"]//div[@class="product-thumbnails"]/ul/li/a[@href]')
         for node in image_nodes:
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
 
-            href = re.sub(r'\?.*', '', href)
+                href = re.sub(r'\?.*', '', href)
 
-            if href:
-                image_urls += [href]
-        if not image_urls:
-            image_node = sel.xpath('//div[@id="primary-image"]/a[@href]')
-            href = image_node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
-
-            href = re.sub(r'\?.*', '', href)
-
-            mt = re.search(r'noimage', href)
-            if not mt:
                 if href:
                     image_urls += [href]
+            except(TypeError, IndexError):
+                continue
+        if not image_urls:
+            image_node = sel.xpath('//div[@id="primary-image"]/a[@href]')
+            try:
+                href = image_node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+
+                href = re.sub(r'\?.*', '', href)
+
+                mt = re.search(r'noimage', href)
+                if not mt:
+                    if href:
+                        image_urls += [href]
+            except(TypeError, IndexError):
+                pass
 
         item = ProductItem()
         item['url'] = metadata['url']
