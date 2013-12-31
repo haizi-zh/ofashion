@@ -28,8 +28,8 @@ class EccoSpider(MFashionSpider):
             'pl': 'http://shopeu.ecco.com/pl/pl',
             # 美国，加拿大，中国，各不相同
             # 'cn': 'http://ecco.tmall.com/',
-            'us': 'http://www.eccocanada.com/',
-            # 'ca': 'http://www.eccocanada.com/',
+            # 'us': 'http://us.shop.ecco.com/',
+            'ca': 'http://www.eccocanada.com/',
         },
     }
 
@@ -45,8 +45,8 @@ class EccoSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        if metadata['region'] == 'us':
-            for val in self.parse_us(response):
+        if metadata['region'] == 'ca':
+            for val in self.parse_ca(response):
                 yield val
             return
 
@@ -274,7 +274,7 @@ class EccoSpider(MFashionSpider):
 
         yield item
 
-    def parse_us(self, response):
+    def parse_ca(self, response):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
@@ -346,11 +346,11 @@ class EccoSpider(MFashionSpider):
                                     continue
 
                                 yield Request(url=href,
-                                              callback=self.parse_product_list_us,
+                                              callback=self.parse_product_list_ca,
                                               errback=self.onerr,
                                               meta={'userdata': mcc})
 
-    def parse_product_list_us(self, response):
+    def parse_product_list_ca(self, response):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
@@ -366,7 +366,7 @@ class EccoSpider(MFashionSpider):
                 continue
 
             yield Request(url=href,
-                          callback=self.parse_product_us,
+                          callback=self.parse_product_ca,
                           errback=self.onerr,
                           meta={'userdata': m},
                           dont_filter=True)
@@ -382,11 +382,11 @@ class EccoSpider(MFashionSpider):
                 continue
 
             yield Request(url=href,
-                          callback=self.parse_product_list_us,
+                          callback=self.parse_product_list_ca,
                           errback=self.onerr,
                           meta={'userdata': m})
 
-    def parse_product_us(self, response):
+    def parse_product_ca(self, response):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
@@ -402,7 +402,7 @@ class EccoSpider(MFashionSpider):
                 continue
 
             yield Request(url=href,
-                          callback=self.parse_product_us,
+                          callback=self.parse_product_ca,
                           errback=self.onerr,
                           meta={'userdata': m})
 
