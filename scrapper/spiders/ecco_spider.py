@@ -14,7 +14,7 @@ import re
 class EccoSpider(MFashionSpider):
 
     spider_data = {
-        'brand_id': 10105,
+        'brand_id': 10114,
         'home_urls': {
             'uk': 'http://shopeu.ecco.com/uk/en',
             'de': 'http://shopeu.ecco.com/de/de',
