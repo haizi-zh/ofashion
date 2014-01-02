@@ -181,6 +181,20 @@ class EmilioPucciSpider(MFashionSpider):
                           meta={'userdata': m},
                           dont_filter=True)
 
+        other_product_nodes = sel.xpath('//div[@id="itemContainer"]//div[contains(@id, "item")]//a[@href]')
+        for node in other_product_nodes:
+            m = copy.deepcopy(metadata)
+
+            href = node.xpath('./@href').extract()[0]
+            href = re.sub(r'\r|\n|\t', '', href)
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_product,
+                          errback=self.onerr,
+                          meta={'userdata': m},
+                          dont_filter=True)
+
     def parse_product(self, response):
 
         metadata = response.meta['userdata']
