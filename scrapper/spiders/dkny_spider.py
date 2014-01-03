@@ -10,27 +10,56 @@ from scrapy.selector import Selector
 import common
 import copy
 import re
+from utils.utils import unicodify, iterable
 
 class DknySpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10108,
+        'curreny': {
+            'us': 'USD',
+            'uk': 'GBP',
+        },
         'home_urls': {
-            'us': 'http://www.dkny.com/',
+            'common': 'http://www.dkny.com/',
         },
     }
 
     @classmethod
     def get_supported_regions(cls):
-        return cls.spider_data['home_urls'].keys()
+        return cls.spider_data['curreny'].keys()
 
     def __init__(self, region):
         super(DknySpider, self).__init__('dkny', region)
+
+    def start_requests(self):
+        for region in self.region_list:
+            metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
+                        'tags_mapping': {}, 'category': []}
+
+            tmp = self.spider_data['home_urls']['common']
+            cookie = {
+                'DKI_FiftyOneInternationalCookie': str.format('{0}-{1}', region.upper(), self.spider_data['curreny'][region])
+            }
+            start_urls = tmp if iterable(tmp) else [tmp]
+            for url in start_urls:
+                m = copy.deepcopy(metadata)
+                yield Request(url=url,
+                              meta={'userdata': m},
+                              callback=self.parse,
+                              errback=self.onerr,
+                              cookies=cookie,
+                              dont_filter=True)
 
     def parse(self, response):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
+
+        country_node = sel.xpath('//div[@class="ecommerce-nav"]/ul/li/span[2][text()]')
+        if country_node:
+            country = country_node.xpath('./text()').extract()[0]
+            self.log(str.format('region: {0}    country : {1}', metadata['region'], country))
 
         nav_nodes = sel.xpath('//div[@class="header"]/div[@class="fixer"]/div[contains(@class, "global-nav")]/ul/li')
         for nav_node in nav_nodes:
@@ -96,7 +125,8 @@ class DknySpider(MFashionSpider):
                                     yield Request(url=href,
                                                   callback=self.parse_product_list,
                                                   errback=self.onerr,
-                                                  meta={'userdata': mcc})
+                                                  meta={'userdata': mcc},
+                                                  dont_filter=True)
                     else:
                         tag_text = sub_node.xpath('./a/text()').extract()[0]
                         tag_text = self.reformat(tag_text)
@@ -117,12 +147,18 @@ class DknySpider(MFashionSpider):
                             yield Request(url=href,
                                           callback=self.parse_product_list,
                                           errback=self.onerr,
-                                          meta={'userdata': mc})
+                                          meta={'userdata': mc},
+                                          dont_filter=True)
 
     def parse_product_list(self, response):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
+
+        country_node = sel.xpath('//div[@class="ecommerce-nav"]/ul/li/span[2][text()]')
+        if country_node:
+            country = country_node.xpath('./text()').extract()[0]
+            self.log(str.format('region: {0}    country : {1}', metadata['region'], country))
 
         product_nodes = sel.xpath('//div[@id="container"]/div[contains(@class, "view-product_list")]//ul/li[@class="product"]')
         for node in product_nodes:
@@ -160,6 +196,8 @@ class DknySpider(MFashionSpider):
                     )
                     price = self.reformat(price)
                     if price:
+                        # TODO 有些东西价格是一个区间，这种是多个商品组合起来的套装
+                        # 比如：http://www.dkny.com/-notyourordinary/holiday/shine/
                         m['price'] = price
 
             href = node.xpath('.//a[@href]/@href').extract()[0]
@@ -183,12 +221,18 @@ class DknySpider(MFashionSpider):
             yield Request(url=href,
                           callback=self.parse_product,
                           errback=self.onerr,
-                          meta={'userdata': m})
+                          meta={'userdata': m},
+                          dont_filter=True)
 
     def parse_product(self, response):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
+
+        country_node = sel.xpath('//div[@class="ecommerce-nav"]/ul/li/span[2][text()]')
+        if country_node:
+            country = country_node.xpath('./text()').extract()[0]
+            self.log(str.format('region: {0}    country : {1}', metadata['region'], country))
 
         metadata['url'] = response.url
 
