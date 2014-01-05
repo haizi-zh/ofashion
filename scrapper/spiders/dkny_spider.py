@@ -196,9 +196,14 @@ class DknySpider(MFashionSpider):
                     )
                     price = self.reformat(price)
                     if price:
-                        # TODO 有些东西价格是一个区间，这种是多个商品组合起来的套装
+                        # 有些东西价格是一个区间，这种是多个商品组合起来的套装
                         # 比如：http://www.dkny.com/-notyourordinary/holiday/shine/
-                        m['price'] = price
+                        mt = re.search(r'-', price)
+                        if mt:
+                            # TODO 套装解析
+                            continue
+                        else:   # 说明它不是一个套装
+                            m['price'] = price
 
             href = node.xpath('.//a[@href]/@href').extract()[0]
             href = self.process_href(href, response.url)
@@ -236,14 +241,23 @@ class DknySpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # TODO 有没有货号的
+        # 有货号不在URL中的
         # 比如：http://www.dkny.com/bags/shop-by-shape/view-all/resort13bags145/dknypure-large-hobo?p=2&s=12
+        # 也有不在那个li的node中的
+        # 比如：http://www.dkny.com/sale/womens-sale/dresses/n43731afa/dknypure-dress-with-sleek-jersey-yoke-and-sleeves
         model = None
-        mt = re.search(r'.+/(\w+)/.+$', response.url)
-        if mt:
-            model = mt.group(1)
-            if model:
-                model = model.upper()
+        model_node = sel.xpath('//li[@class="product"][@id]')
+        if model_node:
+            model_text = model_node.xpath('./@id').extract()[0]
+            mt = re.search(r'-(\w+)$', model_text)
+            if mt:
+                model = mt.group(1)
+        if not model:
+            mt = re.search(r'.+/(\w+)/.+$', response.url)
+            if mt:
+                model = mt.group(1)
+                if model:
+                    model = model.upper()
         if model:
             metadata['model'] = model
         else:
@@ -270,7 +284,6 @@ class DknySpider(MFashionSpider):
         if colors:
             metadata['color'] = colors
 
-        # TODO 这里其他颜色的图片怎么取的
         image_urls = []
         image_nodes = sel.xpath('//div[contains(@class, "view-product_detail")]//div[@class="partial-product_viewer"]/ul/li/a/img[@src]')
         for image_node in image_nodes:
@@ -282,6 +295,36 @@ class DknySpider(MFashionSpider):
 
             image_urls += [src]
 
+        # TODO 这里其他颜色的图片怎么取的
+        # 这里发送请求，找到其他颜色图片
+        # 这里好像有两种请求，一种用了link_id，model，value_id三个参数，一种用了model，value_id两个参数
+        link_id = None
+        link_node = sel.xpath('//link[@rel="canonical"][@href]')
+        if link_node:
+            link_text = link_node.xpath('./@href').extract()[0]
+            if link_text:
+                mt = re.search(r'.+/(\w+)/.+$', link_text)
+                if mt:
+                    link_id = mt.group(1).upper()
+        if link_id:
+            other_color_node = sel.xpath('//ul[@class="product-set"]//ul[@class="option-set"]//ul[@class="option-value-set"]/li[@id][child::a[child::img]]')
+            for node in other_color_node:
+                value_id = None
+                value_id_text = node.xpath('./@id').extract()[0]
+                if value_id_text:
+                    mt = re.search(r'.+/(\w+)/.+$', value_id_text)
+                    if mt:
+                        value_id = mt.group(1)
+                if value_id:
+                    m = copy.deepcopy(metadata)
+
+                    href = str.format('http://www.dkny.com/product/detailpartial?id={0}&variantId={1}', model, value_id)
+
+                    yield Request(url=href,
+                                  callback=self.parse_other_color,
+                                  errback=self.onerr,
+                                  meta={'meta': m})
+
         item = ProductItem()
         item['url'] = metadata['url']
         item['model'] = metadata['model']
@@ -290,3 +333,8 @@ class DknySpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    def parse_other_color(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
