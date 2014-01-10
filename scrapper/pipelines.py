@@ -307,6 +307,7 @@ class ProductImagePipeline(ImagesPipeline):
         valentino_chrt = balenciaga_chrt
         emiliopucci_chrt = balenciaga_chrt
         stella_chrt = balenciaga_chrt
+        missoni_chrt = balenciaga_chrt
 
         def bottega_chrt(r):
             # 处理Bottega的图片链接特征值，即url变量文件名部分的最后两个字母
@@ -343,6 +344,7 @@ class ProductImagePipeline(ImagesPipeline):
                     10149: lambda: func(garmani_chrt),
                     10117: lambda: func(emiliopucci_chrt),
                     10333: lambda: func(stella_chrt),
+                    10263: lambda: func(missoni_chrt),
                     10367: lambda: func(valentino_chrt)}
 
         if brand_id in func_map:
