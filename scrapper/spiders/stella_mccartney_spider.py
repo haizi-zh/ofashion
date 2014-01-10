@@ -15,15 +15,10 @@ __author__ = 'Zephyre'
 
 
 class StellaMcCartneySpider(MFashionSpider):
-    spider_data = {'brand_id': 10333,
-                   'home_urls': {'us': 'http://www.stellamccartney.com/us',
-                                 'it': 'http://www.stellamccartney.com/it',
-                                 'fr': 'http://www.stellamccartney.com/fr',
-                                 'uk': 'http://www.stellamccartney.com/gb',
-                                 'de': 'http://www.stellamccartney.com/de',
-                                 'ca': 'http://www.stellamccartney.com/ca',
-                                 'au': 'http://www.stellamccartney.com/au'
-                   }}
+    spider_data = {'brand_id': 10333, 'home_urls': {
+        region: str.format('http://www.stellamccartney.com/{0}', region if region != 'uk' else 'gb') for region in
+        {'us', 'it', 'uk', 'fr', 'de', 'ca', 'au', 'ad', 'be', 'cz', 'dk', 'eg', 'fi', 'gr', 'hk', 'ie', 'jp', 'mo',
+         'my', 'mc', 'nl', 'nz', 'no', 'ru', 'sg', 'kr', 'es', 'se', 'ch', 'tw', 'th', }}}
 
     @classmethod
     def get_supported_regions(cls):
