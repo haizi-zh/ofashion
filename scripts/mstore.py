@@ -599,7 +599,7 @@ def release(param_dict):
 
 
 def price_check(param_dict):
-    obj = PriceCheck()
+    obj = PriceCheck(param_dict)
     obj.run()
     #core.func_carrier(PriceCheck(), 1)
 
