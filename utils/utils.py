@@ -13,7 +13,7 @@ def guess_currency(price):
         if s in price:
             return symbols[s]
 
-    mt = re.search(r'\b([A-Z]{3})\b', price, flags=re.U)
+    mt = re.search(r'([A-Z]{3})', price, flags=re.U)
     if mt and mt.group(1) in glob.currency_info().keys():
         return mt.group(1)
     else:
