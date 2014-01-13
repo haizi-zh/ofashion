@@ -154,12 +154,26 @@ class AgnesBSpider(MFashionSpider):
                 if name:
                     metadata['name'] = name
 
-            price_node = node.xpath('./span[@class="prix"][text()]')
-            if price_node:
-                price = price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
+            # old_price_node = node.xpath('./span[@class="prix_old"][text()]')
+            # if old_price_node:
+            #     old_price = old_price_node.xpath('./text()').extract()[0]
+            #     old_price = self.reformat(old_price)
+            #     if old_price:
+            #         metadata['price'] = old_price
+            #
+            #     new_price_node = node.xpath('./span[contains(@class, "prix discount")][text()]')
+            #     if new_price_node:
+            #         new_price = new_price_node.xpath('./text()').extract()[0]
+            #         new_price = self.reformat(new_price)
+            #         if new_price:
+            #             metadata['price_discount'] = new_price
+            # else:
+            #     price_node = node.xpath('./span[@class="prix"][text()]')
+            #     if price_node:
+            #         price = price_node.xpath('./text()').extract()[0]
+            #         price = self.reformat(price)
+            #         if price:
+            #             metadata['price'] = price
 
             colors = [
                 self.reformat(val).lower()
@@ -169,7 +183,7 @@ class AgnesBSpider(MFashionSpider):
                 metadata['color'] = colors
 
             # 这里随便取一个a标签就行
-            href = node.xpath('.//a[@href]/@href').extract()[0]
+            href = node.xpath('./a[@href]/@href').extract()[0]
             href = self.process_href(href, response.url)
 
             # 这里dont_filter来保证从不同路径进入单品，生成不同的tag
@@ -221,10 +235,24 @@ class AgnesBSpider(MFashionSpider):
                 metadata['name'] = name
 
         if not metadata.get('price'):
-            price = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[text()]/text()').extract()[0]
-            price = self.reformat(price)
-            if price:
-                metadata['price'] = price
+            old_price_node = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[@class="tarif_old"]/span[text()]')
+            if old_price_node:
+                old_price = old_price_node.xpath('./text()').extract()[0]
+                old_price = self.reformat(old_price)
+                if old_price:
+                    metadata['price'] = old_price
+
+                new_price_node = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[contains(@class, "discount")][text()]')
+                if new_price_node:
+                    new_price = new_price_node.xpath('./text()').extract()[0]
+                    new_price = self.reformat(new_price)
+                    if new_price:
+                        metadata['price_discount'] = new_price
+            else:
+                price = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[text()]/text()').extract()[0]
+                price = self.reformat(price)
+                if price:
+                    metadata['price'] = price
 
         if not metadata.get('color'):
             colors = [
