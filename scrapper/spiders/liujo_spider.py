@@ -77,10 +77,10 @@ class LiujoSpider(MFashionSpider):
                 url = self.process_href(tmp[0], response.url)
                 tmp = node.xpath('.//div[@class="infos"]/*[@class="product-name"]/a[@href and @title]/@title').extract()
                 name = self.reformat(tmp[0]) if tmp else None
-                tmp = node.xpath('.//div[@class="infos"]/div[@class="price-box"]'
-                                 '/*[@class="regular-price" or @class="old-price"]/*[@class="price"]/text()').extract()
+                tmp = node.xpath('.//div[@class="price-box"]/*[@class="regular-price" or @class="old-price"]'
+                                 '/*[@class="price"]/text()').extract()
                 price = self.reformat(tmp[0]) if tmp else None
-                tmp = node.xpath('.//div[@class="infos"]/div[@class="price-box"]/*[@class="special-price"]'
+                tmp = node.xpath('.//div[@class="price-box"]/*[@class="special-price"]'
                                  '/*[@class="price"]/text()').extract()
                 price_discount = self.reformat(tmp[0]) if tmp else None
             except (IndexError, TypeError):
@@ -112,10 +112,10 @@ class LiujoSpider(MFashionSpider):
 
         if 'price' not in metadata:
             try:
-                tmp = sel.xpath('.//div[@class="price-box"]/span[@class="regular-price"]'
+                tmp = sel.xpath('.//div[@class="price-box"]/*[@class="regular-price" or @class="old-price"]'
                                 '/*[@class="price"]/text()').extract()
                 price = self.reformat(tmp[0]) if tmp else None
-                tmp = sel.xpath('.//div[@class="price-box"]/span[@class="special-price"]'
+                tmp = sel.xpath('.//div[@class="price-box"]/*[@class="special-price"]'
                                 '/*[@class="price"]/text()').extract()
                 price_discount = self.reformat(tmp[0]) if tmp else None
                 if price:
