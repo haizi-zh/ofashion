@@ -19,8 +19,8 @@ class LiujoSpider(MFashionSpider):
     spider_data = {'brand_id': 10218,
 
                    'home_urls': {
-                   region: str.format('http://www.liujo.com/{0}/shop.html', region if region != 'uk' else 'gb') for
-                   region in {'uk', 'de', 'at', 'es', 'nl', 'pl', 'ru', 'fr', 'it', 'be'}}}
+                       region: str.format('http://www.liujo.com/{0}/shop.html', region if region != 'uk' else 'gb') for
+                       region in {'uk', 'de', 'at', 'es', 'nl', 'pl', 'ru', 'fr', 'it', 'be'}}}
 
     @classmethod
     def get_supported_regions(cls):
@@ -48,6 +48,23 @@ class LiujoSpider(MFashionSpider):
                 continue
             m = copy.deepcopy(metadata)
             m['tags_mapping']['category-0'] = [{'title': cat_title, 'name': cat_name}]
+            yield Request(url=url, callback=self.parse_cat, errback=self.onerr, meta={'userdata': m})
+
+    def parse_cat(self, response):
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        for node in sel.xpath('//ul[contains(@class,"main-subcategories-list")]/li[contains(@class,"list-elem")]'):
+            try:
+                tmp = node.xpath('./a[@href]/text()').extract()
+                cat_title = self.reformat(tmp[0])
+                cat_name = cat_title.lower()
+                tmp = node.xpath('./a[@href]/@href').extract()
+                url = self.process_href(tmp[0], response.url)
+            except (IndexError, TypeError):
+                continue
+            m = copy.deepcopy(metadata)
+            m['tags_mapping']['category-1'] = [{'title': cat_title, 'name': cat_name}]
             yield Request(url=url, callback=self.parse_list, errback=self.onerr, meta={'userdata': m})
 
     def parse_list(self, response):
@@ -60,10 +77,10 @@ class LiujoSpider(MFashionSpider):
                 url = self.process_href(tmp[0], response.url)
                 tmp = node.xpath('.//div[@class="infos"]/*[@class="product-name"]/a[@href and @title]/@title').extract()
                 name = self.reformat(tmp[0]) if tmp else None
-                tmp = node.xpath('.//div[@class="infos"]/div[@class="price-box"]/span[@class="regular-price"]'
-                                 '/*[@class="price"]/text()').extract()
+                tmp = node.xpath('.//div[@class="infos"]/div[@class="price-box"]'
+                                 '/*[@class="regular-price" or @class="old-price"]/*[@class="price"]/text()').extract()
                 price = self.reformat(tmp[0]) if tmp else None
-                tmp = node.xpath('.//div[@class="infos"]/div[@class="price-box"]/span[@class="special-price"]'
+                tmp = node.xpath('.//div[@class="infos"]/div[@class="price-box"]/*[@class="special-price"]'
                                  '/*[@class="price"]/text()').extract()
                 price_discount = self.reformat(tmp[0]) if tmp else None
             except (IndexError, TypeError):
@@ -92,6 +109,21 @@ class LiujoSpider(MFashionSpider):
         tmp = sel.xpath('//div[@itemprop="description"]/text()').extract()
         if tmp:
             metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
+
+        if 'price' not in metadata:
+            try:
+                tmp = sel.xpath('.//div[@class="price-box"]/span[@class="regular-price"]'
+                                '/*[@class="price"]/text()').extract()
+                price = self.reformat(tmp[0]) if tmp else None
+                tmp = sel.xpath('.//div[@class="price-box"]/span[@class="special-price"]'
+                                '/*[@class="price"]/text()').extract()
+                price_discount = self.reformat(tmp[0]) if tmp else None
+                if price:
+                    metadata['price'] = price
+                if price_discount:
+                    metadata['price_discount'] = price_discount
+            except (IndexError, TypeError):
+                pass
 
         image_urls = [self.process_href(val, response.url) for val in
                       sel.xpath('//a[@data-image-fullscreen]/@data-image-fullscreen').extract()]
