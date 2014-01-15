@@ -17,9 +17,9 @@ __author__ = 'Zephyre'
 
 class LoeweSpider(MFashionSpider):
     spider_data = {'brand_id': 10220,
-                   'model_term': {'cn': ur'型号\s*:\s*', 'us': r'Model ID\s*:\s*'},
+                   'model_term': {'cn': ur'型号\s*:\s*', 'us': r'Model ID\s*:\s*', 'jp': r'Model ID\s*:\s*'},
                    'home_urls': {'cn': 'http://www.loewe.com/cn_zh_hans',
-                                 # 'jp':'http://www.loewe.com/jp_ja/',
+                                 'jp': 'http://www.loewe.com/jp_ja/',
                                  'us': 'http://www.loewe.com/us_en'}}
 
     @classmethod
@@ -100,7 +100,10 @@ class LoeweSpider(MFashionSpider):
     def parse_details(self, response):
         metadata = response.meta['userdata']
         metadata['url'] = response.url
-        sel = Selector(response)
+        try:
+            sel = Selector(response)
+        except AttributeError:
+            return
 
         tmp = sel.xpath('//div[@id="aside"]//*[@class="product-name"]/text()').extract()
         if tmp:
