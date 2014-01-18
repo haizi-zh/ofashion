@@ -25,6 +25,8 @@ class PriceCheck(object):
             self.brand_list = [int(val) for val in param['brand']]
         else:
             self.brand_list = None
+        if 'threshold' in param and param['threshold']:
+            self.threshold = int(param['threshold'][0])
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
