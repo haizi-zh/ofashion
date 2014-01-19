@@ -16,7 +16,7 @@ __author__ = 'Zephyre'
 
 class MiumiuSpider(MFashionSpider):
     spider_data = {'brand_id': 10264,
-                   'currency': {'se': 'EUR'},
+                   'currency': {'se': 'EUR', 'dk': 'EUR'},
                    'home_urls': {k: str.format('http://store.miumiu.com/en/{0}', k.upper() if k != 'uk' else 'GB')
                                  for k in
                                  {'at', 'be', 'dk', 'fi', 'fr', 'gr', 'de', 'ie', 'it', 'lu', 'mc', 'nl', 'pt', 'es',
