@@ -17,6 +17,8 @@ class DVFSpider(MFashionSpider):
         'brand_id': 10617,
         'home_urls': {
             'us': 'http://www.dvf.com/',
+            'uk': 'http://uk.dvf.com/on/demandware.store/Sites-DvF_UK-Site/default/Home-Page',
+            'fr': 'http://eu.dvf.com/on/demandware.store/Sites-DvF_EU-Site/default/Home-Page',
         },
     }
 
@@ -34,9 +36,12 @@ class DVFSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="container"]/div[@id="header"]/div[@class="cont-main-menu"]/div[@class="inner-menu"]/ul/li[child::a[@href][text()]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -51,9 +56,12 @@ class DVFSpider(MFashionSpider):
 
                 sub_nodes = node.xpath('./ul/li[child::a[@href][text()]]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./a/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./a/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -66,8 +74,11 @@ class DVFSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./a/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./a/@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_product_list,
@@ -83,8 +94,11 @@ class DVFSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('.//a/@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a/@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -125,8 +139,11 @@ class DVFSpider(MFashionSpider):
         for node in other_product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -140,8 +157,11 @@ class DVFSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//div[@id="container"][@data-pid]')
         if model_node:
-            model = model_node.xpath('./@data-pid').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./@data-pid').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -152,8 +172,11 @@ class DVFSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//h1[@class="product-name"][text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         if name:
             metadata['name'] = name
@@ -162,25 +185,40 @@ class DVFSpider(MFashionSpider):
         colors = []
         color_nodes = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@data-colorname]')
         for color_node in color_nodes:
-            color_name = color_node.xpath('./@data-colorname').extract()[0]
-            colors += [color_name]
+            try:
+                color_name = color_node.xpath('./@data-colorname').extract()[0]
+                colors += [color_name]
+            except(TypeError, IndexError):
+                continue
 
         if colors:
             metadata['color'] = colors
 
 
+        # TODO 有价格是一个区间的 ：http://uk.dvf.com/on/demandware.store/Sites-DvF_UK-Site/default/Product-Variation?pid=D5873607T13B&dwvar_D5873607T13B_color=&dwvar_D5873607T13B_size=L
         old_price = None
         new_price = None
         discount_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
         if discount_node:
-            old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]/text()').extract()[0]
-            old_price = self.reformat(old_price)
+            try:
+                old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]/text()').extract()[0]
+                old_price = self.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
 
-            new_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
-            new_price = self.reformat(new_price)
+            try:
+                new_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
+                new_price = self.reformat(new_price)
+            except(TypeError, IndexError):
+                pass
         else:
-            old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
-            old_price = self.reformat(old_price)
+            old_price_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
+            if old_price_node:
+                try:
+                    old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
+                    old_price = self.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
 
         if old_price:
             metadata['price'] = old_price
@@ -191,8 +229,11 @@ class DVFSpider(MFashionSpider):
         description = None
         description_node = sel.xpath('//div[@id="content"]//div[@itemprop="description"][text()]')
         if description_node:
-            description = description_node.xpath('./text()').extract()[0]
-            description = self.reformat(description)
+            try:
+                description = description_node.xpath('./text()').extract()[0]
+                description = self.reformat(description)
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -201,8 +242,11 @@ class DVFSpider(MFashionSpider):
         detail = None
         detail_node = sel.xpath('//div[@id="content"]//p[@class="tab-fabric-description"][text()]')
         if detail_node:
-            detail = detail_node.xpath('./text()').extract()[0]
-            detail = self.reformat(detail)
+            try:
+                detail = detail_node.xpath('./text()').extract()[0]
+                detail = self.reformat(detail)
+            except(TypeError, IndexError):
+                pass
 
         if detail:
             metadata['details'] = detail
@@ -211,14 +255,18 @@ class DVFSpider(MFashionSpider):
         image_urls = []
         origin_image_node = sel.xpath('//div[@id="content"]//div[@id="pdp-pinterest-container"]/img[@src]')
         if origin_image_node:
-            origin_image_url = origin_image_node.xpath('./@src').extract()[0]
-            origin_image_url = self.process_href(origin_image_url, response.url)
-            origin_image_url = re.sub(ur'\?.*$', ur'_A1?$Demandware%20Large%20Rectangle$', origin_image_url)
-            if origin_image_url:
-                image_urls = [
-                    re.sub(ur'_A\d\?', str.format(r'_A{0}?', val), origin_image_url)
-                    for val in xrange(1, 5)
-                ]
+            try:
+                origin_image_url = origin_image_node.xpath('./@src').extract()[0]
+                origin_image_url = self.process_href(origin_image_url, response.url)
+                origin_image_url = re.sub(ur'\?.*$', ur'_A1?$Demandware%20Large%20Rectangle$', origin_image_url)
+                if origin_image_url:
+                    image_urls += [origin_image_url]
+                    image_urls += [
+                        re.sub(ur'_A\d\?', str.format(r'_A{0}?', val), origin_image_url)
+                        for val in xrange(2, 5)
+                    ]
+            except(TypeError, IndexError):
+                pass
 
 
         item = ProductItem()
