@@ -167,7 +167,6 @@ class MulberrySpider(MFashionSpider):
         new_price = None
         name_price_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
         if name_price_node:
-
             was_price_node = name_price_node.xpath('.//div[@class="wasPrice"]')
             if was_price_node:  # 有折扣
                 try:
@@ -193,13 +192,15 @@ class MulberrySpider(MFashionSpider):
                 try:
                     name = ' '.join(
                         self.reformat(val)
-                        for val in name_price_node.xpath('.//text()[position() < last()-1]').extract()
+                        for val in name_price_node.xpath('./text() | ./span/text()[position() < last()]').extract()
                     )
                 except(TypeError, IndexError):
                     pass
 
                 try:
-                    old_price = self.reformat(name_price_node.xpath('.//text()[last()-1]').extract()[0])
+                    old_price = self.reformat(name_price_node.xpath('./span/text()[last()]').extract()[0])
+                    # if not old_price:   # 有些最后一个text()是空的，价格在倒数第二个
+                    #     old_price = self.reformat(name_price_node.xpath('.//text()[last()-1]').extract()[0])
                 except(TypeError, IndexError):
                     pass
 
