@@ -16,6 +16,7 @@ __author__ = 'Zephyre'
 
 class MissoniSpider(MFashionSpider):
     spider_data = {'brand_id': 10263,
+                   'currency': {'kr': 'USD'},
                    'home_urls': {
                        region: str.format('http://www.missoni.com/{0}/fashion', 'gb' if region == 'uk' else region)
                        for

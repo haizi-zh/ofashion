@@ -13,7 +13,6 @@ import re
 import shutil
 from threading import Thread
 import urllib2
-import pydevd
 import global_settings as glob
 from products.utils import fetch_image
 from scripts import dbman
@@ -427,6 +426,8 @@ def sync(args):
             idx += 1
             dst_spec = db_map[tmp]
         elif hdr == '-D':
+            import pydevd
+
             pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
         else:
             print str.format('INVALID PARAMETER: {0}', hdr)
@@ -599,9 +600,8 @@ def release(param_dict):
 
 
 def price_check(param_dict):
-    obj = PriceCheck()
+    obj = PriceCheck(param_dict)
     obj.run()
-    #core.func_carrier(PriceCheck(), 1)
 
 
 def image_check(param_dict):
@@ -682,6 +682,8 @@ def argument_parser(args):
             port = int(param_dict['P'][0])
         else:
             port = glob.DEBUG_PORT
+        import pydevd
+
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
     for k in ('debug', 'D', 'P'):
         try:

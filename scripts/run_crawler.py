@@ -7,7 +7,6 @@ import re
 import shutil
 import sys
 import datetime
-import pydevd
 from scrapy import log, signals
 from scrapy.crawler import Crawler
 from scrapy.settings import Settings
@@ -74,6 +73,7 @@ def argument_parser(args):
             port = int(param_dict['P'][0])
         else:
             port = glob.DEBUG_PORT
+        import pydevd
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
 
     for k in ('debug', 'D', 'P'):

@@ -17,10 +17,16 @@ class PriceCheck(object):
     检查单品价格是否存在可能的错误
     """
 
-    def __init__(self):
+    def __init__(self, param=None):
         self.tot = 1
         self.progress = 0
         self.threshold = 10
+        if 'brand' in param:
+            self.brand_list = [int(val) for val in param['brand']]
+        else:
+            self.brand_list = None
+        if 'threshold' in param and param['threshold']:
+            self.threshold = int(param['threshold'][0])
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
@@ -30,8 +36,12 @@ class PriceCheck(object):
         db = MySqlDb()
         db.conn(gs.DB_SPEC)
 
-        rs = db.query_match(['brand_id'], 'products', distinct=True)
-        brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
+        if not self.brand_list:
+            rs = db.query_match(['brand_id'], 'products', distinct=True)
+            brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
+            self.brand_list = brand_list
+        else:
+            brand_list = self.brand_list
 
         self.progress = 0
         self.tot = len(brand_list)

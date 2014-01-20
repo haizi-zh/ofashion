@@ -7,13 +7,13 @@ __author__ = 'Zephyre'
 
 
 def guess_currency(price):
-    symbols = {u'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD', 'US$': 'USD'}
+    symbols = {u'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD', 'US$': 'USD', u'£': 'GBP'}
     # 按照符号提取
     for s in symbols:
         if s in price:
             return symbols[s]
 
-    mt = re.search(r'\b([A-Z]{3})\b', price, flags=re.U)
+    mt = re.search(r'([A-Z]{3})', price, flags=re.U)
     if mt and mt.group(1) in glob.currency_info().keys():
         return mt.group(1)
     else:
