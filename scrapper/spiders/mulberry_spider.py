@@ -17,6 +17,10 @@ class MulberrySpider(MFashionSpider):
         'brand_id': 10270,
         'home_urls': {
             'uk': 'http://www.mulberry.com/shop',
+            'us': 'http://www.mulberry.com/us/shop',
+            'fr': 'http://www.mulberry.com/eu/shop',
+            # 'it': 'http://www.mulberry.com/eu/shop',
+            # 'de': 'http://www.mulberry.com/eu/shop',
         },
     }
 
