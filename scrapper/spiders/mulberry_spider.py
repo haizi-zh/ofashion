@@ -38,9 +38,12 @@ class MulberrySpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="content"]/nav[@class="categories-nav"]/ul/li[child::a[@href][text()]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -58,9 +61,12 @@ class MulberrySpider(MFashionSpider):
 
                 sub_nodes = node.xpath('./div[@class="dropdown"]/ul/li/a[@href][text()]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -76,8 +82,11 @@ class MulberrySpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_product_list,
@@ -93,8 +102,11 @@ class MulberrySpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -137,8 +149,11 @@ class MulberrySpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div/p/strong[text()]')
         if model_node:
-            model = model_node.xpath('./text()').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -155,23 +170,38 @@ class MulberrySpider(MFashionSpider):
 
             was_price_node = name_price_node.xpath('.//div[@class="wasPrice"]')
             if was_price_node:  # 有折扣
-                name = ' '.join(
-                    self.reformat(val)
-                    for val in name_price_node.xpath('./text() | ./span/text()').extract()
-                )
+                try:
+                    name = ' '.join(
+                        self.reformat(val)
+                        for val in name_price_node.xpath('./text() | ./span/text()').extract()
+                    )
+                except(TypeError, IndexError):
+                    pass
 
-                old_price = name_price_node.xpath('.//div[@class="wasPrice"]/text()').extract()[0]
-                old_price = self.reformat(old_price)
+                try:
+                    old_price = name_price_node.xpath('.//div[@class="wasPrice"]/text()').extract()[0]
+                    old_price = self.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
 
-                new_price = name_price_node.xpath('.//div[@class="nowPrice"]/text()').extract()[0]
-                new_price = self.reformat(new_price)
+                try:
+                    new_price = name_price_node.xpath('.//div[@class="nowPrice"]/text()').extract()[0]
+                    new_price = self.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
             else:   # 无折扣
-                name = ' '.join(
-                    self.reformat(val)
-                    for val in name_price_node.xpath('.//text()[position() < last()-1]').extract()
-                )
+                try:
+                    name = ' '.join(
+                        self.reformat(val)
+                        for val in name_price_node.xpath('.//text()[position() < last()-1]').extract()
+                    )
+                except(TypeError, IndexError):
+                    pass
 
-                old_price = self.reformat(name_price_node.xpath('.//text()[last()-1]').extract()[0])
+                try:
+                    old_price = self.reformat(name_price_node.xpath('.//text()[last()-1]').extract()[0])
+                except(TypeError, IndexError):
+                    pass
 
         if name:
             metadata['name'] = name
@@ -184,7 +214,10 @@ class MulberrySpider(MFashionSpider):
         description = None
         description_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]//div[@class="product-description"]/p[text()]')
         if description_node:
-            description = self.reformat(description_node.xpath('./text()').extract()[0])
+            try:
+                description = self.reformat(description_node.xpath('./text()').extract()[0])
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -193,7 +226,10 @@ class MulberrySpider(MFashionSpider):
         color = None
         color_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]//div[@class="additional-product"][1]//div[@class="sixcol"]/h3[text()]')
         if color_node:
-            color = self.reformat(color_node.xpath('./text()').extract()[0])
+            try:
+                color = self.reformat(color_node.xpath('./text()').extract()[0])
+            except(TypeError, IndexError):
+                pass
 
         if color:
             metadata['color'] = [color]
@@ -202,10 +238,13 @@ class MulberrySpider(MFashionSpider):
         detail = None
         detail_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div[@class="detailed-info"]/*[1 < position()][position() < last()-1]')
         if detail_node:
-            detail = '\r'.join(
-                self.reformat(val)
-                for val in detail_node.xpath('.//text()').extract()
-            )
+            try:
+                detail = '\r'.join(
+                    self.reformat(val)
+                    for val in detail_node.xpath('.//text()').extract()
+                )
+            except(TypeError, IndexError):
+                pass
 
         if detail:
             metadata['details'] = detail
@@ -214,10 +253,13 @@ class MulberrySpider(MFashionSpider):
         image_urls = []
         image_nodes = sel.xpath('//div[@id="content"]/section[@class="section-hero"]//div[@id="carousel-hero"]/ul/li/a[@data-zoom]')
         for image_node in image_nodes:
-            image_urls += [
-                self.process_href(val, response.url)
-                for val in image_node.xpath('./@data-zoom').extract()
-            ]
+            try:
+                image_urls += [
+                    self.process_href(val, response.url)
+                    for val in image_node.xpath('./@data-zoom').extract()
+                ]
+            except(TypeError, IndexError):
+                continue
 
 
         item = ProductItem()
