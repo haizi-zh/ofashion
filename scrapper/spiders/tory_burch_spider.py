@@ -22,7 +22,7 @@ class ToryBurchSpider(MFashionSpider):
             'it': 'http://www.toryburch.it/',
             'fr': 'http://www.toryburch.fr/',
             'at': 'http://www.toryburch.at/',
-            # 'jp': 'http://www.toryburch.jp/',
+            'jp': 'http://www.toryburch.jp/',
         },
     }
 
@@ -37,6 +37,10 @@ class ToryBurchSpider(MFashionSpider):
 
         metadata = response.meta['userdata']
         sel = Selector(response)
+
+        if metadata['region'] == 'jp':
+            for val in self.parse_jp(response):
+                yield val
 
         nav_nodes = sel.xpath('//div[@id="navigation"]/ul/li[child::a[@href][text()]]')
         for node in nav_nodes:
@@ -330,6 +334,198 @@ class ToryBurchSpider(MFashionSpider):
                     image_urls += [image_url]
             except(TypeError, IndexError):
                 continue
+
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        if image_urls:
+            item['image_urls'] = image_urls
+        item['metadata'] = metadata
+
+        yield item
+
+    def parse_jp(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        nav_nodes = sel.xpath('//div[@id="gNav"]/ul/li[child::a[@href][child::span[text()]]]')
+        for node in nav_nodes:
+            tag_text = node.xpath('./a/span/text()').extract()[0]
+            tag_text = self.reformat(tag_text)
+            tag_name = tag_text.lower()
+
+            if tag_text and tag_name:
+                m = copy.deepcopy(metadata)
+
+                m['tags_mapping']['category-0'] = [
+                    {'name': tag_name, 'title': tag_text,},
+                ]
+
+                gender = common.guess_gender(tag_name)
+                if gender:
+                    m['gender'] = [gender]
+
+                sub_nodes = node.xpath('./div/ul/li[child::a[@href][text()]]')
+                for sub_node in sub_nodes:
+                    tag_text = sub_node.xpath('./a/text()').extract()[0]
+                    tag_text = self.reformat(tag_text)
+                    tag_name = tag_text.lower()
+
+                    if tag_text and tag_name:
+                        mc = copy.deepcopy(m)
+
+                        mc['tags_mapping']['category-1'] = [
+                            {'name': tag_name, 'title': tag_text,},
+                        ]
+
+                        gender = common.guess_gender(tag_name)
+                        if gender:
+                            mc['gender'] = [gender]
+
+                        href = sub_node.xpath('./a/@href').extract()[0]
+                        href = self.process_href(href, response.url)
+
+                        yield Request(url=href,
+                                      callback=self.parse_jp_product_list,
+                                      errback=self.onerr,
+                                      meta={'userdata': mc})
+
+                href = node.xpath('./a/@href').extract()[0]
+                href = self.process_href(href, response.url)
+
+                yield Request(url=href,
+                              callback=self.parse_jp_product_list,
+                              errback=self.onerr,
+                              meta={'userdata': m})
+
+    def parse_jp_product_list(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+        product_nodes = sel.xpath('//div[@id="search-set"]/div[@class="productresultarea"]/div[@class="productlisting clearfix"]/div[@class="product producttile"]')
+        for node in product_nodes:
+            m = copy.deepcopy(metadata)
+
+            href = node.xpath('.//a[@href]/@href').extract()[0]
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_jp_product,
+                          errback=self.onerr,
+                          meta={'userdata': m},
+                          dont_filter=True)
+
+        next_node = sel.xpath('//div[@id="search-set"]/div[@class="sortArea"]//div[@id="static_common_SfPropelPagerView"]//li[@class="next"]/a[@href][text()]')
+        if next_node:
+            next_href = next_node.xpath('./@href').extract()[0]
+            next_href = self.process_href(next_href, response.url)
+
+            yield Request(url=next_href,
+                          callback=self.parse_jp_product_list,
+                          errback=self.onerr,
+                          meta={'userdata': metadata})
+
+    def parse_jp_product(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+
+        metadata['url'] = response.url
+
+
+        model = None
+        model_node = sel.xpath('//div[@id="wrapper"]//div[@id="detailArea"]//div[@id="kihonTxt"]/p[last()][contains(text(),"Style Number")]')
+        if model_node:
+            model_text = model_node.xpath('./text()').extract()[0]
+            model_text = self.reformat(model_text)
+            mt = re.search(ur': (\w*)$', model_text)
+            if mt:
+                model = mt.group(1)
+                model = model.upper()
+
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+
+        name = None
+        name_node = sel.xpath('//ul[@id="path"]/li[@class="last_child"][text()]')
+        if name_node:
+            name = name_node.xpath('./text()').extract()[0]
+            name = self.reformat(name)
+
+        if name:
+            metadata['name'] = name
+
+
+        old_price = None
+        new_price = None
+        old_price_node = sel.xpath('//div[@id="detailTxt"]//dd[@class="kakaku"]/del[text()]')
+        if old_price_node:
+            old_price = old_price_node.xpath('./text()').extract()[0]
+            old_price = self.reformat(old_price)
+            old_price = re.sub(ur'-', '', old_price)
+
+            new_price = sel.xpath('//div[@id="detailTxt"]//dd[@class="kakaku"]/span/text()').extract()[0]
+            new_price = self.reformat(new_price)
+            new_price = re.sub(ur'-', '', new_price)
+        else:
+            old_price = sel.xpath('//div[@id="detailTxt"]//dd[@class="kakaku"]/text()').extract()[0]
+            old_price = self.reformat(old_price)
+            old_price = re.sub(ur'-', '', old_price)
+
+        if old_price:
+            metadata['price'] = old_price
+        if new_price:
+            metadata['price_discount'] = new_price
+
+
+        description = None
+        description_node = sel.xpath('//div[@id="wrapper"]//div[@id="detailArea"]//div[@id="kihonTxt"]/p[not(contains(text(),"Style Number"))][text()]')
+        if description_node:
+            description = description_node.xpath('./text()').extract()[0]
+            description = self.reformat(description)
+
+        if description:
+            metadata['description'] = description
+
+
+        details = None
+        detail_nodes = sel.xpath('//div[@id="detailTxt"]/div[@id="sizeTxt"]/p | //div[@id="detailTxt"]/div[@id="sozaiTxt"]/p')
+        if detail_nodes:
+            details = '\r'.join(
+                self.reformat(val)
+                for val in detail_nodes.xpath('.//text()').extract()
+            )
+
+        if details:
+            metadata['details'] = details
+
+
+        colors = None
+        color_nodes = sel.xpath('//div[@id="detailTxt"]/ul[@class="inlineList"]/li/span/img[@title]')
+        if color_nodes:
+            colors = [
+                self.reformat(val).lower()
+                for val in color_nodes.xpath('./@title').extract()
+            ]
+
+        if colors:
+            metadata['color'] = colors
+
+
+        image_urls = []
+        image_nodes = sel.xpath('//div[@id="detailTxt"]/ul[@class="inlineList"]/li/span/img[@src]')
+        for image_node in image_nodes:
+            image_src = image_node.xpath('./@src').extract()[0]
+            image_src = re.sub(ur'_\d+x\d+', '', image_src)
+            if image_src:
+                image_urls += [image_src]
+
 
         item = ProductItem()
         item['url'] = metadata['url']
