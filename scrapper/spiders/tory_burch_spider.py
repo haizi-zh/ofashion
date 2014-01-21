@@ -70,7 +70,7 @@ class ToryBurchSpider(MFashionSpider):
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
 
-                        m['tags_mapping']['category-1'] = [
+                        mc['tags_mapping']['category-1'] = [
                             {'name': tag_name, 'title': tag_text,},
                         ]
 
@@ -90,7 +90,7 @@ class ToryBurchSpider(MFashionSpider):
                             if tag_text and tag_name:
                                 mcc = copy.deepcopy(mc)
 
-                                m['tags_mapping']['category-2'] = [
+                                mcc['tags_mapping']['category-2'] = [
                                     {'name': tag_name, 'title': tag_text,},
                                 ]
 
