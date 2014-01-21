@@ -17,6 +17,12 @@ class ToryBurchSpider(MFashionSpider):
         'brand_id': 11301,
         'home_urls': {
             'us': 'http://www.toryburch.com/',
+            'uk': 'http://www.toryburch.co.uk/',
+            'de': 'http://www.toryburch.de/',
+            'it': 'http://www.toryburch.it/',
+            'fr': 'http://www.toryburch.fr/',
+            'at': 'http://www.toryburch.at/',
+            # 'jp': 'http://www.toryburch.jp/',
         },
     }
 
