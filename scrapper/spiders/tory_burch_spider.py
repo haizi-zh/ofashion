@@ -76,7 +76,7 @@ class ToryBurchSpider(MFashionSpider):
 
                         gender = common.guess_gender(tag_name)
                         if gender:
-                            m['gender'] = [gender]
+                            mc['gender'] = [gender]
 
                         third_nodes = sub_node.xpath('./ul/li[child::a[@href][text()]]')
                         for third_node in third_nodes:
@@ -96,7 +96,7 @@ class ToryBurchSpider(MFashionSpider):
 
                                 gender = common.guess_gender(tag_name)
                                 if gender:
-                                    m['gender'] = [gender]
+                                    mcc['gender'] = [gender]
 
                                 try:
                                     href = third_node.xpath('./a/@href').extract()[0]
