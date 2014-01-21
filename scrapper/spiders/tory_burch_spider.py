@@ -217,11 +217,11 @@ class ToryBurchSpider(MFashionSpider):
 
 
         details = None
-        details_nodes = sel.xpath('//div[contains(@id,"product-")]//div[@class="collapsibleDetails"]//div[@class="detailsPanel open"][not(@itemprop)]/div[@class="panelContent"]/ul/li[text()]')
+        details_nodes = sel.xpath('//div[contains(@id,"product-")]//div[contains(@class,"collapsibleDetails")]//div[@class="detailsPanel open"][not(@itemprop)]/div[@class="panelContent"]')
         if details_nodes:
             details = '\r'.join(
                 self.reformat(val)
-                for val in details_nodes.xpath('./text()').extract()
+                for val in details_nodes.xpath('.//text()').extract()
             )
 
         if details:
