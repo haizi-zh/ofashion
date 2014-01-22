@@ -255,6 +255,18 @@ class DiorSpider(MFashionSpider):
                         model = self.reformat(model)
             except(TypeError, IndexError):
                 pass
+        if not model_node:
+            try:
+                model_node = sel.xpath('//meta[@property="og:image"][@content]')
+                if model_node:
+                    model_text = model_node.xpath('./@content').extract()[0]
+                    if model_text:
+                        mt = re.search(ur'[^/]/(\w+)\.', model_text)
+                        if mt:
+                            model = mt.group(1)
+                            model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -276,10 +288,13 @@ class DiorSpider(MFashionSpider):
 
 
         description = None
-        description_node = sel.xpath('//meta[@name="description"][@content]')
+        description_node = sel.xpath('//div[@class="wrapSheet"]/div[@class="description"][descendant::*[text()]]')
         if description_node:
             try:
-                description = description_node.xpath('./@content').extract()[0]
+                description = '\r'.join(
+                    self.reformat(val)
+                    for val in description_node.xpath('.//text()').extract()
+                )
                 description = self.reformat(description)
             except(TypeError, IndexError):
                 pass
@@ -290,6 +305,8 @@ class DiorSpider(MFashionSpider):
 
         price = None
         price_node = sel.xpath('//div[@class="modEcommerce"]//span[@class="hoverPrice"][text()]')
+        if not price:
+            price_node = sel.xpath('//div[@class="modEcommerce"]//*[@class="price"][text()]')
         if price_node:
             try:
                 price = price_node.xpath('./text()').extract()[0]
