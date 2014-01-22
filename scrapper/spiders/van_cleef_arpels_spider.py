@@ -146,6 +146,22 @@ class VanCleffArpelsSpider(MFashionSpider):
                           meta={'userdata': m},
                           dont_filter=True)
 
+        # 这里感觉没必要非找下一页的node，重复url反正会被去掉的
+        page_nodes = sel.xpath('//ul[@id="search-control"]/li/p/a[@href]')
+        for node in page_nodes:
+            m = copy.deepcopy(metadata)
+
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
+
+            yield Request(url=href,
+                          callback=self.parse_product_list,
+                          errback=self.onerr,
+                          meta={'userdata': m})
+
     def parse_product(self, response):
 
         metadata = response.meta['userdata']
