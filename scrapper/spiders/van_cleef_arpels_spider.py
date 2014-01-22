@@ -17,6 +17,8 @@ class VanCleffArpelsSpider(MFashionSpider):
         'brand_id': 10369,
         'home_urls': {
             'us': 'http://www.vancleefarpels.com/us/en/',
+            'jp': 'http://www.vancleefarpels.com/jp/ja/',
+            'uk': 'http://www.vancleefarpels.com/eu/en/',
         },
     }
 
