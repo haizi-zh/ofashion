@@ -47,12 +47,15 @@ class DiorSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="pre-footer"]/ul[@class="nav"]/li[child::h4[text()]]')
         for node in nav_nodes:
-            tag_text = ''.join(
-                self.reformat(val)
-                for val in node.xpath('./h4//text()').extract()
-            )
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = ''.join(
+                    self.reformat(val)
+                    for val in node.xpath('./h4//text()').extract()
+                )
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -67,9 +70,12 @@ class DiorSpider(MFashionSpider):
 
                 sub_nodes = node.xpath('./ul/li[child::a[@href][text()]]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./a/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./a/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -82,8 +88,11 @@ class DiorSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./a/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./a/@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_filter,
@@ -97,9 +106,12 @@ class DiorSpider(MFashionSpider):
 
         filter_nodes = sel.xpath('//div[@id="main-nav"]/ul/li[child::a[@href][text()]]')
         for node in filter_nodes:
-            tag_text = node.xpath('./a/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -116,12 +128,15 @@ class DiorSpider(MFashionSpider):
                                        filter_nodes.index(node)+1)
                 sub_nodes = node.xpath(xpath_str)
                 for sub_node in sub_nodes:
-                    tag_text = ''.join(
-                        self.reformat(val)
-                        for val in sub_node.xpath('./h3/text()').extract()
-                    )
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = ''.join(
+                            self.reformat(val)
+                            for val in sub_node.xpath('./h3/text()').extract()
+                        )
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -136,9 +151,12 @@ class DiorSpider(MFashionSpider):
 
                         href_nodes = sub_node.xpath('./a[@href][text()]')
                         for href_node in href_nodes:
-                            tag_text = href_node.xpath('./text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = href_node.xpath('./text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mcc = copy.deepcopy(mc)
@@ -151,16 +169,22 @@ class DiorSpider(MFashionSpider):
                                 if gender:
                                     mcc['gender'] = [gender]
 
-                                href = href_node.xpath('./@href').extract()[0]
-                                href = self.process_href(href, response.url)
+                                try:
+                                    href = href_node.xpath('./@href').extract()[0]
+                                    href = self.process_href(href, response.url)
+                                except(TypeError, IndexError):
+                                    continue
 
                                 yield Request(url=href,
                                               callback=self.parse_product_list,
                                               errback=self.onerr,
                                               meta={'userdata': mcc})
 
-                href = node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                try:
+                    href = node.xpath('./a/@href').extract()[0]
+                    href = self.process_href(href, response.url)
+                except(TypeError, IndexError):
+                    continue
 
                 yield Request(url=href,
                               callback=self.parse_product_list,
@@ -176,9 +200,12 @@ class DiorSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('.//a[@href]/@href').extract()[0]
-            href = self.reformat(href)  # 这里这个url前边有一些空白字符
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]/@href').extract()[0]
+                href = self.reformat(href)  # 这里这个url前边有一些空白字符
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -190,9 +217,12 @@ class DiorSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('.//a[@href]/@href').extract()[0]
-            href = self.reformat(href)  # 这里这个url前边有一些空白字符
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('.//a[@href]/@href').extract()[0]
+                href = self.reformat(href)  # 这里这个url前边有一些空白字符
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -212,16 +242,19 @@ class DiorSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//div[@id="content"]//ul[@class="ref"]/li[1][text()]')
         if model_node:
-            model_text = ''.join(
-                self.reformat(val)
-                for val in model_node.xpath('./text()').extract()
-            )
-            model_text = self.reformat(model_text)
-            if model_text:
-                mt = re.search(ur'— ([\w ]+)', model_text)
-                if mt:
-                    model = mt.group(1)
-                    model = self.reformat(model)
+            try:
+                model_text = ''.join(
+                    self.reformat(val)
+                    for val in model_node.xpath('./text()').extract()
+                )
+                model_text = self.reformat(model_text)
+                if model_text:
+                    mt = re.search(ur'— ([\w ]+)', model_text)
+                    if mt:
+                        model = mt.group(1)
+                        model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -232,8 +265,11 @@ class DiorSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//title[text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         if name:
             metadata['name'] = name
@@ -242,8 +278,11 @@ class DiorSpider(MFashionSpider):
         description = None
         description_node = sel.xpath('//meta[@name="description"][@content]')
         if description_node:
-            description = description_node.xpath('./@content').extract()[0]
-            description = self.reformat(description)
+            try:
+                description = description_node.xpath('./@content').extract()[0]
+                description = self.reformat(description)
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -252,8 +291,11 @@ class DiorSpider(MFashionSpider):
         price = None
         price_node = sel.xpath('//div[@class="modEcommerce"]//span[@class="hoverPrice"][text()]')
         if price_node:
-            price = price_node.xpath('./text()').extract()[0]
-            price = self.reformat(price)
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = self.reformat(price)
+            except(TypeError, IndexError):
+                pass
 
         if price:
             metadata['price'] = price
@@ -262,10 +304,13 @@ class DiorSpider(MFashionSpider):
         image_urls = None
         image_nodes = sel.xpath('//div[@class="modEcommerce"]//ul[@class="thumbsProduct"]/li/a[@data-zoom]')
         if image_nodes:
-            image_urls = [
-                self.process_href(self.reformat(val), response.url)
-                for val in image_nodes.xpath('./@data-zoom').extract()
-            ]
+            try:
+                image_urls = [
+                    self.process_href(self.reformat(val), response.url)
+                    for val in image_nodes.xpath('./@data-zoom').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
 
         item = ProductItem()
