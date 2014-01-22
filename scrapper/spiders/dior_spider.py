@@ -17,6 +17,19 @@ class DiorSpider(MFashionSpider):
         'brand_id': 10106,
         'home_urls': {
             'uk': 'http://www.dior.com/home/en_gb',
+            'be': 'http://www.dior.com/home/en_be',
+            'de': 'http://www.dior.com/home/de_de',
+            'es': 'http://www.dior.com/home/es_es',
+            'fr': 'http://www.dior.com/home/fr_fr',
+            'it': 'http://www.dior.com/home/it_it',
+            'ru': 'http://www.dior.com/home/ru_ru',
+            'br': 'http://www.dior.com/home/pt_br',
+            'us': 'http://www.dior.com/home/en_us',
+            'cn': 'http://www.dior.com/home/zh_cn',
+            'hk': 'http://www.dior.com/home/zh_hk',
+            'jp': 'http://www.dior.com/home/ja_jp',
+            'kr': 'http://www.dior.com/home/ko_kr',
+            'tw': 'http://www.dior.com/home/zh_tw',
         },
     }
 
@@ -160,6 +173,20 @@ class DiorSpider(MFashionSpider):
         sel = Selector(response)
 
         product_nodes = sel.xpath('//ul[@class="slides anythingBase horizontal"]/li[descendant::a[@href]]')
+        for node in product_nodes:
+            m = copy.deepcopy(metadata)
+
+            href = node.xpath('.//a[@href]/@href').extract()[0]
+            href = self.reformat(href)  # 这里这个url前边有一些空白字符
+            href = self.process_href(href, response.url)
+
+            yield Request(url=href,
+                          callback=self.parse_product,
+                          errback=self.onerr,
+                          meta={'userdata': m},
+                          dont_filter=True)
+
+        product_nodes = sel.xpath('//div[@class="mods modCrossSell"]/ul[@class="crossList png-bg"]/li[child::a[@href]] | //ul[@id="productList"]/li[child::a[@href]]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
