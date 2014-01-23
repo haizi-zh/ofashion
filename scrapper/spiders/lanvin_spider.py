@@ -56,9 +56,12 @@ class LanvinSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="header"]//ul[@id="nav"]/li[child::a[@href][text()]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./a[text()]/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a[text()]/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -73,9 +76,12 @@ class LanvinSpider(MFashionSpider):
 
                 sub_nodes = node.xpath('./ul/li[child::a[@href][text()]]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -88,16 +94,22 @@ class LanvinSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./a[@href]/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./a[@href]/@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_product_list,
                                       errback=self.onerr,
                                       meta={'userdata': mc})
 
-                href = node.xpath('./a[@href]/@href').extract()[0]
-                href = self.process_href(href, response.url)
+                try:
+                    href = node.xpath('./a[@href]/@href').extract()[0]
+                    href = self.process_href(href, response.url)
+                except(TypeError, IndexError):
+                    continue
 
                 yield Request(url=href,
                               callback=self.parse_product_list,
@@ -113,8 +125,11 @@ class LanvinSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./a[@href][last()]/@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./a[@href][last()]/@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -134,8 +149,11 @@ class LanvinSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h3[@class="product-cat"][text()]')
         if model_node:
-            model = model_node.xpath('./text()').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -143,8 +161,11 @@ class LanvinSpider(MFashionSpider):
             # 这里检查有没有more infomation的链接
             more_node = sel.xpath('//div[@class="product-info"]//a[@class="tl-more"][@href]')
             if more_node:
-                more_href = more_node.xpath('./@href').extract()[0]
-                more_href = self.process_href(more_href, response.url)
+                try:
+                    more_href = more_node.xpath('./@href').extract()[0]
+                    more_href = self.process_href(more_href, response.url)
+                except(TypeError, IndexError):
+                    return
 
                 yield Request(url=more_href,
                               callback=self.parse_product,
@@ -157,11 +178,14 @@ class LanvinSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h2[@class="product-name"][text()]')
         if name_node:
-            name = ' '.join(
-                self.reformat(val)
-                for val in name_node.xpath('./text()').extract()
-            )
-            name = self.reformat(name)
+            try:
+                name = ' '.join(
+                    self.reformat(val)
+                    for val in name_node.xpath('./text()').extract()
+                )
+                name = self.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         if name:
             metadata['name'] = name
@@ -170,8 +194,11 @@ class LanvinSpider(MFashionSpider):
         price = None
         price_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]//span[@class="price"][text()]')
         if price_node:
-            price = price_node.xpath('./text()').extract()[0]
-            price = self.reformat(price)
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = self.reformat(price)
+            except(TypeError, IndexError):
+                pass
 
         if price:
             metadata['price'] = price
@@ -180,8 +207,11 @@ class LanvinSpider(MFashionSpider):
         description = None
         description_node = sel.xpath('//div[@id="pp-details"]/p[text()]')
         if description_node:
-            description = description_node.xpath('./text()').extract()[0]
-            description = self.reformat(description)
+            try:
+                description = description_node.xpath('./text()').extract()[0]
+                description = self.reformat(description)
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -191,11 +221,14 @@ class LanvinSpider(MFashionSpider):
         details = None
         detail_nodes = sel.xpath('//div[@id="pp-details"]/ul/li[text()]')
         if detail_nodes:
-            details = '\r'.join(
-                self.reformat(val)
-                for val in detail_nodes.xpath('./text()').extract()
-            )
-            details = self.reformat(details)
+            try:
+                details = '\r'.join(
+                    self.reformat(val)
+                    for val in detail_nodes.xpath('./text()').extract()
+                )
+                details = self.reformat(details)
+            except(TypeError, IndexError):
+                pass
 
         if details:
             metadata['details'] = details
@@ -204,17 +237,23 @@ class LanvinSpider(MFashionSpider):
         colors = None
         color_nodes = sel.xpath('//div[@class="product-box"]//div[@id="product-options-wrapper"]//ul[@class="thumbs"]/li/img[@title]')
         if color_nodes:
-            colors = [
-                self.reformat(val).lower()
-                for val in color_nodes.xpath('./@title').extract()
-            ]
+            try:
+                colors = [
+                    self.reformat(val).lower()
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
         if not colors:
             mt = re.search(ur'color=(\w+)', response.url)
             if mt:
-                color_text = mt.group(1)
-                color_text = color_text.lower()
-                if color_text:
-                    colors = [color_text]
+                try:
+                    color_text = mt.group(1)
+                    color_text = color_text.lower()
+                    if color_text:
+                        colors = [color_text]
+                except(TypeError, IndexError):
+                    pass
 
         if colors:
             metadata['color'] = colors
@@ -223,10 +262,13 @@ class LanvinSpider(MFashionSpider):
         image_urls = None
         image_list = re.findall(ur'"(\S*)"\); return true;', response.body)
         if image_list:
-            image_urls = [
-                self.process_href(val, response.url)
-                for val in image_list
-            ]
+            try:
+                image_urls = [
+                    self.process_href(val, response.url)
+                    for val in image_list
+                ]
+            except(TypeError, IndexError):
+                pass
 
 
         item = ProductItem()
