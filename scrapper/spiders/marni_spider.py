@@ -106,7 +106,6 @@ class MarniSpider(MFashionSpider):
         tmp = sel.xpath('//div[@class="descr"]/text()').extract()
         if tmp:
             metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
-
         if price_str.find('%') != -1:
             old_price = price[0]
             new_price = price[1]
