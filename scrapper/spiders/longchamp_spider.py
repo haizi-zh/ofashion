@@ -69,9 +69,12 @@ class LongchampSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="footer"]//div[@class="footer-map"]/dl[child::dt[text()]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./dt/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./dt/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -86,9 +89,12 @@ class LongchampSpider(MFashionSpider):
 
                 sub_nodes = node.xpath('./dd/ul/li/a[@href][text()]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -101,8 +107,11 @@ class LongchampSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_product_list,
@@ -118,8 +127,11 @@ class LongchampSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -137,8 +149,11 @@ class LongchampSpider(MFashionSpider):
         for node in other_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -152,8 +167,11 @@ class LongchampSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//div[@id="aside"]//span[@itemprop="productID"][text()]')
         if model_node:
-            model = model_node.xpath('./text()').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -164,8 +182,11 @@ class LongchampSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//div[@id="aside"]//h1[@itemprop="name"][text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         if name:
             metadata['name'] = name
@@ -174,8 +195,11 @@ class LongchampSpider(MFashionSpider):
         price = None
         price_node = sel.xpath('//div[@id="aside"]//span[@itemprop="price"][text()]')
         if price_node:
-            price = price_node.xpath('./text()').extract()[0]
-            price = self.reformat(price)
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = self.reformat(price)
+            except(TypeError, IndexError):
+                pass
 
         if price:
             metadata['price'] = price
@@ -184,11 +208,14 @@ class LongchampSpider(MFashionSpider):
         description = None
         description_node = sel.xpath('//div[@id="aside"]//div[@itemprop="description"][text()]')
         if description_node:
-            description = '\r'.join(
-                self.reformat(val)
-                for val in description_node.xpath('.//text()').extract()
-            )
-            description = self.reformat(description)
+            try:
+                description = '\r'.join(
+                    self.reformat(val)
+                    for val in description_node.xpath('.//text()').extract()
+                )
+                description = self.reformat(description)
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -197,11 +224,14 @@ class LongchampSpider(MFashionSpider):
         details = None
         detail_node = sel.xpath('//div[@id="aside"]//div[@id="dimensions"][text()]')
         if detail_node:
-            details = '\r'.join(
-                self.reformat(val)
-                for val in detail_node.xpath('.//text()').extract()
-            )
-            details = self.reformat(details)
+            try:
+                details = '\r'.join(
+                    self.reformat(val)
+                    for val in detail_node.xpath('.//text()').extract()
+                )
+                details = self.reformat(details)
+            except(TypeError, IndexError):
+                pass
 
         if details:
             metadata['details'] = details
@@ -210,10 +240,13 @@ class LongchampSpider(MFashionSpider):
         colors = None
         color_nodes = sel.xpath('//div[@id="aside"]//div[@id="couleurs"]//ul/li/a[@href][@data-label]')
         if color_nodes:
-            colors = [
-                self.reformat(val)
-                for val in color_nodes.xpath('./@data-label').extract()
-            ]
+            try:
+                colors = [
+                    self.reformat(val)
+                    for val in color_nodes.xpath('./@data-label').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
         if colors:
             metadata['color'] = colors
@@ -222,10 +255,13 @@ class LongchampSpider(MFashionSpider):
         image_urls = None
         image_nodes = sel.xpath('//div[@id="article"]//ul/li/img[@data-hd]')
         if image_nodes:
-            image_urls = [
-                self.process_href(self.reformat(val), response.url)
-                for val in image_nodes.xpath('./@data-hd').extract()
-            ]
+            try:
+                image_urls = [
+                    self.process_href(self.reformat(val), response.url)
+                    for val in image_nodes.xpath('./@data-hd').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
 
         item = ProductItem()
