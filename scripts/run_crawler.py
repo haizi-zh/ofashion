@@ -129,7 +129,7 @@ def set_up_spider(spider_class, region_list, data):
     ua = data['user-agent'] if 'user-agent' in data else 'chrome'
     if ua.lower() == 'chrome':
         crawler.settings.values[
-            'USER_AGENT'] = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
+            'USER_AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
     elif ua.lower() == 'iphone':
         crawler.settings.values[
             'USER_AGENT'] = 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5'
