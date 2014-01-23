@@ -20,9 +20,32 @@ __author__ = 'wuya'
 class MarniSpider(MFashionSpider):
     spider_data = {'brand_id': 10241,
                    'home_urls': {
-                       region: 'http://www.marni.cn/areas/corners/sh.asp?tskay=A444F5AB&sts=SHOPWOMAN&season=main' for
-                       region in {'cn'}
-                   }    #wangwen:http://www.marni.cn/chooseyourcountry.asp
+                       'cn': 'http://www.marni.cn/areas/corners/sh.asp?tskay=A444F5AB&sts=SHOPWOMAN&season=main',
+                       'us': 'http://www.marni.com/home.asp?tskay=3FD17CD7',
+                       'fr': 'http://www.marni.com/home.asp?tskay=2FA4E164',
+                       'it': 'http://www.marni.com/home.asp?tskay=6383154F',
+                       'uk': 'http://www.marni.com/home.asp?tskay=B84CE7A2',
+                       'au': 'http://www.marni.com/home.asp?tskay=8B954900',
+                       'be': 'http://www.marni.com/home.asp?tskay=6556E1E7',
+                       'ca': 'http://www.marni.com/home.asp?tskay=0A0ECED9',
+                       'cz': 'http://www.marni.com/home.asp?tskay=0784B54C',
+                       'dk': 'http://www.marni.com/home.asp?tskay=5AD08E3B',
+                       'fi': 'http://www.marni.com/home.asp?tskay=3B47AB92',
+                       'de': 'http://www.marni.com/home.asp?tskay=B490DC11',
+                       'gr': 'http://www.marni.com/home.asp?tskay=361A2971',
+                       'ie': 'http://www.marni.com/home.asp?tskay=0C8AA578',
+                       'il': 'http://www.marni.com/home.asp?tskay=8E260395',
+                       'jp': 'http://www.marni.com/home.asp?tskay=050D2086',
+                       'nl': 'http://www.marni.com/home.asp?tskay=2A5DD3A9',
+                       'no': 'http://www.marni.com/home.asp?tskay=B9BB7D25',
+                       'pl': 'http://www.marni.com/home.asp?tskay=6558F54B',
+                       'pt': 'http://www.marni.com/home.asp?tskay=F0FDB994',
+                       'ru': 'http://www.marni.com/home.asp?tskay=244A367F',
+                       'es': 'http://www.marni.com/home.asp?tskay=768BABE2',
+                       'ch': 'http://www.marni.com/home.asp?tskay=2BA68C8E',
+                       'se': 'http://www.marni.com/home.asp?tskay=4FA1ECD0',
+                       'ae': 'http://www.marni.com/home.asp?tskay=320DC484'
+                   }
     }
 
     @classmethod
@@ -64,16 +87,26 @@ class MarniSpider(MFashionSpider):
         metadata = response.meta['userdata']
         metadata['url'] = response.url
         sel = Selector(response)
-        name = ''.join(sel.xpath('//title/text()').extract()).split('-')[0]
-        metadata['name'] = self.reformat(name)
+
         model = ''.join(sel.xpath('//div[@id="mfc"]//text()').extract())
+        if not model:
+            return
         model = model.replace('MARNI', '').replace(u'代码', '')
         metadata['model'] = self.reformat(model)
+
+        try:
+            name = ''.join(sel.xpath('//title/text()').extract()).split('-')[0]
+            if name:
+                metadata['name'] = self.reformat(name)
+        except (IndexError, TypeError):
+            pass
+
         price = sel.xpath('//div[@class="itemBoxPrice"]//text()').extract()
         price_str = ''.join(price)
         tmp = sel.xpath('//div[@class="descr"]/text()').extract()
         if tmp:
             metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
+
         if price_str.find('%') != -1:
             old_price = price[0]
             new_price = price[1]
