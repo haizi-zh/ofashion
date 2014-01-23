@@ -14,11 +14,44 @@ import copy
 import re
 
 class LongchampSpider(MFashionSpider):
+    """
+    这个品牌对于价格的符号写的可能是有问题的，不要信
+    """
 
     spider_data = {
         'brand_id': 10510,
+        'currency': {
+            'ch': 'EUR',
+            'dk': 'EUR',
+            'se': 'EUR',
+            'ca': 'USD',
+            'sg': 'USD',
+        },
         'home_urls': {
             'us': 'http://us.longchamp.com/',
+            'uk': 'http://uk.longchamp.com/',
+            'at': 'http://at.longchamp.com/',
+            'fr': 'http://fr.longchamp.com/',
+            'it': 'http://it.longchamp.com/',
+            'es': 'http://es.longchamp.com/',
+            'be': 'http://be.longchamp.com/',
+            'de': 'http://de.longchamp.com/',
+            'lu': 'http://lu.longchamp.com/',
+            'se': 'http://se.longchamp.com/',
+            'dk': 'http://dk.longchamp.com/',
+            'gr': 'http://gr.longchamp.com/',
+            'nl': 'http://nl.longchamp.com/',
+            'ch': 'http://ch.longchamp.com/',
+            'fi': 'http://fi.longchamp.com/',
+            'ie': 'http://ie.longchamp.com/',
+            'pt': 'http://pt.longchamp.com/',
+            'ca': 'http://ca.longchamp.com/',
+            'jp': 'http://jp.longchamp.com/',
+            'kr': 'http://kr.longchamp.com/',
+            'cn': 'http://cn.longchamp.com/',
+            'hk': 'http://hk.longchamp.com/',
+            'tw': 'http://tw.longchamp.com/',
+            'sg': 'http://sg.longchamp.com/',
         },
     }
 
