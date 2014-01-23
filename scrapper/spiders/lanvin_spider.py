@@ -217,7 +217,6 @@ class LanvinSpider(MFashionSpider):
             metadata['description'] = description
 
 
-        # TODO 这个的details包含在js里，不好取，有重复
         details = None
         detail_nodes = sel.xpath('//div[@id="pp-details"]/ul/li[text()]')
         if detail_nodes:
@@ -229,6 +228,17 @@ class LanvinSpider(MFashionSpider):
                 details = self.reformat(details)
             except(TypeError, IndexError):
                 pass
+        if not detail_nodes:
+            mt = re.search(ur'"productDescriptions":[^<]+"([^"]+)"', response.body)
+            if mt:
+                detail_html = mt.group(1)
+                detail_texts = re.findall(ur'<li[^>]+>([^<]+)<\\/li>', detail_html)
+                if detail_texts:
+                    details = '\r'.join(
+                        self.reformat(val)
+                        for val in detail_texts
+                    )
+                    details = self.reformat(details)
 
         if details:
             metadata['details'] = details
