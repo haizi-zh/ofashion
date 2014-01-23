@@ -19,8 +19,26 @@ class LanvinSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10212,
+        'currency': {
+            'se': 'EUR',
+            'dk': 'EUR',
+        },
         'home_urls': {
             'us': 'http://www.lanvin.com/e-lanvin/US/',
+            'uk': 'http://www.lanvin.com/e-lanvin/UK/',
+            'se': 'http://www.lanvin.com/e-lanvin/SE/',
+            'es': 'http://www.lanvin.com/e-lanvin/ES/',
+            'nl': 'http://www.lanvin.com/e-lanvin/NL/',
+            'lu': 'http://www.lanvin.com/e-lanvin/LU/',
+            'it': 'http://www.lanvin.com/e-lanvin/IT/',
+            'ie': 'http://www.lanvin.com/e-lanvin/IE/',
+            'hk': 'http://www.lanvin.com/e-lanvin/HK-EN/',
+            'de': 'http://www.lanvin.com/e-lanvin/DE/',
+            'fr': 'http://www.lanvin.com/e-lanvin/FR-EN/',
+            'fi': 'http://www.lanvin.com/e-lanvin/FI/',
+            'dk': 'http://www.lanvin.com/e-lanvin/DK/',
+            'be': 'http://www.lanvin.com/e-lanvin/BE/',
+            'at': 'http://www.lanvin.com/e-lanvin/AT/',
         },
     }
 
