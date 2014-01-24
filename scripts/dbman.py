@@ -224,13 +224,16 @@ class PublishRelease(object):
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
 
+        url_dict = {val['idproducts']: val['url'] for val in prods}
+
         # pid和region之间的关系
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
         price_list = {}
         for item in self.db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
                                         self.price_hist, {}, str.format('idproducts IN ({0})', ','.join(
                         val['idproducts'] for val in prods))).fetch_row(maxrows=0, how=1):
-            pid = int(item.pop('idproducts'))
+            # pid = int(item.pop('idproducts'))
+            pid = int(item['idproducts'])
             updated = False
             if pid not in price_list:
                 updated = True
@@ -246,7 +249,8 @@ class PublishRelease(object):
                 price_list[pid] = {'price': float(item['price']), 'currency': item['currency'],
                                    'price_discount': float(item['price_discount']) if item['price_discount'] else None,
                                    'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
-                                   'code': region, 'country': gs.region_info()[region]['name_c']}
+                                   'code': region, 'country': gs.region_info()[region]['name_c'],
+                                   'url': url_dict[item['idproducts']]}
 
         # 如果没有价格信息，则不发布
         if not price_list:
