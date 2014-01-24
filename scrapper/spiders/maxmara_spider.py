@@ -59,9 +59,12 @@ class MaxMaraSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="nav_main"]//nav[@id="menu"]/ul/ul/div/li[child::a[text()]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./a[text()]/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a[text()]/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -76,9 +79,12 @@ class MaxMaraSpider(MFashionSpider):
 
                 sub_nodes = node.xpath('./ul/li[child::a[@href][text()]]')
                 for sub_node in sub_nodes:
-                    tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
-                    tag_text = self.reformat(tag_text)
-                    tag_name = tag_text.lower()
+                    try:
+                        tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
+                        tag_text = self.reformat(tag_text)
+                        tag_name = tag_text.lower()
+                    except(TypeError, IndexError):
+                        continue
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
@@ -91,8 +97,11 @@ class MaxMaraSpider(MFashionSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        href = sub_node.xpath('./a[@href]/@href').extract()[0]
-                        href = self.process_href(href, response.url)
+                        try:
+                            href = sub_node.xpath('./a[@href]/@href').extract()[0]
+                            href = self.process_href(href, response.url)
+                        except(TypeError, IndexError):
+                            continue
 
                         yield Request(url=href,
                                       callback=self.parse_collection,
@@ -106,9 +115,12 @@ class MaxMaraSpider(MFashionSpider):
 
         collection_nodes = sel.xpath('//div[@id="main"]/ul//div[@class="row"]')
         for node in collection_nodes:
-            tag_text = node.xpath('.//h2/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('.//h2/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -125,8 +137,11 @@ class MaxMaraSpider(MFashionSpider):
                 for product_node in product_nodes:
                     mc = copy.deepcopy(m)
 
-                    href = product_node.xpath('./a[@href]/@href').extract()[0]
-                    href = self.process_href(href, response.url)
+                    try:
+                        href = product_node.xpath('./a[@href]/@href').extract()[0]
+                        href = self.process_href(href, response.url)
+                    except(TypeError, IndexError):
+                        continue
 
                     yield Request(url=href,
                                   callback=self.parse_product,
@@ -144,8 +159,11 @@ class MaxMaraSpider(MFashionSpider):
         for node in other_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@value').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@value').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -159,8 +177,11 @@ class MaxMaraSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//input[@id="productCodePost"][@value]')
         if model_node:
-            model = model_node.xpath('./@value').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./@value').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -171,8 +192,11 @@ class MaxMaraSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//aside[@id="sidebar"]//div[@id="productDetailUpdateableTitle"]/h1[text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         if name:
             metadata['name'] = name
@@ -182,14 +206,20 @@ class MaxMaraSpider(MFashionSpider):
         new_price = None
         old_price_node = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/span[@class="exSalesPrice"][text()]')
         if old_price_node:
-            old_price = old_price_node.xpath('./text()').extract()[0]
-            old_price = self.reformat(old_price)
+            try:
+                old_price = old_price_node.xpath('./text()').extract()[0]
+                old_price = self.reformat(old_price)
 
-            new_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
-            new_price = self.reformat(new_price)
+                new_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
+                new_price = self.reformat(new_price)
+            except(TypeError, IndexError):
+                pass
         else:
-            old_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
-            old_price = self.reformat(old_price)
+            try:
+                old_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
+                old_price = self.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
 
         if old_price:
             metadata['price'] = old_price
@@ -200,10 +230,13 @@ class MaxMaraSpider(MFashionSpider):
         colors = None
         color_nodes = sel.xpath('//aside[@id="sidebar"]//div[@class="colour switcher-box clearfix"]/ul/li/a/img[@title]')
         if color_nodes:
-            colors = [
-                self.reformat(val)
-                for val in color_nodes.xpath('./@title').extract()
-            ]
+            try:
+                colors = [
+                    self.reformat(val)
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
         if colors:
             metadata['color'] = colors
@@ -212,11 +245,14 @@ class MaxMaraSpider(MFashionSpider):
         description = None
         description_nodes = sel.xpath('//aside[@id="sidebar"]//ul[@id="productDetailsAndStyleDiv"]/*[text()]')
         if description_nodes:
-            description = '\r'.join(
-                self.reformat(val)
-                for val in description_nodes.xpath('.//text()').extract()
-            )
-            description = self.reformat(description)
+            try:
+                description = '\r'.join(
+                    self.reformat(val)
+                    for val in description_nodes.xpath('.//text()').extract()
+                )
+                description = self.reformat(description)
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -225,11 +261,14 @@ class MaxMaraSpider(MFashionSpider):
         details = None
         detail_nodes = sel.xpath('//aside[@id="sidebar"]//div[@id="tab-fitting"]//ul/li[position() < last()][text()]')
         if detail_nodes:
-            details = '\r'.join(
-                self.reformat(val)
-                for val in detail_nodes.xpath('./text()').extract()
-            )
-            details = self.reformat(details)
+            try:
+                details = '\r'.join(
+                    self.reformat(val)
+                    for val in detail_nodes.xpath('./text()').extract()
+                )
+                details = self.reformat(details)
+            except(TypeError, IndexError):
+                pass
 
         if details:
             metadata['details'] = details
@@ -238,10 +277,13 @@ class MaxMaraSpider(MFashionSpider):
         image_urls = None
         image_nodes = sel.xpath('//div[@id="product-thumbs"]/ul/li/a[@href]')
         if image_nodes:
-            image_urls = [
-                self.process_href(val, response.url)
-                for val in image_nodes.xpath('./@href').extract()
-            ]
+            try:
+                image_urls = [
+                    self.process_href(val, response.url)
+                    for val in image_nodes.xpath('./@href').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
 
         item = ProductItem()
