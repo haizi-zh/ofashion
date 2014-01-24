@@ -37,9 +37,12 @@ class MarcJacobsSpider(MFashionSpider):
 
         nav_nodes = sel.xpath('//div[@id="nav-main"]/ul/li[child::a[@href][text()]]')
         for node in nav_nodes:
-            tag_text = node.xpath('./a[text()]/text()').extract()[0]
-            tag_text = self.reformat(tag_text)
-            tag_name = tag_text.lower()
+            try:
+                tag_text = node.xpath('./a[text()]/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
 
             if tag_text and tag_name:
                 m = copy.deepcopy(metadata)
@@ -57,9 +60,12 @@ class MarcJacobsSpider(MFashionSpider):
 
                     third_nodes = sub_node.xpath('./ul/li[child::a[@href][text()]]')
                     if third_nodes:
-                        tag_text = sub_node.xpath('./span[text()]/text()').extract()[0]
-                        tag_text = self.reformat(tag_text)
-                        tag_name = tag_text.lower()
+                        try:
+                            tag_text = sub_node.xpath('./span[text()]/text()').extract()[0]
+                            tag_text = self.reformat(tag_text)
+                            tag_name = tag_text.lower()
+                        except(TypeError, IndexError):
+                            continue
 
                         if tag_text and tag_name:
                             mc = copy.deepcopy(m)
@@ -73,9 +79,12 @@ class MarcJacobsSpider(MFashionSpider):
                                 mc['gender'] = [gender]
 
                             for third_node in third_nodes:
-                                tag_text = third_node.xpath('./a[text()]/text()').extract()[0]
-                                tag_text = self.reformat(tag_text)
-                                tag_name = tag_text.lower()
+                                try:
+                                    tag_text = third_node.xpath('./a[text()]/text()').extract()[0]
+                                    tag_text = self.reformat(tag_text)
+                                    tag_name = tag_text.lower()
+                                except(TypeError, IndexError):
+                                    continue
 
                                 if tag_text and tag_name:
                                     mcc = copy.deepcopy(mc)
@@ -88,8 +97,11 @@ class MarcJacobsSpider(MFashionSpider):
                                     if gender:
                                         mcc['gender'] = [gender]
 
-                                    href = third_node.xpath('./a[@href]/@href').extract()[0]
-                                    href = self.process_href(href, response.url)
+                                    try:
+                                        href = third_node.xpath('./a[@href]/@href').extract()[0]
+                                        href = self.process_href(href, response.url)
+                                    except(TypeError, IndexError):
+                                        continue
 
                                     yield Request(url=href,
                                                   callback=self.parse_product_list,
@@ -98,9 +110,12 @@ class MarcJacobsSpider(MFashionSpider):
                     else:
                         href_nodes = sub_node.xpath('./a[@href][text()]')
                         for href_node in href_nodes:
-                            tag_text = href_node.xpath('./text()').extract()[0]
-                            tag_text = self.reformat(tag_text)
-                            tag_name = tag_text.lower()
+                            try:
+                                tag_text = href_node.xpath('./text()').extract()[0]
+                                tag_text = self.reformat(tag_text)
+                                tag_name = tag_text.lower()
+                            except(TypeError, IndexError):
+                                continue
 
                             if tag_text and tag_name:
                                 mc = copy.deepcopy(m)
@@ -113,8 +128,11 @@ class MarcJacobsSpider(MFashionSpider):
                                 if gender:
                                     mc['gender'] = [gender]
 
-                                href = href_node.xpath('./@href').extract()[0]
-                                href = self.process_href(href, response.url)
+                                try:
+                                    href = href_node.xpath('./@href').extract()[0]
+                                    href = self.process_href(href, response.url)
+                                except(TypeError, IndexError):
+                                    continue
 
                                 yield Request(url=href,
                                               callback=self.parse_product_list,
@@ -130,8 +148,11 @@ class MarcJacobsSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -172,8 +193,11 @@ class MarcJacobsSpider(MFashionSpider):
         for node in other_nodes:
             m = copy.deepcopy(metadata)
 
-            href = node.xpath('./@href').extract()[0]
-            href = self.process_href(href, response.url)
+            try:
+                href = node.xpath('./@href').extract()[0]
+                href = self.process_href(href, response.url)
+            except(TypeError, IndexError):
+                continue
 
             yield Request(url=href,
                           callback=self.parse_product,
@@ -187,8 +211,11 @@ class MarcJacobsSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//meta[@itemprop="productID"][@content]')
         if model_node:
-            model = model_node.xpath('./@content').extract()[0]
-            model = self.reformat(model)
+            try:
+                model = model_node.xpath('./@content').extract()[0]
+                model = self.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         if model:
             metadata['model'] = model
@@ -199,8 +226,11 @@ class MarcJacobsSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//div[@class="product-detail-container"]//h1[@itemprop="name"][text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = self.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = self.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         if name:
             metadata['name'] = name
@@ -209,8 +239,11 @@ class MarcJacobsSpider(MFashionSpider):
         price = None
         price_node = sel.xpath('//div[@class="product-detail-container"]//span[@itemprop="price"][text()]')
         if price_node:
-            price = price_node.xpath('./text()').extract()[0]
-            price = self.reformat(price)
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = self.reformat(price)
+            except(TypeError, IndexError):
+                pass
 
         if price:
             metadata['price'] = price
@@ -219,8 +252,11 @@ class MarcJacobsSpider(MFashionSpider):
         description = None
         description_node = sel.xpath('//meta[@name="twitter:description"][@content]')
         if description_node:
-            description = description_node.xpath('./@content').extract()[0]
-            description = self.reformat(description)
+            try:
+                description = description_node.xpath('./@content').extract()[0]
+                description = self.reformat(description)
+            except(TypeError, IndexError):
+                pass
 
         if description:
             metadata['description'] = description
@@ -229,10 +265,13 @@ class MarcJacobsSpider(MFashionSpider):
         colors = None
         color_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
         if color_nodes:
-            colors = [
-                self.reformat(val).lower()
-                for val in color_nodes.xpath('./@title').extract()
-            ]
+            try:
+                colors = [
+                    self.reformat(val).lower()
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
 
         if colors:
             metadata['color'] = colors
@@ -241,12 +280,15 @@ class MarcJacobsSpider(MFashionSpider):
         image_urls = []
         image_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="variant-thumbnail-set"]/li/a/img[@src]')
         for node in image_nodes:
-            url = node.xpath('./@src').extract()[0]
-            url = self.process_href(url, response.url)
-            if url:
-                image_url = re.sub(ur'/\d+/\d+/', u'/2000/2000/', url)
-                if image_url:
-                    image_urls += [image_url]
+            try:
+                url = node.xpath('./@src').extract()[0]
+                url = self.process_href(url, response.url)
+                if url:
+                    image_url = re.sub(ur'/\d+/\d+/', u'/2000/2000/', url)
+                    if image_url:
+                        image_urls += [image_url]
+            except(TypeError, IndexError):
+                pass
 
 
         item = ProductItem()
