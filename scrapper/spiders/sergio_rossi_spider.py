@@ -43,7 +43,7 @@ _regions = [
 
 
 class SergiorossiSpider(MFashionSpider):
-    spider_data = {'brand_id': 10241, }
+    spider_data = {'brand_id': 10316, }
 
     def __init__(self, region):
         home_urls = {
