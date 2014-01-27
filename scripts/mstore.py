@@ -13,6 +13,7 @@ import re
 import shutil
 from threading import Thread
 import urllib2
+import _mysql_exceptions
 import global_settings as glob
 from products.utils import fetch_image
 from scripts import dbman
@@ -382,13 +383,13 @@ class ImageDownloader(object):
             callback = data['callback']
             if not response:
                 raise ValueError
-            if response['status'] != 200:
+            if response['code'] != 200:
                 raise urllib2.HTTPError(data['url'], response['status'], str.format('{0}', data['url']),
                                         response['header'], None)
 
             if callback:
                 try:
-                    callback(response['body'], response['url'], data['path'])
+                    callback(response['body'], data['url'], data['path'])
                     self.downloaded[data['url']] = data['path']
                 except:
                     print sys.exc_info()
@@ -480,21 +481,23 @@ class ImageCheck(object):
 
         self.db.start_transaction()
         try:
+            record = {k: unicodify(entry[k]) for k in entry}
             if old_checksum != new_checksum:
                 if self.db.query(
                         str.format('SELECT * FROM images_store WHERE checksum="{0}"', new_checksum)).num_rows() == 0:
-                    record = {k: unicodify(entry[k]) for k in entry}
                     record['checksum'] = new_checksum
-                    self.db.update(record, 'images_store', str.format('checksum="{0}"', old_checksum))
+                    self.db.insert(record, 'images_store')
+
                 else:
-                    record = {k: unicodify(entry[k]) for k in entry}
-                    if record:
-                        self.db.update(record, 'images_store', str.format('checksum="{0}"', new_checksum))
+                    self.db.update(record, 'images_store', str.format('checksum="{0}"', new_checksum))
+
+                try:
                     self.db.update({'checksum': new_checksum}, 'products_image',
                                    str.format('checksum="{0}"', old_checksum))
-                    self.db.execute(str.format('DELETE FROM images_store WHERE checksum="{0}"', old_checksum))
+                except _mysql_exceptions.IntegrityError:
+                    pass
+                self.db.execute(str.format('DELETE FROM images_store WHERE checksum="{0}"', old_checksum))
             else:
-                record = {k: unicodify(entry[k]) for k in entry}
                 self.db.update(record, 'images_store', str.format('checksum="{0}"', old_checksum))
             self.db.commit()
         except:
@@ -503,18 +506,19 @@ class ImageCheck(object):
 
     def run(self):
         downloader = ImageDownloader()
-        downloader.run()
+        if self.refetch:
+            downloader.run()
 
         rs = self.db.query(str.format(
             'SELECT COUNT(DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model) FROM images_store AS p1 '
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
-            ' AND '.join(self.cond)), use_result=True)
+            ' AND '.join(self.cond)))
         self.tot = int(rs.fetch_row(maxrows=0)[0][0])
         storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
         rs = self.db.query(str.format(
             'SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
-            ' AND '.join(self.cond)), use_result=True)
+            ' AND '.join(self.cond)))
         #self.tot = rs.num_rows()
         self.progress = 0
 
@@ -564,26 +568,31 @@ class ImageCheck(object):
                         update_entry['old_checksum'] = record['checksum']
                         update_entry['new_checksum'] = record['checksum']
                     self.update_db(update_entry)
-            except IOError:
+            except (IOError, OSError):
                 # 下载图像以后的回调函数
                 def func(body, url, full_path):
-                    path, tmp = os.path.split(full_path)
-                    base_name, ext = os.path.split(tmp)
+                    # path, tmp = os.path.split(full_path)
+                    # base_name, ext = os.path.split(tmp)
 
-                    # 检查是否为有效图像文件
-                    tmp_name = str.format('tmp_{0}.{1}', checksum, ext)
-                    with open(tmp_name, 'wb') as f:
+                    # # 检查是否为有效图像文件
+                    # tmp_name = str.format('tmp_{0}.{1}', checksum, ext)
+                    with open(full_path, 'wb') as f:
                         f.write(body)
-                    img = Image.open(tmp_name)
-                    img.crop((0, 0, 32, 32))
-                    shutil.move(tmp_name, full_path)
+
+                    img = Image.open(full_path)
+                    try:
+                        img.crop((0, 0, 32, 32))
+                    except IOError:
+                        return
+                        # shutil.move(tmp_name, full_path)
 
                     md5 = hashlib.md5()
                     md5.update(body)
                     new_checksum = md5.hexdigest()
 
-                    self.update_db({'old_checksum': record['checksum'], 'new_checksum': new_checksum, 'res': img.size,
-                                    'format': img.format, 'size': len(body), 'url': url, 'full_path': full_path})
+                    self.update_db({'old_checksum': record['checksum'], 'new_checksum': new_checksum,
+                                    'width': img.size[0], 'height': img.size[1],
+                                    'format': img.format, 'size': len(body), 'url': url, 'path': full_path})
 
                 self.missing += 1
                 logger.error(str.format('{0} / {1} missing!', record['model'], record['path']))
@@ -591,7 +600,8 @@ class ImageCheck(object):
                     downloader.download(record['url'], full_path, func)
 
         logger.info(self.get_msg())
-        downloader.stop()
+        if self.refetch:
+            downloader.stop()
 
 
 def release(param_dict):

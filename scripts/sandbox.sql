@@ -17,7 +17,7 @@ SELECT * FROM tmp;
 # CREATE TEMPORARY TABLE tmp
 
 # 各国家的单品数量
-SELECT COUNT(*),region FROM products WHERE brand_id=10308 GROUP BY region;
+SELECT COUNT(*),region FROM products WHERE brand_id=10316 GROUP BY region;
 # 最新更新的单品
 SELECT * FROM products WHERE brand_id=10066 ORDER BY touch_time DESC LIMIT 100;
 # 某款单品的原始标签
