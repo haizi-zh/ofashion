@@ -609,6 +609,8 @@ def image_check(param_dict):
     检查图片是否正常。
     参数：
     --checksum：同时加入图片的MD5校验
+    --image-validity：是否对图像进行有效性检查
+    --
     --brand：指定
     :param param_dict:
     :return:
@@ -620,12 +622,15 @@ def image_check(param_dict):
     gen_checksum = False
     refetch = False
     image_validity = False
+    update = False
 
     for param_name, param_value in param_dict.items():
         if param_name == 'checksum':
             gen_checksum = True
         elif param_name == 'refetch':
             refetch = True
+        elif param_name == 'update':
+            update = True
         elif param_name == 'db':
             db_spec = db_map[param_value[0]]
         elif param_name == 'cond':
@@ -637,7 +642,7 @@ def image_check(param_dict):
             return
 
     core.func_carrier(ImageCheck(db_spec=db_spec, gen_checksum=gen_checksum, refetch=refetch,
-                                 image_validity=image_validity, cond=cond), 1)
+                                 image_validity=image_validity, cond=cond, update=update), 1)
 
 
 def argument_parser(args):
