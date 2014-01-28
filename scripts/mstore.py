@@ -606,7 +606,15 @@ class ImageCheck(object):
 
 def release(param_dict):
     for brand in param_dict['brand']:
-        core.func_carrier(dbman.PublishRelease(brand), 1)
+        if 'max-images' in param_dict:
+            max_images = int(param_dict['max-images'][0])
+        else:
+            max_images = None
+
+        if max_images:
+            core.func_carrier(dbman.PublishRelease(brand, max_images=max_images), 1)
+        else:
+            core.func_carrier(dbman.PublishRelease(brand), 1)
 
 
 def price_check(param_dict):

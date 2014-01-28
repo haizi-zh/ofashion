@@ -171,8 +171,11 @@ class ProcessTags(object):
 
 
 class PublishRelease(object):
-    def __init__(self, brand_id, extra_cond=None):
-        print str.format('Publishing (brand_id={0}, extra_cond="{1}")...', brand_id, extra_cond)
+    def __init__(self, brand_id, extra_cond=None, max_images=15):
+        print str.format('Publishing (brand_id={0}, max_images={1}, extra_cond="{2}")...', brand_id, max_images,
+                         extra_cond)
+        # 某一单品最大发布的图片数量
+        self.max_images = max_images
         self.db = None
         self.brand_id = brand_id
         if not extra_cond:
@@ -277,7 +280,6 @@ class PublishRelease(object):
             entry['price_discount'] = gs.currency_info()[currency] * price_discount
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
-        image_list = []
         checksums = []
         cover_checksum = None
         p = prods[0]
@@ -300,13 +302,14 @@ class PublishRelease(object):
                                  str.format('checksum IN ({0})',
                                             ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
             maxrows=0, how=1)
+        image_list = []
         for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
             tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
             image_list.append(tmp)
             if val['checksum'] == cover_checksum:
                 entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
 
-        entry['image_list'] = json.dumps(image_list, ensure_ascii=False)
+        entry['image_list'] = json.dumps(image_list[:self.max_images], ensure_ascii=False)
 
         self.db.insert(entry, 'products_release')
 
