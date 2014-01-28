@@ -43,7 +43,7 @@ _regions = [
 
 
 class SergiorossiSpider(MFashionSpider):
-    spider_data = {'brand_id': 10316, }
+    spider_data = {'brand_id': 10241, }
 
     def __init__(self, region):
         home_urls = {
@@ -72,6 +72,7 @@ class SergiorossiSpider(MFashionSpider):
             'http://www.sergiorossi.com/ru/%D0%B4%D0%BB%D1%8F-%D0%B6%D0%B5%D0%BD%D1%89%D0%B8%D0%BD/shoponline/%D0%B6%D0%B5%D0%BD%D1%81%D0%BA%D0%B8%D0%B5-%D1%81%D1%83%D0%BC%D0%BA%D0%B8',
             'http://www.sergiorossi.com/ru/%D0%B4%D0%BB%D1%8F-%D0%BC%D1%83%D0%B6%D1%87%D0%B8%D0%BD/shoponline/%D1%82%D1%83%D1%84%D0%BB%D0%B8',
         ]
+        home_urls['uk'] = home_urls['gb']
         self.spider_data['home_urls'] = home_urls
         super(SergiorossiSpider, self).__init__('sergiorossi', region)
 
