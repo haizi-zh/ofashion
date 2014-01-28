@@ -209,6 +209,7 @@ class ProductPipeline(object):
                 if price and price['price'] > 0:
                     # 该单品最后的价格信息
                     price_value = price['price']
+                    discount_value = discount['price'] if discount else None
                     rs = self.db.query_match(['price', 'price_discount'], 'products_price_history', {'idproducts': pid},
                                              tail_str='ORDER BY date DESC LIMIT 1')
                     insert_flag = False
@@ -219,11 +220,11 @@ class ProductPipeline(object):
                         if db_entry[0] != price_value:
                             insert_flag = True
                         else:
-                            if db_entry[1] != (discount['price'] if discount else None):
+                            if db_entry[1] != discount_value:
                                 insert_flag = True
                     if insert_flag:
                         self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
-                                        'price_discount': (discount['price'] if discount else None)},
+                                        'price_discount': (discount_value if discount_value < price_value else None)},
                                        'products_price_history')
 
             # 处理标签变化
