@@ -25,6 +25,9 @@ class LongchampSpider(MFashionSpider):
             'dk': 'EUR',
             'se': 'EUR',
             'ca': 'USD',
+            'kr': 'KRW',
+            'tw': 'TWD',
+            'hk': 'HKD',
             'sg': 'USD',
         },
         'home_urls': {
