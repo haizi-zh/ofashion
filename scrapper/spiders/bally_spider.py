@@ -11,20 +11,20 @@ import copy
 import common
 import re
 
-class BallySpider(MFashionSpider):
 
+class BallySpider(MFashionSpider):
     spider_data = {
         'brand_id': 10030,
         'home_urls': {
             k: str.format('http://www.bally.com/index.aspx?sitecode=BALLY_{0}', k.upper() if k != 'uk' else 'GB')
             for k in [
-                'cn', 'us', 'it',
-                'at', 'be', 'bg', 'cz', 'dk',
-                'fi', 'fr', 'de', 'gr', 'hu',
-                'ie', 'lv', 'lt', 'lu', 'nl',
-                'pl', 'pt', 'ro', 'sk', 'si',
-                'es', 'se', 'ch',
-            ]
+            'cn', 'us', 'it',
+            'at', 'be', 'bg', 'cz', 'dk',
+            'fi', 'fr', 'de', 'gr', 'hu',
+            'ie', 'lv', 'lt', 'lu', 'nl',
+            'pl', 'pt', 'ro', 'sk', 'si',
+            'es', 'se', 'ch',
+        ]
         },
     }
 
@@ -56,7 +56,7 @@ class BallySpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -77,7 +77,7 @@ class BallySpider(MFashionSpider):
 
                 if tag_text and tag_name:
                     mc['tags_mapping']['category-1'] = [
-                        {'name': tag_name, 'title': tag_text,},
+                        {'name': tag_name, 'title': tag_text, },
                     ]
 
                     gender = common.guess_gender(tag_name)
@@ -98,7 +98,7 @@ class BallySpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mcc['tags_mapping']['category-2'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -133,52 +133,52 @@ class BallySpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
 
-            # 这里区分是否打折，price_node不打折的下一级是span，打折的是div
-            price_node = node.xpath('.//div[@class="infoItem"]//div[@class="price"]/div[@class="prodPrice"]')
-            if price_node:
-                old_price_node = price_node.xpath('./div[@class="oldprice"]')
-                # 有old_price_node说明在打折
-                if old_price_node:
-
-                    new_price = None
-                    new_price_node = price_node.xpath('/div[@class="newprice"]')
-                    if new_price_node:
-                        try:
-                            new_price = ''.join(
-                                self.reformat(val)
-                                for val in new_price_node.xpath('.//text()').extract()
-                            )
-                            new_price = self.reformat(new_price)
-                        except(TypeError, IndexError):
-                            pass
-
-                    old_price = None
-                    try:
-                        old_price = ''.join(
-                            self.reformat(val)
-                            for val in old_price_node.xpath('.//text()').extract()
-                        )
-                        old_price = self.reformat(old_price)
-                    except(TypeError, IndexError):
-                        pass
-
-                    if old_price:
-                        m['price'] = old_price
-                    if new_price:
-                        m['price_discount'] = new_price
-                else:
-                    price = None
-                    try:
-                        price = ''.join(
-                            self.reformat(val)
-                            for val in price_node.xpath('.//text()').extract()
-                        )
-                        price = self.reformat(price)
-                    except(TypeError, IndexError):
-                        pass
-
-                    if price:
-                        m['price'] = price
+            # # 这里区分是否打折，price_node不打折的下一级是span，打折的是div
+            # price_node = node.xpath('.//div[@class="infoItem"]//div[@class="price"]/div[@class="prodPrice"]')
+            # if price_node:
+            #     old_price_node = price_node.xpath('./div[@class="oldprice"]')
+            #     # 有old_price_node说明在打折
+            #     if old_price_node:
+            #
+            #         new_price = None
+            #         new_price_node = price_node.xpath('/div[@class="newprice"]')
+            #         if new_price_node:
+            #             try:
+            #                 new_price = ''.join(
+            #                     self.reformat(val)
+            #                     for val in new_price_node.xpath('.//text()').extract()
+            #                 )
+            #                 new_price = self.reformat(new_price)
+            #             except(TypeError, IndexError):
+            #                 pass
+            #
+            #         old_price = None
+            #         try:
+            #             old_price = ''.join(
+            #                 self.reformat(val)
+            #                 for val in old_price_node.xpath('.//text()').extract()
+            #             )
+            #             old_price = self.reformat(old_price)
+            #         except(TypeError, IndexError):
+            #             pass
+            #
+            #         if old_price:
+            #             m['price'] = old_price
+            #         if new_price:
+            #             m['price_discount'] = new_price
+            #     else:
+            #         price = None
+            #         try:
+            #             price = ''.join(
+            #                 self.reformat(val)
+            #                 for val in price_node.xpath('.//text()').extract()
+            #             )
+            #             price = self.reformat(price)
+            #         except(TypeError, IndexError):
+            #             pass
+            #
+            #         if price:
+            #             m['price'] = price
 
             # 这个取到的链接里边，居然包含\t啥的
             try:
@@ -212,6 +212,22 @@ class BallySpider(MFashionSpider):
                 return
         except(TypeError, IndexError):
             return
+
+        tmp = sel.xpath(
+            '//div[@class="itemBoxPrice"]//span[@class="priceValue"]/span[@class="oldprice"]/text()').extract()
+        price = self.reformat(' '.join(tmp)) if tmp else None
+        tmp = sel.xpath(
+            '//div[@class="itemBoxPrice"]//span[@class="priceValue"]/span[@class="newprice"]/text()').extract()
+        price_discount = self.reformat(' '.join(tmp)) if tmp else None
+        if not price:
+            tmp = sel.xpath(
+                '//div[@class="itemBoxPrice"]/span[@class="priceValue"]/span[@class="currency" or @class="priceValue"]/text()').extract()
+            price = self.reformat(' '.join(tmp)) if tmp else None
+            price_discount = None
+        if price:
+            metadata['price'] = price
+            if price_discount:
+                metadata['price_discount'] = price_discount
 
         try:
             descripton_node = sel.xpath('//div[@id="descr_content"]/div[@id="EditorialDescription"]')
