@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class AlexanderWangSpider(MFashionSpider):
 
+class AlexanderWangSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10009,
         'currency': {
@@ -62,7 +62,7 @@ class AlexanderWangSpider(MFashionSpider):
         'home_urls': {
             'cn': 'http://www.alexanderwang.cn/',
             'it': 'http://store.alexanderwang.com/it',
-            'us': 'http://store.alexanderwang.com/us',  # 虽然此页不存在，但可以避免被重定向到中国官网
+            'us': 'http://store.alexanderwang.com/us', # 虽然此页不存在，但可以避免被重定向到中国官网
             'fr': 'http://store.alexanderwang.com/fr',
             'uk': 'http://store.alexanderwang.com/gb',
             'hk': 'http://store.alexanderwang.com/hk',
@@ -256,46 +256,46 @@ class AlexanderWangSpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
 
-            try:
-                price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
-                if price_node:
-
-                    new_price_node = node.xpath('.//div[@class="productPrice"]/div[@class="newprice"]')
-                    new_price = None
-                    if new_price_node:
-                        new_price = ''.join(self.reformat(val) for val in new_price_node.xpath('.//text()').extract())
-                        new_price = self.reformat(new_price)
-
-                    price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
-                    price = self.reformat(price)
-                    # 这里，用这个price是否有值来判断是不是在打折
-                    # new_price应该是总能取到的，否则说明xpath有问题
-                    # 有price说明它在打折
-                    if price:
-                        m['price'] = price
-                        m['price_discount'] = new_price
-                    elif new_price:
-                        m['price'] = new_price
-                else:   # 针对美国官网
-                    price_node = node.xpath('.//li[@class="product-price"]/cite[text()]')
-                    if price_node:  # 这是无折扣的
-                        price = price_node.xpath('./text()').extract()[0]
-                        price = self.reformat(price)
-                        if price:
-                            m['price'] = price
-                    else:   # 这是有折扣的
-                        price_node = node.xpath('.//li[@class="product-price"]//li[contains(@class, "retail")][text()]')
-                        price = price_node.xpath('./text()').extract()[0]
-                        price = self.reformat(price)
-                        if price:
-                            m['price'] = price
-                        price_discount_node = node.xpath('.//li[@class="product-price"]//li[contains(@class, "markdown")][text()]')
-                        price_disount = price_discount_node.xpath('./text()').extract()[0]
-                        price_disount = self.reformat(price_disount)
-                        if price_disount:
-                            m['price_discount'] = price_disount
-            except(TypeError, IndexError):
-                pass
+            # try:
+            #     price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
+            #     if price_node:
+            #
+            #         new_price_node = node.xpath('.//div[@class="productPrice"]/div[@class="newprice"]')
+            #         new_price = None
+            #         if new_price_node:
+            #             new_price = ''.join(self.reformat(val) for val in new_price_node.xpath('.//text()').extract())
+            #             new_price = self.reformat(new_price)
+            #
+            #         price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
+            #         price = self.reformat(price)
+            #         # 这里，用这个price是否有值来判断是不是在打折
+            #         # new_price应该是总能取到的，否则说明xpath有问题
+            #         # 有price说明它在打折
+            #         if price:
+            #             m['price'] = price
+            #             m['price_discount'] = new_price
+            #         elif new_price:
+            #             m['price'] = new_price
+            #     else:   # 针对美国官网
+            #         price_node = node.xpath('.//li[@class="product-price"]/cite[text()]')
+            #         if price_node:  # 这是无折扣的
+            #             price = price_node.xpath('./text()').extract()[0]
+            #             price = self.reformat(price)
+            #             if price:
+            #                 m['price'] = price
+            #         else:   # 这是有折扣的
+            #             price_node = node.xpath('.//li[@class="product-price"]//li[contains(@class, "retail")][text()]')
+            #             price = price_node.xpath('./text()').extract()[0]
+            #             price = self.reformat(price)
+            #             if price:
+            #                 m['price'] = price
+            #             price_discount_node = node.xpath('.//li[@class="product-price"]//li[contains(@class, "markdown")][text()]')
+            #             price_disount = price_discount_node.xpath('./text()').extract()[0]
+            #             price_disount = self.reformat(price_disount)
+            #             if price_disount:
+            #                 m['price_discount'] = price_disount
+            # except(TypeError, IndexError):
+            #     pass
 
             # 这里只有非美国的，美国官网的那个，这里列表的颜色，没有一个描述
             try:
@@ -318,7 +318,6 @@ class AlexanderWangSpider(MFashionSpider):
                           callback=self.parse_product,
                           errback=self.onerr,
                           meta={'userdata': m})
-
 
         # 页面下拉到底部会自动加载更多，需要模拟请求，解析返回的json
         # 测试发现，在原有url后边添加 ?page=2 也可以取到第二页内容
@@ -374,46 +373,73 @@ class AlexanderWangSpider(MFashionSpider):
         except(TypeError, IndexError):
             return
 
+        # Zephyre：处理价格信息
+        tmp = sel.xpath(
+            '//div[@id="itemPrice"]/div[@class="newprice"]/*[@class="currency" or @class="priceValue"]/text()').extract()
+        new_price = self.reformat(' '.join(tmp)) if tmp else None
+        tmp = sel.xpath(
+            '//div[@id="itemPrice"]/div[@class="oldprice"]/*[@class="currency" or @class="priceValue"]/text()').extract()
+        old_price = self.reformat(' '.join(tmp)) if tmp else None
 
-        # 这里主要是针对有些商品打折，有些没打折
-        # 如果没打折，那么，在parse_product_list中的那个price_node会为None
-        # 此处针对没打折商品，找到价格
-        # 美国的价格已经在上一层找到，这里不找一次了再
-        try:
-            if not metadata.get('price'):
-                price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="oldprice"]')
-                if price_node:
+        # 另外几种网页结构
+        if not new_price:
+            tmp = sel.xpath(
+                '//div[@id="detail_sku"]/div[contains(@class,"product-price")]//li[@class="product-price-retail"]/text()').extract()
+            old_price = self.reformat(' '.join(tmp)) if tmp else None
+            tmp = sel.xpath(
+                '//div[@id="detail_sku"]/div[contains(@class,"product-price")]//li[@class="product-price-markdown"]/text()').extract()
+            new_price = self.reformat(' '.join(tmp)) if tmp else None
+        if not new_price:
+            tmp = sel.xpath('//div[@id="detail_sku"]//cite[contains(@class,"product-price")]/text()').extract()
+            new_price = self.reformat(' '.join(tmp)) if tmp else None
+            old_price = None
 
-                    new_price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="newprice"]')
-                    new_price = None
-                    if new_price_node:
-                        new_price = ''.join(self.reformat(val) for val in new_price_node.xpath('.//text()').extract())
-                        new_price = self.reformat(new_price)
+        if new_price:
+            if old_price:
+                metadata['price'] = old_price
+                metadata['price_discount'] = new_price
+            else:
+                metadata['price'] = new_price
 
-                    price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
-                    price = self.reformat(price)
-                    # 这里，同样用这个price是否有值来判断是不是在打折
-                    # new_price应该是总能取到的，否则说明xpath有问题
-                    # 有price说明它在打折
-                    if price:
-                        metadata['price'] = price
-                        metadata['price_discount'] = new_price
-                    elif new_price:
-                        metadata['price'] = new_price
-        except(TypeError, IndexError):
-            pass
-
+        # # 这里主要是针对有些商品打折，有些没打折
+        # # 如果没打折，那么，在parse_product_list中的那个price_node会为None
+        # # 此处针对没打折商品，找到价格
+        # # 美国的价格已经在上一层找到，这里不找一次了再
+        # try:
+        #     if not metadata.get('price'):
+        #         price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="oldprice"]')
+        #         if price_node:
+        #
+        #             new_price_node = sel.xpath('//div[@id="mainContent"]//div[@id="itemPrice"]/div[@class="newprice"]')
+        #             new_price = None
+        #             if new_price_node:
+        #                 new_price = ''.join(self.reformat(val) for val in new_price_node.xpath('.//text()').extract())
+        #                 new_price = self.reformat(new_price)
+        #
+        #             price = ''.join(self.reformat(val) for val in price_node.xpath('.//text()').extract())
+        #             price = self.reformat(price)
+        #             # 这里，同样用这个price是否有值来判断是不是在打折
+        #             # new_price应该是总能取到的，否则说明xpath有问题
+        #             # 有price说明它在打折
+        #             if price:
+        #                 metadata['price'] = price
+        #                 metadata['price_discount'] = new_price
+        #             elif new_price:
+        #                 metadata['price'] = new_price
+        # except(TypeError, IndexError):
+        #     pass
 
         try:
             colors = [
                 self.reformat(val)
-                for val in sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@title]/@title').extract()
+                for val in
+                sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@title]/@title').extract()
             ]
             if colors:
                 metadata['color'] = colors
         except(TypeError, IndexError):
             pass
-        # 这里要特别找到美国官网上，单品的颜色
+            # 这里要特别找到美国官网上，单品的颜色
         try:
             colors = [
                 self.reformat(val)
@@ -423,7 +449,6 @@ class AlexanderWangSpider(MFashionSpider):
                 metadata['color'] = colors
         except(TypeError, IndexError):
             pass
-
 
         try:
             description = '\r'.join(
@@ -435,18 +460,18 @@ class AlexanderWangSpider(MFashionSpider):
                 metadata['description'] = description
         except(TypeError, IndexError):
             pass
-        # 这里针对美国官网
+            # 这里针对美国官网
         try:
             description = '\r'.join(
                 self.reformat(val)
-                for val in sel.xpath('//div[@class="product-information"]//div[contains(@class, "first")]//div[@class="accordion-inner"]/p/text()').extract()
+                for val in sel.xpath(
+                    '//div[@class="product-information"]//div[contains(@class, "first")]//div[@class="accordion-inner"]/p/text()').extract()
             )
             description = self.reformat(description)
             if description:
                 metadata['description'] = description
         except(TypeError, IndexError):
             pass
-
 
         try:
             detail = '\r'.join(
@@ -458,11 +483,12 @@ class AlexanderWangSpider(MFashionSpider):
                 metadata['details'] = detail
         except(TypeError, IndexError):
             pass
-        # 这里针对美国官网
+            # 这里针对美国官网
         try:
             detail = '\r'.join(
                 self.reformat(val)
-                for val in sel.xpath('//div[@class="product-information"]//div[@class="accordion-group"][not(child::ul)]//div[@class="accordion-inner"]/p/text()').extract()
+                for val in sel.xpath(
+                    '//div[@class="product-information"]//div[@class="accordion-group"][not(child::ul)]//div[@class="accordion-inner"]/p/text()').extract()
             )
             detail = self.reformat(detail)
             if detail:
@@ -478,7 +504,8 @@ class AlexanderWangSpider(MFashionSpider):
         # 根据从颜色标签中取的的data-cod10，生成另一种颜色的图片url
         color_codes = [
             self.reformat(val)
-            for val in sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@data-cod10]/@data-cod10').extract()
+            for val in
+            sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@data-cod10]/@data-cod10').extract()
         ]
 
         # 这里只取到了当前显示颜色的node，
