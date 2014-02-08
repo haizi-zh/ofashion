@@ -223,7 +223,7 @@ class BallySpider(MFashionSpider):
         except(TypeError, IndexError):
             pass
 
-        # TODO 这个看起来好像应该有不同颜色的单品，没找到
+        # TODO 这个看起来好像应该有不同颜色的单品，没找到例子
         color_node = sel.xpath('//div[@id="colorsBoxContainer"]//ul[@id="colorsContainer"]/li/div[@title]')
         if color_node:
             try:

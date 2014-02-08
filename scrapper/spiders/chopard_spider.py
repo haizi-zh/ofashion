@@ -129,6 +129,7 @@ class ChopardSpider(MFashionSpider):
             return
         metadata['url'] = response.url
 
+        #TODO 这里对于价格为0，或者是售罄的商品，价格找错了
         tmp = sel.xpath('//div[contains(@class,"price-box")]//span[@class="price"]')
         if tmp:
             metadata['price'] = self.reformat(unicodify(tmp[0]._root.text))

@@ -15,6 +15,9 @@ import common as cm
 __author__ = 'Zephyre'
 
 
+# TODO 抽查到货号386.61.h42 没有官网链接。
+
+
 class LoeweSpider(MFashionSpider):
     spider_data = {'brand_id': 10220,
                    'model_term': {'cn': ur'型号\s*:\s*', 'us': r'Model ID\s*:\s*', 'jp': r'Model ID\s*:\s*'},

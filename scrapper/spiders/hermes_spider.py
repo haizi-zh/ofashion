@@ -147,6 +147,7 @@ class HermesSpider(MFashionSpider):
             m['description'] = self.reformat(data['descriptions'][product_id])
             m['name'] = self.reformat(data['names'][product_id])
             m['model'] = data['skus'][product_id]
+            # TODO 这里有可能导致网页的url找错，例如：http://usa.hermes.com/jewelry/gold-jewelry/bracelets/configurable-product-104820b-23578.html
             if product_id in data['links']:
                 m['url'] = data['links'][product_id]
             else:

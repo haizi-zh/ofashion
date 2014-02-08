@@ -16,6 +16,9 @@ import common as cm
 __author__ = 'Zephyre'
 
 
+# TODO kenzo的数据不是用这个爬虫爬的，这个文件是后来覆盖过来的
+
+
 class KenzoSpider(MFashionSpider):
     spider_data = {'brand_id': 10192,
                    'image_data': 'https://www.kenzo.com/en/services/product/',

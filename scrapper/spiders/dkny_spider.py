@@ -310,6 +310,7 @@ class DknySpider(MFashionSpider):
         #     except(TypeError, IndexError):
         #         pass
 
+        # TODO dkny的爬虫通过cookie切换国家，这里的url是无意义的，需要尝试用url切换到指定
         metadata['url'] = response.url
 
         # 有货号不在URL中的

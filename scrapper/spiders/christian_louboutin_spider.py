@@ -13,6 +13,8 @@ import re
 
 class ChristianLouboutinSpider(MFashionSpider):
 
+    # TODO 抽查到加拿大官网货币单位为美元符号，顺便检查一下其他国家
+
     spider_data = {
         'brand_id': 10084,
         # 'currency': {
