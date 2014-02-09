@@ -9,6 +9,8 @@ __author__ = 'Zephyre'
 
 
 class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
+    handle_httpstatus_list = [404]
+
     def __init__(self, brand_list, db_spec, *a, **kw):
         self.name = 'update'
         super(UpdateSpider, self).__init__(*a, **kw)
@@ -30,7 +32,12 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             for pid, data in products_map.items():
                 url = data['url']
                 region = data['region']
-                yield Request(url=url, callback=self.parse, meta={'brand': brand, 'pid': pid, 'region': region})
+                yield Request(url=url, callback=self.parse, errback=self.errback,
+                              meta={'brand': brand, 'pid': pid, 'region': region})
+
+    def errback(self, reason):
+        item = UpdateItem()
+        pass
 
     def parse(self, response):
         brand = response.meta['brand']
@@ -39,9 +46,14 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         item['brand'] = brand
         item['region'] = response.meta['region']
         sc = glob.spider_info()[brand]
-
         metadata = {}
-        item['offline'] = 1 if getattr(sc, 'is_offline')(response) else 0
+        item['metadata'] = metadata
+
+        if response.status < 200 or response.status > 300:
+            item['offline'] = 1
+            return item
+        else:
+            item['offline'] = 1 if getattr(sc, 'is_offline')(response) else 0
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response)
@@ -50,5 +62,4 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             if 'price_discount' in ret:
                 metadata['price_discount'] = ret['price_discount']
 
-        item['metadata'] = metadata
-        yield item
+        return item

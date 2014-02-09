@@ -44,36 +44,37 @@ class UpdatePipeline(object):
         except KeyError:
             currency = None
 
-        price = process_price(metadata['price'], region, currency=currency)
-        try:
-            discount = process_price(metadata['price_discount'], region, currency=currency)
-        except KeyError:
-            discount = None
-
         self.db.start_transaction()
         try:
             self.db.update({'offline': offline}, 'products', str.format('idproducts={0}', pid))
 
-            if price and price['price'] > 0:
-                # 该单品最后的价格信息
-                price_value = price['price']
-                discount_value = discount['price'] if discount else None
-                rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
-                                         {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
-                insert_flag = False
-                if rs.num_rows() == 0:
-                    insert_flag = True
-                else:
-                    ret = rs.fetch_row()[0]
-                    db_entry = [float(val) if val else None for val in ret[:2]]
-                    old_currency = ret[2]
-                    if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price['currency']:
-                        insert_flag = True
+            if 'price' in metadata:
+                price = process_price(metadata['price'], region, currency=currency)
+                try:
+                    discount = process_price(metadata['price_discount'], region, currency=currency)
+                except KeyError:
+                    discount = None
 
-                if insert_flag:
-                    self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
-                                    'price_discount': (discount_value if discount_value < price_value else None)},
-                                   'products_price_history')
+                if price and price['price'] > 0:
+                    # 该单品最后的价格信息
+                    price_value = price['price']
+                    discount_value = discount['price'] if discount else None
+                    rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
+                                             {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
+                    insert_flag = False
+                    if rs.num_rows() == 0:
+                        insert_flag = True
+                    else:
+                        ret = rs.fetch_row()[0]
+                        db_entry = [float(val) if val else None for val in ret[:2]]
+                        old_currency = ret[2]
+                        if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price['currency']:
+                            insert_flag = True
+
+                    if insert_flag:
+                        self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
+                                        'price_discount': (discount_value if discount_value < price_value else None)},
+                                       'products_price_history')
         except:
             self.db.rollback()
             raise
