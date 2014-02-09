@@ -26,7 +26,8 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         scheme = ret.scheme if ret.scheme else urlparse.urlparse(referer).scheme
         return urlparse.urlunparse((scheme, netloc, ret.path, ret.params, ret.query, ret.fragment))
 
-    def reformat(self, text):
+    @staticmethod
+    def reformat(text):
         """
         格式化字符串，将多余的空格、换行、制表符等合并
         """

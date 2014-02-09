@@ -8,6 +8,11 @@ __author__ = 'Zephyre'
 
 import sys
 import core
+import pkgutil
+import scrapper.spiders
+from scrapper.spiders.mfashion_spider import MFashionSpider
+import inspect
+import imp
 
 if sys.platform in ('win32', ):
     STORAGE_PATH = u'd:/Users/Zephyre/Development/mstore/storage'
@@ -57,6 +62,7 @@ def __fetch_region_info():
 __cached_region_info = None
 __cached_brand_info = None
 __cached_currency_rate = None
+cached_spider_info = None
 
 
 def region_info():
@@ -64,6 +70,37 @@ def region_info():
     if not __cached_region_info:
         __cached_region_info = __fetch_region_info()
     return __cached_region_info
+
+
+def fetch_spider_info():
+    info = {}
+    for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
+        f, filename, description = imp.find_module(modname, ['scrapper/spiders'])
+        try:
+            submodule_list = imp.load_module(modname, f, filename, description)
+        finally:
+            f.close()
+
+        sc_list = filter(
+            lambda val: isinstance(val[1], type) and issubclass(val[1], MFashionSpider) and val[1] != MFashionSpider,
+            inspect.getmembers(submodule_list))
+        if not sc_list:
+            continue
+        sc_name, sc_class = sc_list[0]
+        brand_id = sc_class.spider_data['brand_id']
+        info[brand_id] = sc_class
+
+    return info
+
+
+def spider_info():
+    global cached_spider_info
+    if not cached_spider_info:
+        cached_spider_info = fetch_spider_info()
+    return cached_spider_info
+
+
+spider_info()
 
 
 def brand_info():

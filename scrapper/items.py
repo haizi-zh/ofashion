@@ -6,27 +6,17 @@
 from scrapy.item import Item, Field
 
 
-class DmozItem(Item):
-    title = Field()
-    link = Field()
-    desc = Field()
-
-
-class TorrentItem(Item):
-    url = Field()
-    name = Field()
-    description = Field()
-    size = Field()
-
-
-class BaiduItem(Item):
-    link = Field()
-    description = Field()
-
-
 class ProductItem(Item):
     url = Field()
     metadata = Field()
     model = Field()
     image_urls = Field()
     images = Field()
+
+
+class UpdateItem(Item):
+    idproduct = Field()
+    brand = Field()
+    region = Field()
+    metadata = Field()
+    offline = Field()

@@ -14,6 +14,9 @@ from twisted.internet import reactor
 import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from scrapy.contrib.spiders import CrawlSpider
+from scrapper.spiders.update_spider import UpdateSpider
+import scrapper.spiders.update_spider as ups
 from utils.utils import iterable
 
 __author__ = 'Zephyre'
@@ -24,7 +27,12 @@ def default_error():
 
 
 def argument_parser(args):
-    supported_params = {'r', 'exclude-region', 'D', 'P', 'v', 'debug'}
+    """
+    返回
+    @param args:
+    @return: @raise SyntaxError:
+    """
+    supported_params = {'brand', 'r', 'exclude-region', 'D', 'P', 'v', 'debug'}
     if len(args) < 2:
         default_error()
         return
@@ -74,6 +82,7 @@ def argument_parser(args):
         else:
             port = glob.DEBUG_PORT
         import pydevd
+
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
 
     for k in ('debug', 'D', 'P'):
@@ -104,28 +113,62 @@ def get_images_store(brand_id):
                                                               glob.brand_info()[brand_id]['brandname_s'])))
 
 
-def set_up_spider(spider_class, region_list, data):
+def set_up_spider(spider_class, data, is_update=False):
+    """
+    设置爬虫对象
+    @param is_update: 是否是一个UpdateSpider
+    @param spider_class:
+    @param data: 爬虫的配置参数
+    @return:
+    """
+
     crawler = Crawler(Settings())
     crawler.settings.values['BOT_NAME'] = 'mstore_bot'
 
-    crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
-                                                 'scrapper.pipelines.ProductPipeline': 300} \
-        if glob.WRITE_DATABASE else {}
+    if is_update:
+        crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.UpdatePipeline': 800}
+        brand_list = [int(tmp) for tmp in (data['brand'] if 'brand' in data else [])]
+        spider = spider_class(brand_list, glob.DB_SPEC)
+    else:
+        crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
+                                                     'scrapper.pipelines.ProductPipeline': 300} if glob.WRITE_DATABASE else {}
+        if 'job' in data:
+            job_path = get_job_path(spider_class.spider_data['brand_id']) + '-1'
+            if 'rst-job' in data:
+                shutil.rmtree(job_path, ignore_errors=True)
+            crawler.settings.values['JOBDIR'] = job_path
 
-    if 'job' in data:
-        job_path = get_job_path(spider_class.spider_data['brand_id']) + '-1'
-        if 'rst-job' in data:
-            shutil.rmtree(job_path, ignore_errors=True)
-        crawler.settings.values['JOBDIR'] = job_path
+        # Telnet支持
+        crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
+        if 'telnet' in data and data['telnet']:
+            start_port = int(data['telnet'][0])
+        else:
+            start_port = spider_class.spider_data['brand_id']
+        crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
+
+        # 图像数据存储
+        crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_class.spider_data['brand_id'])
+        crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
+        crawler.settings.values['IMAGES_MIN_HEIGHT'] = 64
+        crawler.settings.values['IMAGES_MIN_WIDTH'] = 64
+
+        # 获取爬虫区域
+        region_list = data['r']
+        if not region_list:
+            region_list = spider_class.get_supported_regions()
+        elif not iterable(region_list):
+            region_list = [region_list]
+
+        if 'exclude-region' in data:
+            for r in data['exclude-region']:
+                if r in region_list:
+                    region_list.pop(region_list.index(r))
+
+        spider = spider_class(region_list)
 
     crawler.settings.values['AUTOTHROTTLE_ENABLED'] = True
-    crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
-    if 'telnet' in data and data['telnet']:
-        start_port = int(data['telnet'][0])
-    else:
-        start_port = spider_class.spider_data['brand_id']
-    crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
 
+    # 设置spider的user agent
     ua = data['user-agent'] if 'user-agent' in data else 'chrome'
     if ua.lower() == 'chrome':
         crawler.settings.values[
@@ -141,27 +184,15 @@ def set_up_spider(spider_class, region_list, data):
 
     crawler.settings.values['COOKIES_ENABLED'] = (data['cookie'].lower() == 'true') if 'cookie' in data else True
 
-    crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_class.spider_data['brand_id'])
-    crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
-    crawler.settings.values['IMAGES_MIN_HEIGHT'] = 64
-    crawler.settings.values['IMAGES_MIN_WIDTH'] = 64
-
-    # crawler.signals.connect(on_spider_closed, signal=scrapy.signals.spider_closed)
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
-    if not region_list:
-        region_list = spider_class.get_supported_regions()
-    elif not iterable(region_list):
-        region_list = [region_list]
-
-    if 'exclude-region' in data:
-        for r in data['exclude-region']:
-            if r in region_list:
-                region_list.pop(region_list.index(r))
-
-    spider = spider_class(region_list)
-    spider.log(str.format('Spider started, processing the following regions: {0}', ', '.join(region_list)), log.INFO)
+    if is_update:
+        spider.log(str.format('Updating started, processing the following brands: {0}',
+                              ', '.join(str(tmp) for tmp in brand_list)), log.INFO)
+    else:
+        spider.log(str.format('Spider started, processing the following regions: {0}', ', '.join(region_list)),
+                   log.INFO)
     crawler.crawl(spider)
     crawler.start()
 
@@ -177,14 +208,19 @@ def main():
 
     if cmd:
         spider_module = cm.get_spider_module(cmd['spider'])
-        sc_list = list(ifilter(lambda val:
-                               isinstance(val, type) and issubclass(val, MFashionSpider) and val != MFashionSpider,
-                               (getattr(spider_module, tmp) for tmp in dir(spider_module))))
+        spider_class = UpdateSpider if cmd['spider'] == 'update' else MFashionSpider
+        is_update = (not spider_class == MFashionSpider)
 
-        try:
-            region_list = cmd['param']['r']
-        except KeyError:
-            region_list = []
+        if is_update:
+            sc_list = list(ifilter(lambda val: isinstance(val, type) and issubclass(val, CrawlSpider),
+                                   (getattr(spider_module, tmp) for tmp in dir(spider_module))))
+        else:
+            sc_list = list(ifilter(lambda val:
+                                   isinstance(val, type) and issubclass(val, spider_class) and val != spider_class,
+                                   (getattr(spider_module, tmp) for tmp in dir(spider_module))))
+
+        if 'r' not in cmd['param']:
+            cmd['param']['r'] = []
 
         if sc_list:
             sc = sc_list[0]
@@ -194,7 +230,7 @@ def main():
             else:
                 log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
 
-            set_up_spider(sc, region_list, cmd['param'])
+            set_up_spider(sc, cmd['param'], is_update=is_update)
             reactor.run()   # the script will block here until the spider_closed signal was sent
 
 
