@@ -228,7 +228,13 @@ def main():
             if 'v' in cmd['param'] or glob.LOG_DEBUG:
                 log.start(loglevel='DEBUG')
             else:
-                log.start(loglevel='INFO', logfile=get_log_path(sc.spider_data['brand_id']))
+                if is_update:
+                    logfile = os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
+                                                            unicode.format(u'{0}_{1}.log', 'update',
+                                                                           datetime.datetime.now().strftime('%Y%m%d'))))
+                else:
+                    logfile = get_log_path(sc.spider_data['brand_id'])
+                log.start(loglevel='INFO', logfile=logfile)
 
             set_up_spider(sc, cmd['param'], is_update=is_update)
             reactor.run()   # the script will block here until the spider_closed signal was sent
