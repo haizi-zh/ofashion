@@ -157,7 +157,6 @@ class BurberrySpider(MFashionSpider):
         if tmp:
             metadata['name'] = self.reformat(tmp[0])
 
-        # TODO Images might have various versions due to different color selections. Fetch them all.
         if 'name' in metadata and 'details' in metadata and 'description' in metadata:
             ret = hxs.xpath("//div[@class='product_detail_container']/div[@class='product_viewer']"
                             "//ul[@class='product-media-set']/li[@class='product-image']/img[@src]/@src").extract()

@@ -15,9 +15,9 @@ class ChristianLouboutinSpider(MFashionSpider):
 
     spider_data = {
         'brand_id': 10084,
-        # 'currency': {
-        #     'mo': 'HKD',
-        # },
+        'currency': {
+            'ca': 'USD',
+        },
         'home_urls': {
             'us': 'http://us.christianlouboutin.com/us_en/',
             'ca': 'http://us.christianlouboutin.com/ca_en/',

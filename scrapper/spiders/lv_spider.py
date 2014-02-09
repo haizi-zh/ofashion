@@ -13,6 +13,8 @@ import global_settings
 
 __author__ = 'Zephyre'
 
+# TODO 现在这个lv的爬虫没法跑起来
+
 lv_data = {'host': {'cn': 'http://m.louisvuitton.cn'},
            'start_url': {'cn': 'http://m.louisvuitton.cn/mobile/zhs_CN/%E4%BA%A7%E5%93%81%E7%B3%BB%E5%88%97',
                          'us': 'http://m.louisvuitton.com',

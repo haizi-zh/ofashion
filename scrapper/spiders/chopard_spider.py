@@ -129,7 +129,7 @@ class ChopardSpider(MFashionSpider):
             return
         metadata['url'] = response.url
 
-        tmp = sel.xpath('//div[contains(@class,"price-box")]//span[@class="price"]')
+        tmp = sel.xpath('//div[@class="product-shop"]//div[contains(@class,"price-box")]//span[@class="price"]')
         if tmp:
             metadata['price'] = self.reformat(unicodify(tmp[0]._root.text))
 

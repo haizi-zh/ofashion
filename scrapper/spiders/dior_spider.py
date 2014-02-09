@@ -196,7 +196,7 @@ class DiorSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//ul[@class="slides anythingBase horizontal"]/li[descendant::a[@href]]')
+        product_nodes = sel.xpath('//li[@data-collection_filter][descendant::a[@href]]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
