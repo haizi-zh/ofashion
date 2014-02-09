@@ -11,8 +11,8 @@ import copy
 import common
 import re
 
-class AgnesBSpider(MFashionSpider):
 
+class AgnesBSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10006,
         'home_urls': {
@@ -48,7 +48,7 @@ class AgnesBSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -82,7 +82,7 @@ class AgnesBSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -97,7 +97,7 @@ class AgnesBSpider(MFashionSpider):
                               errback=self.onerr,
                               meta={'userdata': m})
 
-        # 这个页面右下角也有几个推荐单品，但是在别的路径都有，就不单独解析了
+                # 这个页面右下角也有几个推荐单品，但是在别的路径都有，就不单独解析了
 
 
     def parse_filter2(self, response):
@@ -119,7 +119,7 @@ class AgnesBSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-2'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -193,6 +193,51 @@ class AgnesBSpider(MFashionSpider):
                           meta={'userdata': m},
                           dont_filter=True)
 
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+        old_price_node = sel.xpath(
+            '//div[@class="description_bas"]/div[@id="test"]/div[@class="tarif_old"]/span[text()]')
+        if old_price_node:
+            old_price = old_price_node.xpath('./text()').extract()[0]
+            old_price = cls.reformat(old_price)
+            if old_price:
+                ret['price'] = old_price
+
+            new_price_node = sel.xpath(
+                '//div[@class="description_bas"]/div[@id="test"]/div[contains(@class, "discount")][text()]')
+            if new_price_node:
+                new_price = new_price_node.xpath('./text()').extract()[0]
+                new_price = cls.reformat(new_price)
+                if new_price:
+                    ret['price_discount'] = new_price
+        else:
+            price = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[text()]/text()').extract()[0]
+            price = cls.reformat(price)
+            if price:
+                ret['price'] = price
+
+        return ret
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+        # 货号在点开+details中的reference后边
+        model = None
+        model_node = sel.xpath('//div[@id="details_popup"]/div[not(@class)][text()]')
+        if model_node:
+            model_text = model_node.xpath('./text()').extract()[0]
+            model_text = cls.reformat(model_text)
+            mt = re.search(r'\b(\w+)\b$', model_text)
+            if mt:
+                model = mt.group(1)
+        return model
+
     def parse_product(self, response):
 
         metadata = response.meta['userdata']
@@ -213,16 +258,7 @@ class AgnesBSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # 货号在点开+details中的reference后边
-        model = None
-        model_node = sel.xpath('//div[@id="details_popup"]/div[not(@class)][text()]')
-        if model_node:
-            model_text = model_node.xpath('./text()').extract()[0]
-            model_text = self.reformat(model_text)
-            mt = re.search(r'\b(\w+)\b$', model_text)
-            if mt:
-                model = mt.group(1)
-
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
@@ -235,24 +271,11 @@ class AgnesBSpider(MFashionSpider):
                 metadata['name'] = name
 
         if not metadata.get('price'):
-            old_price_node = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[@class="tarif_old"]/span[text()]')
-            if old_price_node:
-                old_price = old_price_node.xpath('./text()').extract()[0]
-                old_price = self.reformat(old_price)
-                if old_price:
-                    metadata['price'] = old_price
-
-                new_price_node = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[contains(@class, "discount")][text()]')
-                if new_price_node:
-                    new_price = new_price_node.xpath('./text()').extract()[0]
-                    new_price = self.reformat(new_price)
-                    if new_price:
-                        metadata['price_discount'] = new_price
-            else:
-                price = sel.xpath('//div[@class="description_bas"]/div[@id="test"]/div[text()]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
+            ret = self.fetch_price(response)
+            if 'price' in ret:
+                metadata['price'] = ret['price']
+            if 'price_discount' in ret:
+                metadata['price_discount'] = ret['price_discount']
 
         if not metadata.get('color'):
             colors = [
