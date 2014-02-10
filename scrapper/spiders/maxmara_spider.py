@@ -174,15 +174,7 @@ class MaxMaraSpider(MFashionSpider):
         metadata['url'] = response.url
 
 
-        model = None
-        model_node = sel.xpath('//input[@id="productCodePost"][@value]')
-        if model_node:
-            try:
-                model = model_node.xpath('./@value').extract()[0]
-                model = self.reformat(model)
-            except(TypeError, IndexError):
-                pass
-
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
@@ -202,29 +194,11 @@ class MaxMaraSpider(MFashionSpider):
             metadata['name'] = name
 
 
-        old_price = None
-        new_price = None
-        old_price_node = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/span[@class="exSalesPrice"][text()]')
-        if old_price_node:
-            try:
-                old_price = old_price_node.xpath('./text()').extract()[0]
-                old_price = self.reformat(old_price)
-
-                new_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
-                new_price = self.reformat(new_price)
-            except(TypeError, IndexError):
-                pass
-        else:
-            try:
-                old_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
-                old_price = self.reformat(old_price)
-            except(TypeError, IndexError):
-                pass
-
-        if old_price:
-            metadata['price'] = old_price
-        if new_price:
-            metadata['price_discount'] = new_price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
 
         colors = None
@@ -294,3 +268,53 @@ class MaxMaraSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//input[@id="productCodePost"][@value]')
+        if model_node:
+            try:
+                model = model_node.xpath('./@value').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        old_price_node = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/span[@class="exSalesPrice"][text()]')
+        if old_price_node:
+            try:
+                old_price = old_price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+
+                new_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
+                new_price = cls.reformat(new_price)
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                old_price = sel.xpath('//aside[@id="sidebar"]//div[@id="big-price"]/*[@class="big-price"][text()]/text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret

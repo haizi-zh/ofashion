@@ -208,15 +208,7 @@ class MarcJacobsSpider(MFashionSpider):
         metadata['url'] = response.url
 
 
-        model = None
-        model_node = sel.xpath('//meta[@itemprop="productID"][@content]')
-        if model_node:
-            try:
-                model = model_node.xpath('./@content').extract()[0]
-                model = self.reformat(model)
-            except(TypeError, IndexError):
-                pass
-
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
@@ -236,17 +228,9 @@ class MarcJacobsSpider(MFashionSpider):
             metadata['name'] = name
 
 
-        price = None
-        price_node = sel.xpath('//div[@class="product-detail-container"]//span[@itemprop="price"][text()]')
-        if price_node:
-            try:
-                price = price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-            except(TypeError, IndexError):
-                pass
-
-        if price:
-            metadata['price'] = price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
 
 
         description = None
@@ -299,3 +283,41 @@ class MarcJacobsSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//meta[@itemprop="productID"][@content]')
+        if model_node:
+            try:
+                model = model_node.xpath('./@content').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        price = None
+        price_node = sel.xpath('//div[@class="product-detail-container"]//span[@itemprop="price"][text()]')
+        if price_node:
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = cls.reformat(price)
+            except(TypeError, IndexError):
+                pass
+
+        if price:
+            ret['price'] = price
+
+        return ret
