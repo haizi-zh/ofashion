@@ -22,18 +22,14 @@ class AgnesBSpider(MFashionSpider):
         },
     }
 
-
     @classmethod
     def get_supported_regions(cls):
         return cls.spider_data['home_urls'].keys()
 
-
     def __init__(self, region):
         super(AgnesBSpider, self).__init__('agnes b', region)
 
-
     def parse(self, response):
-
         metadata = response.meta['userdata']
         sel = Selector(response)
 
@@ -276,8 +272,48 @@ class AgnesBSpider(MFashionSpider):
 
         return model
 
-    def parse_product(self, response):
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+        return [cls.reformat(val).lower() for val in
+                sel.xpath('//div[@class="carre_couleur"]/a/img[@title]/@title').extract()]
 
+    @classmethod
+    def fetch_name(cls, response):
+        tmp = Selector(response).xpath('//div[@id="infos_produit"]/div/div/p[@class="titre"][text()]/text()').extract()
+        return cls.reformat(tmp[0]) if tmp else None
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        # 这里你点开那个+details，才能看到完整的description
+        # 我把上面作为description，下面作为detail
+        description_node = sel.xpath('//div[@id="details_popup"]/div[@class="gauche"]')
+        if description_node:
+            description = cls.reformat(''.join(cls.reformat(val) for val in
+                                               description_node.xpath('./text()').extract()))
+        else:
+            description = None
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+        details = None
+
+        # 这里你点开那个+details，才能看到完整的description
+        # 我把上面作为description，下面作为detail
+        description_node = sel.xpath('//div[@id="details_popup"]/div[@class="gauche"]')
+        if description_node:
+            detail_node = description_node.xpath('./div/p[text()]')
+            if detail_node:
+                details = cls.reformat('\r'.join(cls.reformat(val) for val in detail_node.xpath('./text()').extract()))
+
+        return details
+
+    def parse_product(self, response):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
@@ -313,7 +349,7 @@ class AgnesBSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
 
-        if not metadata.get('price'):
+        if 'price' not in metadata:
             ret = self.fetch_price(response)
             if 'price' in ret:
                 metadata['price'] = ret['price']
