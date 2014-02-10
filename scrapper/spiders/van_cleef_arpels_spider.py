@@ -204,6 +204,8 @@ class VanCleffArpelsSpider(MFashionSpider):
         ret = self.fetch_price(response)
         if 'price' in ret:
             metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
 
         image_urls = []
