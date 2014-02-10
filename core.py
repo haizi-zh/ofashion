@@ -144,10 +144,7 @@ class MySqlDb(object):
 
         def func(arg):
             k, v = arg
-            if v:
-                return unicode.format(u'{0}="{1}"', k, self.sql_escape(v))
-            else:
-                return unicode.format(u'{0} IS NULL', k)
+            return unicode.format(u'{0}="{1}"', k, self.sql_escape(v)) if v else unicode.format(u'{0} IS NULL', k)
 
         match_str = ' AND '.join(map(func, matches.items())) if matches else '1'
         extra_cond = ' AND '.join(extra)

@@ -32,12 +32,7 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             for pid, data in products_map.items():
                 url = data['url']
                 region = data['region']
-                yield Request(url=url, callback=self.parse, errback=self.errback,
-                              meta={'brand': brand, 'pid': pid, 'region': region})
-
-    def errback(self, reason):
-        item = UpdateItem()
-        pass
+                yield Request(url=url, callback=self.parse, meta={'brand': brand, 'pid': pid, 'region': region})
 
     def parse(self, response):
         brand = response.meta['brand']
@@ -61,5 +56,30 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                 metadata['price'] = ret['price']
             if 'price_discount' in ret:
                 metadata['price_discount'] = ret['price_discount']
+
+        if 'fetch_name' in dir(sc):
+            name = getattr(sc, 'fetch_name')(response)
+            if name:
+                metadata['name'] = name
+
+        if 'fetch_model' in dir(sc):
+            model = getattr(sc, 'fetch_model')(response)
+            if model:
+                metadata['model'] = model
+
+        if 'fetch_description' in dir(sc):
+            description = getattr(sc, 'fetch_description')(response)
+            if description:
+                metadata['description'] = description
+
+        if 'fetch_details' in dir(sc):
+            details = getattr(sc, 'fetch_details')(response)
+            if details:
+                metadata['details'] = details
+
+        if 'fetch_color' in dir(sc):
+            color = getattr(sc, 'fetch_color')(response)
+            if color:
+                metadata['color'] = color
 
         return item

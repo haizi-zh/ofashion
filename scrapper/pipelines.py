@@ -33,7 +33,6 @@ class UpdatePipeline(object):
 
     def process_item(self, item, spider):
         metadata = item['metadata']
-        offline = item['offline']
         pid = item['idproduct']
         brand = item['brand']
         region = item['region']
@@ -46,7 +45,45 @@ class UpdatePipeline(object):
 
         self.db.start_transaction()
         try:
-            self.db.update({'offline': offline}, 'products', str.format('idproducts={0}', pid))
+            # 获得旧数据
+            rs = self.db.query_match({'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline'},
+                                     'products', {'idproducts': pid})
+            # 如果没有找到相应的记录，
+            if rs.num_rows() == 0:
+                raise DropItem
+            record = rs.fetch_row(how=1)[0]
+            model = unicodify(record['model'])
+            description = unicodify(record['description'])
+            details = unicodify(record['details'])
+            tmp = unicodify(record['color'])
+            color = json.loads(tmp) if tmp else None
+            price = unicodify(record['price'])
+            price_discount = unicodify(record['price_discount'])
+            offline = int(record['offline'])
+
+            # 如果旧数据和item有不一致的地方，则更新
+            update_data = {}
+            if 'model' in metadata and metadata['model'] != model:
+                update_data['model'] = metadata['model']
+            if 'description' in metadata and metadata['description'] != description:
+                update_data['description'] = metadata['description']
+            if 'details' in metadata and metadata['details'] != details:
+                update_data['details'] = metadata['details']
+            if 'color' in metadata and metadata['color'] != color:
+                update_data['color'] = json.dumps(metadata['color'], ensure_ascii=False)
+            if 'price' in metadata and metadata['price'] != price:
+                update_data['price'] = metadata['price']
+            if 'price_discount' in metadata and metadata['price_discount'] != price_discount:
+                update_data['price_discount'] = metadata['price_discount']
+            if item['offline'] != offline:
+                update_data['offline'] = item['offline']
+
+            if update_data:
+                self.db.update(update_data, 'products', str.format('idproducts={0}', pid),
+                               timestamps=['fetch_time', 'update_time', 'touch_time'])
+            else:
+                self.db.update({'offline': item['offline']}, 'products', str.format('idproducts={0}', pid),
+                               timestamps=['touch_time'])
 
             if 'price' in metadata:
                 price = process_price(metadata['price'], region, currency=currency)
@@ -68,7 +105,8 @@ class UpdatePipeline(object):
                         ret = rs.fetch_row()[0]
                         db_entry = [float(val) if val else None for val in ret[:2]]
                         old_currency = ret[2]
-                        if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price['currency']:
+                        if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price[
+                            'currency']:
                             insert_flag = True
 
                     if insert_flag:
