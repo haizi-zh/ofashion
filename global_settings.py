@@ -100,9 +100,6 @@ def spider_info():
     return cached_spider_info
 
 
-spider_info()
-
-
 def brand_info():
     global __cached_brand_info
     if not __cached_brand_info:
