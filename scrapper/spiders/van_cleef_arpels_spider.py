@@ -178,15 +178,7 @@ class VanCleffArpelsSpider(MFashionSpider):
             return
 
 
-        name = None
-        name_node = sel.xpath('//div[@id="product-right-part"]/h1[text()]')
-        if name_node:
-            try:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-            except(TypeError, IndexError):
-                pass
-
+        name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
@@ -204,17 +196,7 @@ class VanCleffArpelsSpider(MFashionSpider):
             metadata['color'] = [color]
 
 
-        description = None
-        description_node = sel.xpath('//div[@id="product-right-part"]/div[@class="scroll-pane"]//p[text()]')
-        if description_node:
-            try:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('./text()').extract()
-                )
-            except(TypeError, IndexError):
-                pass
-
+        description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
@@ -289,3 +271,35 @@ class VanCleffArpelsSpider(MFashionSpider):
             ret['price'] = price
 
         return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="product-right-part"]/h1[text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="product-right-part"]/div[@class="scroll-pane"]//p[text()]')
+        if description_node:
+            try:
+                description = '\r'.join(
+                    cls.reformat(val)
+                    for val in description_node.xpath('./text()').extract()
+                )
+            except(TypeError, IndexError):
+                pass
+
+        return description

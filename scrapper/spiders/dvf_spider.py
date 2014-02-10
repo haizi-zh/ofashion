@@ -161,15 +161,7 @@ class DVFSpider(MFashionSpider):
             return
 
 
-        name = None
-        name_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//h1[@class="product-name"][text()]')
-        if name_node:
-            try:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-            except(TypeError, IndexError):
-                pass
-
+        name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
@@ -194,28 +186,12 @@ class DVFSpider(MFashionSpider):
             metadata['price_discount'] = ret['price_discount']
 
 
-        description = None
-        description_node = sel.xpath('//div[@id="content"]//div[@itemprop="description"][text()]')
-        if description_node:
-            try:
-                description = description_node.xpath('./text()').extract()[0]
-                description = self.reformat(description)
-            except(TypeError, IndexError):
-                pass
-
+        description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
 
-        detail = None
-        detail_node = sel.xpath('//div[@id="content"]//p[@class="tab-fabric-description"][text()]')
-        if detail_node:
-            try:
-                detail = detail_node.xpath('./text()').extract()[0]
-                detail = self.reformat(detail)
-            except(TypeError, IndexError):
-                pass
-
+        detail = self.fetch_details(response)
         if detail:
             metadata['details'] = detail
 
@@ -301,3 +277,48 @@ class DVFSpider(MFashionSpider):
                 pass
 
         return model
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//h1[@class="product-name"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="content"]//div[@itemprop="description"][text()]')
+        if description_node:
+            try:
+                description = description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        detail = None
+        detail_node = sel.xpath('//div[@id="content"]//p[@class="tab-fabric-description"][text()]')
+        if detail_node:
+            try:
+                detail = detail_node.xpath('./text()').extract()[0]
+                detail = cls.reformat(detail)
+            except(TypeError, IndexError):
+                pass
+
+        return detail

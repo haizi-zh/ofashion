@@ -181,15 +181,7 @@ class MaxMaraSpider(MFashionSpider):
             return
 
 
-        name = None
-        name_node = sel.xpath('//aside[@id="sidebar"]//div[@id="productDetailUpdateableTitle"]/h1[text()]')
-        if name_node:
-            try:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-            except(TypeError, IndexError):
-                pass
-
+        name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
@@ -216,34 +208,12 @@ class MaxMaraSpider(MFashionSpider):
             metadata['color'] = colors
 
 
-        description = None
-        description_nodes = sel.xpath('//aside[@id="sidebar"]//ul[@id="productDetailsAndStyleDiv"]/*[text()]')
-        if description_nodes:
-            try:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_nodes.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-            except(TypeError, IndexError):
-                pass
-
+        description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
 
-        details = None
-        detail_nodes = sel.xpath('//aside[@id="sidebar"]//div[@id="tab-fitting"]//ul/li[position() < last()][text()]')
-        if detail_nodes:
-            try:
-                details = '\r'.join(
-                    self.reformat(val)
-                    for val in detail_nodes.xpath('./text()').extract()
-                )
-                details = self.reformat(details)
-            except(TypeError, IndexError):
-                pass
-
+        details = self.fetch_details(response)
         if details:
             metadata['details'] = details
 
@@ -318,3 +288,54 @@ class MaxMaraSpider(MFashionSpider):
             ret['price_discount'] = new_price
 
         return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//aside[@id="sidebar"]//div[@id="productDetailUpdateableTitle"]/h1[text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_nodes = sel.xpath('//aside[@id="sidebar"]//ul[@id="productDetailsAndStyleDiv"]/*[text()]')
+        if description_nodes:
+            try:
+                description = '\r'.join(
+                    cls.reformat(val)
+                    for val in description_nodes.xpath('.//text()').extract()
+                )
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        detail_nodes = sel.xpath('//aside[@id="sidebar"]//div[@id="tab-fitting"]//ul/li[position() < last()][text()]')
+        if detail_nodes:
+            try:
+                details = '\r'.join(
+                    cls.reformat(val)
+                    for val in detail_nodes.xpath('./text()').extract()
+                )
+                details = cls.reformat(details)
+            except(TypeError, IndexError):
+                pass
+
+        return details

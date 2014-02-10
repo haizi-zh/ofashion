@@ -144,11 +144,9 @@ class MulberrySpider(MFashionSpider):
     @classmethod
     def fetch_price(cls, response):
         sel = Selector(response)
-
         ret = {}
 
         # 有些有折扣价 ：http://www.mulberry.com/shop/sale/sale-womenswear/pleated-dress-black-mini-meadow-triple-georgette
-        name = None
         old_price = None
         new_price = None
         name_price_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
@@ -190,8 +188,6 @@ class MulberrySpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
 
-        if name:
-            ret['name'] = name
         if old_price:
             ret['price'] = old_price
         if new_price:
@@ -230,23 +226,19 @@ class MulberrySpider(MFashionSpider):
             return
 
 
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+
         ret = self.fetch_price(response)
-        if 'name' in ret:
-            metadata['name'] = ret['name']
         if 'price' in ret:
             metadata['price'] = ret['price']
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
 
-        description = None
-        description_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]//div[@class="product-description"]/p[text()]')
-        if description_node:
-            try:
-                description = self.reformat(description_node.xpath('./text()').extract()[0])
-            except(TypeError, IndexError):
-                pass
-
+        description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
@@ -263,17 +255,7 @@ class MulberrySpider(MFashionSpider):
             metadata['color'] = [color]
 
 
-        detail = None
-        detail_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div[@class="detailed-info"]/*[1 < position()][position() < last()-1]')
-        if detail_node:
-            try:
-                detail = '\r'.join(
-                    self.reformat(val)
-                    for val in detail_node.xpath('.//text()').extract()
-                )
-            except(TypeError, IndexError):
-                pass
-
+        detail = self.fetch_details(response)
         if detail:
             metadata['details'] = detail
 
@@ -298,3 +280,61 @@ class MulberrySpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_price_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
+        if name_price_node:
+            was_price_node = name_price_node.xpath('.//div[@class="wasPrice"]')
+            if was_price_node:  # 有折扣
+                try:
+                    name = ' '.join(
+                        cls.reformat(val)
+                        for val in name_price_node.xpath('./text() | ./span/text()').extract()
+                    )
+                except(TypeError, IndexError):
+                    pass
+            else:   # 无折扣
+                try:
+                    name = ' '.join(
+                        cls.reformat(val)
+                        for val in name_price_node.xpath('./text() | ./span/text()[position() < last()]').extract()
+                    )
+                except(TypeError, IndexError):
+                    pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]//div[@class="product-description"]/p[text()]')
+        if description_node:
+            try:
+                description = cls.reformat(description_node.xpath('./text()').extract()[0])
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        detail = None
+        detail_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div[@class="detailed-info"]/*[1 < position()][position() < last()-1]')
+        if detail_node:
+            try:
+                detail = '\r'.join(
+                    cls.reformat(val)
+                    for val in detail_node.xpath('.//text()').extract()
+                )
+            except(TypeError, IndexError):
+                pass
+
+        return detail

@@ -215,15 +215,7 @@ class MarcJacobsSpider(MFashionSpider):
             return
 
 
-        name = None
-        name_node = sel.xpath('//div[@class="product-detail-container"]//h1[@itemprop="name"][text()]')
-        if name_node:
-            try:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-            except(TypeError, IndexError):
-                pass
-
+        name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
@@ -233,15 +225,7 @@ class MarcJacobsSpider(MFashionSpider):
             metadata['price'] = ret['price']
 
 
-        description = None
-        description_node = sel.xpath('//meta[@name="twitter:description"][@content]')
-        if description_node:
-            try:
-                description = description_node.xpath('./@content').extract()[0]
-                description = self.reformat(description)
-            except(TypeError, IndexError):
-                pass
-
+        description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
@@ -321,3 +305,33 @@ class MarcJacobsSpider(MFashionSpider):
             ret['price'] = price
 
         return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@class="product-detail-container"]//h1[@itemprop="name"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//meta[@name="twitter:description"][@content]')
+        if description_node:
+            try:
+                description = description_node.xpath('./@content').extract()[0]
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
