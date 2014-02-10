@@ -154,15 +154,7 @@ class DVFSpider(MFashionSpider):
         metadata['url'] = response.url
 
 
-        model = None
-        model_node = sel.xpath('//div[@id="container"][@data-pid]')
-        if model_node:
-            try:
-                model = model_node.xpath('./@data-pid').extract()[0]
-                model = self.reformat(model)
-            except(TypeError, IndexError):
-                pass
-
+        model = self.fetch_mode(response)
         if model:
             metadata['model'] = model
         else:
@@ -195,35 +187,11 @@ class DVFSpider(MFashionSpider):
             metadata['color'] = colors
 
 
-        # TODO 有价格是一个区间的 ：http://uk.dvf.com/on/demandware.store/Sites-DvF_UK-Site/default/Product-Variation?pid=D5873607T13B&dwvar_D5873607T13B_color=&dwvar_D5873607T13B_size=L
-        old_price = None
-        new_price = None
-        discount_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
-        if discount_node:
-            try:
-                old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]/text()').extract()[0]
-                old_price = self.reformat(old_price)
-            except(TypeError, IndexError):
-                pass
-
-            try:
-                new_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
-                new_price = self.reformat(new_price)
-            except(TypeError, IndexError):
-                pass
-        else:
-            old_price_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
-            if old_price_node:
-                try:
-                    old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
-                    old_price = self.reformat(old_price)
-                except(TypeError, IndexError):
-                    pass
-
-        if old_price:
-            metadata['price'] = old_price
-        if new_price:
-            metadata['price_discount'] = new_price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
 
         description = None
@@ -277,3 +245,59 @@ class DVFSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        # TODO 有价格是一个区间的 ：http://uk.dvf.com/on/demandware.store/Sites-DvF_UK-Site/default/Product-Variation?pid=D5873607T13B&dwvar_D5873607T13B_color=&dwvar_D5873607T13B_size=L
+        old_price = None
+        new_price = None
+        discount_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
+        if discount_node:
+            try:
+                old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]/text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+            try:
+                new_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
+                new_price = cls.reformat(new_price)
+            except(TypeError, IndexError):
+                pass
+        else:
+            old_price_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
+            if old_price_node:
+                try:
+                    old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
+                    old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_mode(response)
+
+    @classmethod
+    def fetch_mode(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//div[@id="container"][@data-pid]')
+        if model_node:
+            try:
+                model = model_node.xpath('./@data-pid').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model

@@ -137,29 +137,15 @@ class MulberrySpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': metadata})
 
-    def parse_product(self, response):
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
-        metadata = response.meta['userdata']
+    @classmethod
+    def fetch_price(cls, response):
         sel = Selector(response)
 
-
-        metadata['url'] = response.url
-
-
-        model = None
-        model_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div/p/strong[text()]')
-        if model_node:
-            try:
-                model = model_node.xpath('./text()').extract()[0]
-                model = self.reformat(model)
-            except(TypeError, IndexError):
-                pass
-
-        if model:
-            metadata['model'] = model
-        else:
-            return
-
+        ret = {}
 
         # 有些有折扣价 ：http://www.mulberry.com/shop/sale/sale-womenswear/pleated-dress-black-mini-meadow-triple-georgette
         name = None
@@ -171,7 +157,7 @@ class MulberrySpider(MFashionSpider):
             if was_price_node:  # 有折扣
                 try:
                     name = ' '.join(
-                        self.reformat(val)
+                        cls.reformat(val)
                         for val in name_price_node.xpath('./text() | ./span/text()').extract()
                     )
                 except(TypeError, IndexError):
@@ -179,37 +165,78 @@ class MulberrySpider(MFashionSpider):
 
                 try:
                     old_price = name_price_node.xpath('.//div[@class="wasPrice"]/text()').extract()[0]
-                    old_price = self.reformat(old_price)
+                    old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
 
                 try:
                     new_price = name_price_node.xpath('.//div[@class="nowPrice"]/text()').extract()[0]
-                    new_price = self.reformat(new_price)
+                    new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
             else:   # 无折扣
                 try:
                     name = ' '.join(
-                        self.reformat(val)
+                        cls.reformat(val)
                         for val in name_price_node.xpath('./text() | ./span/text()[position() < last()]').extract()
                     )
                 except(TypeError, IndexError):
                     pass
 
                 try:
-                    old_price = self.reformat(name_price_node.xpath('./span/text()[last()]').extract()[0])
+                    old_price = cls.reformat(name_price_node.xpath('./span/text()[last()]').extract()[0])
                     # if not old_price:   # 有些最后一个text()是空的，价格在倒数第二个
                     #     old_price = self.reformat(name_price_node.xpath('.//text()[last()-1]').extract()[0])
                 except(TypeError, IndexError):
                     pass
 
         if name:
-            metadata['name'] = name
+            ret['name'] = name
         if old_price:
-            metadata['price'] = old_price
+            ret['price'] = old_price
         if new_price:
-            metadata['price_discount'] = new_price
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div/p/strong[text()]')
+        if model_node:
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    def parse_product(self, response):
+
+        metadata = response.meta['userdata']
+        sel = Selector(response)
+
+
+        metadata['url'] = response.url
+
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+
+        ret = self.fetch_price(response)
+        if 'name' in ret:
+            metadata['name'] = ret['name']
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
 
         description = None
