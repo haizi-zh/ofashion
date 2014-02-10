@@ -146,15 +146,7 @@ class LanvinSpider(MFashionSpider):
         metadata['url'] = response.url
 
 
-        model = None
-        model_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h3[@class="product-cat"][text()]')
-        if model_node:
-            try:
-                model = model_node.xpath('./text()').extract()[0]
-                model = self.reformat(model)
-            except(TypeError, IndexError):
-                pass
-
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
@@ -175,71 +167,24 @@ class LanvinSpider(MFashionSpider):
             return
 
 
-        name = None
-        name_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h2[@class="product-name"][text()]')
-        if name_node:
-            try:
-                name = ' '.join(
-                    self.reformat(val)
-                    for val in name_node.xpath('./text()').extract()
-                )
-                name = self.reformat(name)
-            except(TypeError, IndexError):
-                pass
-
+        name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
 
-        price = None
-        price_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]//span[@class="price"][text()]')
-        if price_node:
-            try:
-                price = price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-            except(TypeError, IndexError):
-                pass
-
-        if price:
-            metadata['price'] = price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
 
-        description = None
-        description_node = sel.xpath('//div[@id="pp-details"]/p[text()]')
-        if description_node:
-            try:
-                description = description_node.xpath('./text()').extract()[0]
-                description = self.reformat(description)
-            except(TypeError, IndexError):
-                pass
-
+        description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
 
-        details = None
-        detail_nodes = sel.xpath('//div[@id="pp-details"]/ul/li[text()]')
-        if detail_nodes:
-            try:
-                details = '\r'.join(
-                    self.reformat(val)
-                    for val in detail_nodes.xpath('./text()').extract()
-                )
-                details = self.reformat(details)
-            except(TypeError, IndexError):
-                pass
-        if not detail_nodes:
-            mt = re.search(ur'"productDescriptions":[^<]+"([^"]+)"', response.body)
-            if mt:
-                detail_html = mt.group(1)
-                detail_texts = re.findall(ur'<li[^>]+>([^<]+)<\\/li>', detail_html)
-                if detail_texts:
-                    details = '\r'.join(
-                        self.reformat(val)
-                        for val in detail_texts
-                    )
-                    details = self.reformat(details)
-
+        details = self.fetch_details(response)
         if details:
             metadata['details'] = details
 
@@ -289,3 +234,103 @@ class LanvinSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h3[@class="product-cat"][text()]')
+        if model_node:
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        price = None
+        price_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]//span[@class="price"][text()]')
+        if price_node:
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = cls.reformat(price)
+            except(TypeError, IndexError):
+                pass
+
+        if price:
+            ret['price'] = price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h2[@class="product-name"][text()]')
+        if name_node:
+            try:
+                name = ' '.join(
+                    cls.reformat(val)
+                    for val in name_node.xpath('./text()').extract()
+                )
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="pp-details"]/p[text()]')
+        if description_node:
+            try:
+                description = description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        detail_nodes = sel.xpath('//div[@id="pp-details"]/ul/li[text()]')
+        if detail_nodes:
+            try:
+                details = '\r'.join(
+                    cls.reformat(val)
+                    for val in detail_nodes.xpath('./text()').extract()
+                )
+                details = cls.reformat(details)
+            except(TypeError, IndexError):
+                pass
+        if not detail_nodes:
+            mt = re.search(ur'"productDescriptions":[^<]+"([^"]+)"', response.body)
+            if mt:
+                detail_html = mt.group(1)
+                detail_texts = re.findall(ur'<li[^>]+>([^<]+)<\\/li>', detail_html)
+                if detail_texts:
+                    details = '\r'.join(
+                        cls.reformat(val)
+                        for val in detail_texts
+                    )
+                    details = cls.reformat(details)
+
+        return details
