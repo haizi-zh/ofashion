@@ -15,6 +15,9 @@ from utils.utils import unicodify
 __author__ = 'Zephyre'
 
 
+# TODO 应该是网站改版了，跑不下来东西，需要更改
+
+
 class DolceSpider(MFashionSpider):
     spider_data = {'brand_id': 10109, 'gender_nav': {'male': 'home_U', 'female': 'home_D'},
                    'home_urls': {
@@ -105,52 +108,34 @@ class DolceSpider(MFashionSpider):
         sel = Selector(response)
 
         metadata['url'] = response.url
-        mt = re.search(r'-([a-zA-Z0-9\-]+)_cod.+', response.url)
-        if not mt:
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = mt.group(1).upper()
 
-        tmp = sel.xpath('//div[@id="itemDescription"]/div[@id="descriptionContent"]/*[@id="catTitle"]')
-        if tmp:
-            metadata['name'] = self.reformat(unicodify(tmp[0]._root.text))
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        tmp = sel.xpath(
-            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price newprice"]/text()').extract()
-        new_price = self.reformat(tmp[0]) if tmp else None
-        tmp = sel.xpath(
-            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price sconto"]/text()').extract()
-        sconto = self.reformat(tmp[0]) if tmp else None
-        if sconto:
-            metadata['price'] = sconto
-            if new_price:
-                metadata['price_discount'] = new_price
-        elif new_price:
-            metadata['price'] = new_price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        desc = ''
-        tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]')
-        if tmp:
-            desc = self.reformat(unicodify(tmp[0]._root.text))
-        if not desc:
-            desc = ''
-        tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]//ul/li')
-        desc_list = [desc]
-        desc_list.extend(self.reformat(unicodify(val._root.text)) for val in tmp)
-        desc = '\r'.join(desc_list).strip()
-        if desc:
-            metadata['description'] = desc
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        details_terms = [','.join(
-            re.sub(r'\s+', ' ', self.reformat(unicodify(val)), flags=re.U) for val in
-            (val._root.text, val._root.prefix, val._root.tail) if val) for val in
-                         sel.xpath('//div[@id="detailsContent"]//div[@id="hideaway"]//*[not(@id)]')]
-        details = '\r'.join(val for val in details_terms if val).strip()
-        if details:
-            metadata['details'] = details
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
-        tmp = sel.xpath('//div[@id="colorsBoxContent"]//ul[@id="ColorsList"]/li[@title]')
-        if tmp:
-            metadata['color'] = [self.reformat(unicodify(val._root.attrib['title'])) for val in tmp]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         tmp = sel.xpath('//div[@id="sizesBoxContent"]//ul[@id="SizeWList"]/li[@title]')
         if tmp:
@@ -187,8 +172,94 @@ class DolceSpider(MFashionSpider):
         item['metadata'] = metadata
         return item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        mt = re.search(r'-([a-zA-Z0-9\-]+)_cod.+', response.url)
+        if mt:
+            model = mt.group(1).upper()
 
+        return model
 
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
 
+        old_price = None
+        new_price = None
+        tmp = sel.xpath(
+            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price newprice"]/text()').extract()
+        price = cls.reformat(tmp[0]) if tmp else None
+        tmp = sel.xpath(
+            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price sconto"]/text()').extract()
+        sconto = cls.reformat(tmp[0]) if tmp else None
+        if sconto:
+            old_price = sconto
+            if price:
+                new_price = price
+        elif price:
+            old_price = price
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        tmp = sel.xpath('//div[@id="itemDescription"]/div[@id="descriptionContent"]/*[@id="catTitle"]')
+        if tmp:
+            name = cls.reformat(unicodify(tmp[0]._root.text))
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        desc = None
+        tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]')
+        if tmp:
+            desc = cls.reformat(unicodify(tmp[0]._root.text))
+        tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]//ul/li')
+        desc_list = [desc]
+        desc_list.extend(cls.reformat(unicodify(val._root.text)) for val in tmp)
+        desc = '\r'.join(desc_list).strip()
+
+        return desc
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        details_terms = [','.join(
+            re.sub(r'\s+', ' ', cls.reformat(unicodify(val)), flags=re.U) for val in
+            (val._root.text, val._root.prefix, val._root.tail) if val) for val in
+                         sel.xpath('//div[@id="detailsContent"]//div[@id="hideaway"]//*[not(@id)]')]
+        details = '\r'.join(val for val in details_terms if val).strip()
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        tmp = sel.xpath('//div[@id="colorsBoxContent"]//ul[@id="ColorsList"]/li[@title]')
+        if tmp:
+            colors = [cls.reformat(unicodify(val._root.attrib['title'])) for val in tmp]
+
+        return colors
