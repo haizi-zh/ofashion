@@ -88,21 +88,7 @@ class HogoBossSpider(MFashionSpider):
             'color': []
         }
 
-        # 从url和页面中找到model
-        model = None
-        mt = re.search(r'\+(\d+)_,', response.url)
-        if mt:
-            model = mt.group(1)
-        else:
-            try:
-                title = sel.xpath('//*[@class="product-title" or @class="model"]/text()').extract()[0]
-                mt = re.search(r'(\d{6,})', title)
-                if not mt:
-                    return
-                else:
-                    model = mt.group(1)
-            except(TypeError, IndexError):
-                return
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
@@ -154,107 +140,27 @@ class HogoBossSpider(MFashionSpider):
             if gender:
                 metadata['gender'] = [gender]
 
-        # 价格标签，中国和其他还是分开抓，太不一样了
-        # 折扣标签
-        pre_price_node = sel.xpath('//div[@class="product-prices"]//dd[not(@class)]')
-        # 中国
-        price_node = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
-        if not price_node:
-            # 其他
-            price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        if price_node:
-            try:
-                price = price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-                if not pre_price_node:
-                    if price:
-                        metadata['price'] = price
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-                        # 其他国家一样找不到pre_price_node，摒弃price_node找到的是原售价
-                        # 这里检查是不是有折扣价
-                        discount_price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="salesprice issalesprice"]')
-                        if discount_price_node:
-                            discount_price = discount_price_node.xpath('./text()').extract()[0]
-                            discount_price = self.reformat(discount_price)
-                            if discount_price:
-                                metadata['price_discount'] = discount_price
-                else:
-                    if price:
-                        metadata['price_discount'] = price
-                    pre_price = pre_price_node.xpath('./text()').extract()[0]
-                    pre_price = self.reformat(pre_price)
-                    if pre_price:
-                        metadata['price'] = pre_price
-            except(TypeError, IndexError):
-                pass
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        # 单品名称
-        name_node = sel.xpath('//h1[@class="product-name" or @class="productname label"]')
-        if name_node:
-            try:
-                name = name_node.xpath('./text()').extract()[0]
-                if name:
-                    name = self.reformat(name)
-                    metadata['name'] = name
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        # 颜色标签
-        #中国
-        color_nodes = sel.xpath('//dl[@class="product-colors"]//li')
-        for node in color_nodes:
-            try:
-                color_text = node.xpath('.//a/@title').extract()[0]
-                if color_text:
-                    color_text = self.reformat(color_text)
-                    metadata['color'] += [color_text]
-            except(TypeError, IndexError):
-                continue
-        #其他
-        color_nodes = sel.xpath('//a[@class="swatchanchor"]')
-        for node in color_nodes:
-            try:
-                color_text = node.xpath('./text()').extract()[0]
-                if color_text:
-                    color_text = self.reformat(color_text)
-                    metadata['color'] += [color_text]
-            except(TypeError, IndexError):
-                continue
-
-        # 描述标签
-        #中国
-        description_node = sel.xpath('//div[@class="tabpage description"]')
-        if description_node:
-            try:
-                desctiption = description_node.xpath('./text()').extract()[0]
-                if desctiption:
-                    desctiption = self.reformat(desctiption)
-                    metadata['description'] = desctiption
-            except(TypeError, IndexError):
-                pass
-        #其他
-        description_node = sel.xpath('//meta[@property="og:description"]')
-        if description_node:
-            try:
-                desctiption = description_node.xpath('./@content').extract()[0]
-                if desctiption:
-                    desctiption = self.reformat(desctiption)
-                    metadata['description'] = desctiption
-            except(TypeError, IndexError):
-                pass
-
-        # 详情标签
-        detail_node = sel.xpath('//div[@class="tabpage inc"]')
-        if detail_node:
-            try:
-                # TODO 详情不全，被<br>分开了
-                detail = detail_node.xpath('./text()').extract()[0]
-                if detail:
-                    detail = self.reformat(detail)
-                    metadata['details'] = detail
-            except(TypeError, IndexError):
-                pass
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         # TODO 材料及护理标签
 
@@ -348,3 +254,167 @@ class HogoBossSpider(MFashionSpider):
             yield item
         else:
             super(HogoBossSpider, self).onerr(reason)
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        # 从url和页面中找到model
+        model = None
+        mt = re.search(r'\+(\d+)_,', response.url)
+        if mt:
+            model = mt.group(1)
+        else:
+            try:
+                title = sel.xpath('//*[@class="product-title" or @class="model"]/text()').extract()[0]
+                mt = re.search(r'(\d{6,})', title)
+                if mt:
+                    model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        # 价格标签，中国和其他还是分开抓，太不一样了
+        # 折扣标签
+        pre_price_node = sel.xpath('//div[@class="product-prices"]//dd[not(@class)]')
+        # 中国
+        price_node = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
+        if not price_node:
+            # 其他
+            price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
+
+        if price_node:
+            try:
+                price = price_node.xpath('./text()').extract()[0]
+                price = cls.reformat(price)
+                if not pre_price_node:
+                    if price:
+                        old_price = price
+
+                        # 其他国家一样找不到pre_price_node，摒弃price_node找到的是原售价
+                        # 这里检查是不是有折扣价
+                        discount_price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="salesprice issalesprice"]')
+                        if discount_price_node:
+                            discount_price = discount_price_node.xpath('./text()').extract()[0]
+                            discount_price = cls.reformat(discount_price)
+                            if discount_price:
+                                new_price = discount_price
+                else:
+                    if price:
+                        new_price = price
+                    pre_price = pre_price_node.xpath('./text()').extract()[0]
+                    pre_price = cls.reformat(pre_price)
+                    if pre_price:
+                        old_price = pre_price
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        # 单品名称
+        name_node = sel.xpath('//h1[@class="product-name" or @class="productname label"]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                if name:
+                    name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        desctiption = None
+        # 描述标签
+        #中国
+        description_node = sel.xpath('//div[@class="tabpage description"]')
+        if description_node:
+            try:
+                desctiption = description_node.xpath('./text()').extract()[0]
+                if desctiption:
+                    desctiption = cls.reformat(desctiption)
+            except(TypeError, IndexError):
+                pass
+        #其他
+        description_node = sel.xpath('//meta[@property="og:description"]')
+        if description_node:
+            try:
+                desctiption = description_node.xpath('./@content').extract()[0]
+                if desctiption:
+                    desctiption = cls.reformat(desctiption)
+            except(TypeError, IndexError):
+                pass
+
+        return desctiption
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        # 详情标签
+        detail_node = sel.xpath('//div[@class="tabpage inc"]')
+        if detail_node:
+            try:
+                # TODO 详情不全，被<br>分开了
+                detail = detail_node.xpath('./text()').extract()[0]
+                if detail:
+                    details = cls.reformat(detail)
+            except(TypeError, IndexError):
+                pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        # 颜色标签
+        #中国
+        color_nodes = sel.xpath('//dl[@class="product-colors"]//li')
+        for node in color_nodes:
+            try:
+                color_text = node.xpath('.//a/@title').extract()[0]
+                if color_text:
+                    color_text = cls.reformat(color_text)
+                    colors += [color_text]
+            except(TypeError, IndexError):
+                continue
+        #其他
+        color_nodes = sel.xpath('//a[@class="swatchanchor"]')
+        for node in color_nodes:
+            try:
+                color_text = node.xpath('./text()').extract()[0]
+                if color_text:
+                    color_text = cls.reformat(color_text)
+                    colors += [color_text]
+            except(TypeError, IndexError):
+                continue
+
+        return colors
