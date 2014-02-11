@@ -99,31 +99,25 @@ class LiujoSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@class="product-name"]/*[@itemprop="name"]/text()').extract()
-        if tmp:
-            metadata['name'] = self.reformat(tmp[0])
-        tmp = sel.xpath('//div[@class="product-name"]/span[@class="product-ids"]/text()').extract()
-        if not tmp:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = self.reformat(tmp[0])
-        tmp = sel.xpath('//div[@itemprop="description"]/text()').extract()
-        if tmp:
-            metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
 
-        if 'price' not in metadata:
-            try:
-                tmp = sel.xpath('.//div[@class="price-box"]/*[@class="regular-price" or @class="old-price"]'
-                                '/*[@class="price"]/text()').extract()
-                price = self.reformat(tmp[0]) if tmp else None
-                tmp = sel.xpath('.//div[@class="price-box"]/*[@class="special-price"]'
-                                '/*[@class="price"]/text()').extract()
-                price_discount = self.reformat(tmp[0]) if tmp else None
-                if price:
-                    metadata['price'] = price
-                if price_discount:
-                    metadata['price_discount'] = price_discount
-            except (IndexError, TypeError):
-                pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         image_urls = [self.process_href(val, response.url) for val in
                       sel.xpath('//a[@data-image-fullscreen]/@data-image-fullscreen').extract()]
@@ -134,3 +128,72 @@ class LiujoSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            tmp = sel.xpath('//div[@class="product-name"]/span[@class="product-ids"]/text()').extract()
+            if tmp:
+                model = cls.reformat(model)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            tmp = sel.xpath('.//div[@class="price-box"]/*[@class="regular-price" or @class="old-price"]'
+                            '/*[@class="price"]/text()').extract()
+            old_price = cls.reformat(tmp[0]) if tmp else None
+            tmp = sel.xpath('.//div[@class="price-box"]/*[@class="special-price"]'
+                            '/*[@class="price"]/text()').extract()
+            new_price = cls.reformat(tmp[0]) if tmp else None
+        except (IndexError, TypeError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            tmp = sel.xpath('//div[@class="product-name"]/*[@itemprop="name"]/text()').extract()
+            if tmp:
+                name = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@itemprop="description"]/text()').extract()
+            if tmp:
+                description = '\r'.join(filter(lambda x: x, [cls.reformat(val) for val in tmp]))
+        except(TypeError, IndexError):
+            pass
+
+        return description
