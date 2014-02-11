@@ -177,86 +177,29 @@ class EccoSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        try:
-            model_node = sel.xpath('//div[@class="pdetail-cont-left"]/div/p[@class="art-number"]/span[@id="prd-item-number"][text()]')
-            if model_node:
-                model_text = model_node.xpath('./text()').extract()[0]
-                model_text = self.reformat(model_text)
-                if model_text:
-                    mt = re.search(r'\b([0-9\-]+)\b', model_text)
-                    if mt:
-                        model = mt.group(1)
-        except(TypeError, IndexError):
-            model = None
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        try:
-            name_node = sel.xpath('//div[@class="pdetail-cont-left"]//p[@class="shoe-headline"][text()]')
-            if name_node:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    metadata['name'] = name
-        except(TypeError, IndexError):
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        try:
-            colors = None
-            color_nodes = sel.xpath('//div[@class="bx-color"]//ul/li[@title]')
-            if color_nodes:
-                colors = [
-                    self.reformat(val)
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-            if colors:
-                metadata['color'] = colors
-        except(TypeError, IndexError):
-            pass
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        price_node = sel.xpath('//div[@itemprop="offers"]/div[contains(@class, "prd-price") and not(contains(@class, "hidden"))]')
-        if price_node:
-            del_node = price_node.xpath('./del[text()]')
-            if del_node:
-                try:
-                    price = del_node.xpath('./text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        metadata['price'] = price
-                except(TypeError, IndexError):
-                    pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-                try:
-                    price_discount = price_node.xpath('./div[@itemprop="price"][text()]').extract()[0]
-                    price_discount = self.reformat(price_discount)
-                    if price_discount:
-                        metadata['price_discount'] = price_discount
-                except(TypeError, IndexError):
-                    pass
-            else:
-                try:
-                    price = price_node.xpath('./div/text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        metadata['price'] = price
-                except(TypeError, IndexError):
-                    pass
-
-        description_node = sel.xpath('//div[@itemprop="description"]')
-        if description_node:
-            try:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         image_urls = []
         try:
@@ -412,98 +355,29 @@ class EccoSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        name = None
-        try:
-            name_model_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
-            if name_model_node:
-                name_model_text = name_model_node.xpath('./text()').extract()[0]
-                name_model_text = self.reformat(name_model_text)
-                if name_model_text:
-                    name_mt = re.search(r'(.+) - ', name_model_text)
-                    if name_mt:
-                        name = name_mt.group(1)
-                    model_mt = re.search(r' - (\w+)', name_model_text)
-                    if model_mt:
-                        model = model_mt.group(1)
-        except(TypeError, IndexError):
-            model = None
-            pass
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
+        name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
-        # 检查是不是打折
-        discount_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//div[contains(@class, "product-prices")]')
-        if discount_node:
-            price_node = discount_node.xpath('.//span[contains(@id, "old_price")]//strike')
-            if price_node:
-                try:
-                    price = ''.join(
-                        self.reformat(val)
-                        for val in price_node.xpath('.//text()').extract()
-                    )
-                    price = self.reformat(price)
-                    if price:
-                        metadata['price'] = price
-                except(TypeError, IndexError):
-                    pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-            try:
-                discount_price = ''.join(
-                    self.reformat(val)
-                    for val in discount_node.xpath('.//span[@class="price discprice"]//text()').extract()
-                )
-                discount_price = self.reformat(discount_price)
-                if discount_price:
-                    metadata['price_discount'] = discount_price
-            except(TypeError, IndexError):
-                pass
-        else:
-            price_node = sel.xpath('//div[@class="product-main-info"]//div[@class="clear"]//span[contains(@id, "line_discounted_price")]')
-            if price_node:
-                try:
-                    price = ''.join(
-                        self.reformat(val)
-                        for val in price_node.xpath('.//text()').extract()
-                    )
-                    price = self.reformat(price)
-                    if price:
-                        metadata['price'] = price
-                except(TypeError, IndexError):
-                    pass
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        color = None
-        color_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]/p[@class="sku"]')
-        if color_node:
-            try:
-                color_text = color_node.xpath('./text()').extract()[0]
-                color_text = self.reformat(color_text)
-                if color_text:
-                    mt = re.search(r':(.+)', color_text)
-                    if mt:
-                        color = mt.group(1)
-            except(TypeError, IndexError):
-                pass
-        if color:
-            metadata['color'] = [color]
-
-        description_node = sel.xpath('//div[@class="product-main-info"]//div[@class="special-descr"]/ul/li[text()]')
-        if description_node:
-            try:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         image_urls = None
         image_node = sel.xpath('//div[@class="product-main-info"]//div[@class="float-left"]/div/a[child::img[@src]][@href]')
@@ -670,85 +544,29 @@ class EccoSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        try:
-            model = None
-            model_node = sel.xpath('//div[@id="product-content"]//span[@itemprop="productID"][text()]')
-            if model_node:
-                model_text = model_node.xpath('./text()').extract()[0]
-                model_text = self.reformat(model_text)
-                if model_text:
-                    mt = re.search(r'^(\d+)-?', model_text)
-                    if mt:
-                        model = mt.group(1)
-            if model:
-                metadata['model'] = model
-            else:
-                return
-        except(TypeError, IndexError):
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
 
-        price_node = sel.xpath('//div[@id="product-content"]/div[contains(@class, "product-price")]')
-        if price_node:
-            discount_node = price_node.xpath('./span[@class="price-sales"][text()]')
-            if discount_node:
-                try:
-                    discount_price = discount_node.xpath('./text()').extract()[0]
-                    discount_price = self.reformat(discount_price)
-                    if discount_price:
-                        metadata['price_discount'] = discount_price
-                except(TypeError, IndexError):
-                    pass
-                try:
-                    price = price_node.xpath('./span[@class="price-standard"][text()]/text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        metadata['price'] = price
-                except(TypeError, IndexError):
-                    pass
-            else:
-                try:
-                    price = price_node.xpath('./span[@class="price-normal"]/text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        metadata['price'] = price
-                except(TypeError, IndexError):
-                    pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        name_node = sel.xpath('//div[@id="primary"]//h1[@class="product-name"][text()]')
-        if name_node:
-            try:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    metadata['name'] = name
-            except(TypeError, IndexError):
-                pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        colors = []
-        color_nodes = sel.xpath('//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@title]')
-        for node in color_nodes:
-            try:
-                color_text = node.xpath('./@title').extract()[0]
-                color = re.sub(r'\(\d+\)', '', color_text)
-                if color:
-                    colors += [color]
-            except(TypeError, IndexError):
-                continue
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
-        description_node = sel.xpath('//div[@id="tabDescription"]')
-        if description_node:
-            try:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         image_urls = []
         image_nodes = sel.xpath('//div[@id="primary"]//div[@class="product-thumbnails"]/ul/li/a[@href]')
@@ -786,3 +604,290 @@ class EccoSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        model = None
+        if region == 'us':
+            try:
+                model_node = sel.xpath('//div[@id="product-content"]//span[@itemprop="productID"][text()]')
+                if model_node:
+                    model_text = model_node.xpath('./text()').extract()[0]
+                    model_text = cls.reformat(model_text)
+                    if model_text:
+                        mt = re.search(r'^(\d+)-?', model_text)
+                        if mt:
+                            model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
+        elif region == 'ca':
+            try:
+                name_model_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
+                if name_model_node:
+                    name_model_text = name_model_node.xpath('./text()').extract()[0]
+                    name_model_text = cls.reformat(name_model_text)
+                    if name_model_text:
+                        model_mt = re.search(r' - (\w+)', name_model_text)
+                        if model_mt:
+                            model = model_mt.group(1)
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                model_node = sel.xpath('//div[@class="pdetail-cont-left"]/div/p[@class="art-number"]/span[@id="prd-item-number"][text()]')
+                if model_node:
+                    model_text = model_node.xpath('./text()').extract()[0]
+                    model_text = cls.reformat(model_text)
+                    if model_text:
+                        mt = re.search(r'\b([0-9\-]+)\b', model_text)
+                        if mt:
+                            model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        old_price = None
+        new_price = None
+        if region == 'us':
+            price_node = sel.xpath('//div[@id="product-content"]/div[contains(@class, "product-price")]')
+            if price_node:
+                discount_node = price_node.xpath('./span[@class="price-sales"][text()]')
+                if discount_node:
+                    try:
+                        new_price = discount_node.xpath('./text()').extract()[0]
+                        new_price = cls.reformat(new_price)
+                    except(TypeError, IndexError):
+                        pass
+                    try:
+                        old_price = price_node.xpath('./span[@class="price-standard"][text()]/text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+                else:
+                    try:
+                        old_price = price_node.xpath('./span[@class="price-normal"]/text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+        elif region == 'ca':
+            # 检查是不是打折
+            discount_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//div[contains(@class, "product-prices")]')
+            if discount_node:
+                price_node = discount_node.xpath('.//span[contains(@id, "old_price")]//strike')
+                if price_node:
+                    try:
+                        old_price = ''.join(
+                            cls.reformat(val)
+                            for val in price_node.xpath('.//text()').extract()
+                        )
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+
+                try:
+                    new_price = ''.join(
+                        cls.reformat(val)
+                        for val in discount_node.xpath('.//span[@class="price discprice"]//text()').extract()
+                    )
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                price_node = sel.xpath('//div[@class="product-main-info"]//div[@class="clear"]//span[contains(@id, "line_discounted_price")]')
+                if price_node:
+                    try:
+                        old_price = ''.join(
+                            cls.reformat(val)
+                            for val in price_node.xpath('.//text()').extract()
+                        )
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+        else:
+            price_node = sel.xpath('//div[@itemprop="offers"]/div[contains(@class, "prd-price") and not(contains(@class, "hidden"))]')
+            if price_node:
+                del_node = price_node.xpath('./del[text()]')
+                if del_node:
+                    try:
+                        old_price = del_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+
+                    try:
+                        new_price = price_node.xpath('./div[@itemprop="price"][text()]').extract()[0]
+                        new_price = cls.reformat(new_price)
+                    except(TypeError, IndexError):
+                        pass
+                else:
+                    try:
+                        old_price = price_node.xpath('./div/text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        name = None
+        if region == 'us':
+            name_node = sel.xpath('//div[@id="primary"]//h1[@class="product-name"][text()]')
+            if name_node:
+                try:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = cls.reformat(name)
+                except(TypeError, IndexError):
+                    pass
+        elif region == 'ca':
+            try:
+                name_model_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
+                if name_model_node:
+                    name_model_text = name_model_node.xpath('./text()').extract()[0]
+                    name_model_text = cls.reformat(name_model_text)
+                    if name_model_text:
+                        name_mt = re.search(r'(.+) - ', name_model_text)
+                        if name_mt:
+                            name = name_mt.group(1)
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                name_node = sel.xpath('//div[@class="pdetail-cont-left"]//p[@class="shoe-headline"][text()]')
+                if name_node:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        description = None
+        if region == 'us':
+            description_node = sel.xpath('//div[@id="tabDescription"]')
+            if description_node:
+                try:
+                    description = '\r'.join(
+                        cls.reformat(val)
+                        for val in description_node.xpath('.//text()').extract()
+                    )
+                    description = cls.reformat(description)
+                except(TypeError, IndexError):
+                    pass
+        elif region == 'ca':
+            description_node = sel.xpath('//div[@class="product-main-info"]//div[@class="special-descr"]/ul/li[text()]')
+            if description_node:
+                try:
+                    description = '\r'.join(
+                        cls.reformat(val)
+                        for val in description_node.xpath('.//text()').extract()
+                    )
+                    description = cls.reformat(description)
+                except(TypeError, IndexError):
+                    pass
+        else:
+            description_node = sel.xpath('//div[@itemprop="description"]')
+            if description_node:
+                try:
+                    description = '\r'.join(
+                        cls.reformat(val)
+                        for val in description_node.xpath('.//text()').extract()
+                    )
+                    description = cls.reformat(description)
+                except(TypeError, IndexError):
+                    pass
+
+        return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        colors = []
+        if region == 'us':
+            color_nodes = sel.xpath('//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@title]')
+            for node in color_nodes:
+                try:
+                    color_text = node.xpath('./@title').extract()[0]
+                    color = re.sub(r'\(\d+\)', '', color_text)
+                    if color:
+                        colors += [color]
+                except(TypeError, IndexError):
+                    continue
+        elif region == 'ca':
+            color_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]/p[@class="sku"]')
+            if color_node:
+                try:
+                    color_text = color_node.xpath('./text()').extract()[0]
+                    color_text = cls.reformat(color_text)
+                    if color_text:
+                        mt = re.search(r':(.+)', color_text)
+                        if mt:
+                            color = mt.group(1)
+                except(TypeError, IndexError):
+                    pass
+        else:
+            try:
+                color_nodes = sel.xpath('//div[@class="bx-color"]//ul/li[@title]')
+                if color_nodes:
+                    colors = [
+                        cls.reformat(val)
+                        for val in color_nodes.xpath('./@title').extract()
+                    ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors
