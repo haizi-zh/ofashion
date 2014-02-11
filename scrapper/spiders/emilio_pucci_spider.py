@@ -229,87 +229,29 @@ class EmilioPucciSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        try:
-            mt = re.search(r'cod10=(\w+)', response.url)
-            if not mt:
-                mt = re.search(r'cod10/(\w+)/', response.url)
-            if mt:
-                model = mt.group(1)
-        except(TypeError, IndexError):
-            return
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        try:
-            name = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@class="itemTitle"]/h1/text()').extract()[0]
-            name = self.reformat(name)
-            if name:
-                metadata['name'] = name
-        except(TypeError, IndexError):
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        old_price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="oldprice"][text()]')
-        if old_price_node:
-            try:
-                price = old_price_node.xpath('./text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
-            except(TypeError, IndexError):
-                pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-            discount_price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="newprice"][text()]')
-            if discount_price_node:
-                try:
-                    discount_price = discount_price_node.xpath('./text()').extract()[0]
-                    discount_price = self.reformat(discount_price)
-                    if discount_price:
-                        metadata['price_discount'] = discount_price
-                except(TypeError, IndexError):
-                    pass
-        else:
-            price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]')
-            try:
-                price = ''.join(
-                    self.reformat(val)
-                    for val in price_node.xpath('.//text()').extract()
-                )
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        description_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]//div[@id="descr_content"][text()]')
-        if description_node:
-            try:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-
-                if description:
-                    metadata['description'] = description
-            except(TypeError, IndexError):
-                pass
-
-        detail_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]//div[@id="details_content"][text()]')
-        if detail_node:
-            try:
-                detail = '\r'.join(
-                    self.reformat(val)
-                    for val in detail_node.xpath('.//text()').extract()
-                )
-                detail = self.reformat(detail)
-
-                if detail:
-                    metadata['details'] = detail
-            except(TypeError, IndexError):
-                pass
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         image_nodes = sel.xpath('//div[@id="innerContentCol"]//div[@id="thumbContainer"]//div[@class="thumbElement"]/img[@src]')
@@ -334,3 +276,112 @@ class EmilioPucciSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            mt = re.search(r'cod10=(\w+)', response.url)
+            if not mt:
+                mt = re.search(r'cod10/(\w+)/', response.url)
+            if mt:
+                model = mt.group(1)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        new_price = None
+        old_price = None
+        old_price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="oldprice"][text()]')
+        if old_price_node:
+            try:
+                old_price = old_price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+            discount_price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="newprice"][text()]')
+            if discount_price_node:
+                try:
+                    new_price = discount_price_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+        else:
+            price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]')
+            try:
+                old_price = ''.join(
+                    cls.reformat(val)
+                    for val in price_node.xpath('.//text()').extract()
+                )
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            name = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@class="itemTitle"]/h1/text()').extract()[0]
+            name = cls.reformat(name)
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]//div[@id="descr_content"][text()]')
+        if description_node:
+            try:
+                description = '\r'.join(
+                    cls.reformat(val)
+                    for val in description_node.xpath('.//text()').extract()
+                )
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        detail = None
+        detail_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]//div[@id="details_content"][text()]')
+        if detail_node:
+            try:
+                detail = '\r'.join(
+                    cls.reformat(val)
+                    for val in detail_node.xpath('.//text()').extract()
+                )
+                detail = cls.reformat(detail)
+            except(TypeError, IndexError):
+                pass
+
+        return detail
