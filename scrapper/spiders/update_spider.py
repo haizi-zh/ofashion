@@ -1,5 +1,6 @@
 # coding=utf-8
 import scrapy.contrib.spiders
+from scrapy import log
 from core import MySqlDb
 from scrapy.http import Request
 from scrapper.items import UpdateItem
@@ -23,6 +24,11 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         # 获得所有的品牌数据
         if not self.brand_list:
             self.brand_list = glob.brand_info().keys()
+
+        rs = self.db.query(str.format('SELECT COUNT(*) FROM products WHERE brand_id IN ({0})',
+                                      ','.join(str(tmp) for tmp in self.brand_list)))
+        tot_num = int(rs.fetch_row()[0][0])
+        self.log(str.format('Total number of records to update: {0}', tot_num), level=log.INFO)
 
         for brand in self.brand_list:
             # 获得该品牌下所有记录

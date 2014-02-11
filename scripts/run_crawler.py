@@ -231,7 +231,8 @@ def main():
                 if is_update:
                     logfile = os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
                                                             unicode.format(u'{0}_{1}.log', 'update',
-                                                                           datetime.datetime.now().strftime('%Y%m%d'))))
+                                                                           datetime.datetime.now().strftime(
+                                                                               '%Y%m%d%H%M%S'))))
                 else:
                     logfile = get_log_path(sc.spider_data['brand_id'])
                 log.start(loglevel='INFO', logfile=logfile)
