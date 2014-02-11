@@ -11,6 +11,10 @@ import copy
 import common
 import re
 
+
+# TODO 应该是网站改版了，跑不下来东西，需要更改
+
+
 class TodsSpider(MFashionSpider):
     """
     这个品牌有些国家有网店，有些国家没网店，网页样式应该有这两种
@@ -272,60 +276,30 @@ class TodsSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # 尝试从url中取得model
-        model = None
-        mt = re.search(r'/(\w+)$', response.url)
-        if mt:
-            model = mt.group(1)
-
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        # 如果metadata中没有name，尝试从页面中找到name
-        if not metadata['name']:
-            try:
-                name = ''.join(self.reformat(val) for val in sel.xpath('//div[@id="productName"]/h1/text()').extract())
-                name = self.reformat(name)
-                if name:
-                    metadata['name'] = name
-            except(TypeError, IndexError):
-                pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        # 如果metadata里边没有price，尝试从页面找到price，
-        # 这里的价格，源码里既有final-price也有full-price，
-        # 我看的几个，都是final-price有价格，full-price没有东西，
-        # 这里抓这个显示出来的final-price先
-        if not metadata['price']:
-            try:
-                price = sel.xpath('//div[contains(@class, "right_container")]//span[@class="final-price"]').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
-            except(TypeError, IndexError):
-                pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
 
-        description_node = sel.xpath('//div[@id="body1"]//div[@class="text"]')
-        if description_node:
-            try:
-                description = description_node.xpath('./text()').extract()[0]
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        detail_node = sel.xpath('//div[@id="body2"]//div[@class="text"]')
-        if detail_node:
-            try:
-                detail = '\r'.join(self.reformat(val) for val in detail_node.xpath('.//text()').extract())
-                detail = self.reformat(detail)
-                if detail:
-                    metadata['details'] = detail
-            except(TypeError, IndexError):
-                pass
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         # 取的imageURL，每个缩略图的标签中，有一个放大图的链接
         image_urls = None
@@ -499,3 +473,88 @@ class TodsSpider(MFashionSpider):
 
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        # 尝试从url中取得model
+        model = None
+        mt = re.search(r'/(\w+)$', response.url)
+        if mt:
+            model = mt.group(1)
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        # 这里的价格，源码里既有final-price也有full-price，
+        # 我看的几个，都是final-price有价格，full-price没有东西，
+        # 这里抓这个显示出来的final-price先
+        try:
+            price = sel.xpath('//div[contains(@class, "right_container")]//span[@class="final-price"]').extract()[0]
+            price = cls.reformat(price)
+            if price:
+                old_price = price
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            name = ''.join(cls.reformat(val) for val in sel.xpath('//div[@id="productName"]/h1/text()').extract())
+            name = cls.reformat(name)
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="body1"]//div[@class="text"]')
+        if description_node:
+            try:
+                description = description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        detail_node = sel.xpath('//div[@id="body2"]//div[@class="text"]')
+        if detail_node:
+            try:
+                detail = '\r'.join(cls.reformat(val) for val in detail_node.xpath('.//text()').extract())
+                detail = cls.reformat(detail)
+                if detail:
+                    details = detail
+            except(TypeError, IndexError):
+                pass
+
+        return details
