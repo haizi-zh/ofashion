@@ -166,15 +166,7 @@ class DVFSpider(MFashionSpider):
             metadata['name'] = name
 
 
-        colors = []
-        color_nodes = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@data-colorname]')
-        for color_node in color_nodes:
-            try:
-                color_name = color_node.xpath('./@data-colorname').extract()[0]
-                colors += [color_name]
-            except(TypeError, IndexError):
-                continue
-
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
@@ -322,3 +314,18 @@ class DVFSpider(MFashionSpider):
                 pass
 
         return detail
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        color_nodes = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@data-colorname]')
+        for color_node in color_nodes:
+            try:
+                color_name = color_node.xpath('./@data-colorname').extract()[0]
+                colors += [color_name]
+            except(TypeError, IndexError):
+                continue
+
+        return colors

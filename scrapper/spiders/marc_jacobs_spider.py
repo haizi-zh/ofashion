@@ -232,17 +232,7 @@ class MarcJacobsSpider(MFashionSpider):
             metadata['description'] = description
 
 
-        colors = None
-        color_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
-        if color_nodes:
-            try:
-                colors = [
-                    self.reformat(val).lower()
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-            except(TypeError, IndexError):
-                pass
-
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
@@ -337,3 +327,20 @@ class MarcJacobsSpider(MFashionSpider):
                 pass
 
         return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        color_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
+        if color_nodes:
+            try:
+                colors = [
+                    cls.reformat(val).lower()
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors

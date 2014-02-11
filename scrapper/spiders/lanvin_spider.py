@@ -189,27 +189,7 @@ class LanvinSpider(MFashionSpider):
             metadata['details'] = details
 
 
-        colors = None
-        color_nodes = sel.xpath('//div[@class="product-box"]//div[@id="product-options-wrapper"]//ul[@class="thumbs"]/li/img[@title]')
-        if color_nodes:
-            try:
-                colors = [
-                    self.reformat(val).lower()
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-            except(TypeError, IndexError):
-                pass
-        if not colors:
-            mt = re.search(ur'color=(\w+)', response.url)
-            if mt:
-                try:
-                    color_text = mt.group(1)
-                    color_text = color_text.lower()
-                    if color_text:
-                        colors = [color_text]
-                except(TypeError, IndexError):
-                    pass
-
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
@@ -334,3 +314,30 @@ class LanvinSpider(MFashionSpider):
                     details = cls.reformat(details)
 
         return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        color_nodes = sel.xpath('//div[@class="product-box"]//div[@id="product-options-wrapper"]//ul[@class="thumbs"]/li/img[@title]')
+        if color_nodes:
+            try:
+                colors = [
+                    cls.reformat(val).lower()
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
+        if not colors:
+            mt = re.search(ur'color=(\w+)', response.url)
+            if mt:
+                try:
+                    color_text = mt.group(1)
+                    color_text = color_text.lower()
+                    if color_text:
+                        colors = [color_text]
+                except(TypeError, IndexError):
+                    pass
+
+        return colors

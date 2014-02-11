@@ -193,17 +193,7 @@ class MaxMaraSpider(MFashionSpider):
             metadata['price_discount'] = ret['price_discount']
 
 
-        colors = None
-        color_nodes = sel.xpath('//aside[@id="sidebar"]//div[@class="colour switcher-box clearfix"]/ul/li/a/img[@title]')
-        if color_nodes:
-            try:
-                colors = [
-                    self.reformat(val)
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-            except(TypeError, IndexError):
-                pass
-
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
@@ -339,3 +329,20 @@ class MaxMaraSpider(MFashionSpider):
                 pass
 
         return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        color_nodes = sel.xpath('//aside[@id="sidebar"]//div[@class="colour switcher-box clearfix"]/ul/li/a/img[@title]')
+        if color_nodes:
+            try:
+                colors = [
+                    cls.reformat(val)
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors

@@ -196,17 +196,7 @@ class LongchampSpider(MFashionSpider):
             metadata['details'] = details
 
 
-        colors = None
-        color_nodes = sel.xpath('//div[@id="aside"]//div[@id="couleurs"]//ul/li/a[@href][@data-label]')
-        if color_nodes:
-            try:
-                colors = [
-                    self.reformat(val)
-                    for val in color_nodes.xpath('./@data-label').extract()
-                ]
-            except(TypeError, IndexError):
-                pass
-
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
@@ -320,3 +310,20 @@ class LongchampSpider(MFashionSpider):
                 pass
 
         return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        color_nodes = sel.xpath('//div[@id="aside"]//div[@id="couleurs"]//ul/li/a[@href][@data-label]')
+        if color_nodes:
+            try:
+                colors = [
+                    cls.reformat(val)
+                    for val in color_nodes.xpath('./@data-label').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors

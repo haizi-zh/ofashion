@@ -243,16 +243,9 @@ class MulberrySpider(MFashionSpider):
             metadata['description'] = description
 
 
-        color = None
-        color_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]//div[@class="additional-product"][1]//div[@class="sixcol"]/h3[text()]')
-        if color_node:
-            try:
-                color = self.reformat(color_node.xpath('./text()').extract()[0])
-            except(TypeError, IndexError):
-                pass
-
-        if color:
-            metadata['color'] = [color]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
 
         detail = self.fetch_details(response)
@@ -338,3 +331,18 @@ class MulberrySpider(MFashionSpider):
                 pass
 
         return detail
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        color_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]//div[@class="additional-product"][1]//div[@class="sixcol"]/h3[text()]')
+        if color_node:
+            try:
+                colors = [cls.reformat(val)
+                          for val in color_node.xpath('./text()').extract()]
+            except(TypeError, IndexError):
+                pass
+
+        return colors

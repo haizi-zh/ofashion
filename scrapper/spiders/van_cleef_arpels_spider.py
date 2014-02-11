@@ -183,17 +183,9 @@ class VanCleffArpelsSpider(MFashionSpider):
             metadata['name'] = name
 
 
-        color = None
-        color_node = sel.xpath('//div[@id="product-right-part"]/p[@class="short-resume"][text()]')
-        if color_node:
-            try:
-                color = color_node.xpath('./text()').extract()[0]
-                color = self.reformat(color)
-            except(TypeError, IndexError):
-                pass
-
+        colors = self.fetch_color(response)
         if color:
-            metadata['color'] = [color]
+            metadata['color'] = colors
 
 
         description = self.fetch_description(response)
@@ -305,3 +297,19 @@ class VanCleffArpelsSpider(MFashionSpider):
                 pass
 
         return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        color_node = sel.xpath('//div[@id="product-right-part"]/p[@class="short-resume"][text()]')
+        if color_node:
+            try:
+                colors = [cls.reformat(val)
+                          for val in color_node.xpath('./text()').extract()]
+            except(TypeError, IndexError):
+                pass
+
+        return colors
+
