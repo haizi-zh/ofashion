@@ -154,7 +154,7 @@ class DVFSpider(MFashionSpider):
         metadata['url'] = response.url
 
 
-        model = self.fetch_mode(response)
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
@@ -253,10 +253,10 @@ class DVFSpider(MFashionSpider):
 
     @classmethod
     def is_offline(cls, response):
-        return not cls.fetch_mode(response)
+        return not cls.fetch_model(response)
 
     @classmethod
-    def fetch_mode(cls, response):
+    def fetch_model(cls, response):
         sel = Selector(response)
 
         model = None
