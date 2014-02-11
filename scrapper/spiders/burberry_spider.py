@@ -122,40 +122,33 @@ class BurberrySpider(MFashionSpider):
             m['url'] = url
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
-        # 当前选择地商品
-        ret = hxs.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]"
-                        "/li[contains(@class,'color') and contains(@class,'color-selected')]"
-                        "/a[@title and @data-color-link]/@title").extract()
-        # 本页面商品的颜色
-        try:
-            metadata['color'] = [self.reformat(val).lower() for val in ret]
-        except (IndexError, TypeError):
-            pass
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        tmp = hxs.xpath('//p[contains(@class,"product-id")]/text()').extract()
-        if tmp and tmp[0]:
-            mt = re.search(r'(\d+)', self.reformat(tmp[0]))
-            if mt:
-                metadata['model'] = mt.group(1)
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
 
-        tmp = hxs.xpath("//div[@class='price']//span[@class='price-amount']/text()").extract()
-        if tmp and tmp[0]:
-            metadata['price'] = self.reformat(tmp[0])
-        tmp = hxs.xpath("//div[@class='price']//span[@class='price-sale']/text()").extract()
-        if tmp and tmp[0]:
-            metadata['price_discount'] = self.reformat(tmp[0])
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        tmp = hxs.xpath("//li[@id='description-panel']//ul//li/text()").extract()
-        if tmp:
-            metadata['description'] = ', '.join(self.reformat(val) for val in tmp if val)
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        tmp = hxs.xpath("//li[@id='feature-care-panel']//ul//li/text()").extract()
-        if tmp:
-            metadata['details'] = ', '.join(self.reformat(val) for val in tmp if val)
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
-        tmp = hxs.xpath("//div[@class='product-title-container']/h1/text()").extract()
-        if tmp:
-            metadata['name'] = self.reformat(tmp[0])
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
         if 'name' in metadata and 'details' in metadata and 'description' in metadata:
             ret = hxs.xpath("//div[@class='product_detail_container']/div[@class='product_viewer']"
@@ -169,3 +162,91 @@ class BurberrySpider(MFashionSpider):
             yield item
         else:
             self.log(unicode.format(u'INVALID ITEM: {0}', metadata['url']).encode('utf-8'), log.ERROR)
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        tmp = sel.xpath('//p[contains(@class,"product-id")]/text()').extract()
+        if tmp and tmp[0]:
+            mt = re.search(r'(\d+)', cls.reformat(tmp[0]))
+            if mt:
+                model = mt.group(1)
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        tmp = sel.xpath("//div[@class='price']//span[@class='price-amount']/text()").extract()
+        if tmp and tmp[0]:
+            old_price = cls.reformat(tmp[0])
+        tmp = sel.xpath("//div[@class='price']//span[@class='price-sale']/text()").extract()
+        if tmp and tmp[0]:
+            new_price = cls.reformat(tmp[0])
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        tmp = sel.xpath("//div[@class='product-title-container']/h1/text()").extract()
+        if tmp:
+            name = cls.reformat(tmp[0])
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        tmp = sel.xpath("//li[@id='description-panel']//ul//li/text()").extract()
+        if tmp:
+            description = ', '.join(cls.reformat(val) for val in tmp if val)
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        tmp = sel.xpath("//li[@id='feature-care-panel']//ul//li/text()").extract()
+        if tmp:
+            details = ', '.join(cls.reformat(val) for val in tmp if val)
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        # 当前选择地商品
+        ret = sel.xpath("//div[contains(@class,'colors')]/ul[contains(@class,'color-set')]"
+                        "/li[contains(@class,'color') and contains(@class,'color-selected')]"
+                        "/a[@title and @data-color-link]/@title").extract()
+        # 本页面商品的颜色
+        try:
+            colors = [cls.reformat(val).lower() for val in ret]
+        except (IndexError, TypeError):
+            pass
+
+        return colors
