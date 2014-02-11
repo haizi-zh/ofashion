@@ -88,36 +88,25 @@ class MarniSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        model = ''.join(sel.xpath('//div[@id="mfc"]//text()').extract())
-        if not model:
-            return
-        model = model.replace('MARNI', '').replace(u'代码', '')
-        metadata['model'] = self.reformat(model)
-
-        try:
-            name = ''.join(sel.xpath('//title/text()').extract()).split('-')[0]
-            if name:
-                metadata['name'] = self.reformat(name)
-        except (IndexError, TypeError):
-            pass
-
-        price = sel.xpath('//div[@class="itemBoxPrice"]//text()').extract()
-        price_str = ''.join(price)
-        tmp = sel.xpath('//div[@class="descr"]/text()').extract()
-        if tmp:
-            metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
-        if price_str.find('%') != -1:
-            old_price = price[0]
-            new_price = price[1]
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
         else:
-            old_price = price_str
-            new_price = None
-        if 'price' not in metadata:
-            price = self.reformat(old_price)
-            metadata['price'] = price
-            if new_price:
-                price_discount = self.reformat(new_price)
-                metadata['price_discount'] = price_discount
+            return
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_disount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         image_urls = []
         for href in sel.xpath('//div[@id="thumbs"]//img/@src').extract():
@@ -136,3 +125,71 @@ class MarniSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model = ''.join(sel.xpath('//div[@id="mfc"]//text()').extract())
+        if model:
+            model = model.replace('MARNI', '').replace(u'代码', '')
+            model = cls.reformat(model)
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price = sel.xpath('//div[@class="itemBoxPrice"]//text()').extract()
+        price_str = ''.join(price)
+        tmp = sel.xpath('//div[@class="descr"]/text()').extract()
+        if price_str.find('%') != -1:
+            old_price = price[0]
+            old_price = cls.reformat(old_price)
+            new_price = price[1]
+            new_price = cls.reformat(new_price)
+        else:
+            old_price = price_str
+            old_price = cls.reformat(old_price)
+            new_price = None
+            new_price = cls.reformat(new_price)
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            name = ''.join(sel.xpath('//title/text()').extract()).split('-')[0]
+            if name:
+                name = cls.reformat(name)
+        except (IndexError, TypeError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        tmp = sel.xpath('//div[@class="descr"]/text()').extract()
+        if tmp:
+            description = '\r'.join(filter(lambda x: x, [cls.reformat(val) for val in tmp]))
+
+        return description
