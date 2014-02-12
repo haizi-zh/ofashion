@@ -116,27 +116,30 @@ class CartierSpider(MFashionSpider):
             if collection:
                 metadata['tags_mapping']['collection'] = [{'name': collection.lower(), 'title': collection}]
 
-        temp = sel.xpath(
-            '//div[@class="commerce-product-sku"]/span[@itemprop="productID" and @class="commerce-product-sku-id"]')
-        if temp:
-            metadata['model'] = temp[0]._root.text.strip()
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
         else:
-            return None
+            return
 
         if 'name' not in metadata or not metadata['name']:
-            temp = sel.xpath('//div[@class="product-main"]//span[@itemprop="name"]')
-            if temp:
-                metadata['name'] = unicodify(temp[0]._root.text)
+            name = self.fetch_name(response)
+            if name:
+                metadata['name'] = name
 
-        temp = sel.xpath('//div[@class="product-aesthetics"]//span[@itemprop="description"]/p')
-        metadata['description'] = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        temp = sel.xpath('//div[@class="product-details"]//div[contains(@class,"field-item")]/p')
-        metadata['details'] = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
-        temp = sel.xpath('//div[@itemprop="offers"]//div[@itemprop="price" and @class="product-price"]')
-        if temp:
-            metadata['price'] = unicodify(temp[0]._root.text)
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         temp = sel.xpath('//div[@class="column-images"]//a[@href and contains(@class,"zoom-trigger-link")]')
         image_urls = [self.process_href(val._root.attrib['href'], response.url) for val in temp]
@@ -207,5 +210,82 @@ class CartierSpider(MFashionSpider):
                                   callback=self.parse_list, meta={'userdata': m}, errback=self.onerr,
                                   dont_filter=True)
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        try:
+            temp = sel.xpath(
+                '//div[@class="commerce-product-sku"]/span[@itemprop="productID" and @class="commerce-product-sku-id"]')
+            if temp:
+                model = temp[0]._root.text.strip()
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            temp = sel.xpath('//div[@itemprop="offers"]//div[@itemprop="price" and @class="product-price"]')
+            if temp:
+                old_price = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            temp = sel.xpath('//div[@class="product-main"]//span[@itemprop="name"]')
+            if temp:
+                name = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            temp = sel.xpath('//div[@class="product-aesthetics"]//span[@itemprop="description"]/p')
+            description = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            temp = sel.xpath('//div[@class="product-details"]//div[contains(@class,"field-item")]/p')
+            details = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return details
