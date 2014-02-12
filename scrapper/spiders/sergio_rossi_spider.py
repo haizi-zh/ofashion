@@ -103,26 +103,35 @@ class SergiorossiSpider(MFashionSpider):
         metadata = response.meta['userdata']
         metadata['url'] = response.url
         sel = Selector(response)
-        name = ''.join(sel.xpath('//span[@id="itemStyle"]//text()').extract())
-        metadata['name'] = self.reformat(name)
-        details = ''.join(sel.xpath('//span[@class="itemNameTitle"]//text()').extract())
-        metadata['details'] = self.reformat(details)
-        model = ''.join(sel.xpath('//div[@id="productCode"]//span[@class="content"]//text()').extract())
-        metadata['model'] = self.reformat(model)
-        description = ''.join(sel.xpath('//span[@class="itemMicroAndDescription"]//text()').extract())
-        metadata['description'] = self.reformat(description)
-        old_price = ''.join(sel.xpath('//div[@class="oldprice"]//text()').extract())
-        new_price = ''.join(sel.xpath('//div[@class="newprice"]//text()').extract())
-        if not old_price and not new_price:
-            old_price = new_price = ''.join(sel.xpath('//div[@class="itemBoxPrice"]//text()').extract())
-        if 'price' not in metadata:
-            price = self.reformat(old_price)
-            price_discount = self.reformat(new_price)
-            metadata['price'] = price
-            if price_discount != price:
-                metadata['price_discount'] = price_discount
-        color = ''.join(sel.xpath('//div[@id="colors"]//text()').extract())
-        metadata['color'] = color
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
+
         # image_urls = sel.xpath('//div[@id="itemContent"]//img/@src').extract()
 
         # 获得图片
@@ -163,3 +172,98 @@ class SergiorossiSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            model = ''.join(sel.xpath('//div[@id="productCode"]//span[@class="content"]//text()').extract())
+            cls.reformat(model)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+
+        try:
+            o_price = ''.join(sel.xpath('//div[@class="oldprice"]//text()').extract())
+            n_price = ''.join(sel.xpath('//div[@class="newprice"]//text()').extract())
+            if not o_price and not n_price:
+                o_price = n_price = ''.join(sel.xpath('//div[@class="itemBoxPrice"]//text()').extract())
+
+            old_price = cls.reformat(o_price)
+            new_price = cls.reformat(n_price)
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            name = ''.join(sel.xpath('//span[@id="itemStyle"]//text()').extract())
+            name = cls.reformat(name)
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            description = ''.join(sel.xpath('//span[@class="itemMicroAndDescription"]//text()').extract())
+            description = cls.reformat(description)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            details = ''.join(sel.xpath('//span[@class="itemNameTitle"]//text()').extract())
+            details = cls.reformat(details)
+        except(TypeError, IndexError):
+            pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        try:
+            color = [cls.reformat(val)
+                     for val in sel.xpath('//div[@id="colors"]//text()').extract()]
+            colors = color
+        except(TypeError, IndexError):
+            pass
+
+        return colors
