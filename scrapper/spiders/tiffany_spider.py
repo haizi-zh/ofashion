@@ -95,24 +95,26 @@ class TiffanySpider(MFashionSpider):
         sel = Selector(response)
 
         metadata['url'] = response.url
-        mt = re.search(r'sku=([^&]+)', metadata['url'], flags=re.I)
-        if mt:
-            metadata['model'] = mt.group(1)
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
         else:
-            return None
+            return
 
-        if 'name' not in metadata or not metadata['name']:
-            temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]/h1[@class="t1"]')
-            if temp:
-                metadata['name'] = unicodify(temp[0]._root.text)
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]//div[contains(@class,"item-desc")]')
-        if temp:
-            metadata['description'] = unicodify(temp[0]._root.text)
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]//div[@class="l4" or @class="t8"]')
-        if temp:
-            metadata['price'] = unicodify(temp[0]._root.text)
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         re.search(r'"BaseImg"\s*:\s*"([^"]+)"', response.body)
 
@@ -129,7 +131,69 @@ class TiffanySpider(MFashionSpider):
 
         return item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        try:
+            mt = re.search(r'sku=([^&]+)', response.url, flags=re.I)
+            if mt:
+                model = mt.group(1)
+        except(TypeError, IndexError):
+            pass
 
+        return model
 
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]//div[@class="l4" or @class="t8"]')
+            if temp:
+                old_price = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]/h1[@class="t1"]')
+            if temp:
+                name = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            temp = sel.xpath('//div[@class="item-container"]/div[@class="iteminfo"]//div[contains(@class,"item-desc")]')
+            if temp:
+                description = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return description
