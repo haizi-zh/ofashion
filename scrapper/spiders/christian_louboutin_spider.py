@@ -355,9 +355,12 @@ class ChristianLouboutinSpider(MFashionSpider):
         # 它这个颜色只写一个，多种颜色会写multi
         color_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[2]/strong[text()]')
         if color_node:
-            color = color_node.xpath('./text()').extract()[0]
-            color = cls.reformat(color)
-            if color:
-                colors = [color]
+            try:
+                color = color_node.xpath('./text()').extract()[0]
+                color = cls.reformat(color)
+                if color:
+                    colors = [color]
+            except(TypeError, IndexError):
+                pass
 
         return colors

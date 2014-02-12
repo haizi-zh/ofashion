@@ -110,41 +110,31 @@ class ChopardSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@class="product-main-info"]/div[@class="product-name"]')
-        if tmp:
-            metadata['name'] = ', '.join(val for val in (self.reformat(unicodify(val.text)) for val in
-                                                         tmp[0]._root.iterdescendants()) if val)
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        # TODO 这里需要注意一个网页：http://www.chopard.fr/fiancailles/bijoux-mariage/pendentifs/an-elegant-diamond-pendant-810374-1001
-        tmp = sel.xpath(
-            '//div[@class="product-essential"]//div[contains(@class,"description-content")]//div[@class="std"]')
-        if tmp:
-            metadata['description'] = self.reformat(unicodify(tmp[0]._root.text))
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        tmp = sel.xpath('//div[@id="features-content"]/*[contains(@class,"feature-value") and contains(@class,"ref")]')
-        if not tmp:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = unicodify(tmp[0]._root.text)
-        if not metadata['model']:
-            return
+
         metadata['url'] = response.url
 
-        tmp = sel.xpath('//div[@class="product-shop"]//div[contains(@class,"price-box")]//span[@class="price"]')
-        if tmp:
-            metadata['price'] = self.reformat(unicodify(tmp[0]._root.text))
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        def func(node):
-            tmp = node.xpath('./*[@class="feature-title"]')
-            if not tmp:
-                return None
-            title = self.reformat(unicodify(tmp[0]._root.text))
-            tmp = node.xpath('./*[@class="feature-value"]')
-            if not tmp:
-                return None
-            value = self.reformat(unicodify(tmp[0]._root.text))
-            return ' '.join((title, value))
-
-        metadata['details'] = '\r'.join(map(func, sel.xpath('//div[@id="features-content"]/div[@class="feature"]')))
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         # image_processed = set([])
         image_candidates = []
@@ -223,3 +213,94 @@ class ChopardSpider(MFashionSpider):
             item['model'] = metadata['model']
             item['metadata'] = metadata
             yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        tmp = sel.xpath('//div[@id="features-content"]/*[contains(@class,"feature-value") and contains(@class,"ref")]')
+        if tmp:
+            try:
+                model = unicodify(tmp[0]._root.text)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+
+        tmp = sel.xpath('//div[@class="product-shop"]//div[contains(@class,"price-box")]//span[@class="price"]')
+        if tmp:
+            try:
+                old_price = cls.reformat(unicodify(tmp[0]._root.text))
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        tmp = sel.xpath('//div[@class="product-main-info"]/div[@class="product-name"]')
+        if tmp:
+            try:
+                name = ', '.join(val for val in (cls.reformat(unicodify(val.text)) for val in
+                                                             tmp[0]._root.iterdescendants()) if val)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        # TODO 这里需要注意一个网页：http://www.chopard.fr/fiancailles/bijoux-mariage/pendentifs/an-elegant-diamond-pendant-810374-1001
+        tmp = sel.xpath(
+            '//div[@class="product-essential"]//div[contains(@class,"description-content")]//div[@class="std"]')
+        if tmp:
+            try:
+                description = cls.reformat(unicodify(tmp[0]._root.text))
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        def func(node):
+            tmp = node.xpath('./*[@class="feature-title"]')
+            if not tmp:
+                return None
+            title = cls.reformat(unicodify(tmp[0]._root.text))
+            tmp = node.xpath('./*[@class="feature-value"]')
+            if not tmp:
+                return None
+            value = cls.reformat(unicodify(tmp[0]._root.text))
+            return ' '.join((title, value))
+
+        details = '\r'.join(map(func, sel.xpath('//div[@id="features-content"]/div[@class="feature"]')))
+
+        return details
