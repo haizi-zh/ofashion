@@ -144,19 +144,23 @@ class FendiSpider(MFashionSpider):
             return
 
         sel = Selector(response)
-        ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='price']")
-        if len(ret) > 0:
-            temp = unicodify(ret[0]._root.text)
-            metadata['price'] = temp.strip() if temp else None
-        ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='desc']")
-        if len(ret) > 0:
-            temp = unicodify(ret[0]._root.text)
-            metadata['description'] = temp.strip() if temp else None
-        m = re.search(ur'/([^/]+)/?$', response.url)
-        if m:
-            metadata['model'] = unicodify(m.group(1))
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
         else:
             return
+
         metadata['url'] = response.url
 
         # if 'price' not in metadata:
@@ -215,3 +219,58 @@ class FendiSpider(MFashionSpider):
         if image_urls:
             item['image_urls'] = image_urls
         return item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            m = re.search(ur'/([^/]+)/?$', response.url)
+            if m:
+                model = unicodify(m.group(1))
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='price']")
+            if len(ret) > 0:
+                temp = unicodify(ret[0]._root.text)
+                old_price = temp.strip() if temp else None
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='desc']")
+            if len(ret) > 0:
+                temp = unicodify(ret[0]._root.text)
+                description = temp.strip() if temp else None
+        except(TypeError, IndexError):
+            pass
+
+        return description
