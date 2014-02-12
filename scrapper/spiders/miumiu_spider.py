@@ -114,37 +114,31 @@ class MiumiuSpider(MFashionSpider):
             yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url),
                           callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
-        try:
-            tmp = self.reformat(sel.xpath('//div[@id="selection"]//*[@id="selected-code"]/text()').extract()[0])
-            mt = re.search(r'[\s\d\-\._a-zA-Z]+', tmp, flags=re.U)
-            metadata['model'] = re.sub(r'cod\.', '', mt.group(), flags=re.IGNORECASE).strip() if mt else None
-        except (IndexError, TypeError):
-            pass
-        if 'model' not in metadata or not metadata['model']:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
+
         metadata['url'] = response.url
 
-        tmp = sel.xpath('//div[@id="selection"]//*[@id="selected-color"]')
-        if tmp:
-            metadata['color'] = [self.reformat(unicodify(tmp[0]._root.text))]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        if 'name' not in metadata or not metadata['name']:
-            tmp = sel.xpath('//div[@id="description"]/h2')
-            if tmp:
-                metadata['name'] = self.reformat(unicodify(tmp[0]._root.text))
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        tmp = self.reformat(''.join(sel.xpath('//div[@id="item-price"]/descendant-or-self::text()').extract()))
-        if tmp:
-            metadata['price'] = tmp
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        node_list = sel.xpath('//div[@id="description"]/*[@class="desc"]')
-        node_list.extend(sel.xpath('//div[@id="description"]/*[@class="desc"]/*'))
-        node_list.extend(sel.xpath('//div[@id="description"]/*[@class="dimensions"]'))
-        node_list.extend(sel.xpath('//div[@id="description"]/*[@class="dimensions"]/*'))
-        metadata['details'] = '\r'.join(
-            ','.join(filter(lambda val: val, (self.reformat(unicodify(val)) for val in
-                                              (node._root.prefix, node._root.text, node._root.tail)))) for node in
-            node_list)
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = [self.process_href(val._root.attrib['data-zoom'], response.url) for val in
                       sel.xpath('//div[@id="detail_image"]//ul[@id="views"]/li/a[@data-zoom]')]
@@ -156,6 +150,88 @@ class MiumiuSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        try:
+            tmp = cls.reformat(sel.xpath('//div[@id="selection"]//*[@id="selected-code"]/text()').extract()[0])
+            mt = re.search(r'[\s\d\-\._a-zA-Z]+', tmp, flags=re.U)
+            model = re.sub(r'cod\.', '', mt.group(), flags=re.IGNORECASE).strip() if mt else None
+        except (IndexError, TypeError):
+            pass
 
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            tmp = cls.reformat(''.join(sel.xpath('//div[@id="item-price"]/descendant-or-self::text()').extract()))
+            if tmp:
+                old_price = tmp
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            tmp = sel.xpath('//div[@id="description"]/h2')
+            if tmp:
+                name = cls.reformat(unicodify(tmp[0]._root.text))
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            node_list = sel.xpath('//div[@id="description"]/*[@class="desc"]')
+            node_list.extend(sel.xpath('//div[@id="description"]/*[@class="desc"]/*'))
+            node_list.extend(sel.xpath('//div[@id="description"]/*[@class="dimensions"]'))
+            node_list.extend(sel.xpath('//div[@id="description"]/*[@class="dimensions"]/*'))
+            details = '\r'.join(
+                ','.join(filter(lambda val: val, (cls.reformat(unicodify(val)) for val in
+                                                  (node._root.prefix, node._root.text, node._root.tail)))) for node in
+                node_list)
+        except(TypeError, IndexError):
+            pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        try:
+            tmp = sel.xpath('//div[@id="selection"]//*[@id="selected-color"]')
+            if tmp:
+                colors = [cls.reformat(unicodify(tmp[0]._root.text))]
+        except(TypeError, IndexError):
+            pass
+
+        return colors
