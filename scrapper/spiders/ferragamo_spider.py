@@ -215,51 +215,29 @@ class FerragamoSpider(MFashionSpider):
         except ValueError:
             pass
 
-        tmp = sel.xpath('//div[contains(@id, "product_name_")]/*[@itemprop="name"]/text()').extract()
-        try:
-            tmp = self.reformat(tmp[0])
-            if tmp:
-                metadata['name'] = tmp
-        except IndexError:
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        tmp = self.reformat(''.join(sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"product_SKU_")]'
-                                              '/descendant-or-self::text()').extract()))
-        try:
-            # 试图找出产品编号
-            mt = re.search(self.spider_data['model_template'][metadata['region']], tmp, flags=re.I | re.U)
-            if not mt:
-                return
-            metadata['model'] = mt.group(1).strip().upper()
-        except (TypeError, IndexError):
-            self.log(str.format('Invalid details page: {0}', response.url))
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
 
-        desc_terms = []
-        desc_terms.extend([self.reformat(val) for val in
-                           sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"product_SKU_")]'
-                                     '/text()').extract()])
-        desc_terms.extend([self.reformat(val) for val in sel.xpath('//div[contains(@id, "product_name_")]'
-                                                                   '/p[contains(@class,"model_shortdescription")]'
-                                                                   '/text()').extract()])
-        desc_terms.extend([self.reformat(val) for val in
-                           sel.xpath('//div[@id="tabContainer"]//*[@itemprop="description"]/text()').extract()])
-        desc = '\r'.join(val for val in desc_terms if val)
-        if desc:
-            metadata['description'] = desc
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        tmp = '\r'.join(self.reformat(val) for val in
-                        sel.xpath('//div[contains(@id, "product_name_")]'
-                                  '/p[contains(@id,"price_display_")]/span[@itemprop="price"]'
-                                  '/text()').extract())
-        if tmp:
-            metadata['price'] = tmp
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        tmp = '\r'.join(self.reformat(val) for val in
-                        sel.xpath('//div[contains(@id, "product_name_")]'
-                                  '/p[contains(@class,"model_description")]/text()').extract())
-        if tmp:
-            metadata['details'] = tmp
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         for img_node in sel.xpath('//div[contains(@class,"slider_selector") or @id="frg_thumb_list"]/ul'
@@ -287,47 +265,38 @@ class FerragamoSpider(MFashionSpider):
         sel = Selector(response)
         metadata['url'] = response.url
 
-        tmp = sel.xpath('//div[@class="product-title"]/text()').extract()
-        if tmp:
-            metadata['name'] = self.reformat(tmp[0])
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        tmp = sel.xpath('//div[@class="product-code"]/text()').extract()
-        desc = None
-        if tmp:
-            desc = self.reformat(tmp[0])
-            metadata['description'] = desc
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        # 试图找出产品编号
-        model = None
-        if desc:
-            mt = re.search(self.spider_data['model_template'][metadata['region']], desc, flags=re.I | re.U)
-            if mt and mt.group(1).strip():
-                model = mt.group(1).strip()
-        if not model:
-            mt = re.search(r'/([0-9a-zA-Z]+)$', response.url)
-            if mt:
-                model = mt.group(1)
-        if not model:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = model
 
-        tmp = sel.xpath('//div[@class="product-price"]/text()').extract()
-        if tmp:
-            metadata['price'] = self.reformat(tmp[0])
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        tmp = '\r'.join(self.reformat(val) for val in sel.xpath('//div[@class="product-desc"]'
-                                                                '/div[@class="field-content"]/text()').extract())
-        if tmp:
-            metadata['details'] = tmp
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         tmp = sel.xpath('//div[@class="product-collection"]/text()').extract()
         if tmp and tmp[0]:
             tag_text = self.reformat(tmp[0])
             metadata['tags_mapping']['collection'] = [{'name': tag_text.lower(), 'title': tag_text}]
 
-        tmp = sel.xpath('//select[@class="select-color"]/option//a[@href]/text()').extract()
-        if tmp:
-            metadata['color'] = [self.reformat(val) for val in tmp]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         image_urls = [self.process_href(val, response.url) for val in
                       sel.xpath('//div[@class="item-list"]/ul[contains(@class,"field-slideshow-pager")]/li'
@@ -339,3 +308,225 @@ class FerragamoSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        model = None
+        if region == 'cn':
+            # 试图找出产品编号
+            try:
+                tmp = sel.xpath('//div[@class="product-code"]/text()').extract()
+                desc = None
+                if tmp:
+                    desc = cls.reformat(tmp[0])
+
+                model = None
+                if desc:
+                    mt = re.search(cls.spider_data['model_template'][region], desc, flags=re.I | re.U)
+                    if mt and mt.group(1).strip():
+                        model = mt.group(1).strip()
+                if not model:
+                    mt = re.search(r'/([0-9a-zA-Z]+)$', response.url)
+                    if mt:
+                        model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
+        else:
+            tmp = cls.reformat(''.join(sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"product_SKU_")]'
+                                              '/descendant-or-self::text()').extract()))
+            try:
+                # 试图找出产品编号
+                mt = re.search(cls.spider_data['model_template'][region], tmp, flags=re.I | re.U)
+                if not mt:
+                    return
+                model = mt.group(1).strip().upper()
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        old_price = None
+        new_price = None
+        if region == 'cn':
+            try:
+                tmp = sel.xpath('//div[@class="product-price"]/text()').extract()
+                if tmp:
+                    old_price = cls.reformat(tmp[0])
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                tmp = '\r'.join(cls.reformat(val) for val in
+                                sel.xpath('//div[contains(@id, "product_name_")]'
+                                          '/p[contains(@id,"price_display_")]/span[@itemprop="price"]'
+                                          '/text()').extract())
+                if tmp:
+                    old_price = tmp
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        name = None
+        if region == 'cn':
+            try:
+                tmp = sel.xpath('//div[@class="product-title"]/text()').extract()
+                if tmp:
+                    name = cls.reformat(tmp[0])
+            except(TypeError, IndexError):
+                pass
+        else:
+            tmp = sel.xpath('//div[contains(@id, "product_name_")]/*[@itemprop="name"]/text()').extract()
+            try:
+                tmp = cls.reformat(tmp[0])
+                if tmp:
+                    name = tmp
+            except IndexError:
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        description = None
+        if region == 'cn':
+            try:
+                tmp = sel.xpath('//div[@class="product-code"]/text()').extract()
+                desc = None
+                if tmp:
+                    desc = cls.reformat(tmp[0])
+                    description = desc
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                desc_terms = []
+                desc_terms.extend([cls.reformat(val) for val in
+                                   sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"product_SKU_")]'
+                                             '/text()').extract()])
+                desc_terms.extend([cls.reformat(val) for val in sel.xpath('//div[contains(@id, "product_name_")]'
+                                                                           '/p[contains(@class,"model_shortdescription")]'
+                                                                           '/text()').extract()])
+                desc_terms.extend([cls.reformat(val) for val in
+                                   sel.xpath('//div[@id="tabContainer"]//*[@itemprop="description"]/text()').extract()])
+                desc = '\r'.join(val for val in desc_terms if val)
+                if desc:
+                    description = desc
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        details = None
+        if region == 'cn':
+            try:
+                tmp = '\r'.join(cls.reformat(val) for val in sel.xpath('//div[@class="product-desc"]'
+                                                                        '/div[@class="field-content"]/text()').extract())
+                if tmp:
+                    details = tmp
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                tmp = '\r'.join(cls.reformat(val) for val in
+                                sel.xpath('//div[contains(@id, "product_name_")]'
+                                          '/p[contains(@class,"model_description")]/text()').extract())
+                if tmp:
+                    details = tmp
+            except(TypeError, IndexError):
+                pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        colors = []
+        if region == 'cn':
+            try:
+                tmp = sel.xpath('//select[@class="select-color"]/option//a[@href]/text()').extract()
+                if tmp:
+                    colors = [cls.reformat(val) for val in tmp]
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                idx = response.body.find('var productURLs')
+                data = json.loads(cm.extract_closure(response.body[idx:], '\{', '\}')[0].replace("'", '"'))
+                for color_key in data:
+                    tmp = sel.xpath(str.format('//select/option[@value="{0}"]', color_key))
+                    if not tmp:
+                        continue
+                    color_node = tmp[0]
+                    # 是否为当前选择的颜色？
+                    if color_node.xpath('@selected'):
+                        tmp = color_node.xpath('text()').extract()
+                        if tmp:
+                            colors = [cls.reformat(tmp[0])]
+            except ValueError:
+                pass
+
+        return colors
