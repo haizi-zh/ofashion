@@ -117,27 +117,30 @@ class MonclerSpider(MFashionSpider):
         sel = Selector(response)
 
         metadata['url'] = response.url
-        metadata['name'] = self.reformat(' '.join(unicodify(val._root.text) for val in
-                                                  sel.xpath('//div[@id="titlePrice"]/div[@class="itemTitle"]')
-                                                  if val._root.text))
 
-        mt = re.search(r'var\s+jsoninit_dejavu\s*=\s*\{\s*ITEM:', response.body)
-        if not mt:
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        tmp = json.loads(cm.extract_closure(response.body[mt.regs[0][1]:], '{', '}')[0])
-        if 'cod10' not in tmp:
-            return
-        metadata['model'] = tmp['cod10']
-        if 'price' in tmp:
-            metadata['price'] = tmp['price']
 
-        tmp = sel.xpath('//div[@id="descr_content"]')
-        if tmp:
-            metadata['description'] = self.reformat(unicodify(tmp[0]._root.text))
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        tmp = sel.xpath('//div[@id="details_content"]')
-        if tmp:
-            metadata['details'] = self.reformat(unicodify(tmp[0]._root.text))
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         mt = re.search(r'var\s+jsoninit_item', response.body)
@@ -174,3 +177,90 @@ class MonclerSpider(MFashionSpider):
                     yield Request(url=url, meta={'userdata': m}, callback=self.parse, errback=self.onerr)
             else:
                 self.log(str.format('No data for {0}', region), log.WARNING)
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            mt = re.search(r'var\s+jsoninit_dejavu\s*=\s*\{\s*ITEM:', response.body)
+            if not mt:
+                return
+            tmp = json.loads(cm.extract_closure(response.body[mt.regs[0][1]:], '{', '}')[0])
+            if 'cod10' in tmp:
+                model = tmp['cod10']
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            mt = re.search(r'var\s+jsoninit_dejavu\s*=\s*\{\s*ITEM:', response.body)
+            if not mt:
+                return
+            tmp = json.loads(cm.extract_closure(response.body[mt.regs[0][1]:], '{', '}')[0])
+            if 'price' in tmp:
+                old_price = tmp['price']
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            name = cls.reformat(' '.join(unicodify(val._root.text) for val in
+                                         sel.xpath('//div[@id="titlePrice"]/div[@class="itemTitle"]')
+                                         if val._root.text))
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@id="descr_content"]')
+            if tmp:
+                description = cls.reformat(unicodify(tmp[0]._root.text))
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            tmp = sel.xpath('//div[@id="details_content"]')
+            if tmp:
+                details = cls.reformat(unicodify(tmp[0]._root.text))
+        except(TypeError, IndexError):
+            pass
+
+        return details
