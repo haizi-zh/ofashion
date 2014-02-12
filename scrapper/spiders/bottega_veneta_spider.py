@@ -68,59 +68,31 @@ class BottegaSpider(MFashionSpider):
                     'tags_mapping': {}, 'category': []}
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@id="modelFabricColor"]/span[@class="mfcvalue"]/text()').extract()
-        if not tmp:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = self.reformat(tmp[0])
+
         metadata['url'] = response.url
 
-        tmp = sel.xpath('//div[@id="itemInfoBox"]//h1[@class="product-title"]/*[@class="infoProd" and @itemprop="name"]'
-                        '/text()').extract()
-        if tmp:
-            metadata['name'] = self.reformat(tmp[0])
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        tmp = sel.xpath('//div[@class="itemBoxPrice"]/span[@class="price"]/text()').extract()
-        if tmp:
-            metadata['price'] = self.reformat(tmp[0])
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        desc_list = []
-        for tmp in sel.xpath('//div[@id="panelsMfcContainer"]/ul[@id="panels"]/li[contains(@class,"panel")]'
-                             '/*[contains(@class,"editorialdescription")]/text()').extract():
-            tmp = self.reformat(tmp)
-            if tmp:
-                desc_list.append(tmp)
-        if desc_list:
-            metadata['description'] = '\r'.join(desc_list)
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        details_list = []
-        for node in sel.xpath(
-                '//div[@id="panelsMfcContainer"]/ul[@id="panels"]/li[contains(@class,"panel")]/*[contains(@class,"details")]'):
-            tmp = node.xpath('text()').extract()
-            if tmp:
-                tmp = self.reformat(tmp[0])
-                if tmp:
-                    details_list.append(tmp)
-
-            # 再检查是否有子标签需要添加
-            term = None
-            for node3 in node.xpath('.//span[@class="property" or @class="value"]'):
-                node_class = node3.xpath('@class').extract()[0].lower().strip()
-                tmp = node3.xpath('text()').extract()
-                if not tmp or not self.reformat(tmp[0]):
-                    continue
-                node_text = self.reformat(tmp[0])
-
-                if node_class == 'property':
-                    if term:
-                        details_list.append(unicode.format(u'{0}{1}', term['property'], ','.join(term['value'])))
-                    term = {'property': node_text, 'value': []}
-                elif node_class == 'value':
-                    if term:
-                        term['value'].append(node_text)
-            if term:
-                details_list.append(unicode.format(u'{0}{1}', term['property'], ','.join(term['value'])))
-        if details_list:
-            metadata['details'] = '\r'.join(details_list)
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         for href in sel.xpath('//div[@id="thumbsContainer"]/span[@id="thumbsContainerImg"]'
@@ -170,6 +142,115 @@ class BottegaSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        try:
+            tmp = sel.xpath('//div[@id="modelFabricColor"]/span[@class="mfcvalue"]/text()').extract()
+            if tmp:
+                model = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
 
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            tmp = sel.xpath('//div[@class="itemBoxPrice"]/*[@class="price"]/text()').extract()
+            if tmp:
+                old_price = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            tmp = sel.xpath('//div[@id="itemInfoBox"]//h1[@class="product-title"]/*[@class="infoProd" and @itemprop="name"]'
+                            '/text()').extract()
+            if tmp:
+                name = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            desc_list = []
+            for tmp in sel.xpath('//div[@id="panelsMfcContainer"]/ul[@id="panels"]/li[contains(@class,"panel")]'
+                                 '/*[contains(@class,"editorialdescription")]/text()').extract():
+                tmp = cls.reformat(tmp)
+                if tmp:
+                    desc_list.append(tmp)
+            if desc_list:
+                description = '\r'.join(desc_list)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            details_list = []
+            for node in sel.xpath(
+                    '//div[@id="panelsMfcContainer"]/ul[@id="panels"]/li[contains(@class,"panel")]/*[contains(@class,"details")]'):
+                tmp = node.xpath('text()').extract()
+                if tmp:
+                    tmp = cls.reformat(tmp[0])
+                    if tmp:
+                        details_list.append(tmp)
+
+                # 再检查是否有子标签需要添加
+                term = None
+                for node3 in node.xpath('.//span[@class="property" or @class="value"]'):
+                    node_class = node3.xpath('@class').extract()[0].lower().strip()
+                    tmp = node3.xpath('text()').extract()
+                    if not tmp or not cls.reformat(tmp[0]):
+                        continue
+                    node_text = cls.reformat(tmp[0])
+
+                    if node_class == 'property':
+                        if term:
+                            details_list.append(unicode.format(u'{0}{1}', term['property'], ','.join(term['value'])))
+                        term = {'property': node_text, 'value': []}
+                    elif node_class == 'value':
+                        if term:
+                            term['value'].append(node_text)
+                if term:
+                    details_list.append(unicode.format(u'{0}{1}', term['property'], ','.join(term['value'])))
+            if details_list:
+                details = '\r'.join(details_list)
+        except(TypeError, IndexError):
+            pass
+
+        return details
