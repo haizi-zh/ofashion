@@ -206,55 +206,31 @@ class ChristianLouboutinSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        model_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[1]/strong[text()]')
-        if model_node:
-            model = model_node.xpath('./text()').extract()[0]
-            model = self.reformat(model)
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        if not metadata.get('name'):
-            name_node = sel.xpath('//div[@class="product-view"]/form/hgroup/h1[text()]')
-            if name_node:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    metadata['name'] = name
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-                    gender = common.guess_gender(name, extra={'male': [], 'female': ['lady']})
-                    if gender:
-                        metadata['gender'] = [gender]
+            gender = common.guess_gender(name, extra={'male': [], 'female': ['lady']})
+            if gender:
+                metadata['gender'] = [gender]
 
-        # 它这个颜色只写一个，多种颜色会写multi
-        color_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[2]/strong[text()]')
-        if color_node:
-            color = color_node.xpath('./text()').extract()[0]
-            color = self.reformat(color)
-            if color:
-                metadata['color'] = [color]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        description_node = sel.xpath('//div[@id="product-description"][text()]')
-        if description_node:
-            description = description_node.xpath('./text()').extract()[0]
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        detail_nodes = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[preceding-sibling::li[1]]')
-        if detail_nodes:
-            detail = '\r'.join(
-                self.reformat(val)
-                for val in (
-                    ''.join(self.reformat(node_text))
-                    for node_text in detail_nodes.xpath('.//text()').extract()
-                )
-            )
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = None
         image_nodes = sel.xpath('//dl[@id="media-tabs"]/dd/div[@class="more-views"]/ul/li/a[@href]')
@@ -264,12 +240,11 @@ class ChristianLouboutinSpider(MFashionSpider):
                 for val in image_nodes.xpath('./@href').extract()
             ]
 
-        price_node = sel.xpath('//div[@class="product-shop"]/div[@class="price-box"]//span[@class="price"][text()]')
-        if price_node:
-            price = price_node.xpath('./text()').extract()[0]
-            price = self.reformat(price)
-            if price:
-                metadata['price'] = price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -279,3 +254,110 @@ class ChristianLouboutinSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            model_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[1]/strong[text()]')
+            if model_node:
+                model = model_node.xpath('./text()').extract()[0]
+                model = cls.reformat(model)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            price_node = sel.xpath('//div[@class="product-shop"]/div[@class="price-box"]//span[@class="price"][text()]')
+            if price_node:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            name_node = sel.xpath('//div[@class="product-view"]/form/hgroup/h1[text()]')
+            if name_node:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            description_node = sel.xpath('//div[@id="product-description"][text()]')
+            if description_node:
+                description = description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            detail_nodes = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[preceding-sibling::li[1]]')
+            if detail_nodes:
+                detail = '\r'.join(
+                    cls.reformat(val)
+                    for val in (
+                        ''.join(cls.reformat(node_text))
+                        for node_text in detail_nodes.xpath('.//text()').extract()
+                    )
+                )
+                detail = cls.reformat(detail)
+        except(TypeError, IndexError):
+            pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        # 它这个颜色只写一个，多种颜色会写multi
+        color_node = sel.xpath('//dl[@id="collateral-tabs"]/dd//ul/li[2]/strong[text()]')
+        if color_node:
+            color = color_node.xpath('./text()').extract()[0]
+            color = cls.reformat(color)
+            if color:
+                colors = [color]
+
+        return colors
