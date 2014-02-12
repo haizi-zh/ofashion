@@ -69,10 +69,12 @@ class BalenciagaSpider(MFashionSpider):
         sel = Selector(response)
 
         metadata['url'] = response.url
-        mt = re.search(r'_cod(\d+[a-zA-Z]{2})\.[^\.]+$', metadata['url'])
-        if not mt:
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = mt.group(1).upper()
 
         image_urls = []
         for node in sel.xpath('//ul[@id="zoomAlternateImageList"]/li/div[@class="inner"]/img[@src]'):
@@ -85,53 +87,28 @@ class BalenciagaSpider(MFashionSpider):
             for i in xrange(start_idx, 15):
                 image_urls.append(pattern.sub(str.format(r'_{0}\2', i), href))
 
-        tmp = sel.xpath('//div[@id="itemInfo"]/h1')
-        if tmp:
-            node = tmp[0]
-            tmp = unicodify(node._root.text)
-            metadata['name'] = self.reformat(tmp) if tmp else None
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        tmp = sel.xpath('//div[@id="itemInfo"]/h2')
-        if tmp:
-            node = tmp[0]
-            tmp = unicodify(node._root.text)
-            metadata['description'] = self.reformat(tmp) if tmp else None
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         tmp = sel.xpath('//div[@id="itemInfo"]/h1/span[@class="modelColor"]')
         tmp = tmp and unicodify(tmp[0]._root.text)
         if tmp:
             metadata['color'] = [self.reformat(tmp).lower()]
 
-        tmp = sel.xpath('//div[@id="itemPrice"]//span[@class="priceValue"]')
-        if tmp:
-            val = unicodify(tmp[0]._root.text)
-            if not val:
-                try:
-                    val = unicodify(tmp[0]._root.iterdescendants().next().tail)
-                except StopIteration:
-                    pass
-            ret = process_price(val, metadata['region'])
-            if ret and ret['price'] != 0:
-                metadata['price'] = val
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        details = []
-        tmp = sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]')
-        if tmp:
-            tmp1 = tmp[0].xpath('./span[@class="itemPropertyKey"]')
-            item_key = unicodify(tmp1[0]._root.text) if tmp1 else None
-            tmp1 = tmp[0].xpath('./span[@class="itemPropertyValue"]')
-            item_val = unicodify(tmp1[0]._root.text) if tmp1 else None
-            details.append(' '.join(filter(lambda val: val, [item_key, item_val])))
-
-        for node in sel.xpath('//div[@id="description_pane"]/div[@class="details"]/div'):
-            tmp1 = node.xpath('./span[@class="itemPropertyKey"]')
-            item_key = unicodify(tmp1[0]._root.text) if tmp1 else None
-            tmp1 = node.xpath('./span[@class="itemPropertyValue"]')
-            item_val = unicodify(tmp1[0]._root.text) if tmp1 else None
-            details.append(' '.join(filter(lambda val: val, [item_key, item_val])))
-
-        if details:
-            metadata['details'] = '\r'.join(details)
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         item = ProductItem()
         item['image_urls'] = image_urls
@@ -161,9 +138,110 @@ class BalenciagaSpider(MFashionSpider):
                                   meta={'userdata': m}, callback=self.parse_details, errback=self.onerr,
                                   dont_filter=True)
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        try:
+            mt = re.search(r'_cod(\d+[a-zA-Z]{2})\.[^\.]+$', response.url)
+            if mt:
+                model = mt.group(1).upper()
+        except(TypeError, IndexError):
+            pass
 
+        return model
 
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
 
+        old_price = None
+        new_price = None
+        try:
+            tmp = sel.xpath('//div[@id="itemPrice"]//span[@class="priceValue"]')
+            if tmp:
+                val = unicodify(tmp[0]._root.text)
+                if not val:
+                    try:
+                        val = unicodify(tmp[0]._root.iterdescendants().next().tail)
+                    except StopIteration:
+                        pass
+                    val = cls.reformat(val)
+                if val:
+                    old_price = val
+        except(TypeError, IndexError):
+            pass
 
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            tmp = sel.xpath('//div[@id="itemInfo"]/h1')
+            if tmp:
+                node = tmp[0]
+                tmp = unicodify(node._root.text)
+                name = cls.reformat(tmp) if tmp else None
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@id="itemInfo"]/h2')
+            if tmp:
+                node = tmp[0]
+                tmp = unicodify(node._root.text)
+                description = cls.reformat(tmp) if tmp else None
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            detail = []
+            tmp = sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]')
+            if tmp:
+                tmp1 = tmp[0].xpath('./span[@class="itemPropertyKey"]')
+                item_key = unicodify(tmp1[0]._root.text) if tmp1 else None
+                tmp1 = tmp[0].xpath('./span[@class="itemPropertyValue"]')
+                item_val = unicodify(tmp1[0]._root.text) if tmp1 else None
+                detail.append(' '.join(filter(lambda val: val, [item_key, item_val])))
+
+            for node in sel.xpath('//div[@id="description_pane"]/div[@class="details"]/div'):
+                tmp1 = node.xpath('./span[@class="itemPropertyKey"]')
+                item_key = unicodify(tmp1[0]._root.text) if tmp1 else None
+                tmp1 = node.xpath('./span[@class="itemPropertyValue"]')
+                item_val = unicodify(tmp1[0]._root.text) if tmp1 else None
+                detail.append(' '.join(filter(lambda val: val, [item_key, item_val])))
+
+            if detail:
+                details = '\r'.join(detail)
+        except(TypeError, IndexError):
+            pass
+
+        return details
