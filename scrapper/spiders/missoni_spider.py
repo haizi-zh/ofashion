@@ -79,31 +79,31 @@ class MissoniSpider(MFashionSpider):
 
         for node in sel.xpath('//li[@class="productContainer realItem" and @data-code8]'):
             m = copy.deepcopy(metadata)
-            m['model'] = self.reformat(node.xpath('@data-code8').extract()[0])
+            # m['model'] = self.reformat(node.xpath('@data-code8').extract()[0])
             tmp = node.xpath('./div[@class="productImageContainer"]/a[@data-itemlink and @href]/@href').extract()
             if not tmp:
                 continue
             url = self.process_href(tmp[0], response.url)
-            tmp = node.xpath(
-                './div[contains(@class,"productDescriptionContainer")]/div[@class="productMicro"]/text()').extract()
-            name = self.reformat(tmp[0]) if tmp else None
-            if name:
-                m['name'] = name
-
-            tmp = node.xpath(
-                './div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="price"]/'
-                '*[@class="currency" or @class="priceValue"]/text()').extract()
-            price_new = ''.join(self.reformat(val) for val in tmp if val)
-            tmp = node.xpath(
-                './div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="priceWithoutPromotion"]/'
-                '*[@class="currency" or @class="priceValue"]/text()').extract()
-            price_old = ''.join(self.reformat(val) for val in tmp if val)
-
-            if price_old and price_new:
-                m['price'] = price_old
-                m['price_discount'] = price_new
-            elif price_new and not price_old:
-                m['price'] = price_new
+            # tmp = node.xpath(
+            #     './div[contains(@class,"productDescriptionContainer")]/div[@class="productMicro"]/text()').extract()
+            # name = self.reformat(tmp[0]) if tmp else None
+            # if name:
+            #     m['name'] = name
+            #
+            # tmp = node.xpath(
+            #     './div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="price"]/'
+            #     '*[@class="currency" or @class="priceValue"]/text()').extract()
+            # price_new = ''.join(self.reformat(val) for val in tmp if val)
+            # tmp = node.xpath(
+            #     './div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="priceWithoutPromotion"]/'
+            #     '*[@class="currency" or @class="priceValue"]/text()').extract()
+            # price_old = ''.join(self.reformat(val) for val in tmp if val)
+            #
+            # if price_old and price_new:
+            #     m['price'] = price_old
+            #     m['price_discount'] = price_new
+            # elif price_new and not price_old:
+            #     m['price'] = price_new
 
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
@@ -112,12 +112,29 @@ class MissoniSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@id="prod_content"]//text()').extract()
-        if tmp:
-            metadata['description'] = '\r'.join(self.reformat(val) for val in tmp)
-        tmp = sel.xpath('//div[@id="descr_content"]//text()').extract()
-        if tmp:
-            metadata['details'] = '\r'.join(self.reformat(val) for val in tmp)
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         for href in sel.xpath('//meta[@property="og:image" and @content]/@content').extract():
@@ -135,14 +152,99 @@ class MissoniSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        try:
+            mt = re.search(ur'cod(\d+)', response.url)
+            if mt:
+                model = mt.group(1)
+        except(TypeError, IndexError):
+            pass
 
+        return model
 
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
 
+        old_price = None
+        new_price = None
+        del_node = sel.xpath('//div[@id="infoContent"]//div[@class="itemBoxPrice"]//div[@class="oldprice"][text()]')
+        if del_node:    # 打折
+            try:
+                old_price = del_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
 
+            try:
+                discount_node = sel.xpath('//div[@id="infoContent"]//div[@class="itemBoxPrice"]//div[@class="newprice"][text()]')
+                new_price = discount_node.xpath('./text()').extract()[0]
+                new_price = cls.reformat(new_price)
+            except(TypeError, IndexError):
+                pass
+        else:   # 未打折
+            try:
+                old_price_node = sel.xpath('//div[@id="infoContent"]//div[@class="itemBoxPrice"]//span[text()]')
+                old_price = old_price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
 
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
 
+        return ret
 
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
 
+        name = None
+        try:
+            name_node = sel.xpath('//div[@id="infoContent"]//div[@id="productFirstInfoContainer"]/h3[text()]')
+            if name_node:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+        except(TypeError, IndexError):
+            pass
 
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@id="prod_content"]//text()').extract()
+            if tmp:
+                description = '\r'.join(cls.reformat(val) for val in tmp)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            tmp = sel.xpath('//div[@id="descr_content"]//text()').extract()
+            if tmp:
+                details = '\r'.join(cls.reformat(val) for val in tmp)
+        except(TypeError, IndexError):
+            pass
+
+        return details
