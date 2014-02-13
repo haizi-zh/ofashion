@@ -228,6 +228,7 @@ class PublishRelease(object):
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
 
         url_dict = {val['idproducts']: val['url'] for val in prods}
+        offline_dict = {val['idproducts']: val['offline'] for val in prods}
 
         # pid和region之间的关系
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
@@ -252,6 +253,7 @@ class PublishRelease(object):
                 price_list[pid] = {'price': float(item['price']), 'currency': item['currency'],
                                    'price_discount': float(item['price_discount']) if item['price_discount'] else None,
                                    'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
+                                   'offline': offline_dict[item['idproducts']],
                                    'code': region, 'country': gs.region_info()[region]['name_c'],
                                    'url': url_dict[item['idproducts']]}
 
