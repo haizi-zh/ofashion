@@ -315,47 +315,47 @@ class DieselSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            try:
-                name = ''.join(
-                    self.reformat(val)
-                    for val in node.xpath('.//div[@class="product-name"]//text()').extract()
-                )
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
-            except(TypeError, IndexError):
-                pass
-
-            try:
-                colors = [
-                    self.reformat(val)
-                    for val in node.xpath('.//div[@class="grid-swatch-list"]/ul/li/div[@title]/@title').extract()
-                ]
-                if colors:
-                    m['color'] = colors
-            except(TypeError, IndexError):
-                pass
-
-            try:
-                discount_node = node.xpath('.//div[@class="product-pricing"]/div[@class="product-discounted-price clearfix"]')
-                # 有折扣
-                if discount_node:
-                    discount_price = discount_node.xpath('./span[@class="product-sales-price"]/text()').extract()[0]
-                    discount_price = self.reformat(discount_price)
-                    if discount_price:
-                        m['price_discount'] = discount_price
-
-                    price = discount_node.xpath('./span[@class="product-standard-price"]/text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        m['price'] = price
-                else:
-                    price = node.xpath('.//div[@class="product-pricing"]/span[@class="product-sales-price"]/text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        m['price'] = price
-            except(TypeError, IndexError):
-                pass
+            # try:
+            #     name = ''.join(
+            #         self.reformat(val)
+            #         for val in node.xpath('.//div[@class="product-name"]//text()').extract()
+            #     )
+            #     name = self.reformat(name)
+            #     if name:
+            #         m['name'] = name
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # try:
+            #     colors = [
+            #         self.reformat(val)
+            #         for val in node.xpath('.//div[@class="grid-swatch-list"]/ul/li/div[@title]/@title').extract()
+            #     ]
+            #     if colors:
+            #         m['color'] = colors
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # try:
+            #     discount_node = node.xpath('.//div[@class="product-pricing"]/div[@class="product-discounted-price clearfix"]')
+            #     # 有折扣
+            #     if discount_node:
+            #         discount_price = discount_node.xpath('./span[@class="product-sales-price"]/text()').extract()[0]
+            #         discount_price = self.reformat(discount_price)
+            #         if discount_price:
+            #             m['price_discount'] = discount_price
+            #
+            #         price = discount_node.xpath('./span[@class="product-standard-price"]/text()').extract()[0]
+            #         price = self.reformat(price)
+            #         if price:
+            #             m['price'] = price
+            #     else:
+            #         price = node.xpath('.//div[@class="product-pricing"]/span[@class="product-sales-price"]/text()').extract()[0]
+            #         price = self.reformat(price)
+            #         if price:
+            #             m['price'] = price
+            # except(TypeError, IndexError):
+            #     pass
 
             try:
                 href = node.xpath('.//a[@href]/@href').extract()[0]
@@ -393,44 +393,33 @@ class DieselSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        try:
-            mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)', response.url)
-            if mt:
-                model = mt.group(1)
-                if not model:
-                    model = mt.group(2)
-        except(TypeError, IndexError):
-            model = None
-            pass
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        try:
-            description_node = sel.xpath('//div[@id="pdpMain"]//div[@class="detail-content"]/p/span[@class="para-content"][text()]')
-            if description_node:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-        except(TypeError, IndexError):
-            pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        try:
-            detail = ''.join(
-                self.reformat(val)
-                for val in sel.xpath('//div[@id="product-content-detail"]//ul[@class="product-description-list"]/li[text()]/text()').extract()
-            )
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
-        except(TypeError, IndexError):
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         image_urls = []
         try:
@@ -766,36 +755,36 @@ class DieselSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            # 有些商品没有名字居然
-            # 比如：http://store.diesel.com/gb/men/jewellery
-            try:
-                name_node = node.xpath('./a[@class="prodInfo"]//strong[@class="itemName"][text()]')
-                if name_node:
-                    name = name_node.xpath('./text()').extract()[0]
-                    name = self.reformat(name)
-                    if name:
-                        m['name'] = name
-            except(TypeError, IndexError):
-                pass
-
-            try:
-                price = node.xpath('./a[@class="prodInfo"]//em[contains(@class, "itemPrice")]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
-            except(TypeError, IndexError):
-                pass
-
-            # 判断是否打折
-            try:
-                discount_node = node.xpath('./a[@class="prodInfo"]//span[@class="itemDiscountedPrice"][text()]')
-                if discount_node:
-                    discount_price = discount_node.xpath('./text()').extract()[0]
-                    discount_price = self.reformat(discount_price)
-                    if discount_price:
-                        m['price_discount'] = discount_price
-            except(TypeError, IndexError):
-                pass
+            # # 有些商品没有名字居然
+            # # 比如：http://store.diesel.com/gb/men/jewellery
+            # try:
+            #     name_node = node.xpath('./a[@class="prodInfo"]//strong[@class="itemName"][text()]')
+            #     if name_node:
+            #         name = name_node.xpath('./text()').extract()[0]
+            #         name = self.reformat(name)
+            #         if name:
+            #             m['name'] = name
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # try:
+            #     price = node.xpath('./a[@class="prodInfo"]//em[contains(@class, "itemPrice")]/text()').extract()[0]
+            #     price = self.reformat(price)
+            #     if price:
+            #         m['price'] = price
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # # 判断是否打折
+            # try:
+            #     discount_node = node.xpath('./a[@class="prodInfo"]//span[@class="itemDiscountedPrice"][text()]')
+            #     if discount_node:
+            #         discount_price = discount_node.xpath('./text()').extract()[0]
+            #         discount_price = self.reformat(discount_price)
+            #         if discount_price:
+            #             m['price_discount'] = discount_price
+            # except(TypeError, IndexError):
+            #     pass
 
             try:
                 href = node.xpath('.//a[@href]/@href').extract()[0]
@@ -838,65 +827,33 @@ class DieselSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        model = None
-        try:
-            mt = re.search(r'_cod(\w+)\.', response.url)
-            if mt:
-                model = mt.group(1)
-        except(TypeError, IndexError):
-            model = None
-            pass
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        try:
-            name_node = sel.xpath('//aside[@class="itemSidebar"]/h1[text()]')
-            if name_node:
-                name = name_node.xpath('./text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    metadata['name'] = name
-        except(TypeError, IndexError):
-            pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        try:
-            description_node = sel.xpath('//div[@id="tabs"]/ul/li/div/p')
-            if description_node:
-                description = '\r'.join(
-                    self.reformat(val)
-                    for val in description_node.xpath('.//text()').extract()
-                )
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-        except(TypeError, IndexError):
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        try:
-            detail = ''.join(
-                self.reformat(val)
-                for val in sel.xpath('//aside[@class="itemSidebar"]/ul/li//text()').extract()
-            )
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
-        except(TypeError, IndexError):
-            pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        colors = None
-        try:
-            color_nodes = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colorMask"]/ul/li//span[text()]')
-            if color_nodes:
-                colors = [
-                    self.reformat(val)
-                    for val in color_nodes.xpath('./text()').extract()
-                ]
-            if colors:
-                metadata['color'] = colors
-        except(TypeError, IndexError):
-            pass
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         # 这里会有比需要的图片多
         image_fix_list = re.findall(r'"(\d{2}_[a-z])"', response.body)
@@ -935,3 +892,241 @@ class DieselSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        model = None
+        if region == 'us':
+            try:
+                mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)', response.url)
+                if mt:
+                    model = mt.group(1)
+                    if not model:
+                        model = mt.group(2)
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                mt = re.search(r'_cod(\w+)\.', response.url)
+                if mt:
+                    model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        old_price = None
+        new_price = None
+
+        if region == 'us':
+            discount_node = sel.xpath('//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales discounted"][text()]')
+            if discount_node:   # 折扣
+                try:
+                    price_node = sel.xpath('//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
+                    if price_node:
+                        old_price = price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
+
+                try:
+                    new_price = discount_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                try:
+                    price_node = sel.xpath('//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
+                    if price_node:
+                        old_price = price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
+        else:
+            discount_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]//div[@class="newprice fLeft"][text()]')
+            if discount_node:
+                try:
+                    price_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]//div[@class="oldprice fLeft"][text()]')
+                    if price_node:
+                        old_price = price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
+
+                try:
+                    new_price = discount_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                try:
+                    price_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]/span[text()]')
+                    old_price = price_node.xpath('./text()').extract()[0]
+                    old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        name = None
+        if region == 'us':
+            try:
+                name_node = sel.xpath('//div[@id="product-content"]//*[@itemprop="name"][text()]')
+                if name_node:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                name_node = sel.xpath('//aside[@class="itemSidebar"]/h1[text()]')
+                if name_node:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        description = None
+        if region == 'us':
+            try:
+                description_node = sel.xpath('//div[@id="pdpMain"]//div[@class="detail-content"]/p/span[@class="para-content"][text()]')
+                if description_node:
+                    description = '\r'.join(
+                        cls.reformat(val)
+                        for val in description_node.xpath('.//text()').extract()
+                    )
+                    description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                description_node = sel.xpath('//div[@id="tabs"]/ul/li/div/p')
+                if description_node:
+                    description = '\r'.join(
+                        cls.reformat(val)
+                        for val in description_node.xpath('.//text()').extract()
+                    )
+                    description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        details = None
+        if region == 'us':
+            try:
+                detail = ''.join(
+                    cls.reformat(val)
+                    for val in sel.xpath('//div[@id="product-content-detail"]//ul[@class="product-description-list"]/li[text()]/text()').extract()
+                )
+                detail = cls.reformat(detail)
+                if detail:
+                    details = detail
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                detail = ''.join(
+                    cls.reformat(val)
+                    for val in sel.xpath('//aside[@class="itemSidebar"]/ul/li//text()').extract()
+                )
+                detail = cls.reformat(detail)
+                if detail:
+                    details = detail
+            except(TypeError, IndexError):
+                pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        colors = []
+        if region == 'us':
+            try:
+                color_nodes = sel.xpath('//div[@id="product-content"]//div[@class="swatch-Slider"]/ul/li//a[@title]')
+                if color_nodes:
+                    colors = [cls.reformat(val)
+                              for val in
+                              color_nodes.xpath('./@title').extract()]
+            except(TypeError, IndexError):
+                pass
+        else:
+            try:
+                color_nodes = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colorMask"]/ul/li//span[text()]')
+                if color_nodes:
+                    colors = [
+                        cls.reformat(val)
+                        for val in color_nodes.xpath('./text()').extract()
+                    ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors
