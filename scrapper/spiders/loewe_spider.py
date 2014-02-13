@@ -108,27 +108,29 @@ class LoeweSpider(MFashionSpider):
         except AttributeError:
             return
 
-        tmp = sel.xpath('//div[@id="aside"]//*[@class="product-name"]/text()').extract()
-        if tmp:
-            metadata['name'] = self.reformat(tmp[0])
-        tmp = sel.xpath('//div[@id="tab1"]/descendant-or-self::text()').extract()
-        if tmp:
-            metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
-        tmp = sel.xpath('//div[@id="tab2"]/descendant-or-self::text()').extract()
-        if tmp:
-            metadata['details'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        model_term = self.spider_data['model_term'][self.region_list[0]]
-        model_list = filter(lambda val: re.search(model_term, val, flags=re.IGNORECASE),
-                            sel.xpath('//*/text()').extract())
-        if not model_list:
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = self.reformat(re.sub(model_term, '', model_list[0], flags=re.IGNORECASE))
 
-        tmp = sel.xpath('//*[@class="regular-price"]/*[@class="price"]/text()').extract()
-        price = self.reformat(tmp[0]) if tmp else None
-        if price:
-            metadata['price'] = price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         image_urls = [self.process_href(val, response.url) for val in
                       sel.xpath('//div[@id="product"]//ul[@class="views"]/li/a[@href]/@href').extract()]
@@ -139,3 +141,93 @@ class LoeweSpider(MFashionSpider):
         item['image_urls'] = image_urls
         item['metadata'] = metadata
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        model = None
+        try:
+            model_term = cls.spider_data['model_term'][region]
+            model_list = filter(lambda val: re.search(model_term, val, flags=re.IGNORECASE),
+                                sel.xpath('//*/text()').extract())
+            if model_list:
+                model = cls.reformat(re.sub(model_term, '', model_list[0], flags=re.IGNORECASE))
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            tmp = sel.xpath('//*[@class="regular-price"]/*[@class="price"]/text()').extract()
+            price = cls.reformat(tmp[0]) if tmp else None
+            if price:
+                old_price = price
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        try:
+            tmp = sel.xpath('//div[@id="aside"]//*[@class="product-name"]/text()').extract()
+            if tmp:
+                name = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@id="tab1"]/descendant-or-self::text()').extract()
+            if tmp:
+                description = '\r'.join(filter(lambda x: x, [cls.reformat(val) for val in tmp]))
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            tmp = sel.xpath('//div[@id="tab2"]/descendant-or-self::text()').extract()
+            if tmp:
+                details = '\r'.join(filter(lambda x: x, [cls.reformat(val) for val in tmp]))
+        except(TypeError, IndexError):
+            pass
+
+        return details
