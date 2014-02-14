@@ -125,14 +125,14 @@ class BallySpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            try:
-                name = node.xpath('.//div[@class="infoItem"]//div[@class="macroBmode"]/text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
-            except(TypeError, IndexError):
-                pass
-
+            # try:
+            #     name = node.xpath('.//div[@class="infoItem"]//div[@class="macroBmode"]/text()').extract()[0]
+            #     name = self.reformat(name)
+            #     if name:
+            #         m['name'] = name
+            # except(TypeError, IndexError):
+            #     pass
+            #
             # # 这里区分是否打折，price_node不打折的下一级是span，打折的是div
             # price_node = node.xpath('.//div[@class="infoItem"]//div[@class="price"]/div[@class="prodPrice"]')
             # if price_node:
@@ -200,57 +200,29 @@ class BallySpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # 从url中找到model
-        model = None
-        try:
-            mt = re.search(r'cod10/(\w+)/', response.url)
-            if mt:
-                model = mt.group(1)
-            if model:
-                metadata['model'] = model
-            else:
-                return
-        except(TypeError, IndexError):
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
 
-        tmp = sel.xpath(
-            '//div[@class="itemBoxPrice"]//span[@class="priceValue"]/span[@class="oldprice"]/text()').extract()
-        price = self.reformat(' '.join(tmp)) if tmp else None
-        tmp = sel.xpath(
-            '//div[@class="itemBoxPrice"]//span[@class="priceValue"]/span[@class="newprice"]/text()').extract()
-        price_discount = self.reformat(' '.join(tmp)) if tmp else None
-        if not price:
-            tmp = sel.xpath(
-                '//div[@class="itemBoxPrice"]/span[@class="priceValue"]/span[@class="currency" or @class="priceValue"]/text()').extract()
-            price = self.reformat(' '.join(tmp)) if tmp else None
-            price_discount = None
-        if price:
-            metadata['price'] = price
-            if price_discount:
-                metadata['price_discount'] = price_discount
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        try:
-            descripton_node = sel.xpath('//div[@id="descr_content"]/div[@id="EditorialDescription"]')
-            if descripton_node:
-                descripton = descripton_node.xpath('./text()').extract()[0]
-                descripton = self.reformat(descripton)
-                if descripton:
-                    metadata['description'] = descripton
-        except(TypeError, IndexError):
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        # TODO 这个看起来好像应该有不同颜色的单品，没找到例子
-        color_node = sel.xpath('//div[@id="colorsBoxContainer"]//ul[@id="colorsContainer"]/li/div[@title]')
-        if color_node:
-            try:
-                colors = [
-                    self.reformat(val)
-                    for val in color_node.xpath('./@title').extract()
-                ]
-                if colors:
-                    metadata['color'] = colors
-            except(TypeError, IndexError):
-                pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         image_urls = None
         image_nodes = sel.xpath('//div[@id="col2"]//div[@class="innerCol"]//div[@id="innerThumbs"]/div/img[@src]')
@@ -277,3 +249,102 @@ class BallySpider(MFashionSpider):
 
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        # 从url中找到model
+        model = None
+        try:
+            mt = re.search(r'cod10/(\w+)/', response.url)
+            if mt:
+                model = mt.group(1)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            tmp = sel.xpath(
+                '//div[@class="itemBoxPrice"]//span[@class="priceValue"]/span[@class="oldprice"]/text()').extract()
+            price = cls.reformat(' '.join(tmp)) if tmp else None
+            tmp = sel.xpath(
+                '//div[@class="itemBoxPrice"]//span[@class="priceValue"]/span[@class="newprice"]/text()').extract()
+            price_discount = cls.reformat(' '.join(tmp)) if tmp else None
+            if not price:
+                tmp = sel.xpath(
+                    '//div[@class="itemBoxPrice"]/span[@class="priceValue"]/span[@class="currency" or @class="priceValue"]/text()').extract()
+                price = cls.reformat(' '.join(tmp)) if tmp else None
+                price_discount = None
+            if price:
+                old_price = price
+                if price_discount:
+                    new_price = price_discount
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="wrapper"]//h2[@id="topModelName"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        descripton = None
+        try:
+            descripton_node = sel.xpath('//div[@id="descr_content"]/div[@id="EditorialDescription"]')
+            if descripton_node:
+                descripton = descripton_node.xpath('./text()').extract()[0]
+                descripton = cls.reformat(descripton)
+        except(TypeError, IndexError):
+            pass
+
+        return descripton
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        # TODO 这个看起来好像应该有不同颜色的单品，没找到例子
+        color_node = sel.xpath('//div[@id="colorsBoxContainer"]//ul[@id="colorsContainer"]/li/div[@title]')
+        if color_node:
+            try:
+                colors = [
+                    cls.reformat(val)
+                    for val in color_node.xpath('./@title').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors
