@@ -238,36 +238,23 @@ class JaegerLeCoultreSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        product_description_node = sel.xpath('//p[contains(@class,"description")]')
-        if product_description_node:
-            try:
-                description = product_description_node.xpath('./text()').extract()[0]
-                description = self.reformat(description)
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
 
-                if description:
-                    metadata['description'] = description
-            except(TypeError, IndexError):
-                pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        detail_node = sel.xpath('//div[@class="specifications"]')
-        if detail_node:
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-            def func(node):
-                node_name = node._root.tag
-                allText = ''.join(self.reformat(val) for val in node.xpath('.//text()').extract())
-                # dt标签说明他是一行的开头
-                if node_name == 'dt':
-                    return '\r'+allText
-                elif node_name == 'dd':
-                    return allText
-                return allText
-
-            nodes = detail_node.xpath('./dl/child::*')
-            detail = ''.join(func(node) for node in nodes)
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
-
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         image_nodes = sel.xpath('//a[@class="lightbox_recto"]')
@@ -281,15 +268,11 @@ class JaegerLeCoultreSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
 
-        price_node = sel.xpath('//div[@class="price"]')
-        if price_node:
-            try:
-                price = price_node.xpath('./h3/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    metadata['price'] = price
-            except(TypeError, IndexError):
-                pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         item = ProductItem()
         if image_urls:
@@ -299,3 +282,96 @@ class JaegerLeCoultreSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//div[@class="productDetails"]//a[@data-related]')
+        if model_node:
+            model = model_node.xpath('./@data-related').extract()[0]
+            model = cls.reformat(model)
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@class="price"]')
+        if price_node:
+            try:
+                price = price_node.xpath('./h3/text()').extract()[0]
+                price = cls.reformat(price)
+                if price:
+                    old_price = price
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@class="informationContainer"]//div[@class="reference-header"]/h1[text()]')
+        if name_node:
+            name = name_node.xpath('./text()').extract()[0]
+            name = cls.reformat(name)
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        product_description_node = sel.xpath('//p[contains(@class,"description")]')
+        if product_description_node:
+            try:
+                description = product_description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        detail_node = sel.xpath('//div[@class="specifications"]')
+        if detail_node:
+
+            def func(node):
+                node_name = node._root.tag
+                allText = ''.join(cls.reformat(val) for val in node.xpath('.//text()').extract())
+                # dt标签说明他是一行的开头
+                if node_name == 'dt':
+                    return '\r'+allText
+                elif node_name == 'dd':
+                    return allText
+                return allText
+
+            nodes = detail_node.xpath('./dl/child::*')
+            detail = ''.join(func(node) for node in nodes)
+            detail = cls.reformat(detail)
+            if detail:
+                details = detail
+
+        return details
