@@ -75,13 +75,13 @@ class ChaumetSpider(MFashionSpider):
             for node in prod_nodes:
                 href = node.xpath('@href').extract()[0]
                 m = copy.deepcopy(metadata)
-                # 尝试查找价格信息
-                try:
-                    tmp = self.reformat(node.xpath('../*[@class="price"]/text()').extract()[0])
-                    if tmp:
-                        m['price'] = tmp
-                except IndexError:
-                    pass
+                # # 尝试查找价格信息
+                # try:
+                #     tmp = self.reformat(node.xpath('../*[@class="price"]/text()').extract()[0])
+                #     if tmp:
+                #         m['price'] = tmp
+                # except IndexError:
+                #     pass
                 yield Request(url=self.process_href(href, response.url), callback=self.parse_details,
                               errback=self.onerr, meta={'userdata': m})
         else:
@@ -126,47 +126,64 @@ class ChaumetSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        try:
-            tmp = self.reformat(sel.xpath('//div[@class="productHead"]/*[@itemprop="name"]/text()').extract()[0])
-            if tmp and 'name' not in metadata:
-                metadata['name'] = tmp
-        except IndexError:
-            pass
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
 
-        # 查找型号
-        pattern = self.spider_data['model_pattern'][metadata['region']]
-        desc_terms = filter(lambda val: val, (self.reformat(val) for val in
-                                              sel.xpath('//div[@class="mod productInfosMod"]/div[@class="inner"]'
-                                                        '/p[@class="globalInfos"]'
-                                                        '/descendant-or-self::text()').extract()))
-        if desc_terms:
-            metadata['description'] = '\r'.join(desc_terms)
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), desc_terms))
-        if tmp:
-            tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
-            mt = re.search(r'[a-zA-Z\d\-]+', tmp)
-            if mt:
-                metadata['model'] = mt.group()
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        details_terms = filter(lambda val: val,
-                               (self.reformat(val) for val in
-                                sel.xpath(
-                                    '//div[@id="description"]//div[@class="contentProductLayer"]/div[@class="rte" or '
-                                    '@class="intro"]/descendant-or-self::text()').extract()))
-        if 'model' not in metadata:
-            tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), details_terms))
-            if not tmp:
-                return
-            tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
-            if not tmp:
-                return
-            mt = re.search(r'[a-zA-Z\d\-]+', tmp)
-            if not mt:
-                return
-            metadata['model'] = mt.group()
-        if details_terms:
-            metadata['details'] = '\r'.join(details_terms)
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
+
+        # # 查找型号
+        # pattern = self.spider_data['model_pattern'][metadata['region']]
+        # desc_terms = filter(lambda val: val, (self.reformat(val) for val in
+        #                                       sel.xpath('//div[@class="mod productInfosMod"]/div[@class="inner"]'
+        #                                                 '/p[@class="globalInfos"]'
+        #                                                 '/descendant-or-self::text()').extract()))
+        # if desc_terms:
+        #     metadata['description'] = '\r'.join(desc_terms)
+        #
+        # tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), desc_terms))
+        # if tmp:
+        #     tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
+        #     mt = re.search(r'[a-zA-Z\d\-]+', tmp)
+        #     if mt:
+        #         metadata['model'] = mt.group()
+        #
+        # details_terms = filter(lambda val: val,
+        #                        (self.reformat(val) for val in
+        #                         sel.xpath(
+        #                             '//div[@id="description"]//div[@class="contentProductLayer"]/div[@class="rte" or '
+        #                             '@class="intro"]/descendant-or-self::text()').extract()))
+        # if 'model' not in metadata:
+        #     tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), details_terms))
+        #     if not tmp:
+        #         return
+        #     tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
+        #     if not tmp:
+        #         return
+        #     mt = re.search(r'[a-zA-Z\d\-]+', tmp)
+        #     if not mt:
+        #         return
+        #     metadata['model'] = mt.group()
+        # if details_terms:
+        #     metadata['details'] = '\r'.join(details_terms)
 
         tmp = sel.xpath('//div[@class="mod productImageMod"]/div[@class="inner"]/a[@href]/@href').extract()
         if tmp:
@@ -197,3 +214,132 @@ class ChaumetSpider(MFashionSpider):
         item['metadata'] = metadata
         item['image_urls'] = image_urls
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        model = None
+        # 查找型号
+        tmp = None
+        pattern = None
+        try:
+            pattern = cls.spider_data['model_pattern'][region]
+            desc_terms = filter(lambda val: val, (cls.reformat(val) for val in
+                                                  sel.xpath('//div[@class="mod productInfosMod"]/div[@class="inner"]'
+                                                            '/p[@class="globalInfos"]'
+                                                            '/descendant-or-self::text()').extract()))
+            tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), desc_terms))
+        except(TypeError, IndexError):
+            pass
+        if tmp:
+            try:
+                tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
+                mt = re.search(r'[a-zA-Z\d\-]+', tmp)
+                if mt:
+                    model = mt.group()
+            except(TypeError, IndexError):
+                pass
+
+        if not model:
+            try:
+                details_terms = filter(lambda val: val,
+                                       (cls.reformat(val) for val in
+                                        sel.xpath(
+                                            '//div[@id="description"]//div[@class="contentProductLayer"]/div[@class="rte" or '
+                                            '@class="intro"]/descendant-or-self::text()').extract()))
+                tmp = list(filter(lambda val: re.search(pattern, val, flags=re.U | re.I), details_terms))
+            except(TypeError, IndexError):
+                pass
+            if tmp:
+                try:
+                    tmp = tmp[-1][re.search(pattern, tmp[-1], flags=re.U | re.I).end():]
+                    if tmp:
+                        mt = re.search(r'[a-zA-Z\d\-]+', tmp)
+                        if mt:
+                            model = mt.group()
+                except(TypeError, IndexError):
+                    pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@id="pageContent"]//div[@class="mod productInfosMod"]//*[@itemprop="price"][text()]')
+        if price_node:
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = NameError
+        try:
+            tmp = cls.reformat(sel.xpath('//div[@class="productHead"]/*[@itemprop="name"]/text()').extract()[0])
+            if tmp:
+                name = tmp
+        except IndexError:
+            pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            desc_terms = filter(lambda val: val, (cls.reformat(val) for val in
+                                                  sel.xpath('//div[@class="mod productInfosMod"]/div[@class="inner"]'
+                                                            '/p[@class="globalInfos"]'
+                                                            '/descendant-or-self::text()').extract()))
+            if desc_terms:
+                description = '\r'.join(desc_terms)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            details_terms = filter(lambda val: val,
+                                   (cls.reformat(val) for val in
+                                    sel.xpath(
+                                        '//div[@id="description"]//div[@class="contentProductLayer"]/div[@class="rte" or '
+                                        '@class="intro"]/descendant-or-self::text()').extract()))
+            if details_terms:
+                details = '\r'.join(details_terms)
+        except(TypeError, IndexError):
+            pass
+
+        return details
