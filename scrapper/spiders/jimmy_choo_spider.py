@@ -136,48 +136,48 @@ class JimmyChooSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            try:
-                name = node.xpath('./div[@class="name"]/a/text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
-            except(TypeError, IndexError):
-                pass
-
-            try:
-                price_node = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="salesprice"]')
-                # 非打折商品
-                if price_node:
-                    price = price_node.xpath('./text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        m['price'] = price
-                # 打折商品
-                else:
-                    price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="standardprice"]/text()').extract()[0]
-                    price = self.reformat(price)
-                    if price:
-                        m['price'] = price
-
-                    discount_price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="salesprice"]/text()').extract()[0]
-                    discount_price = self.reformat(discount_price)
-                    if discount_price:
-                        m['price_discount'] = discount_price
-            except(TypeError, IndexError):
-                pass
-
-            try:
-                colors = None
-                color_nodes = node.xpath('./div[@class="swatches"]/div[@class="palette"]/div[@class="innerpalette"]/a[@title]')
-                if color_nodes:
-                    colors = [
-                        self.reformat(val).lower()
-                        for val in color_nodes.xpath('./@title').extract()
-                    ]
-                if colors:
-                    m['color'] = colors
-            except(TypeError, IndexError):
-                pass
+            # try:
+            #     name = node.xpath('./div[@class="name"]/a/text()').extract()[0]
+            #     name = self.reformat(name)
+            #     if name:
+            #         m['name'] = name
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # try:
+            #     price_node = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="salesprice"]')
+            #     # 非打折商品
+            #     if price_node:
+            #         price = price_node.xpath('./text()').extract()[0]
+            #         price = self.reformat(price)
+            #         if price:
+            #             m['price'] = price
+            #     # 打折商品
+            #     else:
+            #         price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="standardprice"]/text()').extract()[0]
+            #         price = self.reformat(price)
+            #         if price:
+            #             m['price'] = price
+            #
+            #         discount_price = node.xpath('./div[@class="pricing"]/div[@class="price"]/div[@class="discountprice"]/div[@class="salesprice"]/text()').extract()[0]
+            #         discount_price = self.reformat(discount_price)
+            #         if discount_price:
+            #             m['price_discount'] = discount_price
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # try:
+            #     colors = None
+            #     color_nodes = node.xpath('./div[@class="swatches"]/div[@class="palette"]/div[@class="innerpalette"]/a[@title]')
+            #     if color_nodes:
+            #         colors = [
+            #             self.reformat(val).lower()
+            #             for val in color_nodes.xpath('./@title').extract()
+            #         ]
+            #     if colors:
+            #         m['color'] = colors
+            # except(TypeError, IndexError):
+            #     pass
 
             try:
                 href = node.xpath('.//a[@href]/@href').extract()[0]
@@ -211,64 +211,33 @@ class JimmyChooSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # model隐藏在源码的一个link里边
-        model = None
-        try:
-            model_link_node = sel.xpath('//link[@rel="canonical"][@href]')
-            if model_link_node:
-                model_link = model_link_node.xpath('./@href').extract()[0]
-                model_link = self.reformat(model_link)
-                if model_link:
-                    mt = re.search(r'-(\w+)\.', model_link)
-                    if mt:
-                        model = mt.group(1).upper()
-        except(TypeError, IndexError):
-            pass
+        model = self.fetch_model(response)
         if model:
             metadata['model'] = model
         else:
             return
 
-        # 有些时候，这个单品的颜色，在list里边不会展示
-        # 这里在单品页再取一次
-        # 比如：http://row.jimmychoo.com/en/women/handbags/cross-body-bags/rebel/black--grainy-calf-leather-cross-body-bag-247rebelgrc.html?start=5&dwvar_247rebelgrc_size=One%20Size&dwvar_247rebelgrc_color=Black
-        colors = None
-        try:
-            color_nodes = sel.xpath('//div[@class="variationattributes"]/div[@class="swatches color"]/ul/li/a[@title]')
-            if color_nodes:
-                colors = [
-                    self.reformat(val)
-                    for val in color_nodes.xpath('./@title').extract()
-                ]
-        except(TypeError, IndexError):
-            pass
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
-        try:
-            description_node = sel.xpath('//div[@id="descriptionAccordian"]/p[text()]')
-            if description_node:
-                description = description_node.xpath('./text()').extract()[0]
-                description = self.reformat(description)
-                if description:
-                    metadata['description'] = description
-        except(TypeError, IndexError):
-            pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        # 这里包含了页面上 DELIVERY AND RETURNS 和 SIZE AND FIT 两部分
-        # 感觉都有点儿用
-        try:
-            detail_node = sel.xpath('//div[@id="deliveryAccordian" or @id="sizeAccordian"]/p[text()]')
-            if detail_node:
-                detail = '\r'.join(
-                    self.reformat(val)
-                    for val in detail_node.xpath('./text()').extract()
-                )
-                detail = self.reformat(detail)
-                if detail:
-                    metadata['details'] = detail
-        except(TypeError, IndexError):
-            pass
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         image_urls = []
         try:
@@ -297,3 +266,122 @@ class JimmyChooSpider(MFashionSpider):
         item['metadata'] = metadata
 
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        # model隐藏在源码的一个link里边
+        model = None
+        try:
+            model_link_node = sel.xpath('//link[@rel="canonical"][@href]')
+            if model_link_node:
+                model_link = model_link_node.xpath('./@href').extract()[0]
+                model_link = cls.reformat(model_link)
+                if model_link:
+                    mt = re.search(r'-(\w+)\.', model_link)
+                    if mt:
+                        model = mt.group(1).upper()
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        # TODO 网站上已经找不到打折的东西了，所以这里没有处理打折单品
+        price_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
+        if price_node:
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productimages"]/div[@class="productname"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            description_node = sel.xpath('//div[@id="descriptionAccordian"]/p[text()]')
+            if description_node:
+                description = description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        # 这里包含了页面上 DELIVERY AND RETURNS 和 SIZE AND FIT 两部分
+        # 感觉都有点儿用
+        try:
+            detail_node = sel.xpath('//div[@id="deliveryAccordian" or @id="sizeAccordian"]/p[text()]')
+            if detail_node:
+                detail = '\r'.join(
+                    cls.reformat(val)
+                    for val in detail_node.xpath('./text()').extract()
+                )
+                detail = cls.reformat(detail)
+                if detail:
+                    details = detail
+        except(TypeError, IndexError):
+            pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        # 有些时候，这个单品的颜色，在list里边不会展示
+        # 这里在单品页再取一次
+        # 比如：http://row.jimmychoo.com/en/women/handbags/cross-body-bags/rebel/black--grainy-calf-leather-cross-body-bag-247rebelgrc.html?start=5&dwvar_247rebelgrc_size=One%20Size&dwvar_247rebelgrc_color=Black
+        colors = None
+        try:
+            color_nodes = sel.xpath('//div[@class="variationattributes"]/div[@class="swatches color"]/ul/li/a[@title]')
+            if color_nodes:
+                colors = [
+                    cls.reformat(val)
+                    for val in color_nodes.xpath('./@title').extract()
+                ]
+        except(TypeError, IndexError):
+            pass
+
+        return colors
