@@ -81,12 +81,12 @@ class MichaelKorsSpider(MFashionSpider):
             # 没有下级目录的情况，返回所有单品
             for node in sel.xpath('//ul[@id="list-content"]/li[contains(@class,"item")]/a[@href]'):
                 m = copy.deepcopy(metadata)
-                tmp = node.xpath('./span[@class="product-name"]')
-                if tmp:
-                    m['name'] = self.reformat(unicodify(tmp[0]._root.text))
-                tmp = node.xpath('.//span[@class="price"]')
-                if tmp:
-                    m['price'] = self.reformat(unicodify(tmp[0]._root.text))
+                # tmp = node.xpath('./span[@class="product-name"]')
+                # if tmp:
+                #     m['name'] = self.reformat(unicodify(tmp[0]._root.text))
+                # tmp = node.xpath('.//span[@class="price"]')
+                # if tmp:
+                #     m['price'] = self.reformat(unicodify(tmp[0]._root.text))
                 yield Request(url=self.process_href(node._root.attrib['href'], response.url), dont_filter=True,
                               callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
@@ -95,12 +95,21 @@ class MichaelKorsSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@class="product-info"]//span[@class="style-no"]/text()').extract()
-        if tmp:
-            model = self.reformat(re.sub(self.spider_data['ref_notation'][metadata['region']], '', tmp[0]))
+        model = self.fetch_model(response)
+        if model:
             metadata['model'] = model
-        if 'model' not in metadata or not metadata['model']:
+        else:
             return
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
         tmp = sel.xpath('//div[@class="product-info"]/ul[@class="product"]/li/a[@href and @data-zoom-width and '
                         '@data-zoom-height]')
@@ -113,9 +122,57 @@ class MichaelKorsSpider(MFashionSpider):
         item['metadata'] = metadata
         return item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
 
+        model = None
+        try:
+            tmp = sel.xpath('//div[@class="product-info"]//span[@class="style-no"]/text()').extract()
+            if tmp:
+                model = cls.reformat(re.sub(cls.spider_data['ref_notation'][region], '', tmp[0]))
+        except(TypeError, IndexError):
+            pass
 
+        return model
 
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
 
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@class="product-info"]//span[@class="price"][text()]')
+        if price_node:
+            old_price = price_node.xpath('./text()').extract()[0]
+            old_price = cls.reformat(old_price)
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@class="product-info"]/div[@class="product-info-content-top"]/h1[text()]')
+        if name_node:
+            name = name_node.xpath('./text()').extract()[0]
+            name = cls.reformat(name)
+
+        return name
