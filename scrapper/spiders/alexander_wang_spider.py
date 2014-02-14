@@ -239,22 +239,22 @@ class AlexanderWangSpider(MFashionSpider):
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            name = None
-            try:
-                name = node.xpath('.//div[@class="description"]/a/div[@class="title"]/text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
-            except(TypeError, IndexError):
-                pass
-            if not name:    # 针对美国官网
-                try:
-                    name = node.xpath('./div[@class="product-info"]//a[@class="product-name"]/text()').extract()[0]
-                    name = self.reformat(name)
-                    if name:
-                        m['name'] = name
-                except(TypeError, IndexError):
-                    pass
+            # name = None
+            # try:
+            #     name = node.xpath('.//div[@class="description"]/a/div[@class="title"]/text()').extract()[0]
+            #     name = self.reformat(name)
+            #     if name:
+            #         m['name'] = name
+            # except(TypeError, IndexError):
+            #     pass
+            # if not name:    # 针对美国官网
+            #     try:
+            #         name = node.xpath('./div[@class="product-info"]//a[@class="product-name"]/text()').extract()[0]
+            #         name = self.reformat(name)
+            #         if name:
+            #             m['name'] = name
+            #     except(TypeError, IndexError):
+            #         pass
 
             # try:
             #     price_node = node.xpath('.//div[@class="productPrice"]/div[@class="oldprice"]')
@@ -297,18 +297,18 @@ class AlexanderWangSpider(MFashionSpider):
             # except(TypeError, IndexError):
             #     pass
 
-            # 这里只有非美国的，美国官网的那个，这里列表的颜色，没有一个描述
-            try:
-                color_nodes = node.xpath('.//div[@class="colorsList"]//div[@class="color"]//img[@title]')
-                if color_nodes:
-                    colors = [
-                        self.reformat(val)
-                        for val in color_nodes.xpath('./@title').extract()
-                    ]
-                    if colors:
-                        m['color'] = colors
-            except(TypeError, IndexError):
-                pass
+            # # 这里只有非美国的，美国官网的那个，这里列表的颜色，没有一个描述
+            # try:
+            #     color_nodes = node.xpath('.//div[@class="colorsList"]//div[@class="color"]//img[@title]')
+            #     if color_nodes:
+            #         colors = [
+            #             self.reformat(val)
+            #             for val in color_nodes.xpath('./@title').extract()
+            #         ]
+            #         if colors:
+            #             m['color'] = colors
+            # except(TypeError, IndexError):
+            #     pass
 
             # 这个li的node里边，随便一个a标签，都可以到单品页面
             href = node.xpath('.//a[@href]/@href').extract()[0]
@@ -352,54 +352,17 @@ class AlexanderWangSpider(MFashionSpider):
 
         metadata['url'] = response.url
 
-        # 页面中的货号栏，注意前边会有没用的字符（比如 货号：,style：等）
-        try:
-            model = None
-            model_node = sel.xpath('//li[@id="description_container"]/div[@id="description_pane"]/div[@class="style"]')
-            if not model_node:  # 针对美国官网
-                model_node = sel.xpath('//div[@class="accordion"]//span[@class="product-style"]')
-            if model_node:
-                model_text = model_node.xpath('./text()').extract()[0]
-                model_text = self.reformat(model_text)
-                if model_text:
-                    mt = re.search(r'\b([0-9]+\w*)\b', model_text)
-                    if mt:
-                        model = mt.group(1)
-
-            if model:
-                metadata['model'] = model
-            else:
-                return
-        except(TypeError, IndexError):
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
 
-        # Zephyre：处理价格信息
-        tmp = sel.xpath(
-            '//div[@id="itemPrice"]/div[@class="newprice"]/*[@class="currency" or @class="priceValue"]/text()').extract()
-        new_price = self.reformat(' '.join(tmp)) if tmp else None
-        tmp = sel.xpath(
-            '//div[@id="itemPrice"]/div[@class="oldprice"]/*[@class="currency" or @class="priceValue"]/text()').extract()
-        old_price = self.reformat(' '.join(tmp)) if tmp else None
-
-        # 另外几种网页结构
-        if not new_price:
-            tmp = sel.xpath(
-                '//div[@id="detail_sku"]/div[contains(@class,"product-price")]//li[@class="product-price-retail"]/text()').extract()
-            old_price = self.reformat(' '.join(tmp)) if tmp else None
-            tmp = sel.xpath(
-                '//div[@id="detail_sku"]/div[contains(@class,"product-price")]//li[@class="product-price-markdown"]/text()').extract()
-            new_price = self.reformat(' '.join(tmp)) if tmp else None
-        if not new_price:
-            tmp = sel.xpath('//div[@id="detail_sku"]//cite[contains(@class,"product-price")]/text()').extract()
-            new_price = self.reformat(' '.join(tmp)) if tmp else None
-            old_price = None
-
-        if new_price:
-            if old_price:
-                metadata['price'] = old_price
-                metadata['price_discount'] = new_price
-            else:
-                metadata['price'] = new_price
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         # # 这里主要是针对有些商品打折，有些没打折
         # # 如果没打折，那么，在parse_product_list中的那个price_node会为None
@@ -429,73 +392,21 @@ class AlexanderWangSpider(MFashionSpider):
         # except(TypeError, IndexError):
         #     pass
 
-        try:
-            colors = [
-                self.reformat(val)
-                for val in
-                sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@title]/@title').extract()
-            ]
-            if colors:
-                metadata['color'] = colors
-        except(TypeError, IndexError):
-            pass
-            # 这里要特别找到美国官网上，单品的颜色
-        try:
-            colors = [
-                self.reformat(val)
-                for val in sel.xpath('//div[@id="product_options"]//img[@alt]/@alt').extract()
-            ]
-            if colors:
-                metadata['color'] = colors
-        except(TypeError, IndexError):
-            pass
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        try:
-            description = '\r'.join(
-                self.reformat(val)
-                for val in sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]//text()').extract()
-            )
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
-        except(TypeError, IndexError):
-            pass
-            # 这里针对美国官网
-        try:
-            description = '\r'.join(
-                self.reformat(val)
-                for val in sel.xpath(
-                    '//div[@class="product-information"]//div[contains(@class, "first")]//div[@class="accordion-inner"]/p/text()').extract()
-            )
-            description = self.reformat(description)
-            if description:
-                metadata['description'] = description
-        except(TypeError, IndexError):
-            pass
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
-        try:
-            detail = '\r'.join(
-                self.reformat(val)
-                for val in sel.xpath('//div[@id="description_pane"]/div[@class="details"]//text()').extract()
-            )
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
-        except(TypeError, IndexError):
-            pass
-            # 这里针对美国官网
-        try:
-            detail = '\r'.join(
-                self.reformat(val)
-                for val in sel.xpath(
-                    '//div[@class="product-information"]//div[@class="accordion-group"][not(child::ul)]//div[@class="accordion-inner"]/p/text()').extract()
-            )
-            detail = self.reformat(detail)
-            if detail:
-                metadata['details'] = detail
-        except(TypeError, IndexError):
-            pass
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
 
         # 下边是取的图片url
         image_urls = None
@@ -562,3 +473,179 @@ class AlexanderWangSpider(MFashionSpider):
 
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        # 页面中的货号栏，注意前边会有没用的字符（比如 货号：,style：等）
+        try:
+            model_node = sel.xpath('//li[@id="description_container"]/div[@id="description_pane"]/div[@class="style"]')
+            if not model_node:  # 针对美国官网
+                model_node = sel.xpath('//div[@class="accordion"]//span[@class="product-style"]')
+            if model_node:
+                model_text = model_node.xpath('./text()').extract()[0]
+                model_text = cls.reformat(model_text)
+                if model_text:
+                    mt = re.search(r'\b([0-9]+\w*)\b', model_text)
+                    if mt:
+                        model = mt.group(1)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+
+        price_text_new = None
+        price_text_old = None
+        try:
+            # Zephyre：处理价格信息
+            tmp = sel.xpath(
+                '//div[@id="itemPrice"]/div[@class="newprice"]/*[@class="currency" or @class="priceValue"]/text()').extract()
+            price_text_new = cls.reformat(' '.join(tmp)) if tmp else None
+            tmp = sel.xpath(
+                '//div[@id="itemPrice"]/div[@class="oldprice"]/*[@class="currency" or @class="priceValue"]/text()').extract()
+            price_text_old = cls.reformat(' '.join(tmp)) if tmp else None
+        except(TypeError, IndexError):
+            pass
+
+        # 另外几种网页结构
+        if not price_text_new:
+            try:
+                tmp = sel.xpath(
+                    '//div[@id="detail_sku"]/div[contains(@class,"product-price")]//li[@class="product-price-retail"]/text()').extract()
+                price_text_old = cls.reformat(' '.join(tmp)) if tmp else None
+                tmp = sel.xpath(
+                    '//div[@id="detail_sku"]/div[contains(@class,"product-price")]//li[@class="product-price-markdown"]/text()').extract()
+                price_text_new = cls.reformat(' '.join(tmp)) if tmp else None
+            except(TypeError, IndexError):
+                pass
+        if not price_text_new:
+            try:
+                tmp = sel.xpath('//div[@id="detail_sku"]//cite[contains(@class,"product-price")]/text()').extract()
+                price_text_new = cls.reformat(' '.join(tmp)) if tmp else None
+                price_text_old = None
+            except(TypeError, IndexError):
+                pass
+        if price_text_new:
+            if price_text_old:
+                old_price = price_text_old
+                new_price = price_text_new
+            else:
+                old_price = price_text_new
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="itemDetails"]//div[@id="itemInfo"]/h1[text()]')
+        if not name_node:
+            name_node = sel.xpath('//div[@id="product-left"]//div[@id="detail_sku"]/h1[text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            description = '\r'.join(
+                cls.reformat(val)
+                for val in sel.xpath('//div[@id="description_pane"]/div[@class="itemDesc"]//text()').extract()
+            )
+            description = cls.reformat(description)
+        except(TypeError, IndexError):
+            pass
+        # 这里针对美国官网
+        if not description:
+            try:
+                description = '\r'.join(
+                    cls.reformat(val)
+                    for val in sel.xpath(
+                        '//div[@class="product-information"]//div[contains(@class, "first")]//div[@class="accordion-inner"]/p/text()').extract()
+                )
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            detail = '\r'.join(
+                cls.reformat(val)
+                for val in sel.xpath('//div[@id="description_pane"]/div[@class="details"]//text()').extract()
+            )
+            detail = cls.reformat(detail)
+            if detail:
+                details = detail
+        except(TypeError, IndexError):
+            pass
+        if not details:
+            try:
+                detail = '\r'.join(
+                    cls.reformat(val)
+                    for val in sel.xpath(
+                        '//div[@class="product-information"]//div[@class="accordion-group"][not(child::ul)]//div[@class="accordion-inner"]/p/text()').extract()
+                )
+                detail = cls.reformat(detail)
+                if detail:
+                    details = detail
+            except(TypeError, IndexError):
+                pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = None
+        try:
+            colors = [
+                cls.reformat(val)
+                for val in
+                sel.xpath('//div[@class="itemColorsContainer"]/ul[@id="itemColors"]/li[@title]/@title').extract()
+            ]
+        except(TypeError, IndexError):
+            pass
+        if not colors:
+            try:
+                colors = [
+                    cls.reformat(val)
+                    for val in sel.xpath('//div[@id="product_options"]//img[@alt]/@alt').extract()
+                ]
+            except(TypeError, IndexError):
+                pass
+
+        return colors
