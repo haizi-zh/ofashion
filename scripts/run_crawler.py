@@ -230,7 +230,7 @@ def main():
             else:
                 if is_update:
                     logfile = os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
-                                                            unicode.format(u'{0}_{2}.log',
+                                                            unicode.format(u'update_{0}_{1}.log',
                                                                            '_'.join(cmd['param']['brand']),
                                                                            datetime.datetime.now().strftime(
                                                                                '%Y%m%d%H%M%S'))))
