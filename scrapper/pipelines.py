@@ -77,7 +77,8 @@ class UpdatePipeline(object):
                 if metadata['price_discount'] != price_discount:
                     update_data['price_discount'] = metadata['price_discount']
             else:
-                update_data['price_discount'] = None
+                if price_discount:
+                    update_data['price_discount'] = None
             if item['offline'] != offline:
                 update_data['offline'] = item['offline']
 

@@ -7,12 +7,20 @@ __author__ = 'Zephyre'
 
 
 def guess_currency(price):
+    # 如果下面这些符号出现在字符串中，则可以直接确定货币
     symbols = {u'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD', 'US$': 'USD', u'£': 'GBP'}
     # 按照符号提取
     for s in symbols:
         if s in price:
             return symbols[s]
 
+    # 如果$前面没有两个大写的字母，即没有出现CA$，AU $等情况，则说明货币是美元。
+    if '$' in price:
+        mt = re.search(r'[A-Z]{2}\s*\$', price, flags=re.U)
+        if not mt:
+            return 'USD'
+
+    # 若字符串中包含大写的三个字母，并且该标识出现在货币列表中，说明这三个字母组成的字符串是货币信息
     mt = re.search(r'([A-Z]{3})', price, flags=re.U)
     if mt and mt.group(1) in glob.currency_info().keys():
         return mt.group(1)
