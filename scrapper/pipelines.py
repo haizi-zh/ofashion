@@ -73,8 +73,11 @@ class UpdatePipeline(object):
                 update_data['color'] = json.dumps(metadata['color'], ensure_ascii=False)
             if 'price' in metadata and metadata['price'] != price:
                 update_data['price'] = metadata['price']
-            if 'price_discount' in metadata and metadata['price_discount'] != price_discount:
-                update_data['price_discount'] = metadata['price_discount']
+            if 'price_discount' in metadata:
+                if metadata['price_discount'] != price_discount:
+                    update_data['price_discount'] = metadata['price_discount']
+            else:
+                update_data['price_discount'] = None
             if item['offline'] != offline:
                 update_data['offline'] = item['offline']
 
@@ -116,6 +119,8 @@ class UpdatePipeline(object):
         except:
             self.db.rollback()
             raise
+        finally:
+            self.db.commit()
 
 
 class ProductPipeline(object):
