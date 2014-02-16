@@ -6,7 +6,7 @@ import global_settings as glob
 __author__ = 'Zephyre'
 
 
-def guess_currency(price):
+def guess_currency(price, region=None):
     # 如果下面这些符号出现在字符串中，则可以直接确定货币
     symbols = {u'€': 'EUR', 'HK$': 'HKD', 'AU$': 'AUD', 'CA$': 'CAD', 'US$': 'USD', u'£': 'GBP'}
     # 按照符号提取
@@ -19,6 +19,9 @@ def guess_currency(price):
         mt = re.search(r'[A-Z]{2}\s*\$', price, flags=re.U)
         if not mt:
             return 'USD'
+
+    if '¥' in price and region in ('cn', 'hk', 'mo', 'tw'):
+        return 'CNY'
 
     # 若字符串中包含大写的三个字母，并且该标识出现在货币列表中，说明这三个字母组成的字符串是货币信息
     mt = re.search(r'([A-Z]{3})', price, flags=re.U)
@@ -60,7 +63,7 @@ def process_price(price, region, decimal=None, currency=None):
 
     if not currency:
         # 如果price没有货币单位信息，则根据根据price内容，尝试提取货币信息。
-        currency = guess_currency(price)
+        currency = guess_currency(price, region=region)
         if not currency:
             # 如果无法提取货币信息，则使用region的默认值
             currency = glob.region_info()[region]['currency']
