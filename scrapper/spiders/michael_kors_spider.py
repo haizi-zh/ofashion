@@ -155,8 +155,11 @@ class MichaelKorsSpider(MFashionSpider):
         new_price = None
         price_node = sel.xpath('//div[@class="product-info"]//span[@class="price"][text()]')
         if price_node:
-            old_price = price_node.xpath('./text()').extract()[0]
-            old_price = cls.reformat(old_price)
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
 
         if old_price:
             ret['price'] = old_price
@@ -172,7 +175,10 @@ class MichaelKorsSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//div[@class="product-info"]/div[@class="product-info-content-top"]/h1[text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = cls.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         return name

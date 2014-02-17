@@ -294,8 +294,11 @@ class JaegerLeCoultreSpider(MFashionSpider):
         model = None
         model_node = sel.xpath('//div[@class="productDetails"]//a[@data-related]')
         if model_node:
-            model = model_node.xpath('./@data-related').extract()[0]
-            model = cls.reformat(model)
+            try:
+                model = model_node.xpath('./@data-related').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
 
         return model
 
@@ -330,8 +333,11 @@ class JaegerLeCoultreSpider(MFashionSpider):
         name = None
         name_node = sel.xpath('//div[@class="informationContainer"]//div[@class="reference-header"]/h1[text()]')
         if name_node:
-            name = name_node.xpath('./text()').extract()[0]
-            name = cls.reformat(name)
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
 
         return name
 
