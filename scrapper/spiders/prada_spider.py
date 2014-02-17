@@ -37,13 +37,13 @@ class PradaSpider(MFashionSpider):
                                  'ch': 'http://store.prada.com/en/CH/',
                    },
     }
+    spider_data['hosts'] = {k: 'http://store.prada.com' for k in spider_data['home_urls']}
 
     @classmethod
     def get_supported_regions(cls):
         return PradaSpider.spider_data['hosts'].keys()
 
     def __init__(self, region):
-        self.spider_data['hosts'] = {k: 'http://store.prada.com' for k in self.spider_data['home_urls']}
         super(PradaSpider, self).__init__('prada', region)
 
     @classmethod
@@ -78,32 +78,39 @@ class PradaSpider(MFashionSpider):
                               'div[contains(@class,"product")]/a[@href]'):
             m = copy.deepcopy(metadata)
             href = self.process_href(node._root.attrib['href'], response.url)
-            temp = node.xpath('./figcaption/div[@class="name"]')
-            if not temp:
-                continue
-            m['name'] = unicodify(temp[0]._root.text)
+            # temp = node.xpath('./figcaption/div[@class="name"]')
+            # if not temp:
+                # continue
+            # m['name'] = unicodify(temp[0]._root.text)
             yield Request(url=href, callback=self.parse_details, meta={'userdata': m}, errback=self.onerr)
 
     def parse_details(self, response):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        temp = sel.xpath('//section[@class="summary"]/div[@class="code"]')
-        if temp and temp[0]._root.text:
-            metadata['model'] = unicodify(temp[0]._root.text)
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
         else:
-            return None
+            return
 
-        temp = sel.xpath('//section[@class="summary"]/div[@class="price"]/span[@class="value"]')
-        if temp:
-            metadata['price'] = unicodify(temp[0]._root.text)
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        temp = sel.xpath('//section[@class="summary"]/div[@class="color"]/div[@class="name"]')
-        if temp:
-            metadata['color'] = [val.strip() for val in unicodify(temp[0]._root.text).split('+')]
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
-        temp = sel.xpath('//section[@class="details"]/figcaption[@class="description"]/ul/li')
-        metadata['description'] = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         temp = sel.xpath('//article[@class="product"]/figure[@class="slider"]/img[@data-zoom-url]')
         image_urls = [self.process_href(val._root.attrib['data-zoom-url'], response.url) for val in temp]
@@ -175,3 +182,84 @@ class PradaSpider(MFashionSpider):
                                    errback=self.onerr))
 
         return ret
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            temp = sel.xpath('//section[@class="summary"]/div[@class="code"]')
+            if temp and temp[0]._root.text:
+                model = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            temp = sel.xpath('//section[@class="summary"]/div[@class="price"]/span[@class="value"]')
+            if temp:
+                old_price = unicodify(temp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//article[@class="product"]//div[@class="title"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            temp = sel.xpath('//section[@class="details"]/figcaption[@class="description"]/ul/li')
+            description = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        try:
+            temp = sel.xpath('//section[@class="summary"]/div[@class="color"]/div[@class="name"]')
+            if temp:
+                colors = [val.strip() for val in unicodify(temp[0]._root.text).split('+')]
+        except(TypeError, IndexError):
+            pass
+
+        return colors
