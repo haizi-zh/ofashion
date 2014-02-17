@@ -95,10 +95,9 @@ class BalenciagaSpider(MFashionSpider):
         if description:
             metadata['description'] = description
 
-        tmp = sel.xpath('//div[@id="itemInfo"]/h1/span[@class="modelColor"]')
-        tmp = tmp and unicodify(tmp[0]._root.text)
-        if tmp:
-            metadata['color'] = [self.reformat(tmp).lower()]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -245,3 +244,18 @@ class BalenciagaSpider(MFashionSpider):
             pass
 
         return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        try:
+            tmp = sel.xpath('//div[@id="itemInfo"]/h1/span[@class="modelColor"]')
+            tmp = tmp and unicodify(tmp[0]._root.text)
+            if tmp:
+                colors = [cls.reformat(tmp).lower()]
+        except(TypeError, IndexError):
+            pass
+
+        return colors
