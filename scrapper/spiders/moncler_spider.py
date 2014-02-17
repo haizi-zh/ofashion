@@ -95,7 +95,8 @@ class MonclerSpider(MFashionSpider):
                 if tag_type:
                     m['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
                 else:
-                    m['color'] = [tag_name.lower()]
+                    # m['color'] = [tag_name.lower()]
+                    pass
 
                 url = self.process_href(node._root.attrib['href'], response.url)
                 yield Request(url=url, meta={'userdata': m, 'filter-level': filter_idx + 1},
@@ -141,6 +142,10 @@ class MonclerSpider(MFashionSpider):
         detail = self.fetch_details(response)
         if detail:
             metadata['details'] = detail
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         image_urls = []
         mt = re.search(r'var\s+jsoninit_item', response.body)
@@ -264,3 +269,18 @@ class MonclerSpider(MFashionSpider):
             pass
 
         return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        color_nodes = sel.xpath('//div[@id="containerRight"]//div[@id="colorsContainer"]/div[contains(@class,"colorBox")][@title]')
+        if color_nodes:
+            try:
+                colors = [cls.reformat(val)
+                          for val in color_nodes.xpath('./@title').extract()]
+            except(TypeError, IndexError):
+                pass
+
+        return colors

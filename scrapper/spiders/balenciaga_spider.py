@@ -132,7 +132,7 @@ class BalenciagaSpider(MFashionSpider):
                     if not tmp:
                         continue
                     m = copy.deepcopy(metadata)
-                    m['color'] = [tmp.lower()]
+                    # m['color'] = [tmp.lower()]
                     yield Request(url=self.process_href(node2.xpath('..')[0]._root.attrib['href'], response.url),
                                   meta={'userdata': m}, callback=self.parse_details, errback=self.onerr,
                                   dont_filter=True)
