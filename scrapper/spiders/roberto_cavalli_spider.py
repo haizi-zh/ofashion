@@ -69,33 +69,33 @@ class RobertoCavalliSpider(MFashionSpider):
         sel = Selector(response)
 
         for node in sel.xpath('//ul[@id="productList"]/li[@class="product" and @data-code8]'):
-            model = node.xpath('@data-code8').extract()[0]
+            # model = node.xpath('@data-code8').extract()[0]
             try:
                 url = self.process_href(
                     node.xpath('.//a[(@data-itemlink or @data-itemLink) and @href]/@href').extract()[0], response.url)
-                name = self.reformat(node.xpath(
-                    './/div[@class="productDetailsContainer"]//div[@class="productMicro"]/a[@href]/text()').extract()[
-                    0])
+                # name = self.reformat(node.xpath(
+                #     './/div[@class="productDetailsContainer"]//div[@class="productMicro"]/a[@href]/text()').extract()[
+                #     0])
             except (IndexError, TypeError):
                 continue
             m = copy.deepcopy(metadata)
-            m['model'] = model
-            m['name'] = name
+            # m['model'] = model
+            # m['name'] = name
 
-            tmp = node.xpath(
-                './/div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="price"]/'
-                '*[@class="currency" or @class="priceValue"]/text()').extract()
-            price_new = ''.join(self.reformat(val) for val in tmp if val)
-            tmp = node.xpath(
-                './/div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="priceWithoutPromotion"]/'
-                '*[@class="currency" or @class="priceValue"]/text()').extract()
-            price_old = ''.join(self.reformat(val) for val in tmp if val)
-
-            if price_old and price_new:
-                m['price'] = price_old
-                m['price_discount'] = price_new
-            elif price_new and not price_old:
-                m['price'] = price_new
+            # tmp = node.xpath(
+            #     './/div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="price"]/'
+            #     '*[@class="currency" or @class="priceValue"]/text()').extract()
+            # price_new = ''.join(self.reformat(val) for val in tmp if val)
+            # tmp = node.xpath(
+            #     './/div[contains(@class,"productDescriptionContainer")]//div[@data-item-prop="priceWithoutPromotion"]/'
+            #     '*[@class="currency" or @class="priceValue"]/text()').extract()
+            # price_old = ''.join(self.reformat(val) for val in tmp if val)
+            #
+            # if price_old and price_new:
+            #     m['price'] = price_old
+            #     m['price_discount'] = price_new
+            # elif price_new and not price_old:
+            #     m['price'] = price_new
 
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
@@ -157,7 +157,10 @@ class RobertoCavalliSpider(MFashionSpider):
         model = None
         mt = re.search(ur'cod(\d+)', response.url)
         if mt:
-            model = mt.group(1)
+            try:
+                model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
 
         return model
 
@@ -168,20 +171,31 @@ class RobertoCavalliSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        old_price_node = sel.xpath('//div[@id="shopCnt"]//div[@data-item-prop="price"][text()]')
-        if old_price_node:
+        origin_node = sel.xpath('//div[@id="shopCnt"]//div[@data-item-prop="priceWithoutPromotion"][text()]')
+        if origin_node:
             try:
                 old_price = ''.join(cls.reformat(val)
-                                    for val in old_price_node.xpath('.//text()').extract())
+                                    for val in origin_node.xpath('.//text()').extract())
+                old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
-        new_price_node = sel.xpath('//div[@id="shopCnt"]//div[@data-item-prop="priceWithoutPromotion"][text()]')
-        if new_price_node:
-            try:
-                new_price = ''.join(cls.reformat(val)
-                                    for val in new_price_node.xpath('.//text()').extract())
-            except(TypeError, IndexError):
-                pass
+
+            discount_node = sel.xpath('//div[@id="shopCnt"]//div[@data-item-prop="price"][text()]')
+            if discount_node:
+                try:
+                    new_price = ''.join(cls.reformat(val)
+                                        for val in discount_node.xpath('.//text()').extract())
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+        else:
+            old_node = sel.xpath('//div[@id="shopCnt"]//div[@data-item-prop="price"][text()]')
+            if old_node:
+                try:
+                    old_price = ''.join(cls.reformat(val) for val in old_node.xpath('.//text()').extract())
+                    old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
 
         if old_price:
             ret['price'] = old_price
