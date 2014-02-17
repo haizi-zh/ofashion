@@ -360,6 +360,9 @@ class ValentinoSpider(MFashionSpider):
         colors = []
         color_node = sel.xpath('//div[@class="innerCol"]//div[@id="colorsContainer"]//div[@class="colorBoxSelected"][@title]')
         if color_node:
-            colors = [cls.reformat(val) for val in color_node.xpath('./text()').extract()]
+            try:
+                colors = [cls.reformat(val) for val in color_node.xpath('./text()').extract()]
+            except(TypeError, IndexError):
+                pass
 
         return colors
