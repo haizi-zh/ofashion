@@ -83,20 +83,20 @@ class VersaceSpider(MFashionSpider):
         for node in sel.xpath('//ul[contains(@class,"productlisting")]/li[contains(@class,"product-item")]'
                               '/a[@href and @title and @name]'):
             m = copy.deepcopy(metadata)
-            tmp = self.reformat(node.xpath('@title').extract()[0])
-            if tmp:
-                m['name'] = tmp
-
-            tmp = node.xpath('.//div[@class="salesprice"]/text()').extract()
-            if tmp:
-                tmp = self.reformat(tmp[0])
-                if tmp:
-                    m['price'] = tmp
-            tmp = node.xpath('.//div[@class="standardprice"]/text()').extract()
-            if tmp:
-                tmp = self.reformat(tmp[0])
-                if tmp:
-                    m['price_discount'] = tmp
+            # tmp = self.reformat(node.xpath('@title').extract()[0])
+            # if tmp:
+            #     m['name'] = tmp
+            #
+            # tmp = node.xpath('.//div[@class="salesprice"]/text()').extract()
+            # if tmp:
+            #     tmp = self.reformat(tmp[0])
+            #     if tmp:
+            #         m['price'] = tmp
+            # tmp = node.xpath('.//div[@class="standardprice"]/text()').extract()
+            # if tmp:
+            #     tmp = self.reformat(tmp[0])
+            #     if tmp:
+            #         m['price_discount'] = tmp
 
             yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url),
                           callback=self.parse_details, errback=self.onerr, meta={'userdata': m})

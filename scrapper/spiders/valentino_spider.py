@@ -170,13 +170,13 @@ class ValentinoSpider(MFashionSpider):
         node_list = sel.xpath('//ul[@id="filterColor"]/li//a[@href]')
         if node_list:
             for node in node_list:
-                try:
-                    color = self.reformat(node.xpath('@title').extract()[0]).lower()
-                except (IndexError, TypeError):
-                    color = None
+                # try:
+                #     color = self.reformat(node.xpath('@title').extract()[0]).lower()
+                # except (IndexError, TypeError):
+                #     color = None
                 m = copy.deepcopy(metadata)
-                if color:
-                    m['color'] = [color]
+                # if color:
+                #     m['color'] = [color]
                 yield Request(url=self.process_href(node.xpath('@href').extract()[0], response.url),
                               callback=self.parse_list, errback=self.onerr, meta={'userdata': m})
         else:
@@ -192,29 +192,29 @@ class ValentinoSpider(MFashionSpider):
             if not tmp:
                 continue
             tmp = tmp[0]
-            model = self.reformat(tmp.xpath('@title').extract()[0])
+            # model = self.reformat(tmp.xpath('@title').extract()[0])
             url = self.process_href(tmp.xpath('@href').extract()[0], response.url)
-
-            name = None
-            try:
-                name = self.reformat(
-                    node.xpath('.//div[@class="descCont"]/span[@class="prodInfoViewAll"]/text()').extract()[0])
-            except IndexError:
-                pass
-
-            price = None
-            try:
-                price = self.reformat(
-                    node.xpath('.//div[@class="priceCont"]/span[@class="prodPrice"]/text()').extract()[0])
-            except IndexError:
-                pass
+            #
+            # name = None
+            # try:
+            #     name = self.reformat(
+            #         node.xpath('.//div[@class="descCont"]/span[@class="prodInfoViewAll"]/text()').extract()[0])
+            # except IndexError:
+            #     pass
+            #
+            # price = None
+            # try:
+            #     price = self.reformat(
+            #         node.xpath('.//div[@class="priceCont"]/span[@class="prodPrice"]/text()').extract()[0])
+            # except IndexError:
+            #     pass
 
             m = copy.deepcopy(metadata)
-            m['model'] = model
-            if name:
-                m['name'] = name
-            if price:
-                m['price'] = price
+            # m['model'] = model
+            # if name:
+            #     m['name'] = name
+            # if price:
+            #     m['price'] = price
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m},
                           dont_filter=True)
 
@@ -223,15 +223,33 @@ class ValentinoSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        tmp = sel.xpath('//div[@id="descr"]/span').extract()
-        tmp = '\r'.join(self.reformat(val) for val in tmp)
-        if tmp:
-            metadata['description'] = tmp
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
 
-        tmp = sel.xpath('//div[@id="details"]/span').extract()
-        tmp = '\r'.join(self.reformat(val) for val in tmp)
-        if tmp:
-            metadata['details'] = tmp
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        detail = self.fetch_details(response)
+        if detail:
+            metadata['details'] = detail
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         image_urls = []
         for href in sel.xpath('//div[@id="innerThumbs"]//img[@src and contains(@class,"thumb")]/@src').extract():
@@ -248,3 +266,100 @@ class ValentinoSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//div[@id="wrapColumns"]//*[@class="titleDetailItem"][last()][text()]')
+        if model_node:
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]/span[text()]')
+        if price_node:
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="wrapColumns"]//*[@class="titleDetailItem"][1][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@id="descr"]/span').extract()
+            tmp = '\r'.join(cls.reformat(val) for val in tmp)
+            if tmp:
+                description = tmp
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            tmp = sel.xpath('//div[@id="details"]/span').extract()
+            tmp = '\r'.join(cls.reformat(val) for val in tmp)
+            if tmp:
+                details = tmp
+        except(TypeError, IndexError):
+            pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        color_node = sel.xpath('//div[@class="innerCol"]//div[@id="colorsContainer"]//div[@class="colorBoxSelected"][@title]')
+        if color_node:
+            colors = [cls.reformat(val) for val in color_node.xpath('./text()').extract()]
+
+        return colors
