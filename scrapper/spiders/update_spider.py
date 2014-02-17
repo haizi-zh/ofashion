@@ -38,7 +38,10 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             for pid, data in products_map.items():
                 url = data['url']
                 region = data['region']
-                yield Request(url=url, callback=self.parse, meta={'brand': brand, 'pid': pid, 'region': region})
+                yield Request(url=url,
+                              callback=self.parse,
+                              meta={'brand': brand, 'pid': pid, 'region': region},
+                              errback=self.onerror,)
 
     def parse(self, response):
         brand = response.meta['brand']
@@ -89,3 +92,20 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                 metadata['color'] = color
 
         return item
+
+    def onerror(self, reason):
+        
+        if hasattr(reason.value, 'response'):
+            response = reason.value.response
+            brand = response.meta['brand']
+            item = UpdateItem()
+            item['idproduct'] = response.meta['pid']
+            item['brand'] = brand
+            item['region'] = response.meta['region']
+            sc = glob.spider_info()[brand]
+            metadata = {}
+            item['metadata'] = metadata
+
+            item['offline'] = 1
+
+            return item
