@@ -8,6 +8,7 @@ from scrapy.selector import Selector
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
+import re
 
 
 __author__ = 'Zephyre'
@@ -39,25 +40,31 @@ class VersaceSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        tmp = sel.xpath('//*[@class="sku" and @itemprop="identifier"]/text()').extract()
-        if not tmp:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        model = self.reformat(tmp[0])
-        if not model:
-            return
-        metadata['model'] = model
+
         metadata['url'] = response.url
 
-        tmp = filter(lambda val: val and val.strip(),
-                     sel.xpath('//*[@class="descText"]/descendant-or-self::text()').extract())
-        if tmp:
-            tmp = self.reformat(tmp[0])
-            if tmp:
-                metadata['description'] = tmp
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
-        tmp = sel.xpath('//div[contains(@class,"colorVariations")]/ul/li/a[@title]/@title').extract()
-        if tmp:
-            metadata['color'] = [self.reformat(val).lower() for val in tmp]
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         image_urls = [self.process_href(href, response.url) for href in
                       sel.xpath('//div[@class="productthumbnails"]/ul[contains(@class,"productthumbnails-list")]'
@@ -160,4 +167,84 @@ class VersaceSpider(MFashionSpider):
                 for val in func(copy.deepcopy(m1), node2, 0):
                     yield val
 
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        tmp = sel.xpath('//*[@class="sku" and @itemprop="identifier"]/text()').extract()
+        if tmp:
+            model = cls.reformat(tmp[0])
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        origin_price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="standard-price-old standardprice"][text()]')
+        if origin_price_node:   # 打折
+            old_price = origin_price_node.xpath('./text()').extract()[0]
+            old_price = cls.reformat(old_price)
+
+            discount_price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="salesprice hasStandardPrice"][text()]')
+            if discount_price_node:
+                new_price = discount_price_node.xpath('./text()').extract()[0]
+                new_price = cls.reformat(new_price)
+                new_price = re.sub(ur'\r', '', new_price)
+        else:   # 未打折
+            price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="price singleprice"][text()]')
+            if price_node:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@class="productinfo"]//*[@class="productname"]/*[@itemprop="category"][text()]')
+        if name_node:
+            name = name_node.xpath('./text()').extract()[0]
+            name = cls.reformat(name)
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        tmp = filter(lambda val: val and val.strip(),
+                     sel.xpath('//*[@class="descText"]/descendant-or-self::text()').extract())
+        if tmp:
+            tmp = cls.reformat(tmp[0])
+            if tmp:
+                description = tmp
+
+        return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        tmp = sel.xpath('//div[contains(@class,"colorVariations")]/ul/li/a[@title]/@title').extract()
+        if tmp:
+            colors = [cls.reformat(val).lower() for val in tmp]
+
+        return colors
