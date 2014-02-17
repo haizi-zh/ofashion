@@ -24,6 +24,13 @@ class McQueenSpider(MFashionSpider):
                      'pl': 'EUR', 'qa': 'EUR', 'ru': 'EUR', 'sg': 'USD', 'kr': 'USD', 'se': 'EUR', 'ch': 'EUR',
                      'tw': 'USD'},
         'brand_id': 10008}
+    region_list = {'us', 'fr', 'it', 'uk', 'au', 'at', 'bh', 'be', 'bn', 'bg', 'ca', 'cy', 'cz', 'dk', 'fi', 'ge',
+                       'de', 'gr', 'hu', 'is', 'in', 'id', 'ie', 'il', 'jp', 'jo', 'kw', 'lv', 'li', 'lt', 'lu', 'mo',
+                       'mk', 'my', 'mt', 'mx', 'mc', 'nl', 'eg', 'nz', 'no', 'pl', 'pt', 'qa', 'ru', 'sg', 'si', 'sk',
+                       'kr', 'es', 'se', 'ch', 'tw', }
+    spider_data['hosts'] = {k: 'http://www.alexandermcqueen.com' for k in region_list}
+    spider_data['home_urls'] = {k: str.format('http://www.alexandermcqueen.com/{0}', k if k != 'uk' else 'gb')
+                                     for k in region_list}
 
 
     @classmethod
@@ -31,13 +38,6 @@ class McQueenSpider(MFashionSpider):
         return McQueenSpider.spider_data['hosts'].keys()
 
     def __init__(self, region):
-        region_list = {'us', 'fr', 'it', 'uk', 'au', 'at', 'bh', 'be', 'bn', 'bg', 'ca', 'cy', 'cz', 'dk', 'fi', 'ge',
-                       'de', 'gr', 'hu', 'is', 'in', 'id', 'ie', 'il', 'jp', 'jo', 'kw', 'lv', 'li', 'lt', 'lu', 'mo',
-                       'mk', 'my', 'mt', 'mx', 'mc', 'nl', 'eg', 'nz', 'no', 'pl', 'pt', 'qa', 'ru', 'sg', 'si', 'sk',
-                       'kr', 'es', 'se', 'ch', 'tw', }
-        self.spider_data['hosts'] = {k: 'http://www.alexandermcqueen.com' for k in region_list}
-        self.spider_data['home_urls'] = {k: str.format('http://www.alexandermcqueen.com/{0}', k if k != 'uk' else 'gb')
-                                         for k in region_list}
         super(McQueenSpider, self).__init__('mcqueen', region)
 
     @classmethod
@@ -116,28 +116,31 @@ class McQueenSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        for node in sel.xpath('//ul[@id="productsContainer"]/li//div[@class="productInfo"]'):
+        for node in sel.xpath('//ul[@id="productsContainer"]/li[descendant::div[@class="productInfo"]]'):
             m = copy.deepcopy(metadata)
-            tmp = node.xpath('./a[@href]/div[@class="modelName"]')
+            tmp = node.xpath('.//a[@href]')
             url = None
             if tmp:
-                model_name = self.reformat(unicodify(tmp[0]._root.text))
-                if not model_name:
-                    continue
-                m['name'] = model_name
-                url = self.process_href(tmp[0].xpath('..')[0]._root.attrib['href'], response.url)
+                # model_name = self.reformat(unicodify(tmp[0]._root.text))
+                # if not model_name:
+                #     continue
+                # m['name'] = model_name
+                try:
+                    url = self.process_href(tmp.xpath('./@href').extract()[0], response.url)
+                except(TypeError, IndexError):
+                    pass
             if not url:
                 continue
 
-            tmp = node.xpath('./div[contains(@class,"priceContainer")]//span[@class="priceValue"]')
-            if tmp:
-                val = unicodify(tmp[0]._root.text)
-                if not val:
-                    try:
-                        val = unicodify(tmp[0]._root.iterdescendants().next().tail)
-                    except StopIteration:
-                        pass
-                m['price'] = val
+            # tmp = node.xpath('./div[contains(@class,"priceContainer")]//span[@class="priceValue"]')
+            # if tmp:
+            #     val = unicodify(tmp[0]._root.text)
+            #     if not val:
+            #         try:
+            #             val = unicodify(tmp[0]._root.iterdescendants().next().tail)
+            #         except StopIteration:
+            #             pass
+            #     m['price'] = val
 
             yield Request(url=self.process_href(url, response.url), callback=self.parse_details,
                           errback=self.onerr, meta={'userdata': m}, dont_filter=True)
@@ -146,14 +149,23 @@ class McQueenSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        tmp = sel.xpath('//span[@id="modelFabricColorContainer"]')
-        if not tmp:
-            return
-        metadata['model'] = unicodify(tmp[0]._root.text)
-        if not metadata['model']:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
 
         metadata['url'] = response.url
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
 
         image_urls = []
         for node in sel.xpath('//ul[@id="zoomAlternatives"]/li/img[@src]'):
@@ -166,20 +178,20 @@ class McQueenSpider(MFashionSpider):
             for i in xrange(start_idx, 15):
                 image_urls.append(pattern.sub(str.format(r'_{0}\2', i), href))
 
-        tmp = sel.xpath('//div[@id="description_pane"]')
-        if tmp:
-            metadata['description'] = self.reformat(unicodify(tmp[0]._root.text))
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
-        tmp = sel.xpath('//div[@id="colorsContainer"]/ul[@id="colors"]/li[@data-title]')
-        if tmp:
-            metadata['color'] = [self.reformat(unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
 
         tmp = sel.xpath('//div[@id="sizesContainer"]/ul[@id="sizes"]/li[@data-title]')
         if tmp:
             metadata['tags_mapping']['size'] = [{'name': k, 'title': k} for k in
                                                 (self.reformat(unicodify(val._root.attrib['data-title'])) for val in
                                                  tmp)]
-            metadata['color'] = [self.reformat(unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
+            # metadata['color'] = [self.reformat(unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
 
         item = ProductItem()
         item['image_urls'] = image_urls
@@ -187,3 +199,86 @@ class McQueenSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         return item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        try:
+            tmp = sel.xpath('//span[@id="modelFabricColorContainer"]')
+            if tmp:
+                model = unicodify(tmp[0]._root.text)
+        except(TypeError, IndexError):
+            pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@id="productWrapper"]//div[@class="itemBoxPrice"]')
+        if price_node:
+            try:
+                old_price = ''.join(cls.reformat(val) for val in price_node.xpath('.//text()').extract())
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="productWrapper"]//div[@id="description"]/h1[text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            tmp = sel.xpath('//div[@id="description_pane"]')
+            if tmp:
+                description = cls.reformat(unicodify(tmp[0]._root.text))
+        except(TypeError, IndexError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        try:
+            tmp = sel.xpath('//div[@id="colorsContainer"]/ul[@id="colors"]/li[@data-title]')
+            if tmp:
+                colors = [cls.reformat(unicodify(val._root.attrib['data-title'])).lower() for val in tmp]
+        except(TypeError, IndexError):
+            pass
+
+        return colors
