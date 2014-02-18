@@ -224,7 +224,13 @@ class LongchampSpider(MFashionSpider):
 
     @classmethod
     def is_offline(cls, response):
-        return not cls.fetch_model(response)
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
+
+        if model and name:
+            return True
+        else:
+            return False
 
     @classmethod
     def fetch_model(cls, response):
