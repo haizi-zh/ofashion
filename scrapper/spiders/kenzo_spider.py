@@ -88,16 +88,24 @@ class KenzoSpider(MFashionSpider):
         metadata['url'] = response.url
         sel = Selector(response)
 
-        # 获取model
-        mt = re.search(r'_(\d+)/?$', response.url)
-        if not mt:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        model = mt.group(1)
 
-        tmp = sel.xpath('//div[contains(@class,"product-detail")]/*[@class="font-title-product"]/text()').extract()
-        if tmp:
-            metadata['name'] = self.reformat(tmp[0])
-            # tmp = sel.xpath('//div[contains(@class,"product-detail")]//*[contains(@class,"JS_price")]/text()').extract()
+        if 'fetch_price' in dir(self.__class__):
+            ret = getattr(self.__class__, 'fetch_price')(response)
+            if 'price' in ret:
+                metadata['price'] = ret['price']
+            if 'price_discount' in ret:
+                metadata['price_discount'] = ret['price_discount']
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        # tmp = sel.xpath('//div[contains(@class,"product-detail")]//*[contains(@class,"JS_price")]/text()').extract()
         # if tmp:
         #     metadata['price'] = self.reformat(tmp[0])
         # tmp = sel.xpath(
@@ -105,12 +113,26 @@ class KenzoSpider(MFashionSpider):
         # if tmp:
         #     metadata['price_discount'] = self.reformat(tmp[0])
 
-        tmp = sel.xpath('//div[contains(@class,"in-desc")]/descendant-or-self::text()').extract()
-        if tmp:
-            metadata['description'] = '\r'.join(filter(lambda x: x, [self.reformat(val) for val in tmp]))
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+        if 'fetch_color' in dir(self.__class__):
+            colors = getattr(self.__class__, 'fetch_color')(response)
+            if colors:
+                metadata['color'] = colors
 
         url = self.spider_data['image_data'] + str(model)
         yield Request(url=url, callback=self.parse_image, errback=self.onerr, meta={'userdata': metadata})
+
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        # if image_urls:
+        #     item['image_urls'] = image_urls
+        item['metadata'] = metadata
+
+        yield item
 
     def parse_image(self, response):
         metadata = response.meta['userdata']
@@ -120,42 +142,164 @@ class KenzoSpider(MFashionSpider):
             return
 
         for clr_item in data['data']['colors_list']:
-            m = copy.deepcopy(metadata)
+            model = clr_item['id']
+            if model == metadata['model']:
+                m = copy.deepcopy(metadata)
+                try:
+                    image_urls = [val['image_src'] for val in clr_item['images']]
+                    # model = clr_item['id']
+                    # color = self.reformat(clr_item['name'])
+                    #
+                    # prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
+                    # tmp = prod_item[0]
+                    # try:
+                    #     price = float(tmp['price']) / 100 if 'price' in tmp else None
+                    # except (TypeError, ValueError):
+                    #     price = None
+                    # try:
+                    #     price_discount = float(tmp['price_sale']) / 100 if 'price_sale' in tmp else None
+                    # except (TypeError, ValueError):
+                    #     price_discount = None
+                except (IndexError, KeyError):
+                    continue
+
+                item = ProductItem()
+                item['url'] = m['url']
+                item['model'] = model
+                if image_urls:
+                    item['image_urls'] = image_urls
+                item['metadata'] = m
+                yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        return not cls.fetch_model(response)
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        # 获取model
+        mt = re.search(r'_(\d+)/?$', response.url)
+        if mt:
             try:
-                image_urls = [val['image_src'] for val in clr_item['images']]
+                model = mt.group(1)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        model = cls.fetch_model(response)
+        if model:
+            url = cls.spider_data['image_data'] + str(model)
+            yield Request(url=url,
+                          callback=cls.fetch_price_server,
+                          errback=cls.onerr,
+                          meta=response.meta)
+        else:
+            yield ret
+
+    @classmethod
+    def fetch_price_server(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        try:
+            data = json.loads(response.body)
+        except ValueError:
+            return
+
+        old_price = None
+        new_price = None
+        for clr_item in data['data']['colors_list']:
+            try:
                 model = clr_item['id']
-                color = self.reformat(clr_item['name'])
 
                 prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
                 tmp = prod_item[0]
                 try:
-                    price = float(tmp['price']) / 100 if 'price' in tmp else None
+                    old_price = float(tmp['price']) / 100 if 'price' in tmp else None
                 except (TypeError, ValueError):
-                    price = None
+                    old_price = None
                 try:
-                    price_discount = float(tmp['price_sale']) / 100 if 'price_sale' in tmp else None
+                    new_price = float(tmp['price_sale']) / 100 if 'price_sale' in tmp else None
                 except (TypeError, ValueError):
-                    price_discount = None
+                    new_price = None
             except (IndexError, KeyError):
                 continue
 
-            m['model'] = model
-            m['color'] = [color]
-            if price:
-                m['price'] = price
-            if price_discount:
-                m['price_discount'] = price_discount
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
 
-            item = ProductItem()
-            item['url'] = m['url']
-            item['model'] = model
-            item['image_urls'] = image_urls
-            item['metadata'] = m
-            yield item
+        return ret
 
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
 
+        name = None
+        try:
+            tmp = sel.xpath('//div[contains(@class,"product-detail")]/*[@class="font-title-product"]/text()').extract()
+            if tmp:
+                name = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
 
+        return name
 
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
 
+        description = None
+        try:
+            tmp = sel.xpath('//div[contains(@class,"in-desc")]/descendant-or-self::text()').extract()
+            if tmp:
+                description = '\r'.join(filter(lambda x: x, [cls.reformat(val) for val in tmp]))
+        except(TypeError, IndexError):
+            pass
 
+        return description
 
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        model = cls.fetch_model(response)
+        if model:
+            url = cls.spider_data['image_data'] + str(model)
+            yield Request(url=url,
+                          callback=cls.fetch_color_server,
+                          errback=cls.onerr,
+                          meta=response.meta)
+        else:
+            yield None
+
+    @classmethod
+    def fetch_color_server(cls, response):
+        sel = Selector(response)
+
+        try:
+            data = json.loads(response.body)
+        except ValueError:
+            return
+
+        colors = []
+        for clr_item in data['data']['colors_list']:
+            try:
+                model = clr_item['id']
+                color = cls.reformat(clr_item['name'])
+                if color:
+                    colors += color
+            except (IndexError, KeyError):
+                continue
+
+        return colors
