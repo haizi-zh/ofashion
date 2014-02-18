@@ -19,7 +19,7 @@ __author__ = 'Zephyre'
 
 
 class DolceSpider(MFashionSpider):
-    spider_data = {'brand_id': 10109, 'gender_nav': {'male': 'home_U', 'female': 'home_D'},
+    spider_data = {'brand_id': 10109, 'gender_nav': {'male': 'singleGender_U', 'female': 'singleGender_D'},
                    'home_urls': {
                        region: str.format('http://store.dolcegabbana.com/{0}', region if region != 'uk' else 'gb') for
                        region in
@@ -42,7 +42,7 @@ class DolceSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        for node1 in sel.xpath('//div[@id="mainNav"]/div[@id and @class="genderNav"]'):
+        for node1 in sel.xpath('//div[@id="toolbarHeader"]/ul[@id="genderSel"]/li[contains(@id, "singleGender")]'):
             m1 = copy.deepcopy(metadata)
             if node1._root.attrib['id'] == self.spider_data['gender_nav']['male']:
                 m1['gender'] = ['male']
@@ -183,7 +183,10 @@ class DolceSpider(MFashionSpider):
         model = None
         mt = re.search(r'-([a-zA-Z0-9\-]+)_cod.+', response.url)
         if mt:
-            model = mt.group(1).upper()
+            try:
+                model = mt.group(1).upper()
+            except(TypeError, IndexError):
+                pass
 
         return model
 
@@ -194,18 +197,21 @@ class DolceSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        tmp = sel.xpath(
-            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price newprice"]/text()').extract()
-        price = cls.reformat(tmp[0]) if tmp else None
-        tmp = sel.xpath(
-            '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price sconto"]/text()').extract()
-        sconto = cls.reformat(tmp[0]) if tmp else None
-        if sconto:
-            old_price = sconto
-            if price:
-                new_price = price
-        elif price:
-            old_price = price
+        try:
+            tmp = sel.xpath(
+                '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price newprice"]/text()').extract()
+            price = cls.reformat(tmp[0]) if tmp else None
+            tmp = sel.xpath(
+                '//div[@id="itemDescription"]/div[@id="descriptionContent"]//em[@class="price sconto"]/text()').extract()
+            sconto = cls.reformat(tmp[0]) if tmp else None
+            if sconto:
+                old_price = sconto
+                if price:
+                    new_price = price
+            elif price:
+                old_price = price
+        except(TypeError, IndexError):
+            pass
 
         if old_price:
             ret['price'] = old_price
@@ -221,7 +227,10 @@ class DolceSpider(MFashionSpider):
         name = None
         tmp = sel.xpath('//div[@id="itemDescription"]/div[@id="descriptionContent"]/*[@id="catTitle"]')
         if tmp:
-            name = cls.reformat(unicodify(tmp[0]._root.text))
+            try:
+                name = cls.reformat(unicodify(tmp[0]._root.text))
+            except(TypeError, IndexError):
+                pass
 
         return name
 
@@ -229,16 +238,21 @@ class DolceSpider(MFashionSpider):
     def fetch_description(cls, response):
         sel = Selector(response)
 
-        desc = None
-        tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]')
-        if tmp:
-            desc = cls.reformat(unicodify(tmp[0]._root.text))
-        tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]//ul/li')
-        desc_list = [desc]
-        desc_list.extend(cls.reformat(unicodify(val._root.text)) for val in tmp)
-        desc = '\r'.join(desc_list).strip()
+        description = None
+        try:
+            desc = None
+            tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]')
+            if tmp:
+                desc = cls.reformat(unicodify(tmp[0]._root.text))
+            tmp = sel.xpath('//div[@id="detailsContent"]//div[@id="alwaysVisible"]//ul/li')
+            desc_list = [desc]
+            desc_list.extend(cls.reformat(unicodify(val._root.text)) for val in tmp)
+            if desc_list:
+                description = '\r'.join(desc_list).strip()
+        except(TypeError, IndexError):
+            pass
 
-        return desc
+        return description
 
     @classmethod
     def fetch_details(cls, response):
