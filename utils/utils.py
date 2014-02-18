@@ -20,7 +20,7 @@ def guess_currency(price, region=None):
         if not mt:
             return 'USD'
 
-    if '¥' in price and region in ('cn', 'hk', 'mo', 'tw'):
+    if u'¥' in price and region in ('cn', 'hk', 'mo', 'tw'):
         return 'CNY'
 
     # 若字符串中包含大写的三个字母，并且该标识出现在货币列表中，说明这三个字母组成的字符串是货币信息
