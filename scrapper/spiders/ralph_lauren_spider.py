@@ -75,19 +75,19 @@ class RalphLaurenSpider(MFashionSpider):
                 continue
             url = self.process_href(tmp[0], response.url)
 
-            tmp = node.xpath('.//dl[@class="product-details"]/dt/text()').extract()
-            title = self.reformat(tmp[-1])
-            tmp = node.xpath('.//div[@class="money"]/text()').extract()
-            price = self.reformat(tmp[0]) if tmp else None
-            tmp = node.xpath('.//div[@class="money"]/*[@class="red"]/text()').extract()
-            sale_price = self.reformat(tmp[0]) if tmp else None
+            # tmp = node.xpath('.//dl[@class="product-details"]/dt/text()').extract()
+            # title = self.reformat(tmp[-1])
+            # tmp = node.xpath('.//div[@class="money"]/text()').extract()
+            # price = self.reformat(tmp[0]) if tmp else None
+            # tmp = node.xpath('.//div[@class="money"]/*[@class="red"]/text()').extract()
+            # sale_price = self.reformat(tmp[0]) if tmp else None
 
             m = copy.deepcopy(metadata)
-            m['name'] = title
-            if price:
-                m['price'] = price
-            if sale_price:
-                m['price_discount'] = sale_price
+            # m['name'] = title
+            # if price:
+            #     m['price'] = price
+            # if sale_price:
+            #     m['price_discount'] = sale_price
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m},
                           dont_filter=True)
 
@@ -98,24 +98,24 @@ class RalphLaurenSpider(MFashionSpider):
             if not tmp:
                 continue
             url = self.process_href(tmp[0].xpath('@href').extract()[0], response.url)
-            try:
-                title = self.reformat(tmp[0].xpath('text()').extract()[0])
-                if not title:
-                    continue
-            except (IndexError, TypeError):
-                continue
-            tmp = node.xpath('./dl[@class="product-details"]/dd//span[@class="ourprice"]//a[@href]/text()').extract()
-            price = self.reformat(tmp[0]) if tmp else None
-            tmp = node.xpath(
-                './dl[@class="product-details"]/dd//span[@class="templateSalePrice"]//a[@href]/text()').extract()
-            sale_price = self.reformat(tmp[0]) if tmp else None
+            # try:
+            #     title = self.reformat(tmp[0].xpath('text()').extract()[0])
+            #     if not title:
+            #         continue
+            # except (IndexError, TypeError):
+            #     continue
+            # tmp = node.xpath('./dl[@class="product-details"]/dd//span[@class="ourprice"]//a[@href]/text()').extract()
+            # price = self.reformat(tmp[0]) if tmp else None
+            # tmp = node.xpath(
+            #     './dl[@class="product-details"]/dd//span[@class="templateSalePrice"]//a[@href]/text()').extract()
+            # sale_price = self.reformat(tmp[0]) if tmp else None
 
             m = copy.deepcopy(metadata)
-            m['name'] = title
-            if price:
-                m['price'] = price
-            if sale_price:
-                m['price_discount'] = sale_price
+            # m['name'] = title
+            # if price:
+            #     m['price'] = price
+            # if sale_price:
+            #     m['price_discount'] = sale_price
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m},
                           dont_filter=True)
 
@@ -155,11 +155,23 @@ class RalphLaurenSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        tmp = re.search(r'productid=(\d+)', response.url, flags=re.IGNORECASE)
-        if not tmp:
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
             return
-        metadata['model'] = tmp.group(1)
+
         metadata['url'] = response.url
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         # 试图找出图片地址
         image_terms = re.findall(r'Scene7Map\[\s*"[a-zA-Z\d\s]+"\s*\]\s*=\s*"([^"/]+)"', response.body)
@@ -167,8 +179,9 @@ class RalphLaurenSpider(MFashionSpider):
             'http://s7d2.scene7.com/is/image/PoloGSI/{0}?$flyout_main$&cropN=0.12,0,0.75,1&wid=1080&hei=1440', tmp) for
                       tmp in image_terms]
 
-        desc = sel.xpath('//div[@id="longDescDiv"]/text()').extract()
-        metadata['description'] = '\r'.join(self.reformat(tmp) for tmp in desc).strip()
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -177,7 +190,138 @@ class RalphLaurenSpider(MFashionSpider):
         item['metadata'] = metadata
         yield item
 
+    @classmethod
+    def is_offline(cls, response):
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
 
+        if model and name:
+            return True
+        else:
+            return False
 
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
 
+        model = None
+        tmp = re.search(r'productid=(\d+)', response.url, flags=re.IGNORECASE)
+        if tmp:
+            try:
+                model = tmp.group(1)
+            except(TypeError, IndexError):
+                pass
 
+        return model
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        name = None
+        if region == 'us':
+            name_node = sel.xpath('//meta[@property="og:title"][@content]')
+            if name_node:
+                try:
+                    name = name_node.xpath('./@content').extract()[0]
+                    name = cls.reformat(name)
+                except(TypeError, IndexError):
+                    pass
+        else:
+            name_node = sel.xpath('//div[@id="product-right"]//h4[@class="product-title fn"][text()]')
+            if name_node:
+                try:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = cls.reformat(name)
+                except(TypeError, IndexError):
+                    pass
+
+        return name
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        old_price = None
+        new_price = None
+        if region == 'us':
+            discount_node = sel.xpath('//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="templateSalePrice"][text()]')
+            if discount_node:
+                old_price_node = sel.xpath('//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="prodourprice"][text()]')
+                if old_price_node:
+                    try:
+                        old_price = old_price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+
+                try:
+                    new_price = discount_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                old_price_node = sel.xpath('//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="prodourprice"][text()]')
+                if old_price_node:
+                    try:
+                        old_price = old_price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+        else:
+            discount_node = sel.xpath('//div[@id="product-right"]/div[@id="product-information"]/div[@class="money"][text()]/span[@class="red"][text()]')
+            if discount_node:
+                old_price_node = sel.xpath('//div[@id="product-right"]/div[@id="product-information"]/div[@class="money"][text()]')
+                if old_price_node:
+                    try:
+                        old_price = old_price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+
+                try:
+                    new_price = discount_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                old_price_node = sel.xpath('//div[@id="product-right"]/div[@id="product-information"]/div[@class="money"][text()]')
+                if old_price_node:
+                    try:
+                        old_price = old_price_node.xpath('./text()').extract()[0]
+                        old_price = cls.reformat(old_price)
+                    except(TypeError, IndexError):
+                        pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            desc = sel.xpath('//div[@id="longDescDiv"]/text()').extract()
+            description = '\r'.join(cls.reformat(tmp) for tmp in desc).strip()
+        except(TypeError, IndexError):
+            pass
+
+        return description
