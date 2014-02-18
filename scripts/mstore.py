@@ -17,6 +17,7 @@ import _mysql_exceptions
 import global_settings as glob
 from products.utils import fetch_image
 from scripts import dbman
+from scripts.extract import SampleExtractor
 from scripts.sync_product import SyncProducts
 from scripts.dbman import ProcessTags, PriceCheck
 from scripts.report_core import spider_prog_report
@@ -622,6 +623,11 @@ def price_check(param_dict):
     obj.run()
 
 
+def extract(param_dict):
+    obj = SampleExtractor(param_dict)
+    obj.run()
+
+
 def image_check(param_dict):
     """
     检查图片是否正常。
@@ -715,7 +721,8 @@ def argument_parser(args):
             pass
 
     cmd_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
-                'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report, 'price-check': price_check}
+                'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report, 'price-check': price_check,
+                'extract': extract}
 
     return lambda: cmd_dict[cmd](param_dict)
 
