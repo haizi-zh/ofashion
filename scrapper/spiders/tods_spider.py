@@ -12,9 +12,6 @@ import common
 import re
 
 
-# TODO 应该是网站改版了，跑不下来东西，需要更改
-
-
 class TodsSpider(MFashionSpider):
     """
     这个品牌有些国家有网店，有些国家没网店，网页样式应该有这两种
@@ -120,6 +117,9 @@ class TodsSpider(MFashionSpider):
 
                         try:
                             href = sub_node.xpath('./a/@href').extract()[0]
+                            href = re.sub(ur'javascript:void\(0\)', '', href)
+                            if not href:
+                                continue
                             href = self.process_href(href, response.url)
                         except(TypeError, IndexError):
                             continue
@@ -200,27 +200,27 @@ class TodsSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@class="prodotti"]//li')
+        product_nodes = sel.xpath('//div[@class="row prodotti"]//div[contains(@id, "containerForOver")]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
-            try:
-                name = node.xpath('./h2/a/text()').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
-            except(TypeError, IndexError):
-                pass
-
-            # 这里有两个涉及价格的标签，listPrice和listPrice_discount，
-            # 但是我看见的几个，只有listPrice有值
-            try:
-                price = node.xpath('.//a[@class="listPrice"]/text()').extract()[0]
-                price = self.reformat(price)
-                if price:
-                    m['price'] = price
-            except(TypeError, IndexError):
-                pass
+            # try:
+            #     name = node.xpath('./h2/a/text()').extract()[0]
+            #     name = self.reformat(name)
+            #     if name:
+            #         m['name'] = name
+            # except(TypeError, IndexError):
+            #     pass
+            #
+            # # 这里有两个涉及价格的标签，listPrice和listPrice_discount，
+            # # 但是我看见的几个，只有listPrice有值
+            # try:
+            #     price = node.xpath('.//a[@class="listPrice"]/text()').extract()[0]
+            #     price = self.reformat(price)
+            #     if price:
+            #         m['price'] = price
+            # except(TypeError, IndexError):
+            #     pass
 
             # 这里有很多链接，都一样，都是指向单品页的
             try:
@@ -377,10 +377,10 @@ class TodsSpider(MFashionSpider):
             m = copy.deepcopy(metadata)
 
             try:
-                name = node.xpath('./@title').extract()[0]
-                name = self.reformat(name)
-                if name:
-                    m['name'] = name
+                # name = node.xpath('./@title').extract()[0]
+                # name = self.reformat(name)
+                # if name:
+                #     m['name'] = name
 
                 href = node.xpath('./@href').extract()[0]
                 href = self.process_href(href, response.url)
@@ -500,7 +500,7 @@ class TodsSpider(MFashionSpider):
         # 我看的几个，都是final-price有价格，full-price没有东西，
         # 这里抓这个显示出来的final-price先
         try:
-            price = sel.xpath('//div[contains(@class, "right_container")]//span[@class="final-price"]').extract()[0]
+            price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
             price = cls.reformat(price)
             if price:
                 old_price = price
@@ -532,7 +532,7 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        description_node = sel.xpath('//div[@id="body1"]//div[@class="text"]')
+        description_node = sel.xpath('//div[contains(@class, "rightColumn")]//div[@id="description"]//div[not(child::*)][text()]')
         if description_node:
             try:
                 description = description_node.xpath('./text()').extract()[0]
@@ -547,10 +547,10 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         details = None
-        detail_node = sel.xpath('//div[@id="body2"]//div[@class="text"]')
+        detail_node = sel.xpath('//div[contains(@class, "rightColumn")]//div[@id="details"]//li[text()]')
         if detail_node:
             try:
-                detail = '\r'.join(cls.reformat(val) for val in detail_node.xpath('.//text()').extract())
+                detail = '\r'.join(cls.reformat(val) for val in detail_node.xpath('./text()').extract())
                 detail = cls.reformat(detail)
                 if detail:
                     details = detail
