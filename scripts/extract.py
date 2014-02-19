@@ -1,6 +1,7 @@
 # coding=utf-8
 from cStringIO import StringIO
 import csv
+import random
 import sys
 import datetime
 from core import MySqlDb
@@ -25,9 +26,39 @@ class SampleExtractor(object):
         else:
             self.brand_list = None
 
+        # 每个品牌，每个地区平均有多少个样本
+        if 'nsample' in param:
+            self.num_sample = int(param['nsample'][0])
+        else:
+            self.num_sample = 10
+
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
+
+    def random_extract(self, records):
+        """
+        从records里面随机抽取一些样本点
+        @param records:
+        """
+        # 针对每个region进行随机提取
+        ret = []
+        for region in set(tmp['region'] for tmp in records):
+            subset = [tmp for tmp in records if tmp['region'] == region]
+            # 随机生成的index
+            idx_set = set({})
+            # 随机抽取的样本数量，该数量不得大于subset中记录的总数
+            num_sample = self.num_sample if self.num_sample < len(subset) else len(subset)
+            for i in xrange(num_sample):
+                idx = -1
+                while True:
+                    idx = random.randint(0, len(subset) - 1)
+                    if idx not in idx_set:
+                        idx_set.add(idx)
+                        break
+                ret.append(subset[idx])
+
+        return ret
 
     def run(self):
         db = MySqlDb()
@@ -45,10 +76,13 @@ class SampleExtractor(object):
         self.tot = len(brand_list)
 
         # 最终生成的表格
-        results = {}
+        tot_results = []
 
         for brand in brand_list:
+            results = {}
+
             print unicode.format(u'PROCESSING {0} / {1}', brand, gs.brand_info()[brand]['brandname_e'])
+            brand_name = gs.brand_info()[brand]['brandname_e']
             self.progress += 1
 
             rs = db.query(str.format('''SELECT p1.idproducts,p1.brand_id,p1.model,p1.region,p2.price,p2.price_discount,p2.currency,p2.date,p1.name,p4.tag,p1.url FROM products AS p1
@@ -80,19 +114,23 @@ class SampleExtractor(object):
                         results[pid]['tag'] = {tmp}
                     else:
                         results[pid]['tag'] = set({})
+                    results[pid]['brand'] = brand_name
+                    results[pid].pop('idproducts')
+
+            tot_results.extend(self.random_extract(results.values()))
 
         db.close()
 
         # 将所有的tag转换为[]
         data = []
-        for r in results.values():
+        for r in tot_results:
             r['tag'] = json.dumps(list(r['tag']), ensure_ascii=False)
             data.append({k: r[k].encode('utf-8') if r[k] else 'NULL' for k in r})
 
         # 写入CSV文件
         with open(str.format('extract_{0}.csv', datetime.datetime.now().strftime('%Y%m%d%H%M%S')), 'wb') as f:
             f.write(u'\ufeff'.encode('utf8'))
-            dict_writer = csv.DictWriter(f, fieldnames=['idproducts', 'brand_id', 'model', 'region', 'price',
+            dict_writer = csv.DictWriter(f, fieldnames=['brand_id', 'brand', 'model', 'region', 'price',
                                                         'price_discount', 'currency', 'date',
                                                         'name', 'tag', 'url'])
             dict_writer.writeheader()
