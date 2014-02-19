@@ -128,7 +128,13 @@ def set_up_spider(spider_class, data, is_update=False):
     if is_update:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.UpdatePipeline': 800}
         brand_list = [int(tmp) for tmp in (data['brand'] if 'brand' in data else [])]
-        spider = spider_class(brand_list, glob.DB_SPEC)
+        if 'region' in data:
+            region_list = data['region']
+        elif 'r' in data:
+            region_list = data['r']
+        else:
+            region_list = None
+        spider = spider_class(brand_list, region_list, glob.DB_SPEC)
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} if glob.WRITE_DATABASE else {}
