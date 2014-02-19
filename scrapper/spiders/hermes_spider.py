@@ -133,8 +133,8 @@ class HermesSpider(MFashionSpider):
         def func(product_id):
             m = copy.deepcopy(metadata)
 
-            if product_id in data['simpleProductPrices']:
-                m['price'] = data['simpleProductPrices'][product_id]
+            # if product_id in data['simpleProductPrices']:
+            #     m['price'] = data['simpleProductPrices'][product_id]
 
             image_url = data['baseImages'][product_id]
             # 尝试找到zoom图
@@ -144,27 +144,30 @@ class HermesSpider(MFashionSpider):
             elif zoom_image_url.replace('/', r'\/') in unicodify(response.body):
                 image_url = zoom_image_url
 
-            m['description'] = self.reformat(data['descriptions'][product_id])
-            m['name'] = self.reformat(data['names'][product_id])
-            m['model'] = data['skus'][product_id]
-            # TODO 这里有可能导致网页的url找错，例如：http://usa.hermes.com/jewelry/gold-jewelry/bracelets/configurable-product-104820b-23578.html
-            if product_id in data['links']:
-                m['url'] = data['links'][product_id]
-            else:
-                m['url'] = response.url
-
+            # m['description'] = self.reformat(data['descriptions'][product_id])
+            # m['name'] = self.reformat(data['names'][product_id])
+            # m['model'] = data['skus'][product_id]
+            # # TODO 这里有可能导致网页的url找错，例如：http://usa.hermes.com/jewelry/gold-jewelry/bracelets/configurable-product-104820b-23578.html
+            # if product_id in data['links']:
+            #     m['url'] = data['links'][product_id]
+            # else:
+            #     m['url'] = response.url
+            #
             for attrib in data['attributes']:
                 attrib_name = attrib['code']
-                if re.search(r'color[\b_]', attrib_name):
-                    attrib_name = 'color'
-                elif re.search('size_sized', attrib_name):
-                    attrib_name = 'size'
+            #     if re.search(r'color[\b_]', attrib_name):
+            #         attrib_name = 'color'
+            #     elif re.search('size_sized', attrib_name):
+            #         attrib_name = 'size'
 
                 temp = [unicodify(val['label']).lower() for val in attrib['options'] if
                         product_id in val['products']]
-                if attrib_name == 'color':
-                    m['color'] = temp
-                else:
+                # if attrib_name == 'color':
+                #     m['color'] = temp
+                # else:
+                #     m['tags_mapping'][unicodify(attrib_name).lower()] = \
+                #         [{'name': val.lower(), 'title': val} for val in temp]
+                if attrib_name != 'color':
                     m['tags_mapping'][unicodify(attrib_name).lower()] = \
                         [{'name': val.lower(), 'title': val} for val in temp]
 
@@ -179,6 +182,38 @@ class HermesSpider(MFashionSpider):
             return item
 
         metadata = response.meta['userdata']
+
+        metadata['url'] = response.url
+
+        model = self.fetch_model(response)
+        if model:
+            metadata['model'] = model
+        else:
+            return
+
+
+        name = self.fetch_name(response)
+        if name:
+            metadata['name'] = name
+
+
+        colors = self.fetch_color(response)
+        if colors:
+            metadata['color'] = colors
+
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
+
+
+        description = self.fetch_description(response)
+        if description:
+            metadata['description'] = description
+
+
         idx = response.body.find('spConfig.init')
         if idx == -1:
             idx = response.body.find('ConfProduct.init')
@@ -190,3 +225,94 @@ class HermesSpider(MFashionSpider):
         for val in (func(product_id) for product_id in data['productIds']):
             yield val
 
+    @classmethod
+    def is_offline(cls, response):
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
+
+        if model and name:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//div[@class="sidebar"]//*[@id="athena_product_sku"][text()]')
+        if model_node:
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@class="sidebar"]//*[@id="product-price"]/*[@class="price"][text()]')
+        if price_node:
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@class="sidebar"]//*[@id="product_name"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@class="sidebar"]//*[@id="product_description"][text()]')
+        if description_node:
+            try:
+                description = description_node.xpath('./text()').extract()[0]
+                description = cls.reformat(description)
+            except(TypeError, IndexError):
+                pass
+
+        return description
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        colors = []
+        color_node = sel.xpath('//div[@class="sidebar"]//*[@id="option-container-375"]//li/img[@alt]')
+        if color_node:
+            try:
+                colors = [cls.reformat(val).lower()
+                          for val in color_node.xpath('./@alt').extract()]
+            except(TypeError, IndexError):
+                pass
+
+        return colors
