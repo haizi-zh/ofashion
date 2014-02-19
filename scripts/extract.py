@@ -89,7 +89,7 @@ class SampleExtractor(object):
                             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
                             LEFT JOIN products_mfashion_tags AS p3 ON p3.idproducts=p1.idproducts
                             LEFT JOIN mfashion_tags AS p4 ON p3.id_mfashion_tags=p4.idmfashion_tags
-                            WHERE p1.brand_id={0}''', brand))
+                            WHERE p1.brand_id={0} AND p1.offline=0''', brand))
             records = rs.fetch_row(maxrows=0, how=1)
             for r in records:
                 pid = int(r['idproducts'])
