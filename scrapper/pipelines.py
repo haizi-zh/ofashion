@@ -71,14 +71,21 @@ class UpdatePipeline(object):
                 update_data['details'] = metadata['details']
             if 'color' in metadata and metadata['color'] != color:
                 update_data['color'] = json.dumps(metadata['color'], ensure_ascii=False)
+
+            # 处理价格（注意：价格属于经常变动的信息，需要及时更新）
             if 'price' in metadata and metadata['price'] != price:
                 update_data['price'] = metadata['price']
+            elif 'price' not in metadata and price:
+                # 原来有价格，现在没有价格
+                update_data['price'] = None
             if 'price_discount' in metadata:
                 if metadata['price_discount'] != price_discount:
                     update_data['price_discount'] = metadata['price_discount']
             else:
                 if price_discount:
+                    # 原来有折扣价格，现在没有折扣价格
                     update_data['price_discount'] = None
+
             if item['offline'] != offline:
                 update_data['offline'] = item['offline']
 
@@ -100,6 +107,14 @@ class UpdatePipeline(object):
                     # 该单品最后的价格信息
                     price_value = price['price']
                     discount_value = discount['price'] if discount else None
+
+                    # 如果折扣价格大于或等于原价，则取消折扣价，并作出相应的警告
+                    if discount_value and discount_value >= price_value:
+                        spider.log(
+                            str.format('idproducts={0}: the discount price is equal or greater than the original '
+                                       'price! The discount price is ignored.', pid), log.WARNING)
+                        discount_value = 0
+
                     rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
                                              {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
                     insert_flag = False
@@ -117,6 +132,14 @@ class UpdatePipeline(object):
                         self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
                                         'price_discount': (discount_value if discount_value < price_value else None)},
                                        'products_price_history')
+            else:
+                rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
+                                         {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
+                records = rs.fetch_row(maxrows=0, how=1)
+                if record:
+                    # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理
+                    self.db.insert({'idproducts': pid, 'price': None, 'currency': records[0]['currency'],
+                                    'price_discount': None}, 'products_price_history')
         except:
             self.db.rollback()
             raise
