@@ -15,6 +15,12 @@ from utils.utils import unicodify
 __author__ = 'Zephyre'
 
 
+# TODO 检查burberry的update数据时，出现过 一个url 301 到 另一个url 再被 301 到 原来url 然后 200 的现象，还不清楚出现这个现象的原因
+# 在update_spider的start_requests中产生的request加入dont_filter=True后，解决了上边的问题
+
+# 还会有循环重定向 http://au.burberry.com/cashmere-hooded-top-p39057921
+
+
 class BurberrySpider(MFashionSpider):
     handle_httpstatus_list = [403]
     spider_data = {'brand_id': 10057}
