@@ -137,9 +137,9 @@ class TiffanySpider(MFashionSpider):
         name = cls.fetch_name(response)
 
         if model and name:
-            return True
-        else:
             return False
+        else:
+            return True
 
     @classmethod
     def fetch_model(cls, response):
