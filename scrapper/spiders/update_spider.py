@@ -41,7 +41,8 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                 yield Request(url=url,
                               callback=self.parse,
                               meta={'brand': brand, 'pid': pid, 'region': region},
-                              errback=self.onerror,)
+                              errback=self.onerror,
+                              dont_filter=True,)
 
     def parse(self, response):
         brand = response.meta['brand']
@@ -52,6 +53,8 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         sc = glob.spider_info()[brand]
         metadata = {}
         item['metadata'] = metadata
+
+        metadata['url'] = response.url
 
         if response.status < 200 or response.status > 300:
             item['offline'] = 1
@@ -94,14 +97,20 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         return item
 
     def onerror(self, reason):
-        
+
+        meta = None
         if hasattr(reason.value, 'response'):
             response = reason.value.response
-            brand = response.meta['brand']
+            meta = response.meta
+        else:
+            meta = reason.request.meta
+
+        if meta:
+            brand = meta['brand']
             item = UpdateItem()
-            item['idproduct'] = response.meta['pid']
+            item['idproduct'] = meta['pid']
             item['brand'] = brand
-            item['region'] = response.meta['region']
+            item['region'] = meta['region']
             sc = glob.spider_info()[brand]
             metadata = {}
             item['metadata'] = metadata

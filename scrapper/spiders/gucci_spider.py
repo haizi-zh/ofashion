@@ -241,3 +241,79 @@ class GucciSpider(MFashionSpider):
             return item
         else:
             return None
+
+    @classmethod
+    def is_offline(cls, response):
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
+
+        if model and name:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//div[@id="content"]//div[@id="product_card"]//p[@id="stylenum"][text()]')
+        if model_node:
+            try:
+                model = model_node.xpath('./text()').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+
+        return model
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="content"]//div[@id="container_title_description"]//h1[@itemprop="url"]')
+        if name_node:
+            try:
+                name_text = ''.join(cls.reformat(val) for val in name_node.xpath('.//text()').extract())
+                name_text = cls.reformat(name_text)
+                if name_text:
+                    name = cls.reformat(name_text)
+            except(TypeError, IndexError):
+                pass
+
+        return name
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        price_node = sel.xpath('//div[@id="content"]//div[@id="product_card"]//p[@id="price"][text()]')
+        if price_node:
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        description = None
+        description_node = sel.xpath('//div[@id="content"]//div[@id="container_title_description"]//div[@id="description"]//li[text()]')
+        if description_node:
+            description = '\r'.join(cls.reformat(val) for val in description_node.xpath('./text()').extract())
+            description = cls.reformat(description)
+
+        return description
