@@ -51,7 +51,7 @@ def process_price(price, region, decimal=None, currency=None):
     if not price or not price.strip():
         return None
         # 如果包含了appel, call等字符，说明不是这不是价格信息
-    for term in ['appel', 'call']:
+    for term in ['appel', 'call', 'appelez', 'chiamare']:
         if term in price.lower():
             return None
 
@@ -73,7 +73,8 @@ def process_price(price, region, decimal=None, currency=None):
                  key=lambda tmp: len(tmp), reverse=True)
     if not tmp:
         return None
-        # 去除首尾的符号
+
+    # 去除首尾的符号
     while True:
         tmp = tmp[0].strip()
         if not tmp:
@@ -85,6 +86,9 @@ def process_price(price, region, decimal=None, currency=None):
             tmp = tmp[:-1]
             continue
         break
+
+    if re.search(r'^0+', tmp):
+        return None
 
     # 判断小数点符号
     # 方法：如果,和.都有，谁在后面，谁就是分隔符。否则的话，看该符号是否在三的倍数位置上
