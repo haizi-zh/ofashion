@@ -12,10 +12,11 @@ __author__ = 'Zephyre'
 class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
     handle_httpstatus_list = [404]
 
-    def __init__(self, brand_list, db_spec, *a, **kw):
+    def __init__(self, brand_list, region_list, db_spec, *a, **kw):
         self.name = 'update'
         super(UpdateSpider, self).__init__(*a, **kw)
         self.brand_list = brand_list
+        self.region_list = region_list
         self.db = MySqlDb()
         self.db.conn(db_spec)
 
@@ -25,8 +26,12 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         if not self.brand_list:
             self.brand_list = glob.brand_info().keys()
 
-        rs = self.db.query(str.format('SELECT COUNT(*) FROM products WHERE brand_id IN ({0})',
-                                      ','.join(str(tmp) for tmp in self.brand_list)))
+        # UpdateSpider的可选区域参数
+        region_cond = str.format('region IN ({0})',
+                                 ','.join("'" + tmp + "'" for tmp in self.region_list)) if self.region_list else '1'
+
+        rs = self.db.query(str.format('SELECT COUNT(*) FROM products WHERE brand_id IN ({0}) AND {1}',
+                                      ','.join(str(tmp) for tmp in self.brand_list), region_cond))
         tot_num = int(rs.fetch_row()[0][0])
         self.log(str.format('Total number of records to update: {0}', tot_num), level=log.INFO)
 
@@ -42,7 +47,7 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                               callback=self.parse,
                               meta={'brand': brand, 'pid': pid, 'region': region},
                               errback=self.onerror,
-                              dont_filter=True,)
+                              dont_filter=True)
 
     def parse(self, response):
         brand = response.meta['brand']
