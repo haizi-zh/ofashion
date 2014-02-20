@@ -43,6 +43,11 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             for pid, data in products_map.items():
                 url = data['url']
                 region = data['region']
+
+                # url = 'http://www.ferragamo.com/shop/ProductDisplay?urlRequestType=Base&catalogId=37052&categoryId=3074457345616729856&productId=6148914691233503673&errorViewName=ProductDisplayErrorView&urlLangId=-2&langId=-2&top_category=3074457345616729820&parent_category_rn=3074457345616729820&storeId=31152'
+                # region = 'fr'
+                # pid = 484599
+
                 yield Request(url=url,
                               callback=self.parse,
                               meta={'brand': brand, 'pid': pid, 'region': region},

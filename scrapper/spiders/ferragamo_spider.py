@@ -387,7 +387,7 @@ class FerragamoSpider(MFashionSpider):
             try:
                 tmp = '\r'.join(cls.reformat(val) for val in
                                 sel.xpath('//div[contains(@id, "product_name_")]'
-                                          '/p[contains(@id,"price_display_")]/span[@itemprop="price"]'
+                                          '/*[contains(@id,"price_display_")]/span[@itemprop="price"]'
                                           '/text()').extract())
                 if tmp:
                     old_price = tmp
