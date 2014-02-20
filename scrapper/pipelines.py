@@ -91,8 +91,9 @@ class UpdatePipeline(object):
 
             if update_data:
                 self.db.update(update_data, 'products', str.format('idproducts={0}', pid),
-                               timestamps=['fetch_time', 'update_time', 'touch_time'])
+                               timestamps=['update_time', 'touch_time'])
             else:
+                # 所有的字段都没有变化，仅仅需要更新一下touch_time
                 self.db.update({'offline': item['offline']}, 'products', str.format('idproducts={0}', pid),
                                timestamps=['touch_time'])
 
@@ -268,7 +269,7 @@ class ProductPipeline(object):
                     entry['gender'] = json.dumps(entry['gender'], ensure_ascii=False)
                     self.process_gender(entry)
 
-                self.db.insert(entry, 'products', ['touch_time', 'update_time', 'fetch_time'])
+                self.db.insert(entry, 'products', ['touch_time', 'update_time'])
                 pid = int(self.db.query('SELECT LAST_INSERT_ID()').fetch_row()[0][0])
                 spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
             else:
