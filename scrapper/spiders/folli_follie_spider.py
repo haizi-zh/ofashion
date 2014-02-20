@@ -210,6 +210,12 @@ class FolliFollieSpider(MFashionSpider):
         name = cls.fetch_name(response)
 
         if model and name:
+
+            # 针对中国，对下架单品加入了跳转代码的查找
+            mt = re.search(ur'<script>document.location=', response.body)
+            if mt:
+                return True
+
             return False
         else:
             return True
