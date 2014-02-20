@@ -144,9 +144,9 @@ class LiujoSpider(MFashionSpider):
 
         model = None
         try:
-            tmp = sel.xpath('//div[@class="product-name"]/span[@class="product-ids"]/text()').extract()
+            tmp = sel.xpath('//div[@class="product-name"]/span[@class="product-ids"]/text()').extract()[0]
             if tmp:
-                model = cls.reformat(model)
+                model = cls.reformat(tmp)
         except(TypeError, IndexError):
             pass
 
