@@ -264,7 +264,12 @@ class CartierSpider(MFashionSpider):
         try:
             temp = sel.xpath('//div[@class="product-main"]//span[@itemprop="name"]')
             if temp:
-                name = unicodify(temp[0]._root.text)
+                # name = unicodify(temp[0]._root.text)
+                try:
+                    name = ''.join(cls.reformat(val) for val in temp.xpath('./text()').extract())
+                    name = cls.reformat(name)
+                except(TypeError, IndexError):
+                    pass
         except(TypeError, IndexError):
             pass
 
