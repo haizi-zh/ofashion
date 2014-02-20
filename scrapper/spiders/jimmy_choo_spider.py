@@ -304,14 +304,29 @@ class JimmyChooSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        # TODO 网站上已经找不到打折的东西了，所以这里没有处理打折单品
-        price_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
-        if price_node:
+        del_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "standardprice")][text()]')
+        if del_node:    # 打折
             try:
-                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = del_node.xpath('./text()').extract()[0]
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
+
+            discount_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
+            if discount_node:
+                try:
+                    new_price = discount_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+        else:   # 未打折
+            price_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
+            if price_node:
+                try:
+                    old_price = price_node.xpath('./text()').extract()[0]
+                    old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
 
         if old_price:
             ret['price'] = old_price
