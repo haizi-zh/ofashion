@@ -44,9 +44,9 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                 url = data['url']
                 region = data['region']
 
-                # url = 'http://www.tods.com/rok/man/tod-s-for-ferrari/tod-s-ferrari-gommino-driving-shoes-with-front-tie-in-suede'
-                # region = 'kr'
-                # pid = 549113
+                # url = 'http://www.michaelkors.cn/catalog/women/handbags/totes/susannah-medium-shoulder-tote.html'
+                # region = 'cn'
+                # pid = 510556
                 #
                 # return [Request(url=url,
                 #                 callback=self.parse,
