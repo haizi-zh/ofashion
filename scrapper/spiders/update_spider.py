@@ -44,9 +44,15 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                 url = data['url']
                 region = data['region']
 
-                # url = 'http://www.ferragamo.com/shop/ProductDisplay?urlRequestType=Base&catalogId=37052&categoryId=3074457345616729856&productId=6148914691233503673&errorViewName=ProductDisplayErrorView&urlLangId=-2&langId=-2&top_category=3074457345616729820&parent_category_rn=3074457345616729820&storeId=31152'
-                # region = 'fr'
-                # pid = 484599
+                # url = 'http://www.tods.com/rok/man/tod-s-for-ferrari/tod-s-ferrari-gommino-driving-shoes-with-front-tie-in-suede'
+                # region = 'kr'
+                # pid = 549113
+                #
+                # return [Request(url=url,
+                #                 callback=self.parse,
+                #                 meta={'brand': brand, 'pid': pid, 'region': region},
+                #                 errback=self.onerror,
+                #                 dont_filter=True)]
 
                 yield Request(url=url,
                               callback=self.parse,
@@ -71,6 +77,8 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             return item
         else:
             item['offline'] = 1 if getattr(sc, 'is_offline')(response) else 0
+            if item['offline'] == 1:
+                return item
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response)
