@@ -55,6 +55,7 @@ class PriceCheck(object):
                 'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
                 brand))
 
+            # 以model为键值，将同一个model下，不同区域的价格放在一起。
             records = rs.fetch_row(maxrows=0, how=1)
             price_data = {}
             for r in records:
