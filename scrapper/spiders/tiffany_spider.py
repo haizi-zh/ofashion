@@ -135,8 +135,12 @@ class TiffanySpider(MFashionSpider):
     def is_offline(cls, response):
         model = cls.fetch_model(response)
         name = cls.fetch_name(response)
+        sel = Selector(response)
+        nodes = sel.xpath('//div[@id="itemInfo"]//div[@id="divInvalidItemError"]')
 
-        if model and name:
+        if nodes:
+            return True
+        elif model and name:
             return False
         else:
             return True
