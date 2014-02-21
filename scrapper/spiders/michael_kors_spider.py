@@ -264,6 +264,19 @@ class MichaelKorsSpider(MFashionSpider):
         tmp = sel.xpath('//div[@class="product-info"]/ul[@class="product"]/li/a[@href and @data-zoom-width and '
                         '@data-zoom-height]')
         image_urls = [self.process_href(val._root.attrib['href'], response.url) for val in tmp]
+        # 针对美国，提取image_url
+        if metadata['region'] == 'us' and not image_urls:
+            origin_image_node = sel.xpath('//meta[@property="og:image"][@content]')
+            if origin_image_node:
+                try:
+                    origin_image_url = origin_image_node.xpath('./@content').extract()[0]
+                    if origin_image_url:
+                        max_image_url = re.sub(ur'/mb/', u'/mz/', origin_image_url)
+                        max_image_url = re.sub(ur'_mb\.', u'_mz.', max_image_url)
+                        if max_image_url:
+                            image_urls = [max_image_url]
+                except(TypeError, IndexError):
+                    pass
 
         item = ProductItem()
         item['image_urls'] = image_urls
