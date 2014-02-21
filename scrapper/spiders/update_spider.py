@@ -37,28 +37,37 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
 
         for brand in self.brand_list:
             # 获得该品牌下所有记录
-            rs = self.db.query_match({'idproducts', 'url', 'region'}, 'products', {'brand_id': brand})
-            products_map = {int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region']} for tmp in
-                            rs.fetch_row(maxrows=0, how=1)}
-            for pid, data in products_map.items():
-                url = data['url']
-                region = data['region']
+            # 如果未指定region_list，则默认对所有的的确进行更新
+            if self.region_list:
+                region_list = self.region_list
+            else:
+                rs = self.db.query(str.format('SELECT DISTINCT region FROM products WHERE brand_id={0}', brand))
+                region_list = [tmp['region'] for tmp in rs.fetch_row(maxrows=0, how=1)]
 
-                # url = 'http://www.michaelkors.cn/catalog/women/handbags/totes/susannah-medium-shoulder-tote.html'
-                # region = 'cn'
-                # pid = 510556
-                #
-                # return [Request(url=url,
-                #                 callback=self.parse,
-                #                 meta={'brand': brand, 'pid': pid, 'region': region},
-                #                 errback=self.onerror,
-                #                 dont_filter=True)]
+            for region in region_list:
+                rs = self.db.query_match({'idproducts', 'url', 'region'}, 'products',
+                                         {'brand_id': brand, 'region': region})
+                products_map = {int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region']} for tmp in
+                                rs.fetch_row(maxrows=0, how=1)}
+                for pid, data in products_map.items():
+                    url = data['url']
+                    region = data['region']
 
-                yield Request(url=url,
-                              callback=self.parse,
-                              meta={'brand': brand, 'pid': pid, 'region': region},
-                              errback=self.onerror,
-                              dont_filter=True)
+                    url = 'http://www.liujo.com/at/products-audette-clutch-bag-13921.html'
+                    region = 'at'
+                    pid = 714726
+
+                    return [Request(url=url,
+                                    callback=self.parse,
+                                    meta={'brand': brand, 'pid': pid, 'region': region},
+                                    errback=self.onerror,
+                                    dont_filter=True)]
+
+                    # yield Request(url=url,
+                    #               callback=self.parse,
+                    #               meta={'brand': brand, 'pid': pid, 'region': region},
+                    #               errback=self.onerror,
+                    #               dont_filter=True)
 
     def parse(self, response):
         brand = response.meta['brand']
