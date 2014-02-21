@@ -207,7 +207,8 @@ class SergiorossiSpider(MFashionSpider):
             o_price = ''.join(sel.xpath('//div[@class="oldprice"]//text()').extract())
             n_price = ''.join(sel.xpath('//div[@class="newprice"]//text()').extract())
             if not o_price and not n_price:
-                o_price = n_price = ''.join(sel.xpath('//div[@class="itemBoxPrice"]//text()').extract())
+                o_price = ''.join(sel.xpath('//div[@class="itemBoxPrice"]//text()').extract())
+                n_price = None
 
             old_price = cls.reformat(o_price)
             new_price = cls.reformat(n_price)
