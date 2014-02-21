@@ -53,21 +53,21 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     url = data['url']
                     region = data['region']
 
-                    url = 'http://www.liujo.com/at/products-audette-clutch-bag-13921.html'
-                    region = 'at'
-                    pid = 714726
+                    # url = 'http://www.liujo.com/at/products-audette-clutch-bag-13921.html'
+                    # region = 'at'
+                    # pid = 714726
+                    #
+                    # return [Request(url=url,
+                    #                 callback=self.parse,
+                    #                 meta={'brand': brand, 'pid': pid, 'region': region},
+                    #                 errback=self.onerror,
+                    #                 dont_filter=True)]
 
-                    return [Request(url=url,
-                                    callback=self.parse,
-                                    meta={'brand': brand, 'pid': pid, 'region': region},
-                                    errback=self.onerror,
-                                    dont_filter=True)]
-
-                    # yield Request(url=url,
-                    #               callback=self.parse,
-                    #               meta={'brand': brand, 'pid': pid, 'region': region},
-                    #               errback=self.onerror,
-                    #               dont_filter=True)
+                    yield Request(url=url,
+                                  callback=self.parse,
+                                  meta={'brand': brand, 'pid': pid, 'region': region},
+                                  errback=self.onerror,
+                                  dont_filter=True)
 
     def parse(self, response):
         brand = response.meta['brand']

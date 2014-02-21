@@ -235,8 +235,10 @@ class PublishRelease(object):
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
         price_list = {}
         for item in self.db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
-                                        self.price_hist, {}, str.format('idproducts IN ({0})', ','.join(
-                        val['idproducts'] for val in prods))).fetch_row(maxrows=0, how=1):
+                                        self.price_hist, {},
+                                        str.format('idproducts IN ({0}) AND price IS NOT NULL',
+                                                   ','.join(val['idproducts'] for val in prods))).fetch_row(maxrows=0,
+                                                                                                            how=1):
             # pid = int(item.pop('idproducts'))
             pid = int(item['idproducts'])
             updated = False
