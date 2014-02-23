@@ -53,9 +53,9 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     url = data['url']
                     region = data['region']
 
-                    # url = 'http://www.liujo.com/at/products-audette-clutch-bag-13921.html'
-                    # region = 'at'
-                    # pid = 714726
+                    # url = 'http://www.tiffany.fr/Engagement/item.aspx?groupSKU=GRP10018'
+                    # region = 'fr'
+                    # pid = 386765
                     #
                     # return [Request(url=url,
                     #                 callback=self.parse,

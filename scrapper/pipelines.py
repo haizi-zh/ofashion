@@ -126,6 +126,8 @@ class UpdatePipeline(object):
                     skip_price = True
 
             if not skip_price:
+                price = None
+                discount = None
                 if 'price' in metadata:
                     price = process_price(metadata['price'], region, currency=currency)
                     try:
@@ -133,41 +135,43 @@ class UpdatePipeline(object):
                     except KeyError:
                         discount = None
 
-                    if price and price['price'] > 0:
-                        # 该单品最后的价格信息
-                        price_value = price['price']
-                        discount_value = discount['price'] if discount else None
+                if price and price['price'] > 0:
+                    # 该单品最后的价格信息
+                    price_value = price['price']
+                    discount_value = discount['price'] if discount else None
 
-                        # 如果折扣价格大于或等于原价，则取消折扣价，并作出相应的警告
-                        if discount_value and discount_value >= price_value:
-                            spider.log(
-                                str.format('idproducts={0}: the discount price is equal or greater than the original '
-                                           'price! The discount price is ignored.', pid), log.WARNING)
-                            discount_value = None
+                    # 如果折扣价格大于或等于原价，则取消折扣价，并作出相应的警告
+                    if discount_value and discount_value >= price_value:
+                        spider.log(
+                            str.format('idproducts={0}: the discount price is equal or greater than the original '
+                                       'price! The discount price is ignored.', pid), log.WARNING)
+                        discount_value = None
 
-                        rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
-                                                 {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
-                        insert_flag = False
-                        if rs.num_rows() == 0:
+                    rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
+                                             {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
+                    insert_flag = False
+                    if rs.num_rows() == 0:
+                        insert_flag = True
+                    else:
+                        ret = rs.fetch_row()[0]
+                        db_entry = [float(val) if val else None for val in ret[:2]]
+                        old_currency = ret[2]
+                        if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price[
+                            'currency']:
                             insert_flag = True
-                        else:
-                            ret = rs.fetch_row()[0]
-                            db_entry = [float(val) if val else None for val in ret[:2]]
-                            old_currency = ret[2]
-                            if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price[
-                                'currency']:
-                                insert_flag = True
 
-                        if insert_flag:
-                            self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
-                                            'price_discount': (
-                                                discount_value if discount_value < price_value else None)},
-                                           'products_price_history')
+                    if insert_flag:
+                        self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
+                                        'price_discount': (
+                                            discount_value if discount_value < price_value else None)},
+                                       'products_price_history')
                 else:
+                    # 如果没有抓到任何任何信息
                     rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
                                              {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
                     tmp = rs.fetch_row(maxrows=0, how=1)
-                    if tmp and tmp[0]['price']:
+                    # 有时候，可能是因为历史错误原因，导致date为NULL。此时，可以将其视作价格不存在
+                    if (tmp and tmp[0]['price']) or (tmp and tmp[0]['date'] is None):
                         # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理
                         self.db.insert({'idproducts': pid, 'price': None, 'currency': tmp[0]['currency'],
                                         'price_discount': None}, 'products_price_history')
