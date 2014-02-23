@@ -299,13 +299,29 @@ class ValentinoSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        price_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]/span[text()]')
-        if price_node:
+        discount_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]//*[@class="newprice"][text()]')
+        if discount_node:   # 打折
             try:
-                old_price = price_node.xpath('./text()').extract()[0]
-                old_price = cls.reformat(old_price)
+                new_price = discount_node.xpath('./text()').extract()[0]
+                new_price = cls.reformat(new_price)
             except(TypeError, IndexError):
                 pass
+
+            price_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]//*[@class="oldprice"][text()]')
+            if price_node:
+                try:
+                    old_price = price_node.xpath('./text()').extract()[0]
+                    old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
+        else:   # 未打折
+            price_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]/span[text()]')
+            if price_node:
+                try:
+                    old_price = price_node.xpath('./text()').extract()[0]
+                    old_price = cls.reformat(old_price)
+                except(TypeError, IndexError):
+                    pass
 
         if old_price:
             ret['price'] = old_price
