@@ -218,7 +218,7 @@ class VersaceSpider(MFashionSpider):
             price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="price singleprice"][text()]')
             if price_node:
                 try:
-                    old_price = price_node.xpath('./text()').extract()[0]
+                    old_price = ''.join(cls.reformat(val) for val in price_node.xpath('.//text()').extract())
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
