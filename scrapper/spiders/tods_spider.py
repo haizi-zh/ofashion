@@ -502,16 +502,28 @@ class TodsSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        # 这里的价格，源码里既有final-price也有full-price，
-        # 我看的几个，都是final-price有价格，full-price没有东西，
-        # 这里抓这个显示出来的final-price先
-        try:
-            price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
-            price = cls.reformat(price)
-            if price:
-                old_price = price
-        except(TypeError, IndexError):
-            pass
+        origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
+        if origin_node:   # 打折
+            try:
+                old_price = origin_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+            discount_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"][text()]')
+            if discount_node:
+                try:
+                    new_price = discount_node.xpath('./text()').extract()[0]
+                    new_price = cls.reformat(new_price)
+                except(TypeError, IndexError):
+                    pass
+        else:   # 未打折
+            try:
+                price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
+                price = cls.reformat(price)
+                if price:
+                    old_price = price
+            except(TypeError, IndexError):
+                pass
 
         if old_price:
             ret['price'] = old_price
