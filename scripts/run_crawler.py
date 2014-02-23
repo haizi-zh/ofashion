@@ -32,7 +32,7 @@ def argument_parser(args):
     @param args:
     @return: @raise SyntaxError:
     """
-    supported_params = {'brand', 'r', 'exclude-region', 'D', 'P', 'v', 'debug'}
+    supported_params = {'brand', 'r', 'exclude-region', 'D', 'P', 'v', 'debug', 'cookie'}
     if len(args) < 2:
         default_error()
         return
@@ -188,7 +188,13 @@ def set_up_spider(spider_class, data, is_update=False):
     else:
         crawler.settings.values['USER_AGENT'] = ua
 
-    crawler.settings.values['COOKIES_ENABLED'] = (data['cookie'].lower() == 'true') if 'cookie' in data else True
+    cookie_flag = True
+    try:
+        cookie_flag = (data['cookie'][0].lower() == 'true')
+    except (IndexError, KeyError):
+        pass
+
+    crawler.settings.values['COOKIES_ENABLED'] = cookie_flag
 
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
