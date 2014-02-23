@@ -167,6 +167,8 @@ def _load_user_cfg(cfg_file=None):
     read_settings(section, 'DEBUG_PORT', proc=conv_int)
     read_settings(section, 'DEBUG_FLAG', proc=conv_bool)
     read_settings(section, 'LOG_DEBUG', proc=conv_bool)
+    read_settings(section, 'COOKIES_DEBUG', proc=conv_bool)
+    read_settings(section, 'COOKIES_ENABLED', proc=conv_bool)
 
     # SECTION: MISC
     read_settings('MISC', 'EMAIL_ADDR', proc=lambda val: json.loads(val))

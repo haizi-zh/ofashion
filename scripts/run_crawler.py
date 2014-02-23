@@ -188,13 +188,14 @@ def set_up_spider(spider_class, data, is_update=False):
     else:
         crawler.settings.values['USER_AGENT'] = ua
 
-    cookie_flag = True
+    cookie_flag = getattr(glob, 'COOKIES_ENABLED', False)
     try:
         cookie_flag = (data['cookie'][0].lower() == 'true')
     except (IndexError, KeyError):
         pass
-
     crawler.settings.values['COOKIES_ENABLED'] = cookie_flag
+
+    crawler.settings.values['COOKIES_DEBUG'] = getattr(glob, 'COOKIES_DEBUG', False)
 
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
