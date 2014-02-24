@@ -41,7 +41,7 @@ def process_price(price, region, decimal=None, currency=None):
         # val=unicode.format(u' {0} ',)
         if not re.search(r'\d', val):
             return ''
-        val = re.sub(r'\s', '', val, flags=re.U)
+        val = re.sub(r"[\s']", '', val, flags=re.U)
         if val[0] in ('.', ','):
             val = val[1:]
         if val[-1] in ('.', ','):
@@ -69,7 +69,7 @@ def process_price(price, region, decimal=None, currency=None):
             currency = glob.region_info()[region]['currency']
 
     # 提取最长的数字，分隔符字符串
-    tmp = sorted([func(tmp) for tmp in re.findall(r'(?<=[^\d])[\d\s,\.]+(?=[^\d])', val, flags=re.U)],
+    tmp = sorted([func(tmp) for tmp in re.findall(r"(?<=[^\d])[\d\s,'\.]+(?=[^\d])", val, flags=re.U)],
                  key=lambda tmp: len(tmp), reverse=True)
     if not tmp:
         return None
