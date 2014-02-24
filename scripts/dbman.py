@@ -52,7 +52,7 @@ class PriceCheck(object):
                 'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
                 'p1.region,p1.name,p1.model FROM products AS p1 JOIN products_price_history AS p2 ON '
                 'p1.idproducts=p2.idproducts '
-                'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
+                'WHERE p1.brand_id={0} AND p2.price IS NOT NULL ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
                 brand))
 
             # 以model为键值，将同一个model下，不同区域的价格放在一起。
