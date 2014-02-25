@@ -32,7 +32,9 @@ def argument_parser(args):
     @param args:
     @return: @raise SyntaxError:
     """
-    supported_params = {'brand', 'r', 'exclude-region', 'D', 'P', 'v', 'debug', 'cookie'}
+    supported_params = {'brand', 'r', 'exclude-region',
+                        'D', 'P', 'v', 'debug', 'cookie',
+                        'user-agent'}
     if len(args) < 2:
         default_error()
         return
@@ -175,7 +177,7 @@ def set_up_spider(spider_class, data, is_update=False):
     crawler.settings.values['AUTOTHROTTLE_ENABLED'] = True
 
     # 设置spider的user agent
-    ua = data['user-agent'] if 'user-agent' in data else 'chrome'
+    ua = data['user-agent'][0] if 'user-agent' in data else 'chrome'
     if ua.lower() == 'chrome':
         crawler.settings.values[
             'USER_AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
