@@ -50,7 +50,7 @@ class PriceCheck(object):
             self.progress += 1
             rs = db.query(str.format(
                 'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
-                'p1.region,p1.name,p1.model FROM products AS p1 JOIN products_price_history AS p2 ON '
+                'p1.region,p1.name,p1.model,p1.offline FROM products AS p1 JOIN products_price_history AS p2 ON '
                 'p1.idproducts=p2.idproducts '
                 'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
                 brand))
@@ -60,11 +60,11 @@ class PriceCheck(object):
             price_data = {}
             for r in records:
                 model = r['model']
-                if r['price']:
-                    # 仅有哪些price不为None的数据，才加入到price check中。
+                # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
+                if r['price'] and int(r['offline']) == 0:
                     # 首先检查model是否已存在
                     if model not in price_data:
-                        price_data[model]=[]
+                        price_data[model] = []
                     price_data[model].append(r)
 
             # 最大值和最小值之间，如果差别过大，则说明价格可能有问题
@@ -232,36 +232,51 @@ class PublishRelease(object):
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
 
         url_dict = {val['idproducts']: val['url'] for val in prods}
-        offline_dict = {val['idproducts']: val['offline'] for val in prods}
+        offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}
 
         # pid和region之间的关系
         pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
         price_list = {}
+        # 以pid为主键，将全部的价格历史记录合并起来
         for item in self.db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
                                         self.price_hist, {},
-                                        str.format('idproducts IN ({0}) AND price IS NOT NULL',
+                                        str.format('idproducts IN ({0})',
                                                    ','.join(val['idproducts'] for val in prods))).fetch_row(maxrows=0,
                                                                                                             how=1):
-            # pid = int(item.pop('idproducts'))
             pid = int(item['idproducts'])
-            updated = False
+            region = pid_region_dict[pid]
             if pid not in price_list:
-                updated = True
-            else:
-                # 保证price_list中，任何pid对应的价格，都是最新的版本。
-                old_ts = price_list[pid]['date']
-                new_ts = datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S")
-                if new_ts > old_ts:
-                    updated = True
+                price_list[pid] = []
+            price_list[pid].append({'price': float(item['price']) if item['price'] else None,
+                                    'price_discount': float(item['price_discount']) if item['price_discount'] else None,
+                                    'currency': item['currency'],
+                                    'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
+                                    'offline': offline_dict[pid],
+                                    'code': region, 'country': gs.region_info()[region]['name_c'],
+                                    'url': url_dict[item['idproducts']]})
 
-            if updated:
-                region = pid_region_dict[pid]
-                price_list[pid] = {'price': float(item['price']), 'currency': item['currency'],
-                                   'price_discount': float(item['price_discount']) if item['price_discount'] else None,
-                                   'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
-                                   'offline': offline_dict[item['idproducts']],
-                                   'code': region, 'country': gs.region_info()[region]['name_c'],
-                                   'url': url_dict[item['idproducts']]}
+        # 对price_list进行简并操作。
+        # 策略：如果有正常的最新价格，则返回正常的价格数据。
+        # 如果最新价格为None，则取回溯第一条不为None的数据，同时将price_discount置空。
+        # 如果无法找到不为None的价格，则跳过该pid
+        for pid, pid_data in price_list.items():
+            # 按照时间顺序逆排序
+            pid_data = sorted(pid_data, key=lambda val: val['date'], reverse=True)
+            if pid_data[0]['price']:
+                # 正常情况
+                price_list[pid] = pid_data[0]
+            else:
+                # 寻找回溯第一条price不为None的数据。
+                tmp = filter(lambda val: val['price'], pid_data)
+                if not tmp:
+                    # 没有价格信息，取消该pid记录
+                    price_list.pop(pid)
+                else:
+                    # 取最近一次价格，同时取消折扣价，保留最新记录的offline状态
+                    tmp = tmp[0]
+                    tmp['price_discount'] = None
+                    # tmp['offline'] = offline_dict[pid]
+                    price_list[pid] = tmp
 
         # 如果没有价格信息，则不发布
         if not price_list:
@@ -343,7 +358,8 @@ class PublishRelease(object):
                 model_list[record['model']] = [record]
             else:
                 model_list[record['model']].append(record)
-                # 归并最后一个model
+
+        # 归并最后一个model
         self.merge_prods(model_list.pop(list(model_list.keys())[0]))
 
         self.db.close()
