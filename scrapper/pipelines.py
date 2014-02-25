@@ -170,8 +170,7 @@ class UpdatePipeline(object):
                     rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
                                              {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
                     tmp = rs.fetch_row(maxrows=0, how=1)
-                    # 有时候，可能是因为历史错误原因，导致date为NULL。此时，可以将其视作价格不存在
-                    if (tmp and tmp[0]['price']) or (tmp and tmp[0]['date'] is None):
+                    if tmp and tmp[0]['price']:
                         # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理
                         self.db.insert({'idproducts': pid, 'price': None, 'currency': tmp[0]['currency'],
                                         'price_discount': None}, 'products_price_history')

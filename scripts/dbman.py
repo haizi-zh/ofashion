@@ -52,7 +52,7 @@ class PriceCheck(object):
                 'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
                 'p1.region,p1.name,p1.model FROM products AS p1 JOIN products_price_history AS p2 ON '
                 'p1.idproducts=p2.idproducts '
-                'WHERE p1.brand_id={0} AND p2.price IS NOT NULL ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
+                'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts',
                 brand))
 
             # 以model为键值，将同一个model下，不同区域的价格放在一起。
@@ -60,9 +60,12 @@ class PriceCheck(object):
             price_data = {}
             for r in records:
                 model = r['model']
-                if model not in price_data:
-                    price_data[model] = []
-                price_data[model].append(r)
+                if r['price']:
+                    # 仅有哪些price不为None的数据，才加入到price check中。
+                    # 首先检查model是否已存在
+                    if model not in price_data:
+                        price_data[model]=[]
+                    price_data[model].append(r)
 
             # 最大值和最小值之间，如果差别过大，则说明价格可能有问题
             for model in price_data:
