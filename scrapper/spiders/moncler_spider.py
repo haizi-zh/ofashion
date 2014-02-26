@@ -208,7 +208,7 @@ class MonclerSpider(MFashionSpider):
         except(TypeError, IndexError):
             pass
 
-        return model
+        return model.upper() if model else None
 
     @classmethod
     def fetch_price(cls, response):
