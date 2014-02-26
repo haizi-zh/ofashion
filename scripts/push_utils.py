@@ -67,7 +67,7 @@ def price_changed(brand_list=None, start=None, end=None):
     results = {'warnings': [], 'price_up': {}, 'discount_up': {}, 'price_down': {}, 'discount_down': {}}
     processed = set({})
 
-    brand_cond = ','.join(str(tmp) for tmp in brand_list) if brand_list else 1
+    brand_cond = str.format('p1.brand_id IN ({0})', ','.join(str(tmp) for tmp in brand_list)) if brand_list else 1
     rs_pid = db.query(str.format('''SELECT p1.brand_id,p1.model,p1.idproducts,p1.region,p1.fingerprint FROM products AS p1
     JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
     WHERE p1.offline=0 AND p2.price IS NOT NULL AND {0} AND p2.date BETWEEN {1} AND {2}''',
@@ -164,14 +164,7 @@ def newly_fetched(brand_list=None, start=None, end=None):
             if fp not in processed:
                 if brand not in results:
                     results[brand] = []
-                results[brand].append({'brand_id': brand, 'model': r['model'], 'fingerprint': fp})
+                results[brand].append({'model': r['model'], 'fingerprint': fp})
                 processed.add(fp)
     db.close()
     return results
-
-
-rec = newly_fetched(brand_list=[10350, 10066], start=datetime.date(2014, 2, 16), end=datetime.date(2014, 2, 25))
-rec = newly_fetched()
-rec = price_changed(brand_list=[10350, 10066], start=datetime.date(2014, 2, 22), end=datetime.date(2014, 2, 25))
-rec = price_changed()
-print len(rec)
