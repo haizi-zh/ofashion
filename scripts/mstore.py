@@ -20,7 +20,7 @@ from scripts import dbman
 from scripts.extract import SampleExtractor
 from scripts.sandbox import Sandbox
 from scripts.sync_product import SyncProducts
-from scripts.dbman import ProcessTags, PriceCheck
+from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck
 from scripts.report_core import spider_prog_report
 import core
 from utils.utils import process_price, unicodify, iterable
@@ -633,6 +633,10 @@ def sandbox(param_dict):
     core.func_carrier(Sandbox(param_dict), 1)
 
 
+def fingerprint_check(param_dict):
+    core.func_carrier(FingerprintCheck(param_dict), 1)
+
+
 def image_check(param_dict):
     """
     检查图片是否正常。
@@ -727,7 +731,7 @@ def argument_parser(args):
 
     cmd_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
                 'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report, 'price-check': price_check,
-                'extract': extract, 'sandbox': sandbox}
+                'extract': extract, 'sandbox': sandbox, 'fingerprint-check': fingerprint_check}
 
     return lambda: cmd_dict[cmd](param_dict)
 

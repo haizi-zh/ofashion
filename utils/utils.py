@@ -1,4 +1,5 @@
 # coding=utf-8
+import hashlib
 import re
 import types
 import global_settings as glob
@@ -30,6 +31,20 @@ def guess_currency(price, region=None):
     else:
         # 未找到货币信息
         return None
+
+
+def gen_fingerprint(brand, model):
+    """
+    根据单品的品牌编号和model，生成加盐处理后的MD5指纹
+    @param brand:
+    @param model:
+    """
+    salt_plain = 'roseVision88'
+    salt = hashlib.md5(salt_plain).digest()
+
+    idstores = str(brand) + model
+    d1 = hashlib.md5(idstores).digest()
+    return ''.join(map((lambda x, y: '{0:x}'.format((ord(x) + ord(y)) % 256)), d1, salt))
 
 
 def process_price(price, region, decimal=None, currency=None):

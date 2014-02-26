@@ -7,9 +7,76 @@ from core import MySqlDb
 import global_settings as gs
 import common as cm
 import json
-from utils.utils import unicodify, iterable
+from utils.utils import unicodify, iterable, gen_fingerprint
 
 __author__ = 'Zephyre'
+
+
+class FingerprintCheck(object):
+    """
+    检查单品的加盐MD5指纹是否正确
+    """
+
+    def get_msg(self):
+        return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
+                          float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
+
+    def __init__(self, param=None):
+        self.tot = 1
+        self.progress = 0
+        # 是否处于静默模式
+        self.silent = ('s' in param)
+        # 是否更新错配的fingerprint
+        self.update_fingerprint = ('update' in param)
+        # 如果没有指定brand，则对数据库中存在的所有brand进行处理
+        self.brand_list = [int(val) for val in param['brand']] if 'brand' in param else None
+        # 检查报告
+        self.report = []
+
+    def run(self):
+        db = MySqlDb()
+        db.conn(gs.DB_SPEC)
+
+        if not self.brand_list:
+            rs = db.query_match(['brand_id'], 'products', distinct=True)
+            brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
+            self.brand_list = brand_list
+        else:
+            brand_list = self.brand_list
+        if not brand_list:
+            # 如果没有任何品牌，则直接退出
+            return self.report
+
+        self.progress = 0
+        # 获得检查总数
+        self.tot = int(db.query(str.format('SELECT COUNT(*) FROM products WHERE brand_id IN ({0})',
+                                           ','.join(str(tmp) for tmp in brand_list))).fetch_row()[0][0])
+        for brand in brand_list:
+            if not self.silent:
+                print unicode.format(u'\nPROCESSING {0} / {1}\n', brand, gs.brand_info()[brand]['brandname_e'])
+
+            db.start_transaction()
+            try:
+                for model, pid, fingerprint in db.query_match(['model', 'idproducts', 'fingerprint'], 'products',
+                                                              {'brand_id': brand}).fetch_row(maxrows=0):
+                    self.progress += 1
+                    new_fp = gen_fingerprint(brand, model)
+                    if fingerprint != new_fp:
+                        self.report.append({'model': model, 'idproducts': pid, 'fingerprint_db': fingerprint,
+                                            'fingerprint_gen': new_fp, 'brand_id': brand})
+                        if not self.silent:
+                            print unicode.format(u'\nMismatched fingerprints! model={0}, idproducts={1}, brand_id={2}, '
+                                                 u'fingerprints: {3} => {4}\n',
+                                                 model, pid, brand, fingerprint, new_fp)
+                        if self.update_fingerprint:
+                            # 自动更新MD5指纹
+                            db.update({'fingerprint': new_fp}, 'products', str.format('idproducts={0}', pid))
+            except:
+                db.rollback()
+                raise
+            finally:
+                db.commit()
+        db.close()
 
 
 class PriceCheck(object):
@@ -230,7 +297,8 @@ class PublishRelease(object):
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
-        entry['fetch_time'] = sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
+        entry['fetch_time'] = \
+        sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
             0].strftime("%Y-%m-%d %H:%M:%S")
 
         url_dict = {val['idproducts']: val['url'] for val in prods}
