@@ -116,4 +116,3 @@ def spider_prog_report(param_dict):
     server.login('buddy@mfashion.com.cn', 'rose123')
     server.sendmail('buddy@mfashion.com.cn', recipent_addrs, msg.as_string())
 
-    pass
