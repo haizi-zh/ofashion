@@ -207,7 +207,7 @@ class PublishRelease(object):
         sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
         entry = {k: unicodify(main_entry[k]) for k in (
-            'brand_id', 'model', 'name', 'description', 'details', 'gender', 'category', 'color', 'url')}
+            'brand_id', 'model', 'name', 'description', 'details', 'gender', 'category', 'color', 'url', 'fingerprint')}
         if not entry['name']:
             entry['name'] = u'单品'
 
@@ -230,6 +230,8 @@ class PublishRelease(object):
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
+        entry['fetch_time'] = sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
+            0].strftime("%Y-%m-%d %H:%M:%S")
 
         url_dict = {val['idproducts']: val['url'] for val in prods}
         offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}
