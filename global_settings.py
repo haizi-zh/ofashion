@@ -14,49 +14,47 @@ from scrapper.spiders.mfashion_spider import MFashionSpider
 import inspect
 import imp
 
-if sys.platform in ('win32', ):
-    STORAGE_PATH = u'd:/Users/Zephyre/Development/mstore/storage'
-    HOME_PATH = u'd:/Users/Zephyre/RoseVision/MStore_src'
-elif sys.platform in ('darwin', ):  # MAC
-    STORAGE_PATH = u'/Users/Ryan/Desktop/MStoreSpiderStorage'
-    HOME_PATH = u'/Users/Ryan/Desktop/MStoreSpiderGit'
-else:
-    STORAGE_PATH = u'/home/rose/MStore/storage'
-    HOME_PATH = u'/home/rose/MStore/src'
+# if sys.platform in ('win32', ):
+#     STORAGE_PATH = u'd:/Users/Zephyre/Development/mstore/storage'
+#     HOME_PATH = u'd:/Users/Zephyre/RoseVision/MStore_src'
+# elif sys.platform in ('darwin', ):  # MAC
+#     STORAGE_PATH = u'/Users/Ryan/Desktop/MStoreSpiderStorage'
+#     HOME_PATH = u'/Users/Ryan/Desktop/MStoreSpiderGit'
+# else:
+#     STORAGE_PATH = u'/home/rose/MStore/storage'
+#     HOME_PATH = u'/home/rose/MStore/src'
 
 
-# Database
-REMOTE_CONN = True
-if sys.platform not in ('win32', ):
-    REMOTE_CONN = False
-
-DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-           'port': 1228 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
-SPIDER_SPEC = {}
-RELEASE_SPEC = {}
-TMP_SPEC = {}
+# # Database
+# REMOTE_CONN = True
+# if sys.platform not in ('win32', ):
+#     REMOTE_CONN = False
+#
+# DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
+#            'port': 1228 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
+# SPIDER_SPEC = {}
+# RELEASE_SPEC = {}
+# TMP_SPEC = {}
 
 
 def __fetch_brand_info():
-    db = core.MySqlDb()
-    db.conn(DB_SPEC)
-    tmp = db.query('SELECT * FROM brand_info').fetch_row(how=1, maxrows=0)
-    return {int(k['brand_id']): {'brandname_e': k['brandname_e'].decode('utf-8') if k['brandname_e'] else None,
-                                 'brandname_c': k['brandname_c'].decode('utf-8') if k['brandname_c'] else None,
-                                 'brandname_s': k['brandname_s'].decode('utf-8') if k['brandname_s'] else None}
-            for k in tmp}
+    with core.MySqlDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+        tmp = db.query('SELECT * FROM brand_info').fetch_row(how=1, maxrows=0)
+        return {int(k['brand_id']): {'brandname_e': k['brandname_e'].decode('utf-8') if k['brandname_e'] else None,
+                                     'brandname_c': k['brandname_c'].decode('utf-8') if k['brandname_c'] else None,
+                                     'brandname_s': k['brandname_s'].decode('utf-8') if k['brandname_s'] else None}
+                for k in tmp}
 
 
 def __fetch_region_info():
-    db = core.MySqlDb()
-    db.conn(DB_SPEC)
-    tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
-    return {k['iso_code']: {'iso_code3': k['iso_code3'],
-                            'weight': int(k['weight']), 'rate': float(k['rate']),
-                            'name_e': k['name_e'].decode('utf-8'),
-                            'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
-                            'currency': k['currency']}
-            for k in tmp}
+    with core.MySqlDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+        tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
+        return {k['iso_code']: {'iso_code3': k['iso_code3'],
+                                'weight': int(k['weight']), 'rate': float(k['rate']),
+                                'name_e': k['name_e'].decode('utf-8'),
+                                'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
+                                'currency': k['currency']}
+                for k in tmp}
 
 
 __cached_region_info = None
@@ -171,10 +169,18 @@ def _load_user_cfg(cfg_file=None):
     read_settings(section, 'COOKIES_ENABLED', proc=conv_bool)
 
     # SECTION: MISC
-    read_settings('MISC', 'EMAIL_ADDR', proc=lambda val: json.loads(val))
+    section = 'MISC'
+    read_settings(section, 'EMAIL_ADDR', proc=lambda val: json.loads(val))
 
     # SECTION DATABASE
-    read_settings('DATABASE', 'WRITE_DATABASE', proc=conv_bool)
+    section = 'DATABASE'
+    read_settings(section, 'WRITE_DATABASE', proc=conv_bool)
+    read_settings(section, 'DB_SPEC', proc=lambda val: json.loads(val))
+
+    # SECTION STORAGE
+    section = 'STORAGE'
+    read_settings(section, 'STORAGE_PATH')
+    read_settings(section, 'HOME_PATH')
 
     # SECTION CHECKPOINT
     section = 'CHECKPOINT'

@@ -45,7 +45,7 @@ def test():
 
 
 def backup_all():
-    storage_path = glob.STORAGE_PATH
+    storage_path = getattr(glob, 'STORAGE_PATH')
     original_path = os.getcwd()
     os.chdir(storage_path)
 
