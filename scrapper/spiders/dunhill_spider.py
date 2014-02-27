@@ -136,6 +136,16 @@ class DunhillSpider(MFashionSpider):
         yield item
 
     @classmethod
+    def is_offline(cls, response):
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
+
+        if model and name:
+            return False
+        else:
+            return True
+
+    @classmethod
     def fetch_model(cls, response):
         sel = Selector(response)
 
