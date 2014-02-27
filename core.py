@@ -15,6 +15,21 @@ class MySqlDb(object):
     LOCK_READ = 0
     LOCK_WRITE = 1
 
+    def __init__(self, spec=None):
+        self.spec = spec
+        self.db = None
+        self.connected = False
+
+    def __enter__(self):
+        self.conn(self.spec)
+        self.connected = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.connected:
+            self.db.close()
+            self.connected = False
+
     @classmethod
     def default_spec(cls):
         """
@@ -151,7 +166,7 @@ class MySqlDb(object):
         statement = unicode.format(u'SELECT {5} {0} FROM {1} WHERE {2} AND {3} {4}',
                                    ', '.join(selects), table, match_str, extra_cond,
                                    tail_str if tail_str else '',
-                                   'DISTINCT' if distinct else '',)
+                                   'DISTINCT' if distinct else '')
         self.db.query(statement.encode('utf-8'))
         return self.db.use_result() if use_result else self.db.store_result()
 
