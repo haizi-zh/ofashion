@@ -1,4 +1,6 @@
+#!/usr/bin/python
 # coding=utf-8
+
 import logging
 import sys
 import os
@@ -32,7 +34,7 @@ def make_sure_path_exists(path):
             raise
 
 
-def test():
+def test(param_dict):
     logger.debug('This is a debug test.')
     logger.info('This is a info test.')
     logger.warn('This is a warn test.')
@@ -44,7 +46,37 @@ def test():
     print 'DONE'
 
 
-def backup_all():
+def sync(param_dict):
+    user = param_dict['u'][0]
+    port = param_dict['p'][0]
+    host = param_dict['h'][0]
+    dst = param_dict['d'][0] if 'd' in param_dict else ''
+
+    done_name=None
+    if 'f' in param_dict:
+        file_name = param_dict['f'][0]
+    else:
+        # 取得最后一个备份文件的路径
+        storage_path = os.path.join(getattr(glob, 'STORAGE_PATH'), 'backups')
+        tmp = sorted(filter(lambda val:re.search(r'^\d{8}_\d{6}[^\.]+\.7z$', val), os.listdir(storage_path)))
+        if tmp:
+            file_name = os.path.join(storage_path, tmp[-1])
+        else:
+            file_name = None
+
+        done_name = file_name + '.done'
+        with open(done_name, mode='w') as f:
+            f.write('DONE\n')
+
+    if file_name:
+        cmd = str.format('scp -P {0} {1} {2}@{3}:{4}', port, file_name, user, host, dst)
+        os.system(cmd)
+        if done_name:
+            cmd = str.format('scp -P {0} {1} {2}@{3}:{4}', port, done_name, user, host, dst)
+            os.system(cmd)
+
+
+def backup_all(param_dict):
     storage_path = getattr(glob, 'STORAGE_PATH')
     original_path = os.getcwd()
     os.chdir(storage_path)
@@ -72,7 +104,7 @@ def backup_all():
 
 def argument_parser(args):
     if len(args) < 2:
-        return default_error()
+        return lambda: default_error('Incomplete arguments.')
 
     cmd = args[1]
 
@@ -84,38 +116,54 @@ def argument_parser(args):
     param_name = None
     param_value = None
     while not q.empty():
-        tmp = q.get()
-        if re.search(r'--(?=[^\-])', tmp):
-            tmp = re.sub('^-+', '', tmp)
+        term = q.get()
+        if re.search(r'--(?=[^\-])', term):
+            tmp = re.sub('^-+', '', term)
             if param_name:
                 param_dict[param_name] = param_value
-
             param_name = tmp
             param_value = None
-        elif re.search(r'-(?=[^\-])', tmp):
-            tmp = re.sub('^-+', '', tmp)
-            if param_name:
-                param_dict[param_name] = param_value
-
+        elif re.search(r'-(?=[^\-])', term):
+            tmp = re.sub('^-+', '', term)
             for tmp in list(tmp):
-                param_dict[tmp] = None
-            param_name = None
-            param_value = None
+                if param_name:
+                    param_dict[param_name] = param_value
+                    param_value = None
+                param_name = tmp
         else:
             if param_name:
                 if param_value:
-                    param_value.append(tmp)
+                    param_value.append(term)
                 else:
-                    param_value = [tmp]
+                    param_value = [term]
     if param_name:
         param_dict[param_name] = param_value
 
+    if 'debug' in param_dict or 'D' in param_dict:
+        if 'P' in param_dict:
+            port = int(param_dict['P'][0])
+        else:
+            port = getattr(glob, 'DEBUG_PORT')
+        import pydevd
+
+        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
+    for k in ('debug', 'D', 'P'):
+        try:
+            param_dict.pop(k)
+        except KeyError:
+            pass
+
     if cmd == 'test':
-        return test
+        func = test
     elif cmd == 'backup-all':
-        return backup_all
+        func = backup_all
+    elif cmd == 'sync':
+        func = sync
     else:
-        return lambda msg: default_error(str.format('Unknown command: {0}', cmd))
+        func = lambda msg: default_error(str.format('Unknown command: {0}', cmd))
+
+    return lambda: func(param_dict)
+
 
 if __name__ == "__main__":
     argument_parser(sys.argv)()

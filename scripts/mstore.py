@@ -719,7 +719,7 @@ def argument_parser(args):
         if 'P' in param_dict:
             port = int(param_dict['P'][0])
         else:
-            port = glob.DEBUG_PORT
+            port = getattr(glob, 'DEBUG_PORT')
         import pydevd
 
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
