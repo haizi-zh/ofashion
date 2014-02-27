@@ -62,12 +62,17 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     #                 meta={'brand': brand, 'pid': pid, 'region': region},
                     #                 errback=self.onerror,
                     #                 dont_filter=True)]
-
-                    yield Request(url=url,
-                                  callback=self.parse,
-                                  meta={'brand': brand, 'pid': pid, 'region': region},
-                                  errback=self.onerror,
-                                  dont_filter=True)
+                    if url:
+                        try:
+                            yield Request(url=url,
+                                          callback=self.parse,
+                                          meta={'brand': brand, 'pid': pid, 'region': region},
+                                          errback=self.onerror,
+                                          dont_filter=True)
+                        except TypeError:
+                            continue
+                    else:
+                        continue
 
     def parse(self, response):
         brand = response.meta['brand']
