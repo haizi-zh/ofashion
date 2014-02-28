@@ -133,8 +133,12 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         meta = None
         if hasattr(reason.value, 'response'):
             response = reason.value.response
-            meta = response.meta
-        else:
+            # 这里response可能为None，比如出现
+            # ERROR: Error downloading <GET xxx>:
+            # [<twisted.python.failure.Failure <class 'twisted.internet.error.ConnectionDone'>>]
+            if response:
+                meta = response.meta
+        if not meta:
             meta = reason.request.meta
 
         if meta:
