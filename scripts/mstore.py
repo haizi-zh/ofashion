@@ -23,7 +23,7 @@ from scripts.sync_product import SyncProducts
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck
 from scripts.report_core import spider_prog_report
 import core
-from utils.utils import process_price, unicodify, iterable
+from utils.utils import process_price, unicodify, iterable, parse_args
 
 __author__ = 'Zephyre'
 
@@ -678,63 +678,16 @@ def image_check(param_dict):
                                  image_validity=image_validity, cond=cond, update=update), 1)
 
 
-def argument_parser(args):
-    if len(args) < 2:
-        return mstore_error
-
-    cmd = args[1]
-
-    # 解析命令行参数
-    param_dict = {}
-    q = Queue()
-    for tmp in args[2:]:
-        q.put(tmp)
-    param_name = None
-    param_value = None
-    while not q.empty():
-        term = q.get()
-        if re.search(r'--(?=[^\-])', term):
-            tmp = re.sub('^-+', '', term)
-            if param_name:
-                param_dict[param_name] = param_value
-            param_name = tmp
-            param_value = None
-        elif re.search(r'-(?=[^\-])', term):
-            tmp = re.sub('^-+', '', term)
-            for tmp in list(tmp):
-                if param_name:
-                    param_dict[param_name] = param_value
-                    param_value = None
-                param_name = tmp
-        else:
-            if param_name:
-                if param_value:
-                    param_value.append(term)
-                else:
-                    param_value = [term]
-    if param_name:
-        param_dict[param_name] = param_value
-
-    if 'debug' in param_dict or 'D' in param_dict:
-        if 'P' in param_dict:
-            port = int(param_dict['P'][0])
-        else:
-            port = getattr(glob, 'DEBUG_PORT')
-        import pydevd
-
-        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
-    for k in ('debug', 'D', 'P'):
-        try:
-            param_dict.pop(k)
-        except KeyError:
-            pass
-
-    cmd_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
-                'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report, 'price-check': price_check,
-                'extract': extract, 'sandbox': sandbox, 'fingerprint-check': fingerprint_check}
-
-    return lambda: cmd_dict[cmd](param_dict)
-
-
 if __name__ == "__main__":
-    argument_parser(sys.argv)()
+    ret = parse_args(sys.argv)
+    func_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
+                 'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report,
+                 'price-check': price_check, 'extract': extract, 'sandbox': sandbox,
+                 'fingerprint-check': fingerprint_check}
+    if ret:
+        cmd = ret['cmd']
+        param = ret['param']
+        if cmd not in func_dict:
+            logger.error(str.format('INVALID COMMAND: {0}', cmd))
+        else:
+            func_dict[cmd](param)

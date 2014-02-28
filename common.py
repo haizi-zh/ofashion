@@ -177,33 +177,6 @@ def update_entry(entry, data):
         entry[k] = data[k]
 
 
-def argument_parse(text):
-    arg_list = []
-    start = 0
-    s_opened = False
-    d_opened = False
-    escaped = False
-    for i in xrange(len(text)):
-        if text[i] == "'" and not d_opened and not escaped:
-            s_opened = not s_opened
-        elif text[i] == '"' and not s_opened and not escaped:
-            d_opened = not d_opened
-        elif text[i] == ',' and not s_opened and not d_opened and not escaped:
-            arg_list.append(text[start:i].strip())
-            start = i + 1
-
-        escaped = (text[i] == '\\' and not escaped)
-
-    last = text[start:].strip()
-    if last != '':
-        arg_list.append(last)
-
-    for i in xrange(len(arg_list)):
-        tmp = arg_list[i]
-        arg_list[i] = re.sub(ur'\\(.)', ur'\1', tmp)
-    return tuple(arg_list)
-
-
 def reformat_addr(addr):
     """
     格式化地址字符串，将多余的空格、换行、制表符等合并

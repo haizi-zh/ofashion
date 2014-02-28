@@ -2,6 +2,7 @@
 # coding=utf-8
 from Queue import Queue
 from itertools import ifilter
+import logging
 import os
 import re
 import shutil
@@ -17,83 +18,13 @@ from scrapper.spiders.mfashion_spider import MFashionSpider
 from scrapy.contrib.spiders import CrawlSpider
 from scrapper.spiders.update_spider import UpdateSpider
 import scrapper.spiders.update_spider as ups
-from utils.utils import iterable
+from utils.utils import iterable, parse_args
 
 __author__ = 'Zephyre'
 
 
 def default_error():
     print 'Invalid syntax. Use mstore help for more information.'
-
-
-def argument_parser(args):
-    """
-    返回
-    @param args:
-    @return: @raise SyntaxError:
-    """
-    supported_params = {'brand', 'r', 'exclude-region',
-                        'D', 'P', 'v', 'debug', 'cookie',
-                        'user-agent'}
-    if len(args) < 2:
-        default_error()
-        return
-
-    spider_name = args[1]
-
-    # 解析命令行参数
-    param_dict = {}
-    q = Queue()
-    for tmp in args[2:]:
-        q.put(tmp)
-    param_name = None
-    param_value = None
-    while not q.empty():
-        tmp = q.get()
-        if re.search(r'--(?=[^\-])', tmp):
-            tmp = re.sub('^-+', '', tmp)
-            if param_name:
-                param_dict[param_name] = param_value
-
-            param_name = tmp
-            param_value = None
-        elif re.search(r'-(?=[^\-])', tmp):
-            tmp = re.sub('^-+', '', tmp)
-            for tmp in list(tmp):
-                if param_name:
-                    param_dict[param_name] = param_value
-                    param_value = None
-                param_name = tmp
-        else:
-            if param_name:
-                if param_value:
-                    param_value.append(tmp)
-                else:
-                    param_value = [tmp]
-    if param_name:
-        param_dict[param_name] = param_value
-
-    # 检查params是否有效
-    ret = filter(lambda val: val not in supported_params, param_dict.keys())
-    if ret:
-        raise SyntaxError(str.format('Unknown paramter: {0}', ret[0]))
-
-    if 'debug' in param_dict or 'D' in param_dict:
-        if 'P' in param_dict:
-            port = int(param_dict['P'][0])
-        else:
-            port = glob.DEBUG_PORT
-        import pydevd
-
-        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
-
-    for k in ('debug', 'D', 'P'):
-        try:
-            param_dict.pop(k)
-        except KeyError:
-            pass
-
-    return {'spider': spider_name, 'param': param_dict}
 
 
 def get_job_path(brand_id):
@@ -215,47 +146,49 @@ def set_up_spider(spider_class, data, is_update=False):
 
 
 def main():
-    try:
-        cmd = argument_parser(sys.argv)
-    except SyntaxError as e:
-        print e.msg
-        return
+    logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
+    logger = logging.getLogger()
 
-    if cmd:
-        spider_module = cm.get_spider_module(cmd['spider'])
-        spider_class = UpdateSpider if cmd['spider'] == 'update' else MFashionSpider
-        is_update = (not spider_class == MFashionSpider)
+    ret = parse_args(sys.argv)
+    if ret:
+        cmd = ret['cmd']
+        param = ret['param']
 
-        if is_update:
-            sc_list = list(ifilter(lambda val: isinstance(val, type) and issubclass(val, CrawlSpider),
-                                   (getattr(spider_module, tmp) for tmp in dir(spider_module))))
-        else:
-            sc_list = list(ifilter(lambda val:
-                                   isinstance(val, type) and issubclass(val, spider_class) and val != spider_class,
-                                   (getattr(spider_module, tmp) for tmp in dir(spider_module))))
+        if cmd:
+            spider_module = cm.get_spider_module(cmd)
+            spider_class = UpdateSpider if cmd == 'update' else MFashionSpider
+            is_update = (not spider_class == MFashionSpider)
 
-        if 'r' not in cmd['param']:
-            cmd['param']['r'] = []
-
-        if sc_list:
-            sc = sc_list[0]
-
-            if 'v' in cmd['param'] or glob.LOG_DEBUG:
-                log.start(loglevel='DEBUG')
+            if is_update:
+                sc_list = list(ifilter(lambda val: isinstance(val, type) and issubclass(val, CrawlSpider),
+                                       (getattr(spider_module, tmp) for tmp in dir(spider_module))))
             else:
-                if is_update:
-                    logfile = os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
-                                                            unicode.format(u'update_{0}_{1}.log',
-                                                                           '_'.join(cmd['param']['brand']),
-                                                                           datetime.datetime.now().strftime(
-                                                                               '%Y%m%d%H%M%S'))))
+                sc_list = list(ifilter(lambda val:
+                                       isinstance(val, type) and issubclass(val, spider_class) and val != spider_class,
+                                       (getattr(spider_module, tmp) for tmp in dir(spider_module))))
+
+            if 'r' not in param:
+                param['r'] = []
+
+            if sc_list:
+                sc = sc_list[0]
+
+                if 'v' in param or getattr(glob, 'LOG_DEBUG'):
+                    log.start(loglevel='DEBUG')
                 else:
-                    logfile = get_log_path(sc.spider_data['brand_id'])
-                log.start(loglevel='INFO', logfile=logfile)
+                    if is_update:
+                        logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
+                                                                unicode.format(u'update_{0}_{1}.log',
+                                                                               '_'.join(param['brand']),
+                                                                               datetime.datetime.now().strftime(
+                                                                                   '%Y%m%d%H%M%S'))))
+                    else:
+                        logfile = get_log_path(sc.spider_data['brand_id'])
+                    log.start(loglevel='INFO', logfile=logfile)
 
-            set_up_spider(sc, cmd['param'], is_update=is_update)
-            reactor.run()   # the script will block here until the spider_closed signal was sent
+                set_up_spider(sc, param, is_update=is_update)
+                reactor.run()  # the script will block here until the spider_closed signal was sent
 
 
-main()
-
+if __name__ == "__main__":
+    main()

@@ -91,69 +91,6 @@ def backup_all(param_dict):
     os.chdir(original_path)
 
 
-def argument_parser(args):
-    if len(args) < 2:
-        return lambda: default_error('Incomplete arguments.')
-
-    cmd = args[1]
-
-    # 解析命令行参数
-    param_dict = {}
-    q = Queue()
-    for tmp in args[2:]:
-        q.put(tmp)
-    param_name = None
-    param_value = None
-    while not q.empty():
-        term = q.get()
-        if re.search(r'--(?=[^\-])', term):
-            tmp = re.sub('^-+', '', term)
-            if param_name:
-                param_dict[param_name] = param_value
-            param_name = tmp
-            param_value = None
-        elif re.search(r'-(?=[^\-])', term):
-            tmp = re.sub('^-+', '', term)
-            for tmp in list(tmp):
-                if param_name:
-                    param_dict[param_name] = param_value
-                    param_value = None
-                param_name = tmp
-        else:
-            if param_name:
-                if param_value:
-                    param_value.append(term)
-                else:
-                    param_value = [term]
-    if param_name:
-        param_dict[param_name] = param_value
-
-    if 'debug' in param_dict or 'D' in param_dict:
-        if 'P' in param_dict:
-            port = int(param_dict['P'][0])
-        else:
-            port = getattr(glob, 'DEBUG_PORT')
-        import pydevd
-
-        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
-    for k in ('debug', 'D', 'P'):
-        try:
-            param_dict.pop(k)
-        except KeyError:
-            pass
-
-    if cmd == 'test':
-        func = test
-    elif cmd == 'backup-all':
-        func = backup_all
-    elif cmd == 'sync':
-        func = sync
-    else:
-        func = lambda msg: default_error(str.format('Unknown command: {0}', cmd))
-
-    return lambda: func(param_dict)
-
-
 if __name__ == "__main__":
     ret = parse_args(sys.argv)
     func_dict = {'test': test, 'backup-all': backup_all, 'sync': sync}
