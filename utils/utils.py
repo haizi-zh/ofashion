@@ -1,4 +1,5 @@
 # coding=utf-8
+from Queue import Queue
 import hashlib
 import re
 import types
@@ -144,6 +145,61 @@ def process_price(price, region, decimal=None, currency=None):
         return None
 
     return {'currency': currency, 'price': val}
+
+
+def parse_args(args):
+    """
+    解析命令行的参数
+    @param args:
+    @return:
+    """
+    if len(args) < 2:
+        return None
+
+    cmd = args[1]
+
+    # 解析命令行参数
+    param_dict = {}
+    q = Queue()
+    for tmp in args[2:]:
+        q.put(tmp)
+    param_name = None
+    param_value = None
+    while not q.empty():
+        term = q.get()
+        if re.search(r'--(?=[^\-])', term):
+            tmp = re.sub('^-+', '', term)
+            if param_name:
+                param_dict[param_name] = param_value
+            param_name = tmp
+            param_value = None
+        elif re.search(r'-(?=[^\-])', term):
+            tmp = re.sub('^-+', '', term)
+            for tmp in list(tmp):
+                if param_name:
+                    param_dict[param_name] = param_value
+                    param_value = None
+                param_name = tmp
+        else:
+            if param_name:
+                if param_value:
+                    param_value.append(term)
+                else:
+                    param_value = [term]
+    if param_name:
+        param_dict[param_name] = param_value
+
+    # debug和debug-port是通用参数，表示将启用远程调试模块。
+    if 'debug' in param_dict:
+        if 'debug-port' in param_dict:
+            port = int(param_dict['debug-port'][0])
+        else:
+            port = getattr(glob, 'DEBUG_PORT')
+        import pydevd
+
+        pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
+
+    return {'cmd': cmd, 'param': param_dict}
 
 
 def unicodify(val):
