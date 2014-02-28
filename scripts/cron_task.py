@@ -1,16 +1,14 @@
 #!/usr/bin/python
 # coding=utf-8
 
+import datetime
 import logging
 import sys
 import os
-import datetime
 import errno
 import global_settings as glob
-from Queue import Queue
 import re
-
-sys.path.append('/home/rose/MStore/src')
+from utils.utils import parse_args
 
 __author__ = 'Zephyre'
 
@@ -22,10 +20,6 @@ def default_error(msg):
     logger.error(msg)
 
 
-def mstore_help():
-    print str.format('Available commands are: {0}', ', '.join(cmd_list))
-
-
 def make_sure_path_exists(path):
     try:
         os.makedirs(path)
@@ -35,71 +29,66 @@ def make_sure_path_exists(path):
 
 
 def test(param_dict):
-    logger.debug('This is a debug test.')
-    logger.info('This is a info test.')
-    logger.warn('This is a warn test.')
-    logger.error('This is a error test.')
-    os.system('echo "aaaa"')
-    os.system('echo "bbb" > /dev/null')
-    os.system('echo "ccc"')
-
-    print 'DONE'
-
-
-def sync(param_dict):
-    user = param_dict['u'][0]
-    port = param_dict['p'][0]
-    host = param_dict['h'][0]
-    dst = param_dict['d'][0] if 'd' in param_dict else ''
-
-    done_name=None
-    if 'f' in param_dict:
-        file_name = param_dict['f'][0]
-    else:
-        # 取得最后一个备份文件的路径
-        storage_path = os.path.join(getattr(glob, 'STORAGE_PATH'), 'backups')
-        tmp = sorted(filter(lambda val:re.search(r'^\d{8}_\d{6}[^\.]+\.7z$', val), os.listdir(storage_path)))
-        if tmp:
-            file_name = os.path.join(storage_path, tmp[-1])
-        else:
-            file_name = None
-
-        done_name = file_name + '.done'
-        with open(done_name, mode='w') as f:
-            f.write('DONE\n')
-
-    if file_name:
-        cmd = str.format('scp -P {0} {1} {2}@{3}:{4}', port, file_name, user, host, dst)
-        os.system(cmd)
-        if done_name:
-            cmd = str.format('scp -P {0} {1} {2}@{3}:{4}', port, done_name, user, host, dst)
-            os.system(cmd)
+    logger.info('TEST COMPLETED')
 
 
 def backup_all(param_dict):
+    logger.info('AUTO BACKUP STARTED')
     storage_path = getattr(glob, 'STORAGE_PATH')
     original_path = os.getcwd()
     os.chdir(storage_path)
 
-    logger.info(str.format('{0}\tAUTO BACKUP STARTED', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
+    user = param_dict['u'][0] if 'u' in param_dict and param_dict['u'] else None
+    password = param_dict['p'][0] if 'p' in param_dict and param_dict['p'] else None
+    host = param_dict['host'][0] if 'host' in param_dict and param_dict['host'] else None
+    port = param_dict['port'][0] if 'port' in param_dict and param_dict['port'] else None
+    db = param_dict['db'][0] if 'db' in param_dict and param_dict['db'] else None
+    dst = param_dict['dst'][0] if 'dst' in param_dict and param_dict['dst'] else ''
+    ssh_user, ssh_host, ssh_port = [None] * 3
+    if 'ssh' in param_dict and param_dict['ssh']:
+        ssh_str = param_dict['ssh'][0]
+        ssh_user, ssh = ssh_str.split('@')
+        if ':' in ssh:
+            ssh_host, ssh_port = ssh.split(':')
+        else:
+            ssh_host = ssh
+            # Default ssh port
+            ssh_port = ''
+    host_str = str.format('-h{0}', host) if host else ''
+    port_str = str.format('-P{0}', port) if port else ''
 
-    backup_name = str.format('{0}_auto_backup', datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
-    path = os.path.join(storage_path, 'backups')
-    make_sure_path_exists(path)
-    template = str.format('{0}/{1}', path, backup_name)
-    sys_cmd = str.format(
-        'mysqldump -c -u rose -prose123 --databases editor_stores > {0}.sql', template)
-    logger.debug(sys_cmd)
-    os.system(sys_cmd)
-    sys_cmd = str.format('7z a {0}.7z {0}.sql > /dev/null', template)
-    logger.debug(sys_cmd)
-    os.system(sys_cmd)
-    sys_cmd = str.format('rm {0}.sql', template)
-    logger.debug(sys_cmd)
-    os.system(sys_cmd)
+    tables = ['brand_info', 'region_info', 'images_store', 'mfashion_tags', 'original_tags', 'products',
+              'products_image', 'products_price_history', 'products_release']
+    for table in tables:
+        logger.info(str.format('EXPORTING {0}...', table))
+        os.system(str.format('mysqldump {3} {4} -u {0} -p{1} -c {2} {5} > /tmp/{5}.sql',
+                             user, password, db, host_str, port_str, table))
 
+    # 将所有的sql文件打包
+    logger.info('ZIPPING...')
+    backup_name = os.path.join(storage_path, 'backups',
+                               str.format('{0}_auto_backup.7z', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
+    os.system(str.format('7z a -mx7 {0} {1} > null', backup_name,
+                         ' '.join(str.format('/tmp/{0}.sql', tmp) for tmp in tables)))
+
+    # 移除临时sql文件
+    logger.info('REMOVING TEMPORARY SQL FILES...')
+    os.system(str.format('rm {0}', ' '.join(str.format('/tmp/{0}.sql', tmp) for tmp in tables)))
+
+    # 建立完成标志
+    with open(backup_name + '.done', 'w') as f:
+        f.write('DONE\n')
+
+    # SCP
+    if ssh_user and ssh_host and ssh_port:
+        # 指明了SSH信息，需要上传到远程服务器作为备份
+        logger.info('UPLOADING...')
+        ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
+        os.system(str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
+        os.system(str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
+
+    logger.info(str.format('AUTO BACKUP COMPLETED: {0}', backup_name))
     os.chdir(original_path)
-    logger.info(str.format('{0}\tAUTO BACKUP COMPLETED', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
 
 
 def argument_parser(args):
@@ -166,4 +155,12 @@ def argument_parser(args):
 
 
 if __name__ == "__main__":
-    argument_parser(sys.argv)()
+    ret = parse_args(sys.argv)
+    func_dict = {'test': test, 'backup-all': backup_all, 'sync': sync}
+    if ret:
+        cmd = ret['cmd']
+        param = ret['param']
+        if cmd not in func_dict:
+            logger.error(str.format('INVALID COMMAND: {0}', cmd))
+        else:
+            func_dict[cmd](param)
