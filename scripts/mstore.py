@@ -19,7 +19,7 @@ from products.utils import fetch_image
 from scripts import dbman
 from scripts.extract import SampleExtractor
 from scripts.sandbox import Sandbox
-from scripts.sync_product import SyncProducts
+# from scripts.sync_product import SyncProducts
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck
 from scripts.report_core import spider_prog_report
 import core
@@ -32,7 +32,7 @@ __author__ = 'Zephyre'
 import sys
 from PIL import Image
 
-cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags', 'sync')
+cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags')
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
 verbose = False
 force_overwrite = False
@@ -405,38 +405,38 @@ class ImageDownloader(object):
         self.t = None
 
 
-def sync(args):
-    idx = 0
-    cond = []
-    src_spec = glob.DB_SPEC
-    dst_spec = glob.DB_SPEC
-    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
-              'release': glob.RELEASE_SPEC}
-    while True:
-        if idx >= len(args):
-            break
-        hdr = args[idx]
-        idx += 1
-        if hdr == '--cond':
-            cond.append(args[idx])
-            idx += 1
-        elif hdr == '--src':
-            tmp = args[idx]
-            idx += 1
-            src_spec = db_map[tmp]
-        elif hdr == '--dst':
-            tmp = args[idx]
-            idx += 1
-            dst_spec = db_map[tmp]
-        elif hdr == '-D':
-            import pydevd
-
-            pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
-        else:
-            print str.format('INVALID PARAMETER: {0}', hdr)
-            return
-
-    core.func_carrier(SyncProducts(src_spec=src_spec, dst_spec=dst_spec, cond=cond), 1)
+# def sync(args):
+#     idx = 0
+#     cond = []
+#     src_spec = glob.DB_SPEC
+#     dst_spec = glob.DB_SPEC
+#     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
+#               'release': glob.RELEASE_SPEC}
+#     while True:
+#         if idx >= len(args):
+#             break
+#         hdr = args[idx]
+#         idx += 1
+#         if hdr == '--cond':
+#             cond.append(args[idx])
+#             idx += 1
+#         elif hdr == '--src':
+#             tmp = args[idx]
+#             idx += 1
+#             src_spec = db_map[tmp]
+#         elif hdr == '--dst':
+#             tmp = args[idx]
+#             idx += 1
+#             dst_spec = db_map[tmp]
+#         elif hdr == '-D':
+#             import pydevd
+#
+#             pydevd.settrace('localhost', port=debug_port, stdoutToServer=True, stderrToServer=True)
+#         else:
+#             print str.format('INVALID PARAMETER: {0}', hdr)
+#             return
+#
+#     core.func_carrier(SyncProducts(src_spec=src_spec, dst_spec=dst_spec, cond=cond), 1)
 
 
 class ImageCheck(object):
