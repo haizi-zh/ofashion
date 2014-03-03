@@ -194,16 +194,16 @@ class DebeersSpider(MFashionSpider):
 
         return description
 
-    # @classmethod
-    # def fetch_details(cls, response):
-    #     sel = Selector(response)
-    #
-    #     details = None
-    #     try:
-    #         details = ''.join(sel.xpath('//div[@class="product-description-complete"]//text()').extract())
-    #         details = cls.reformat(details)
-    #     except(TypeError, IndexError):
-    #         details = None
-    #         pass
-    #
-    #     return details
+        # @classmethod
+        # def fetch_details(cls, response):
+        #     sel = Selector(response)
+        #
+        #     details = None
+        #     try:
+        #         details = ''.join(sel.xpath('//div[@class="product-description-complete"]//text()').extract())
+        #         details = cls.reformat(details)
+        #     except(TypeError, IndexError):
+        #         details = None
+        #         pass
+        #
+        #     return details

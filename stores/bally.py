@@ -24,7 +24,7 @@ def fetch_stores(data):
     raw = json.loads(body[start:stop])
     store_list = []
     for continent in raw.keys():
-        if continent==u'continentkeys':
+        if continent == u'continentkeys':
             continue
 
         for country in raw[continent].keys():

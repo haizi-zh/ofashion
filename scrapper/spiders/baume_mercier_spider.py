@@ -11,8 +11,8 @@ import copy
 import common
 import re
 
-class BaumeMercierSpider(MFashionSpider):
 
+class BaumeMercierSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10032,
         'home_urls': {
@@ -58,7 +58,7 @@ class BaumeMercierSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -91,7 +91,7 @@ class BaumeMercierSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -180,7 +180,8 @@ class BaumeMercierSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@class="clearfix"]/div[contains(@class, "row")]/div[contains(@class, "column")]/div')
+        product_nodes = sel.xpath(
+            '//div[@class="clearfix"]/div[contains(@class, "row")]/div[contains(@class, "column")]/div')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -263,7 +264,8 @@ class BaumeMercierSpider(MFashionSpider):
                 pass
         # 这是图片左下的部分
         description2 = None
-        description_node2 = sel.xpath('//div[@class="l-details"]/div[contains(@class, "information")]/div[contains(@class, "description")]/div[@style]')
+        description_node2 = sel.xpath(
+            '//div[@class="l-details"]/div[contains(@class, "information")]/div[contains(@class, "description")]/div[@style]')
         if description_node2:
             try:
                 description2 = description_node2.xpath('./text()').extract()[0]
@@ -278,7 +280,8 @@ class BaumeMercierSpider(MFashionSpider):
         if description:
             metadata['description'] = description
 
-        detail_nodes = sel.xpath('//div[@class="l-details"]/div[contains(@class, "technical")]/*[not(@id="technicaldetails")][not(contains(@class, "button"))]')
+        detail_nodes = sel.xpath(
+            '//div[@class="l-details"]/div[contains(@class, "technical")]/*[not(@id="technicaldetails")][not(contains(@class, "button"))]')
         if detail_nodes:
 
             def func(node):
@@ -287,7 +290,7 @@ class BaumeMercierSpider(MFashionSpider):
                     allText = ''.join(self.reformat(val) for val in node.xpath('./text()').extract())
                     # h5标签说明他是一行的开头
                     if node_name == 'h5':
-                        return '\r'+allText
+                        return '\r' + allText
                     else:
                         return allText
                 except(TypeError, IndexError):

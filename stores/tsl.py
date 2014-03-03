@@ -48,7 +48,7 @@ def fetch_stores(data):
                 city_e = ret['name_e']
                 city_c = ret['name_c']
 
-        m=re.search(ur"<td class='storeName'>(.+?)</td>", city_sub, re.S)
+        m = re.search(ur"<td class='storeName'>(.+?)</td>", city_sub, re.S)
         if not m:
             continue
 
@@ -56,8 +56,8 @@ def fetch_stores(data):
             entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
             entry[cm.country_e] = data['country_code']
             entry[cm.city_e], entry[cm.city_c] = city_e, city_c
-            entry[cm.name_e]=name
-            entry[cm.addr_e]=name
+            entry[cm.name_e] = name
+            entry[cm.addr_e] = name
 
             gs.field_sense(entry)
             ret = gs.addr_sense(entry[cm.addr_e])

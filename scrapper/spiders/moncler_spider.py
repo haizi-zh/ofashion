@@ -281,7 +281,8 @@ class MonclerSpider(MFashionSpider):
         sel = Selector(response)
 
         colors = []
-        color_nodes = sel.xpath('//div[@id="containerRight"]//div[@id="colorsContainer"]/div[contains(@class,"colorBox")][@title]')
+        color_nodes = sel.xpath(
+            '//div[@id="containerRight"]//div[@id="colorsContainer"]/div[contains(@class,"colorBox")][@title]')
         if color_nodes:
             try:
                 colors = [cls.reformat(val)

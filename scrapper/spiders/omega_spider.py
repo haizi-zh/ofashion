@@ -160,8 +160,8 @@ class OmegaSpider(MFashionSpider):
 
         try:
             metadata['description'] = self.reformat(unicodify(sel.xpath('//div[@id="tabs-product-detail-overview"]'
-                                                                           '/div[@class="product-detail-tab-content"]'
-                                                                           '/p[@class="slide-paragraph"]/text()').extract()[
+                                                                        '/div[@class="product-detail-tab-content"]'
+                                                                        '/p[@class="slide-paragraph"]/text()').extract()[
                 0]))
         except IndexError:
             pass

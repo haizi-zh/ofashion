@@ -20,14 +20,14 @@ def fetch_countries(data):
         return []
 
     start = body.find(u'<label>COUNTRY</label>')
-    if start==-1:
+    if start == -1:
         print 'Error occured in fetching country list: %s' % url
     body = cm.extract_closure(body[start:], ur'<select\b', ur'</select>')[0]
 
-    results=[]
+    results = []
     for m in re.findall(ur'<option value="([A-Z]{2})">.+?</option>', body):
-        d=data.copy()
-        d['country_code']=m
+        d = data.copy()
+        d['country_code'] = m
         results.append(d)
     return results
 
@@ -35,35 +35,35 @@ def fetch_countries(data):
 def fetch_stores(data):
     url = data['url']
     try:
-        body = cm.get_data(url, {'countryCode':data['country_code']})
+        body = cm.get_data(url, {'countryCode': data['country_code']})
     except Exception:
         print 'Error occured in fetching stores: %s, %s' % (url, data['country_code'])
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
         cm.dump(dump_data)
         return []
 
-    raw=json.loads(body)['stores']
-    store_list=[]
+    raw = json.loads(body)['stores']
+    store_list = []
     for key in raw:
-        store=raw[key]
+        store = raw[key]
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-        entry[cm.name_e]=store['name']
+        entry[cm.name_e] = store['name']
         addr = store['address1']
-        if store['address2']!='':
-            addr+=', '+store['address2']
-        entry[cm.addr_e]=addr
-        entry[cm.zip_code]=store['postalCode']
-        entry[cm.city_e]=store['city'].strip().upper()
-        entry[cm.province_e]=store['stateCode'].strip().upper()
-        entry[cm.country_e]=data['country_code']
-        entry[cm.tel]=store['phone']
-        entry[cm.fax]=store['fax']
-        entry[cm.email]=store['email']
-        entry[cm.hours]=store['storeHours']
-        if store['latitude']!='':
-            entry[cm.lat]=string.atof(store['latitude'])
-        if store['longitude']!='':
-            entry[cm.lng]=string.atof(store['longitude'])
+        if store['address2'] != '':
+            addr += ', ' + store['address2']
+        entry[cm.addr_e] = addr
+        entry[cm.zip_code] = store['postalCode']
+        entry[cm.city_e] = store['city'].strip().upper()
+        entry[cm.province_e] = store['stateCode'].strip().upper()
+        entry[cm.country_e] = data['country_code']
+        entry[cm.tel] = store['phone']
+        entry[cm.fax] = store['fax']
+        entry[cm.email] = store['email']
+        entry[cm.hours] = store['storeHours']
+        if store['latitude'] != '':
+            entry[cm.lat] = string.atof(store['latitude'])
+        if store['longitude'] != '':
+            entry[cm.lng] = string.atof(store['longitude'])
 
         gs.field_sense(entry)
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
@@ -73,6 +73,7 @@ def fetch_stores(data):
         store_list.append(entry)
 
     return store_list
+
 
 def fetch(level=1, data=None, user='root', passwd=''):
     def func(data, level):

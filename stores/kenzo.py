@@ -36,12 +36,12 @@ def fetch(level=1, data=None, user='root', passwd=''):
         entry[cm.tel] = s['contact']['phone']
         entry[cm.fax] = s['contact']['fax']
         entry[cm.hours] = cm.reformat_addr(s['contact']['hours'])
-        entry[cm.store_type]=s['contact']['selling']
-        entry[cm.url]=host+s['link']
+        entry[cm.store_type] = s['contact']['selling']
+        entry[cm.url] = host + s['link']
 
         gs.update_city_map(s['city'], s['country'], s['continent'])
-        cm.update_entry(entry,{cm.continent_e:s['continent'], cm.country_e:s['country'],
-                               cm.city_e:s['city']})
+        cm.update_entry(entry, {cm.continent_e: s['continent'], cm.country_e: s['country'],
+                                cm.city_e: s['city']})
         gs.field_sense(entry)
 
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (

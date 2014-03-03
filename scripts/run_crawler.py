@@ -29,12 +29,12 @@ def default_error():
 
 def get_job_path(brand_id):
     return os.path.normpath(
-        os.path.join(glob.STORAGE_PATH,
+        os.path.join(getattr(glob, 'STORAGE_PATH'),
                      unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.brand_info()[brand_id]['brandname_s'])))
 
 
 def get_log_path(brand_id):
-    return os.path.normpath(os.path.join(glob.STORAGE_PATH, u'products/log',
+    return os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
                                          unicode.format(u'{0}_{1}_{2}.log', brand_id,
                                                         glob.brand_info()[brand_id]['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))
@@ -42,8 +42,8 @@ def get_log_path(brand_id):
 
 def get_images_store(brand_id):
     return os.path.normpath(os.path.join(
-        glob.STORAGE_PATH, u'products/images', unicode.format(u'{0}_{1}', brand_id,
-                                                              glob.brand_info()[brand_id]['brandname_s'])))
+        getattr(glob, 'STORAGE_PATH'), u'products/images', unicode.format(u'{0}_{1}', brand_id,
+                                                                          glob.brand_info()[brand_id]['brandname_s'])))
 
 
 def set_up_spider(spider_class, data, is_update=False):

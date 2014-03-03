@@ -10,15 +10,15 @@ db = None
 
 
 def fetch_continents(data):
-    urls=[{'continent':'ASIA','url':'/en/jil_store_countries.json?continent=asia'},
-          {'continent':'EUROPE','url':'/en/jil_store_countries.json?continent=europe'},
-          {'continent':'NORTH AMERICA','url':'/en/jil_store_countries.json?continent=north-america'}]
+    urls = [{'continent': 'ASIA', 'url': '/en/jil_store_countries.json?continent=asia'},
+            {'continent': 'EUROPE', 'url': '/en/jil_store_countries.json?continent=europe'},
+            {'continent': 'NORTH AMERICA', 'url': '/en/jil_store_countries.json?continent=north-america'}]
 
     results = []
     for value in urls:
-        d=data.copy()
-        d['continent']=value['continent']
-        d['url']=data['host']+value['url']
+        d = data.copy()
+        d['continent'] = value['continent']
+        d['url'] = data['host'] + value['url']
         results.append(d)
     return results
 
@@ -33,72 +33,71 @@ def fetch_countries(data):
         cm.dump(dump_data)
         return []
 
-    raw=json.loads(body)
-    results=[]
+    raw = json.loads(body)
+    results = []
     for key in raw:
-        d=data.copy()
-        d['country_code']=key
+        d = data.copy()
+        d['country_code'] = key
         results.append(d)
     return results
 
 
 def fetch_cities(data):
-    url = data['host']+'/en/jil_store_cities.json'
+    url = data['host'] + '/en/jil_store_cities.json'
     try:
-        body = cm.get_data(url, {'country':data['country_code']})
+        body = cm.get_data(url, {'country': data['country_code']})
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
         cm.dump(dump_data)
         return []
 
-    raw=json.loads(body)
-    results=[]
+    raw = json.loads(body)
+    results = []
     for key in raw:
-        d=data.copy()
-        d['city']=key
+        d = data.copy()
+        d['city'] = key
         results.append(d)
     return results
 
 
 def fetch_stores(data):
-    url = data['host']+'/en/jil_store_stores.json'
+    url = data['host'] + '/en/jil_store_stores.json'
     try:
-        body = cm.get_data(url, {'city':data['city']})
+        body = cm.get_data(url, {'city': data['city']})
     except Exception:
         print 'Error occured: %s' % url
         dump_data = {'level': 0, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}
         cm.dump(dump_data)
         return []
 
-    raw=json.loads(body)
+    raw = json.loads(body)
 
-    store_list=[]
+    store_list = []
     for store in raw:
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-        entry[cm.name_e]=store['title']
-        entry[cm.country_e]=store['country'].strip().upper()
-        entry[cm.city_e]=store['city'].strip().upper()
-        entry[cm.lat]=string.atof(store['lat'])
-        entry[cm.lng]=string.atof(store['lng'])
-        entry[cm.tel]=store['telephone']
+        entry[cm.name_e] = store['title']
+        entry[cm.country_e] = store['country'].strip().upper()
+        entry[cm.city_e] = store['city'].strip().upper()
+        entry[cm.lat] = string.atof(store['lat'])
+        entry[cm.lng] = string.atof(store['lng'])
+        entry[cm.tel] = store['telephone']
 
-        addr=store['address']
-        terms=addr.split(',')
+        addr = store['address']
+        terms = addr.split(',')
         m = re.search(ur'\d{5,}', terms[-1])
         if m is not None:
             entry[cm.zip_code] = m.group(0)
-        entry[cm.addr_e]=addr
+        entry[cm.addr_e] = addr
 
         gs.field_sense(entry)
         print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                      entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
-                                                      entry[cm.continent_e])
+                                                          entry[cm.name_e], entry[cm.addr_e], entry[cm.country_e],
+                                                          entry[cm.continent_e])
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 
     return store_list
-
 
 
 def fetch(level=1, data=None, user='root', passwd=''):

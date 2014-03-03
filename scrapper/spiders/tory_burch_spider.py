@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class ToryBurchSpider(MFashionSpider):
 
+class ToryBurchSpider(MFashionSpider):
     spider_data = {
         'brand_id': 11301,
         'home_urls': {
@@ -55,7 +55,7 @@ class ToryBurchSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -75,7 +75,7 @@ class ToryBurchSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -95,7 +95,7 @@ class ToryBurchSpider(MFashionSpider):
                                 mcc = copy.deepcopy(mc)
 
                                 mcc['tags_mapping']['category-2'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -129,7 +129,8 @@ class ToryBurchSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@id="search"]/div[@class="productresultarea"]/div/div[contains(@class,"product")]')
+        product_nodes = sel.xpath(
+            '//div[@id="search"]/div[@class="productresultarea"]/div/div[contains(@class,"product")]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -175,7 +176,6 @@ class ToryBurchSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         other_nodes = sel.xpath('//div[@id="pdpATCDivsubProductDiv"]//ul[@id="swatchesselect"]/li/a[@name]')
         for node in other_nodes:
             m = copy.deepcopy(metadata)
@@ -191,9 +191,7 @@ class ToryBurchSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -201,11 +199,9 @@ class ToryBurchSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -213,21 +209,17 @@ class ToryBurchSpider(MFashionSpider):
         if 'price_disount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         details = self.fetch_details(response)
         if details:
             metadata['details'] = details
 
-
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
-
 
         image_urls = []
         image_node = sel.xpath('//input[@id="pdpImgUrl"][@value]')
@@ -236,14 +228,16 @@ class ToryBurchSpider(MFashionSpider):
                 image_request_value = image_node.xpath('./@value').extract()[0]
                 if image_request_value:
                     m = copy.deepcopy(metadata)
-                    image_request_ref = str.format('http://s7d5.scene7.com/is/image/ToryBurchLLC/{0}_S?req=imageset', image_request_value)
+                    image_request_ref = str.format('http://s7d5.scene7.com/is/image/ToryBurchLLC/{0}_S?req=imageset',
+                                                   image_request_value)
 
                     yield Request(url=image_request_ref,
                                   callback=self.parse_image_request,
                                   errback=self.onerr,
                                   meta={'userdata': m})
 
-                    image_urls += [str.format('http://s7d5.scene7.com/is/image/ToryBurchLLC/{0}?scl=2', image_request_value)]
+                    image_urls += [
+                        str.format('http://s7d5.scene7.com/is/image/ToryBurchLLC/{0}?scl=2', image_request_value)]
             except(TypeError, IndexError):
                 pass
 
@@ -298,7 +292,7 @@ class ToryBurchSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -318,7 +312,7 @@ class ToryBurchSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -352,7 +346,8 @@ class ToryBurchSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@id="search-set"]/div[@class="productresultarea"]/div[@class="productlisting clearfix"]/div[@class="product producttile"]')
+        product_nodes = sel.xpath(
+            '//div[@id="search-set"]/div[@class="productresultarea"]/div[@class="productlisting clearfix"]/div[@class="product producttile"]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -368,7 +363,8 @@ class ToryBurchSpider(MFashionSpider):
                           meta={'userdata': m},
                           dont_filter=True)
 
-        next_node = sel.xpath('//div[@id="search-set"]/div[@class="sortArea"]//div[@id="static_common_SfPropelPagerView"]//li[@class="next"]/a[@href][text()]')
+        next_node = sel.xpath(
+            '//div[@id="search-set"]/div[@class="sortArea"]//div[@id="static_common_SfPropelPagerView"]//li[@class="next"]/a[@href][text()]')
         if next_node:
             try:
                 next_href = next_node.xpath('./@href').extract()[0]
@@ -386,9 +382,7 @@ class ToryBurchSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -396,11 +390,9 @@ class ToryBurchSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -408,21 +400,17 @@ class ToryBurchSpider(MFashionSpider):
         if 'price_disount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         details = self.fetch_details(response)
         if details:
             metadata['details'] = details
 
-
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
-
 
         image_urls = []
         image_nodes = sel.xpath('//div[@id="detailTxt"]/ul[@class="inlineList"]/li/span/img[@src]')
@@ -434,7 +422,6 @@ class ToryBurchSpider(MFashionSpider):
                     image_urls += [image_src]
             except(TypeError, IndexError):
                 continue
-
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -475,7 +462,8 @@ class ToryBurchSpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
         else:
-            model_node = sel.xpath('//div[@id="wrapper"]//div[@id="detailArea"]//div[@id="kihonTxt"]/p[last()][contains(text(),"Style Number")]')
+            model_node = sel.xpath(
+                '//div[@id="wrapper"]//div[@id="detailArea"]//div[@id="kihonTxt"]/p[last()][contains(text(),"Style Number")]')
             if model_node:
                 try:
                     model_text = model_node.xpath('./text()').extract()[0]
@@ -509,13 +497,17 @@ class ToryBurchSpider(MFashionSpider):
                     old_price = old_price_node.xpath('./text()').extract()[0]
                     old_price = cls.reformat(old_price)
 
-                    new_price = sel.xpath('//div[contains(@id,"product-")]//div[@class="salesprice standardP"][text()]/text()').extract()[0]
+                    new_price = sel.xpath(
+                        '//div[contains(@id,"product-")]//div[@class="salesprice standardP"][text()]/text()').extract()[
+                        0]
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
             else:
                 try:
-                    old_price = sel.xpath('//div[contains(@id,"product-")]//div[@class="salesprice standardP"][text()]/text()').extract()[0]
+                    old_price = sel.xpath(
+                        '//div[contains(@id,"product-")]//div[@class="salesprice standardP"][text()]/text()').extract()[
+                        0]
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
@@ -593,7 +585,8 @@ class ToryBurchSpider(MFashionSpider):
 
         description = None
         if region != 'jp':
-            description_node = sel.xpath('//div[contains(@id,"product-")]//div[@itemprop="description"]/div[@class="panelContent"][text()]')
+            description_node = sel.xpath(
+                '//div[contains(@id,"product-")]//div[@itemprop="description"]/div[@class="panelContent"][text()]')
             if description_node:
                 try:
                     description = description_node.xpath('./text()').extract()[0]
@@ -601,7 +594,8 @@ class ToryBurchSpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
         else:
-            description_node = sel.xpath('//div[@id="wrapper"]//div[@id="detailArea"]//div[@id="kihonTxt"]/p[not(contains(text(),"Style Number"))][text()]')
+            description_node = sel.xpath(
+                '//div[@id="wrapper"]//div[@id="detailArea"]//div[@id="kihonTxt"]/p[not(contains(text(),"Style Number"))][text()]')
             if description_node:
                 try:
                     description = description_node.xpath('./text()').extract()[0]
@@ -623,7 +617,8 @@ class ToryBurchSpider(MFashionSpider):
 
         details = None
         if region != 'jp':
-            details_nodes = sel.xpath('//div[contains(@id,"product-")]//div[contains(@class,"collapsibleDetails")]//div[@class="detailsPanel open"][not(@itemprop)]/div[@class="panelContent"]')
+            details_nodes = sel.xpath(
+                '//div[contains(@id,"product-")]//div[contains(@class,"collapsibleDetails")]//div[@class="detailsPanel open"][not(@itemprop)]/div[@class="panelContent"]')
             if details_nodes:
                 try:
                     details = '\r'.join(
@@ -633,7 +628,8 @@ class ToryBurchSpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
         else:
-            detail_nodes = sel.xpath('//div[@id="detailTxt"]/div[@id="sizeTxt"]/p | //div[@id="detailTxt"]/div[@id="sozaiTxt"]/p')
+            detail_nodes = sel.xpath(
+                '//div[@id="detailTxt"]/div[@id="sizeTxt"]/p | //div[@id="detailTxt"]/div[@id="sozaiTxt"]/p')
             if detail_nodes:
                 try:
                     details = '\r'.join(

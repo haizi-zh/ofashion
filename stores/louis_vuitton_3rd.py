@@ -224,9 +224,10 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     # Walk from the root node, where level == 1.
     if data is None:
-        data = {'url': 'http://ec2-204-236-232-240.compute-1.amazonaws.com/store/listing/187/Louis-Vuitton-%28LV%29-store-locations',
-                'host': 'http://ec2-204-236-232-240.compute-1.amazonaws.com',
-                'brand_id': 10226, 'brandname_e': u'Louis Vuitton', 'brandname_c': u'路易威登'}
+        data = {
+        'url': 'http://ec2-204-236-232-240.compute-1.amazonaws.com/store/listing/187/Louis-Vuitton-%28LV%29-store-locations',
+        'host': 'http://ec2-204-236-232-240.compute-1.amazonaws.com',
+        'brand_id': 10226, 'brandname_e': u'Louis Vuitton', 'brandname_c': u'路易威登'}
 
     global db, id_set
     db = cm.StoresDb()

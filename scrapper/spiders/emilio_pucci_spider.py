@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class EmilioPucciSpider(MFashionSpider):
 
+class EmilioPucciSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10117,
         'currency': {
@@ -89,10 +89,11 @@ class EmilioPucciSpider(MFashionSpider):
 
                 if tag_text and tag_name:
                     m['tags_mapping']['category-0'] = [
-                        {'name': tag_name, 'title': tag_text,},
+                        {'name': tag_name, 'title': tag_text, },
                     ]
 
-                    left_nav_nodes = sel.xpath('//div[@class="page_content"]/div[@id="menu_sx"]/div[@class="left_menu_pad"]//div/ul/li')
+                    left_nav_nodes = sel.xpath(
+                        '//div[@class="page_content"]/div[@id="menu_sx"]/div[@class="left_menu_pad"]//div/ul/li')
                     for left_nav_node in left_nav_nodes:
                         mc = copy.deepcopy(m)
 
@@ -107,7 +108,7 @@ class EmilioPucciSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -127,7 +128,7 @@ class EmilioPucciSpider(MFashionSpider):
 
                                     if tag_text and tag_name:
                                         mcc['tags_mapping']['category-2'] = [
-                                            {'name': tag_name, 'title': tag_text,},
+                                            {'name': tag_name, 'title': tag_text, },
                                         ]
 
                                         gender = common.guess_gender(tag_name)
@@ -154,7 +155,7 @@ class EmilioPucciSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -254,7 +255,8 @@ class EmilioPucciSpider(MFashionSpider):
             metadata['details'] = detail
 
         image_urls = []
-        image_nodes = sel.xpath('//div[@id="innerContentCol"]//div[@id="thumbContainer"]//div[@class="thumbElement"]/img[@src]')
+        image_nodes = sel.xpath(
+            '//div[@id="innerContentCol"]//div[@id="thumbContainer"]//div[@class="thumbElement"]/img[@src]')
         for node in image_nodes:
             try:
                 src = node.xpath('./@src').extract()[0]
@@ -266,7 +268,6 @@ class EmilioPucciSpider(MFashionSpider):
                 ]
             except(TypeError, IndexError):
                 pass
-
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -310,7 +311,8 @@ class EmilioPucciSpider(MFashionSpider):
 
         new_price = None
         old_price = None
-        old_price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="oldprice"][text()]')
+        old_price_node = sel.xpath(
+            '//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="oldprice"][text()]')
         if old_price_node:
             try:
                 old_price = old_price_node.xpath('./text()').extract()[0]
@@ -318,7 +320,8 @@ class EmilioPucciSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
 
-            discount_price_node = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="newprice"][text()]')
+            discount_price_node = sel.xpath(
+                '//div[@id="innerContentCol"]//div[@id="inner"]/div[@id="itemPriceContainer"]//div[@class="newprice"][text()]')
             if discount_price_node:
                 try:
                     new_price = discount_price_node.xpath('./text()').extract()[0]
@@ -349,7 +352,9 @@ class EmilioPucciSpider(MFashionSpider):
 
         name = None
         try:
-            name = sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@class="itemTitle"]/h1/text()').extract()[0]
+            name = \
+                sel.xpath('//div[@id="innerContentCol"]//div[@id="inner"]/div[@class="itemTitle"]/h1/text()').extract()[
+                    0]
             name = cls.reformat(name)
         except(TypeError, IndexError):
             pass

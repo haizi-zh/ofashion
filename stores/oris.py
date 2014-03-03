@@ -39,7 +39,7 @@ def fetch_countries(data):
         country_e = cm.html2plain(m[1]).strip().upper()
         ret = gs.look_up(country_e, 1)
         if ret is not None:
-            country_e=ret['name_e']
+            country_e = ret['name_e']
         d['country_e'] = country_e
         d['province_e'] = ''
         d['url'] = data['host'] + m[0]
@@ -79,7 +79,7 @@ def fetch_states(data):
             province_e = province_e.replace(' ', '')
         ret = gs.look_up(province_e, 2)
         if ret is not None:
-            province_e=ret['name_e']
+            province_e = ret['name_e']
         d = data.copy()
         d['province_e'] = province_e
         d['url'] = data['host'] + m[0]
@@ -122,7 +122,7 @@ def fetch_cities(data):
             city_e = city_e.replace(' ', '')
         ret = gs.look_up(city_e, 3)
         if ret is not None:
-            city_e=ret['name_e']
+            city_e = ret['name_e']
 
         d = data.copy()
         d['city_e'] = city_e

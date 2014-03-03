@@ -102,7 +102,7 @@ def fetch_indv(data):
         for m in re.findall(ur'<p>(.+?)</p>', sub['content'], re.S):
             entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
             entry[cm.country_e] = data['country']
-            if data['country']=='UNITED STATES':
+            if data['country'] == 'UNITED STATES':
                 entry[cm.province_e] = sub['name']
             else:
                 entry[cm.city_e] = sub['name']
@@ -110,8 +110,8 @@ def fetch_indv(data):
             addr_list = cm.reformat_addr(m).split(', ')
             entry[cm.addr_e] = ', '.join(addr_list[:-1])
             entry[cm.tel] = cm.extract_tel(addr_list[-1])
-            if data['country']=='UNITED STATES':
-                entry[cm.city_e]=addr_list[-2][:-3].strip().upper()
+            if data['country'] == 'UNITED STATES':
+                entry[cm.city_e] = addr_list[-2][:-3].strip().upper()
 
             gs.field_sense(entry)
             print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],
@@ -126,8 +126,8 @@ def fetch_continents(data):
               'http://www.frenchconnection.com/content/stores/middle+east.htm',
               'http://www.frenchconnection.com/content/stores/far+east.htm',
               'http://www.frenchconnection.com/content/stores/rest+of+the+world.htm']:
-        d=data.copy()
-        d['url']=v
+        d = data.copy()
+        d['url'] = v
         result.append(d)
     return result
 
@@ -151,7 +151,7 @@ def fetch_stores(data):
     for i in xrange(len(tmp) - 1):
         sub_list.append({'content': body[tmp[i]['idx2']:tmp[i + 1]['idx1']], 'name': tmp[i]['name']})
 
-    store_list=[]
+    store_list = []
     for sub in sub_list:
         for m in re.findall(ur'<p>(.+?)</p>', sub['content'], re.S):
             entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
@@ -162,7 +162,7 @@ def fetch_stores(data):
             entry[cm.tel] = cm.extract_tel(addr_list[-1])
             country, province, city = gs.addr_sense(entry[cm.addr_e])
             if province is not None:
-                entry[cm.province_e]=province
+                entry[cm.province_e] = province
             if city is not None:
                 entry[cm.city_e] = city
 

@@ -3,12 +3,10 @@
 
 __author__ = 'Ryan'
 
-
 from scrapper.spiders.mfashion_spider import MFashionSpider
 from scrapper.items import ProductItem
 from scrapy.http import Request
 from scrapy.selector import Selector
-
 
 import common
 import copy
@@ -16,7 +14,6 @@ import re
 
 
 class LanvinSpider(MFashionSpider):
-
     spider_data = {
         'brand_id': 10212,
         'currency': {
@@ -67,7 +64,7 @@ class LanvinSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -87,7 +84,7 @@ class LanvinSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -121,7 +118,8 @@ class LanvinSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@id="content"]/div[@class="col-main"]/div[@class="category-products"]/ul/li[child::a[@href]]')
+        product_nodes = sel.xpath(
+            '//div[@id="content"]/div[@class="col-main"]/div[@class="category-products"]/ul/li[child::a[@href]]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -142,9 +140,7 @@ class LanvinSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -166,11 +162,9 @@ class LanvinSpider(MFashionSpider):
 
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -178,21 +172,17 @@ class LanvinSpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         details = self.fetch_details(response)
         if details:
             metadata['details'] = details
 
-
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
-
 
         image_urls = None
         image_list = re.findall(ur'"(\S*)"\); return true;', response.body)
@@ -204,7 +194,6 @@ class LanvinSpider(MFashionSpider):
                 ]
             except(TypeError, IndexError):
                 pass
-
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -230,7 +219,8 @@ class LanvinSpider(MFashionSpider):
         sel = Selector(response)
 
         model = None
-        model_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h3[@class="product-cat"][text()]')
+        model_node = sel.xpath(
+            '//*[@id="product_addtocart_form"]/div[@class="product-info"]/h3[@class="product-cat"][text()]')
         if model_node:
             try:
                 model = model_node.xpath('./text()').extract()[0]
@@ -246,7 +236,8 @@ class LanvinSpider(MFashionSpider):
         ret = {}
 
         price = None
-        price_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]//span[@class="price"][text()]')
+        price_node = sel.xpath(
+            '//*[@id="product_addtocart_form"]/div[@class="product-info"]//span[@class="price"][text()]')
         if price_node:
             try:
                 price = price_node.xpath('./text()').extract()[0]
@@ -264,7 +255,8 @@ class LanvinSpider(MFashionSpider):
         sel = Selector(response)
 
         name = None
-        name_node = sel.xpath('//*[@id="product_addtocart_form"]/div[@class="product-info"]/h2[@class="product-name"][text()]')
+        name_node = sel.xpath(
+            '//*[@id="product_addtocart_form"]/div[@class="product-info"]/h2[@class="product-name"][text()]')
         if name_node:
             try:
                 name = ' '.join(
@@ -326,7 +318,8 @@ class LanvinSpider(MFashionSpider):
         sel = Selector(response)
 
         colors = None
-        color_nodes = sel.xpath('//div[@class="product-box"]//div[@id="product-options-wrapper"]//ul[@class="thumbs"]/li/img[@title]')
+        color_nodes = sel.xpath(
+            '//div[@class="product-box"]//div[@id="product-options-wrapper"]//ul[@class="thumbs"]/li/img[@title]')
         if color_nodes:
             try:
                 colors = [

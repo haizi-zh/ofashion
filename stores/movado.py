@@ -11,9 +11,6 @@ store_map = {}
 city_cnt = 0
 
 
-
-
-
 def fetch_stores(data):
     global city_cnt
     city_cnt += 1

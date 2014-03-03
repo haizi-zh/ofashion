@@ -137,8 +137,9 @@ def fetch(level=1, data=None, user='root', passwd=''):
 
     # Walk from the root node, where level == 1.
     if data is None:
-        data = {'url': 'http://www.bershka.com/webapp/wcs/stores/servlet/category/bershkagb/en/bershkasales/308507/Stores',
-                'brand_id': 10040, 'brandname_e': u'Bershka', 'brandname_c': u'巴适卡'}
+        data = {
+        'url': 'http://www.bershka.com/webapp/wcs/stores/servlet/category/bershkagb/en/bershkasales/308507/Stores',
+        'brand_id': 10040, 'brandname_e': u'Bershka', 'brandname_c': u'巴适卡'}
 
     global db
     db = cm.StoresDb()

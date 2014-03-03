@@ -24,8 +24,8 @@ class MichaelKorsSpider(MFashionSpider):
                                  'jp': 'http://www.michaelkors.jp/catalog/',
                                  'kr': 'http://kr.michaelkors.com/catalog/',
                                  'br': 'http://br.michaelkors.com/catalog/',
-                                 'us': 'http://www.michaelkors.com/?lang=en',   # 这里必须加lang=en，不然会被重定向到cn
-                                 }
+                                 'us': 'http://www.michaelkors.com/?lang=en',  # 这里必须加lang=en，不然会被重定向到cn
+                   }
     }
 
     @classmethod
@@ -90,7 +90,7 @@ class MichaelKorsSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = cm.guess_gender(tag_name)
@@ -107,7 +107,7 @@ class MichaelKorsSpider(MFashionSpider):
                 yield Request(url=href,
                               callback=self.parse_cat,
                               errback=self.onerr,
-                              meta={'userdata': m},)
+                              meta={'userdata': m}, )
 
     def parse_cat(self, response):
         metadata = response.meta['userdata']
@@ -158,7 +158,7 @@ class MichaelKorsSpider(MFashionSpider):
                     m = copy.deepcopy(metadata)
 
                     m['tags_mapping']['catagory-1'] = [
-                        {'name': tag_name, 'title': tag_text,},
+                        {'name': tag_name, 'title': tag_text, },
                     ]
 
                     gender = cm.guess_gender(tag_name)
@@ -181,7 +181,8 @@ class MichaelKorsSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        cat_nodes = sel.xpath('//div[@id="content"]/div[@id="categories"]/div[contains(@class, "category")]/a[@href][child::img[@title]]')
+        cat_nodes = sel.xpath(
+            '//div[@id="content"]/div[@id="categories"]/div[contains(@class, "category")]/a[@href][child::img[@title]]')
         for node in cat_nodes:
             try:
                 tag_text = node.xpath('./img/@title').extract()[0]
@@ -194,7 +195,7 @@ class MichaelKorsSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-2'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = cm.guess_gender(tag_name)
@@ -220,7 +221,8 @@ class MichaelKorsSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@id="content"]/div[@class="products"]/div[contains(@class, "product")]/a[@href]')
+        product_nodes = sel.xpath(
+            '//div[@id="content"]/div[@class="products"]/div[contains(@class, "product")]/a[@href]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -315,7 +317,8 @@ class MichaelKorsSpider(MFashionSpider):
                 pass
         else:
             try:
-                model_node = sel.xpath('//form[@name="productPage"]/table[1]//div[@class="productCutline"]/div[@class="vendor_style"][text()]')
+                model_node = sel.xpath(
+                    '//form[@name="productPage"]/table[1]//div[@class="productCutline"]/div[@class="vendor_style"][text()]')
                 if model_node:
                     model_text = model_node.xpath('./text()').extract()[0]
                     model_text = cls.reformat(model_text)
@@ -407,7 +410,8 @@ class MichaelKorsSpider(MFashionSpider):
 
         description = None
         if region == 'us':
-            description_node = sel.xpath('//form[@name="productPage"]/table[1]//div[@class="productCutline"]//li[text()]')
+            description_node = sel.xpath(
+                '//form[@name="productPage"]/table[1]//div[@class="productCutline"]//li[text()]')
             if description_node:
                 try:
                     description = '\r'.join(cls.reformat(val) for val in description_node.xpath('./text()').extract())

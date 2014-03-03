@@ -12,12 +12,12 @@ import copy
 import re
 import json
 
-class DieselSpider(MFashionSpider):
 
+class DieselSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10105,
         'home_urls': {
-            'us': 'http://shop.diesel.com/homepage?origin=NOUS',    # 这里不加origin会被重定向走
+            'us': 'http://shop.diesel.com/homepage?origin=NOUS',  # 这里不加origin会被重定向走
             'uk': 'http://store.diesel.com/gb',
             'fr': 'http://store.diesel.com/fr',
             'de': 'http://store.diesel.com/de',
@@ -61,7 +61,7 @@ class DieselSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -85,7 +85,7 @@ class DieselSpider(MFashionSpider):
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -107,7 +107,7 @@ class DieselSpider(MFashionSpider):
 
                                     if tag_text and tag_name:
                                         mcc['tags_mapping']['category-2'] = [
-                                            {'name': tag_name, 'title': tag_text,},
+                                            {'name': tag_name, 'title': tag_text, },
                                         ]
 
                                         gender = common.guess_gender(tag_name)
@@ -124,7 +124,7 @@ class DieselSpider(MFashionSpider):
                                                       callback=self.parse_product_list,
                                                       errback=self.onerr,
                                                       meta={'userdata': mcc})
-                            else:   # 第四个标签的下属处理
+                            else:  # 第四个标签的下属处理
                                 try:
                                     href = sub_node.xpath('./div/a/@href').extract()[0]
                                     href = self.process_href(href, response.url)
@@ -136,7 +136,7 @@ class DieselSpider(MFashionSpider):
                                               errback=self.onerr,
                                               meta={'userdata': mc})
 
-                    else:   # 第三个标签的下属标签处理
+                    else:  # 第三个标签的下属标签处理
                         tag_node = sub_node.xpath('./div/h2[text()]')
                         if tag_node:
                             try:
@@ -150,7 +150,7 @@ class DieselSpider(MFashionSpider):
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -170,7 +170,7 @@ class DieselSpider(MFashionSpider):
 
                                 if tag_text and tag_name:
                                     mcc['tags_mapping']['category-2'] = [
-                                        {'name': tag_name, 'title': tag_text,},
+                                        {'name': tag_name, 'title': tag_text, },
                                     ]
 
                                     fourth_nodes = third_node.xpath('./div/ul/li')
@@ -186,7 +186,7 @@ class DieselSpider(MFashionSpider):
 
                                         if tag_text and tag_name:
                                             mccc['tags_mapping']['category-3'] = [
-                                                {'name': tag_name, 'title': tag_text,},
+                                                {'name': tag_name, 'title': tag_text, },
                                             ]
 
                                             gender = common.guess_gender(tag_name)
@@ -218,7 +218,7 @@ class DieselSpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -252,7 +252,7 @@ class DieselSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -272,7 +272,7 @@ class DieselSpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -292,7 +292,7 @@ class DieselSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mcc['tags_mapping']['category-2'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 try:
@@ -369,7 +369,7 @@ class DieselSpider(MFashionSpider):
                           meta={'userdata': m},
                           dont_filter=True)
 
-        # 美国的这个看起来是没有下拉加载更多的
+            # 美国的这个看起来是没有下拉加载更多的
 
     def parse_product(self, response):
 
@@ -490,7 +490,7 @@ class DieselSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -500,7 +500,7 @@ class DieselSpider(MFashionSpider):
                 # 第 1，2，6个顶级标签的下属符合这个规则
                 xpath_string = str.format(
                     '//div[@id="dropDownMenuWrapper"]/div[{0}]/div[@class="rightSpacer"]/div[@class="column3"]',
-                    nav_nodes.index(node)+1)
+                    nav_nodes.index(node) + 1)
                 sub_nodes = node.xpath(xpath_string)
                 if sub_nodes:
                     for sub_node in sub_nodes:
@@ -518,7 +518,7 @@ class DieselSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -538,7 +538,7 @@ class DieselSpider(MFashionSpider):
 
                                     if tag_text and tag_name:
                                         mcc['tags_mapping']['category-2'] = [
-                                            {'name': tag_name, 'title': tag_text,},
+                                            {'name': tag_name, 'title': tag_text, },
                                         ]
 
                                         gender = common.guess_gender(tag_name)
@@ -565,7 +565,7 @@ class DieselSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -586,7 +586,7 @@ class DieselSpider(MFashionSpider):
                     # 第3个顶级标签的下属符合这个规则
                     xpath_string = str.format(
                         '//div[@id="dropDownMenuWrapper"]/div[{0}]/div[@class="rightSpacer"]/div[contains(@class, "title")]',
-                        nav_nodes.index(node)+1)
+                        nav_nodes.index(node) + 1)
                     sub_nodes = node.xpath(xpath_string)
                     if sub_nodes:
                         for sub_node in sub_nodes:
@@ -601,7 +601,7 @@ class DieselSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mc['tags_mapping']['category-1'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -611,12 +611,12 @@ class DieselSpider(MFashionSpider):
                                 # 再向下，不区分级别了
                                 xpath_string = str.format(
                                     '//div[@id="dropDownMenuWrapper"]/div[{0}]/div[@class="rightSpacer"]/div[contains(@class, "column2")]/div[contains(@class, "column2")][{1}]',
-                                    nav_nodes.index(node)+1, sub_nodes.index(sub_node)+1)
+                                    nav_nodes.index(node) + 1, sub_nodes.index(sub_node) + 1)
                                 third_node = sel.xpath(xpath_string)
                                 if third_node:
                                     href_nodes = third_node.xpath('.//a[@href][text()]')
                                     for href_node in href_nodes:
-                                        mcc  = copy.deepcopy(mc)
+                                        mcc = copy.deepcopy(mc)
 
                                         try:
                                             tag_text = href_node.xpath('./text()').extract()[0]
@@ -627,7 +627,7 @@ class DieselSpider(MFashionSpider):
 
                                         if tag_text and tag_name:
                                             mcc['tags_mapping']['category-2'] = [
-                                                {'name': tag_name, 'title': tag_text,},
+                                                {'name': tag_name, 'title': tag_text, },
                                             ]
 
                                             gender = common.guess_gender(tag_name)
@@ -644,7 +644,7 @@ class DieselSpider(MFashionSpider):
                                                           callback=self.parse_other_product_list,
                                                           errback=self.onerr,
                                                           meta={'userdata': mcc})
-                    else:   # 第4，5个顶级标签
+                    else:  # 第4，5个顶级标签
                         href_nodes = node.xpath('.//a[@href]')
                         for href_node in href_nodes:
                             mc = copy.deepcopy(m)
@@ -683,14 +683,15 @@ class DieselSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
                 if gender:
                     m['gender'] = [gender]
 
-                sale_node = sel.xpath('//div[@id="dropDownMenuWrapper"]/div[@id="DdMenu-sale"]/div[@class="rightSpacer"]')
+                sale_node = sel.xpath(
+                    '//div[@id="dropDownMenuWrapper"]/div[@id="DdMenu-sale"]/div[@class="rightSpacer"]')
                 if sale_node:
                     sub_nodes = sale_node.xpath('./div[contains(@class, "column")][child::div[@class="titleColumn"]]')
                     for sub_node in sub_nodes:
@@ -705,7 +706,7 @@ class DieselSpider(MFashionSpider):
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -728,7 +729,7 @@ class DieselSpider(MFashionSpider):
 
                                 if tag_text and tag_name:
                                     mcc['tags_mapping']['category-2'] = [
-                                        {'name': tag_name, 'title': tag_text,},
+                                        {'name': tag_name, 'title': tag_text, },
                                     ]
 
                                     gender = common.guess_gender(tag_name)
@@ -862,19 +863,22 @@ class DieselSpider(MFashionSpider):
         for fix in image_fix_list:
             if fix > max_fix:
                 max_fix = fix[:2]
+
         def func(item):
             mt = re.search(str.format('{0}_[a-z]', max_fix), item)
             if mt:
                 return True
             else:
                 return False
+
         image_fix_list = filter(func, image_fix_list)
 
         # 用页面中图片的地址取的他们图片服务器的地址
         # 顺便用它里边已经写好的单品的id和颜色的id
         image_urls = None
         try:
-            image_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="colors"]/div[@class="colorSizeContent colorSlider"]/div[@class="colorMask"]//img[@src]')
+            image_node = sel.xpath(
+                '//aside[@class="itemSidebar"]//div[@class="colors"]/div[@class="colorSizeContent colorSlider"]/div[@class="colorMask"]//img[@src]')
             if image_node:
                 image_urls = [
                     re.sub('\d{2}_[a-z]', val, src)
@@ -948,10 +952,12 @@ class DieselSpider(MFashionSpider):
         new_price = None
 
         if region == 'us':
-            discount_node = sel.xpath('//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales discounted"][text()]')
-            if discount_node:   # 折扣
+            discount_node = sel.xpath(
+                '//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales discounted"][text()]')
+            if discount_node:  # 折扣
                 try:
-                    price_node = sel.xpath('//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
+                    price_node = sel.xpath(
+                        '//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
                     if price_node:
                         old_price = price_node.xpath('./text()').extract()[0]
                         old_price = cls.reformat(old_price)
@@ -965,17 +971,20 @@ class DieselSpider(MFashionSpider):
                     pass
             else:
                 try:
-                    price_node = sel.xpath('//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
+                    price_node = sel.xpath(
+                        '//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
                     if price_node:
                         old_price = price_node.xpath('./text()').extract()[0]
                         old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
         else:
-            discount_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]//div[@class="newprice fLeft"][text()]')
+            discount_node = sel.xpath(
+                '//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]//div[@class="newprice fLeft"][text()]')
             if discount_node:
                 try:
-                    price_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]//div[@class="oldprice fLeft"][text()]')
+                    price_node = sel.xpath(
+                        '//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]//div[@class="oldprice fLeft"][text()]')
                     if price_node:
                         old_price = price_node.xpath('./text()').extract()[0]
                         old_price = cls.reformat(old_price)
@@ -989,7 +998,8 @@ class DieselSpider(MFashionSpider):
                     pass
             else:
                 try:
-                    price_node = sel.xpath('//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]/span[text()]')
+                    price_node = sel.xpath(
+                        '//aside[@class="itemSidebar"]//div[@class="itemBoxPrice sideDesc"]/span[text()]')
                     old_price = price_node.xpath('./text()').extract()[0]
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
@@ -1045,7 +1055,8 @@ class DieselSpider(MFashionSpider):
         description = None
         if region == 'us':
             try:
-                description_node = sel.xpath('//div[@id="pdpMain"]//div[@class="detail-content"]/p/span[@class="para-content"][text()]')
+                description_node = sel.xpath(
+                    '//div[@id="pdpMain"]//div[@class="detail-content"]/p/span[@class="para-content"][text()]')
                 if description_node:
                     description = '\r'.join(
                         cls.reformat(val)
@@ -1083,7 +1094,8 @@ class DieselSpider(MFashionSpider):
             try:
                 detail = ''.join(
                     cls.reformat(val)
-                    for val in sel.xpath('//div[@id="product-content-detail"]//ul[@class="product-description-list"]/li[text()]/text()').extract()
+                    for val in sel.xpath(
+                        '//div[@id="product-content-detail"]//ul[@class="product-description-list"]/li[text()]/text()').extract()
                 )
                 detail = cls.reformat(detail)
                 if detail:

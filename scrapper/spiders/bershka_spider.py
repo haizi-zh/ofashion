@@ -12,13 +12,13 @@ import common
 import re
 import json
 
-class BershkaSpider(MFashionSpider):
 
+class BershkaSpider(MFashionSpider):
     spider_data = {
-        'brand_id': 10040,        'currency': {
-            'hk': 'USD',
-            'sg': 'USD',
-        },
+        'brand_id': 10040, 'currency': {
+        'hk': 'USD',
+        'sg': 'USD',
+    },
         'home_urls': {
             'cn': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkacn/zh/40109502',
             'fr': 'http://www.bershka.com/webapp/wcs/stores/servlet/home/bershkafr/fr/40109502',
@@ -67,7 +67,7 @@ class BershkaSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name, {'male': [], 'female': [u'少女']})
@@ -106,7 +106,7 @@ class BershkaSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name, {'male': [], 'female': [u'少女']})
@@ -157,7 +157,7 @@ class BershkaSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name, {'male': [], 'female': [u'少女']})

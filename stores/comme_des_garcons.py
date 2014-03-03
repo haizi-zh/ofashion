@@ -35,7 +35,6 @@ def fetch(level=1, data=None, user='root', passwd=''):
     db.connect_db(user=user, passwd=passwd)
     db.execute(u'DELETE FROM %s WHERE brand_id=%d' % ('stores', brand_id))
 
-
     sub_pat = re.compile(ur'<!--.*?-->', re.S)
     html = re.sub(sub_pat, '', html)
     split_pos = [m.start() for m in re.finditer(ur'<p><span class="contactboldtitle">', html)]
@@ -61,7 +60,7 @@ def fetch(level=1, data=None, user='root', passwd=''):
             if ret is None:
                 print 'Error in geo translating: %s' % addr_splits[-1]
             else:
-                entry[common.country_e]=ret['name_e']
+                entry[common.country_e] = ret['name_e']
                 m1 = re.findall(ur'(.+?)(\d{3}-\d{4})', addr_splits[-2])
                 if len(m1) > 0:
                     common.update_entry(entry, {common.city_e: common.extract_city(m1[0][0])[0],

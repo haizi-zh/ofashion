@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class DiorSpider(MFashionSpider):
 
+class DiorSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10106,
         'home_urls': {
@@ -61,7 +61,7 @@ class DiorSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -81,7 +81,7 @@ class DiorSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -117,15 +117,16 @@ class DiorSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-2'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
                 if gender:
                     m['gender'] = [gender]
 
-                xpath_str = str.format('//div[@id="sub-nav"]/div[{0}]/div/ul/li[child::h3[text()]][child::a[@href][text()]]',
-                                       filter_nodes.index(node)+1)
+                xpath_str = str.format(
+                    '//div[@id="sub-nav"]/div[{0}]/div/ul/li[child::h3[text()]][child::a[@href][text()]]',
+                    filter_nodes.index(node) + 1)
                 sub_nodes = node.xpath(xpath_str)
                 for sub_node in sub_nodes:
                     try:
@@ -142,7 +143,7 @@ class DiorSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-3'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -162,7 +163,7 @@ class DiorSpider(MFashionSpider):
                                 mcc = copy.deepcopy(mc)
 
                                 mcc['tags_mapping']['category-4'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -213,7 +214,8 @@ class DiorSpider(MFashionSpider):
                           meta={'userdata': m},
                           dont_filter=True)
 
-        product_nodes = sel.xpath('//div[@class="mods modCrossSell"]/ul[@class="crossList png-bg"]/li[child::a[@href]] | //ul[@id="productList"]/li[child::a[@href]]')
+        product_nodes = sel.xpath(
+            '//div[@class="mods modCrossSell"]/ul[@class="crossList png-bg"]/li[child::a[@href]] | //ul[@id="productList"]/li[child::a[@href]]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -235,9 +237,7 @@ class DiorSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -245,23 +245,19 @@ class DiorSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
             metadata['price'] = ret['price']
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
-
 
         image_urls = None
         image_nodes = sel.xpath('//div[@class="modEcommerce"]//ul[@class="thumbsProduct"]/li/a[@data-zoom]')
@@ -273,7 +269,6 @@ class DiorSpider(MFashionSpider):
                 ]
             except(TypeError, IndexError):
                 pass
-
 
         item = ProductItem()
         item['url'] = metadata['url']

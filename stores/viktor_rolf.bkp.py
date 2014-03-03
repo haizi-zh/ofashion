@@ -187,15 +187,15 @@ def get_frag_stores(data):
         if ret is not None:
             entry[common.country_e] = ret['name_e']
 
-        if len(terms)>=2:
+        if len(terms) >= 2:
             m1 = re.match(ur'.*?(\d+)\s+(.*)', terms[-2])
             if m1 is not None:
                 ret = gs.look_up(m1.group(2).strip().upper(), 3)
                 if ret is not None:
                     entry[common.city_e] = ret['name_e']
                 else:
-                    if len(re.findall('(\S+)', m1.group(2).strip().upper()))==1 and \
-                                    len(re.findall('(\d+)', m1.group(2).strip().upper()))==0:
+                    if len(re.findall('(\S+)', m1.group(2).strip().upper())) == 1 and \
+                                    len(re.findall('(\d+)', m1.group(2).strip().upper())) == 0:
                         entry[common.city_e] = m1.group(2).strip().upper()
                         entry[common.zip_code] = m1.group(1).strip()
 

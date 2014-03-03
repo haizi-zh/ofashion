@@ -37,7 +37,7 @@ def fetch_stores(data):
         return []
     body = cm.extract_closure(body[start:], ur'<stores>', ur'</stores>')[0]
 
-    store_list=[]
+    store_list = []
     for m in re.findall(ur'<store\b[^<>]+>(.+?)</store>', body):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
         entry[cm.country_e] = data['country_code']

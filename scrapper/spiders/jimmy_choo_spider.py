@@ -12,8 +12,8 @@ import copy
 import re
 import json
 
-class JimmyChooSpider(MFashionSpider):
 
+class JimmyChooSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10184,
         'home_urls': {
@@ -47,7 +47,7 @@ class JimmyChooSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -68,7 +68,7 @@ class JimmyChooSpider(MFashionSpider):
 
                 if tag_text and tag_name:
                     mc['tags_mapping']['category-1'] = [
-                        {'name': tag_name, 'title': tag_text,},
+                        {'name': tag_name, 'title': tag_text, },
                     ]
 
                     gender = common.guess_gender(tag_name)
@@ -89,7 +89,7 @@ class JimmyChooSpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mcc['tags_mapping']['category-2'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -118,14 +118,14 @@ class JimmyChooSpider(MFashionSpider):
                               errback=self.onerr,
                               meta={'userdata': mc})
 
-            # 这里只有二级和三级链接进入以后才有单品列表，这里进入没用。
-            # href = node.xpath('./a/@href').extract()[0]
-            # href = self.process_href(href, response.url)
-            #
-            # yield Request(url=href,
-            #               callback=self.parse_left_nav,
-            #               errback=self.onerr,
-            #               meta={'userdata': m})
+                # 这里只有二级和三级链接进入以后才有单品列表，这里进入没用。
+                # href = node.xpath('./a/@href').extract()[0]
+                # href = self.process_href(href, response.url)
+                #
+                # yield Request(url=href,
+                #               callback=self.parse_left_nav,
+                #               errback=self.onerr,
+                #               meta={'userdata': m})
 
     def parse_product_list(self, response):
 
@@ -304,23 +304,26 @@ class JimmyChooSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        del_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "standardprice")][text()]')
-        if del_node:    # 打折
+        del_node = sel.xpath(
+            '//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "standardprice")][text()]')
+        if del_node:  # 打折
             try:
                 old_price = del_node.xpath('./text()').extract()[0]
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
 
-            discount_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
+            discount_node = sel.xpath(
+                '//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
             if discount_node:
                 try:
                     new_price = discount_node.xpath('./text()').extract()[0]
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 未打折
-            price_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
+        else:  # 未打折
+            price_node = sel.xpath(
+                '//div[@id="pdpMain"]//div[@class="productdetailcolumn productinfo"]/div[@class="pricing"]/div[@class="price"]/*[contains(@class, "salesprice")][text()]')
             if price_node:
                 try:
                     old_price = price_node.xpath('./text()').extract()[0]
@@ -340,7 +343,8 @@ class JimmyChooSpider(MFashionSpider):
         sel = Selector(response)
 
         name = None
-        name_node = sel.xpath('//div[@id="pdpMain"]//div[@class="productdetailcolumn productimages"]/div[@class="productname"][text()]')
+        name_node = sel.xpath(
+            '//div[@id="pdpMain"]//div[@class="productdetailcolumn productimages"]/div[@class="productname"][text()]')
         if name_node:
             try:
                 name = name_node.xpath('./text()').extract()[0]

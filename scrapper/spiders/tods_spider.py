@@ -161,7 +161,8 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         # 解析当前打开的标签的下一级标签，作为第三级tag
-        current_open_nodes = sel.xpath('//div[@class="leftNavBarfashionList"]//div[contains(@class, "item")]/div[contains(@class, "select")]//a')
+        current_open_nodes = sel.xpath(
+            '//div[@class="leftNavBarfashionList"]//div[contains(@class, "item")]/div[contains(@class, "select")]//a')
         for node in current_open_nodes:
             try:
                 tag_text = ''.join(self.reformat(val) for val in node.xpath('.//text()').extract())
@@ -292,7 +293,6 @@ class TodsSpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
@@ -337,7 +337,8 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         # 解析当前打开的标签的下一级标签，作为第三级tag
-        current_open_nodes = sel.xpath('//ul[@id="vert-nav"]/li[@class="second-level-group"][contains(@style, "display")]//a[@title]')
+        current_open_nodes = sel.xpath(
+            '//ul[@id="vert-nav"]/li[@class="second-level-group"][contains(@style, "display")]//a[@title]')
         for node in current_open_nodes:
             try:
                 tag_text = node.xpath('./text()').extract()[0]
@@ -428,7 +429,8 @@ class TodsSpider(MFashionSpider):
         metadata['url'] = response.url
 
         # 尝试从页面中取得model
-        model = ''.join(self.reformat(val) for val in sel.xpath('//div[@class="product-main-info"]/p//text()').extract())
+        model = ''.join(
+            self.reformat(val) for val in sel.xpath('//div[@class="product-main-info"]/p//text()').extract())
         model = self.reformat(model)
         if model:
             metadata['model'] = model
@@ -438,7 +440,8 @@ class TodsSpider(MFashionSpider):
         # 如果metadata中没有name，尝试从页面中找到name
         try:
             if not metadata['name']:
-                name = ''.join(self.reformat(val) for val in sel.xpath('//div[@class="product-name"]/h1/text()').extract())
+                name = ''.join(
+                    self.reformat(val) for val in sel.xpath('//div[@class="product-name"]/h1/text()').extract())
                 name = self.reformat(name)
                 if name:
                     metadata['name'] = name
@@ -446,7 +449,8 @@ class TodsSpider(MFashionSpider):
             pass
 
         try:
-            description = '\r'.join(self.reformat(val) for val in sel.xpath('//div[contains(@class, "description")]/div[@class="std"]//text()').extract())
+            description = '\r'.join(self.reformat(val) for val in sel.xpath(
+                '//div[contains(@class, "description")]/div[@class="std"]//text()').extract())
             description = self.reformat(description)
             if description:
                 metadata['description'] = description
@@ -455,7 +459,8 @@ class TodsSpider(MFashionSpider):
 
         image_urls = None
         try:
-            image_nodes = sel.xpath('//div[@class="more-views"]/ul[@class="thumnail-images"]/li/a/img[@data-zoom-image]')
+            image_nodes = sel.xpath(
+                '//div[@class="more-views"]/ul[@class="thumnail-images"]/li/a/img[@data-zoom-image]')
             if image_nodes:
                 image_urls = list(
                     self.process_href(val, response.url)
@@ -503,7 +508,7 @@ class TodsSpider(MFashionSpider):
         old_price = None
         new_price = None
         origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
-        if origin_node:   # 打折
+        if origin_node:  # 打折
             try:
                 old_price = origin_node.xpath('./text()').extract()[0]
                 old_price = cls.reformat(old_price)
@@ -516,7 +521,7 @@ class TodsSpider(MFashionSpider):
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 未打折
+        else:  # 未打折
             try:
                 price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
                 price = cls.reformat(price)
@@ -550,7 +555,8 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        description_node = sel.xpath('//div[contains(@class, "rightColumn")]//div[@id="description"]//div[not(child::*)][text()]')
+        description_node = sel.xpath(
+            '//div[contains(@class, "rightColumn")]//div[@id="description"]//div[not(child::*)][text()]')
         if description_node:
             try:
                 description = description_node.xpath('./text()').extract()[0]

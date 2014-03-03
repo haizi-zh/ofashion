@@ -269,7 +269,7 @@ class ChopardSpider(MFashionSpider):
         if tmp:
             try:
                 name = ', '.join(val for val in (cls.reformat(unicodify(val.text)) for val in
-                                                             tmp[0]._root.iterdescendants()) if val)
+                                                 tmp[0]._root.iterdescendants()) if val)
             except(TypeError, IndexError):
                 pass
 
@@ -296,6 +296,7 @@ class ChopardSpider(MFashionSpider):
         sel = Selector(response)
 
         details = None
+
         def func(node):
             tmp = node.xpath('./*[@class="feature-title"]')
             if not tmp:

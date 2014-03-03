@@ -102,7 +102,7 @@ def get_store_details(data):
         if m1:
             entry[cm.tel] = cm.extract_tel(m1.group(1))
             contact_sub = re.sub(pat_tel, '', contact_sub)
-        hours_list=[tmp.strip() for tmp in cm.reformat_addr(contact_sub).split(',')]
+        hours_list = [tmp.strip() for tmp in cm.reformat_addr(contact_sub).split(',')]
         if 'opening hours' in hours_list[0].lower():
             del hours_list[0]
         entry[cm.hours] = ', '.join(hours_list)

@@ -18,21 +18,21 @@ def fetch_contact_info(data, s, store_id):
         cm.dump('Error in fetching stores: %s' % url, log_name)
         return ()
 
-    m=re.search(ur'<div class="contact-info">(.+?)</div>',body,re.S)
+    m = re.search(ur'<div class="contact-info">(.+?)</div>', body, re.S)
     if m is None:
         return s
 
     entry = s.copy()
-    pat_tel=re.compile(ur'\s*Numéro de téléphone\s*[:\.]\s*')
-    pat_fax=re.compile(ur'\s*Numéro de fax\s*[:\.]\s*')
-    pat_email=re.compile(ur'\s*Adresse électronique\s*[:\.]\s*')
+    pat_tel = re.compile(ur'\s*Numéro de téléphone\s*[:\.]\s*')
+    pat_fax = re.compile(ur'\s*Numéro de fax\s*[:\.]\s*')
+    pat_email = re.compile(ur'\s*Adresse électronique\s*[:\.]\s*')
     for term in [tmp.strip() for tmp in cm.reformat_addr(m.group(1)).split(',')]:
         if re.search(pat_tel, term):
-            entry[cm.tel]=re.sub(pat_tel,'',term).strip()
+            entry[cm.tel] = re.sub(pat_tel, '', term).strip()
         if re.search(pat_fax, term):
-            entry[cm.fax]=re.sub(pat_fax,'',term).strip()
+            entry[cm.fax] = re.sub(pat_fax, '', term).strip()
         if re.search(pat_email, term):
-            entry[cm.email]=re.sub(pat_email,'',term).strip()
+            entry[cm.email] = re.sub(pat_email, '', term).strip()
     return entry
 
 

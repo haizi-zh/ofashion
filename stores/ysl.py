@@ -94,7 +94,7 @@ def get_entries(html, pat):
 
     # con_split = [html.find(pat) for pat in [r'<li><span>\s*?%s\s*?</span>' % con for con in entries]]
     con_split.append(-1)
-    con_map = {} # {'America':'html sub str'}
+    con_map = {}  # {'America':'html sub str'}
     for i in xrange(con_split.__len__() - 1):
         con_map[entries[i]] = html[con_split[i]:con_split[i + 1]].strip()
     return con_map

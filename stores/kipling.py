@@ -77,10 +77,10 @@ def fetch_stores(data):
         addr = cm.reformat_addr(item['address'].replace(u'\\', ''))
         addr_list = [tmp.strip() for tmp in addr.split(',')]
         tel = cm.extract_tel(addr_list[-1])
-        if tel !='':
-            entry[cm.tel]=tel
+        if tel != '':
+            entry[cm.tel] = tel
             del addr_list[-1]
-        entry[cm.addr_e]=', '.join(addr_list)
+        entry[cm.addr_e] = ', '.join(addr_list)
         entry[cm.store_type] = item['shop_type']
 
         gs.field_sense(entry)

@@ -21,18 +21,17 @@ __author__ = 'wuya'
 _regions = [
     'us',
     'fr',
-    'de-en', #de
-    'es-en', #es
-    'it-en', #it
-    'ca-en', #ca
-    'jp-fr', #jp
-    'gb-en', #uk
-    'nl-en', #nl
+    'de-en',  #de
+    'es-en',  #es
+    'it-en',  #it
+    'ca-en',  #ca
+    'jp-fr',  #jp
+    'gb-en',  #uk
+    'nl-en',  #nl
 ]
 
 
 class ChristofleSpider(MFashionSpider):
-
     spider_data = {'brand_id': 10085, }
     home_urls = {
         region: ['http://www.christofle.com/%s' % region, ]
@@ -84,7 +83,7 @@ class ChristofleSpider(MFashionSpider):
         sels = sel.xpath('//ul[@class="productList"]//li')
         for _sel in sels:
             m = copy.deepcopy(metadata)
-            url = urljoin(self._base_url,''.join(_sel.xpath('./a/@href').extract()))
+            url = urljoin(self._base_url, ''.join(_sel.xpath('./a/@href').extract()))
             old_price = ''.join(_sel.xpath('.//del//text()').extract())
             new_price = None
             if old_price:
@@ -170,7 +169,7 @@ class ChristofleSpider(MFashionSpider):
         try:
             name1 = ''.join(sel.xpath('//h1[@class="name"]//text()').extract())
             name2 = ''.join(sel.xpath('//h2[@class="range"]//text()').extract())
-            name = name1+name2
+            name = name1 + name2
             name = cls.reformat(name)
         except(TypeError, IndexError):
             name = None

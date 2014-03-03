@@ -111,9 +111,9 @@ def fetch_stores(db, data, logger):
                 gs.field_sense(entry)
 
             logger.info('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                                    entry[cm.name_e], entry[cm.addr_e],
-                                                                    entry[cm.city_e],
-                                                                    entry[cm.country_e], entry[cm.continent_e]))
+                                                                        entry[cm.name_e], entry[cm.addr_e],
+                                                                        entry[cm.city_e],
+                                                                        entry[cm.country_e], entry[cm.continent_e]))
             cm.insert_record(db, entry, 'spider_stores.stores')
             store_list.append(entry)
 

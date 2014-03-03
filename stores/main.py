@@ -687,7 +687,7 @@ def update_city_std(delta_lat=2, delta_lng=4, lower=None, upper=None, null_city=
                 for store in db.query_all('SELECT idstores, lat, lng FROM stores WHERE city_e="%s" AND '
                                           'province_e="%s" AND country_e="%s" AND is_geocoded!=6 AND '
                                           'is_geocoded!=100' % (
-                    city.replace(u'"', u'\\"'), region.replace(u'"', u'\\"'), country.replace(u'"', u'\\"'))):
+                        city.replace(u'"', u'\\"'), region.replace(u'"', u'\\"'), country.replace(u'"', u'\\"'))):
                     idstores = store[0]
                     # 原始数据的经纬度信息
                     try:

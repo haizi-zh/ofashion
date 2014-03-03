@@ -15,4 +15,5 @@ def encrypt(idstores):
     d2 = ''.join(map((lambda x, y: '{0:x}'.format((ord(x) + ord(y)) % 256)), d1, SALT))
     return d2
 
+
 print(encrypt('2342'))

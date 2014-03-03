@@ -177,15 +177,17 @@ class GiorgioArmaniSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        origin_node = sel.xpath('//aside[@class="descriptionContainer"]//div[@data-item-prop="priceWithoutPromotion"][@class="oldprice"][text()]')
-        if origin_node:   # 打折
+        origin_node = sel.xpath(
+            '//aside[@class="descriptionContainer"]//div[@data-item-prop="priceWithoutPromotion"][@class="oldprice"][text()]')
+        if origin_node:  # 打折
             try:
                 old_price = ''.join(cls.reformat(val) for val in origin_node.xpath('.//text()').extract())
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
 
-            discount_node = sel.xpath('//aside[@class="descriptionContainer"]//div[@data-item-prop="price"][@class="newprice"][text()]')
+            discount_node = sel.xpath(
+                '//aside[@class="descriptionContainer"]//div[@data-item-prop="price"][@class="newprice"][text()]')
             if discount_node:
                 try:
                     new_price = ''.join(cls.reformat(val) for val in discount_node.xpath('.//text()').extract())
@@ -193,7 +195,8 @@ class GiorgioArmaniSpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
         else:
-            old_price_node = sel.xpath('//aside[@class="descriptionContainer"]//div[@data-item-prop="price"][@class="newprice"][text()]')
+            old_price_node = sel.xpath(
+                '//aside[@class="descriptionContainer"]//div[@data-item-prop="price"][@class="newprice"][text()]')
             if old_price_node:
                 try:
                     old_price = ''.join(cls.reformat(val) for val in old_price_node.xpath('.//text()').extract())

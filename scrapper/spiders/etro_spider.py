@@ -153,7 +153,8 @@ class EtroSpider(MFashionSpider):
         old_price = None
         new_price = None
         try:
-            price = ''.join(sel.xpath('//div[@class="product-main-info"]//span[@class="regular-price"]//text()').extract())
+            price = ''.join(
+                sel.xpath('//div[@class="product-main-info"]//span[@class="regular-price"]//text()').extract())
             price_discount = None
             if not price:
                 price = ''.join(
@@ -183,7 +184,8 @@ class EtroSpider(MFashionSpider):
             desc = '\r'.join(cls.reformat(val) for val in sel.xpath('//div[@class="generic-info"]//text()').extract())
             desc = cls.reformat(desc)
             if not desc:
-                description = '\r'.join(cls.reformat(val) for val in sel.xpath('//p[@class="short-description text"]//text()').extract())
+                description = '\r'.join(
+                    cls.reformat(val) for val in sel.xpath('//p[@class="short-description text"]//text()').extract())
                 description = cls.reformat(description)
             else:
                 description = desc
@@ -193,16 +195,16 @@ class EtroSpider(MFashionSpider):
 
         return description
 
-    # @classmethod
-    # def fetch_details(cls, response):
-    #     sel = Selector(response)
-    #
-    #     details = None
-    #     try:
-    #         details = ''.join(sel.xpath('//div[@class="generic-info"]//text()').extract())
-    #         details = cls.reformat(details)
-    #     except(TypeError, IndexError):
-    #         details = None
-    #         pass
-    #
-    #     return details
+        # @classmethod
+        # def fetch_details(cls, response):
+        #     sel = Selector(response)
+        #
+        #     details = None
+        #     try:
+        #         details = ''.join(sel.xpath('//div[@class="generic-info"]//text()').extract())
+        #         details = cls.reformat(details)
+        #     except(TypeError, IndexError):
+        #         details = None
+        #         pass
+        #
+        #     return details

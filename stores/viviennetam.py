@@ -67,7 +67,7 @@ def fetch_stores(db, data, logger):
                 entry[cm.country_e] = country_e
                 del addr_list[0]
                 if country_e in ('HONG KONG', 'JAPAN', 'UAE') or (
-                            country_e == 'THAILAND' and 'ext.' in addr_list[-1]):
+                                country_e == 'THAILAND' and 'ext.' in addr_list[-1]):
                     entry[cm.tel] = addr_list[-1]
                     del addr_list[-1]
                 entry[cm.addr_e] = ', '.join(addr_list)

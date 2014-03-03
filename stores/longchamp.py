@@ -18,7 +18,7 @@ def fetch_stores(db, data, logger):
 
     # try:
     body = cm.get_data(url)
-    q=pq(body)
+    q = pq(body)
     # except Exception, e:
     #     logger.error(unicode.format(u'Error in fetching contents for {0}', url))
     #     return ()

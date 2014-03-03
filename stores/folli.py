@@ -100,7 +100,7 @@ def fetch_store_details(data):
             del addr_list[-1]
         entry[cm.addr_e] = ', '.join(addr_list)
 
-    addr_text=sub[m.end():]
+    addr_text = sub[m.end():]
     m = re.search(ur'<div class="title locator">', addr_text)
     if m is not None:
         tmp = cm.extract_closure(addr_text[m.start():], ur'<div\b', ur'</div>')[0]

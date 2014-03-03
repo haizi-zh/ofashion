@@ -52,13 +52,13 @@ def fetch(level=1, data=None, user='root', passwd=''):
         entry[cm.city_e] = cm.extract_city(s['city'])[0]
 
         country = s['country']
-        ret =  gs.look_up(country, 1)
+        ret = gs.look_up(country, 1)
         if ret is not None:
-            country=ret['name_e']
+            country = ret['name_e']
         entry[cm.country_e] = country
 
         state = s['state'].strip().upper()
-        if country=='UNITED STATES' and state != '':
+        if country == 'UNITED STATES' and state != '':
             ret = gs.look_up(state, 2)
             if ret is not None:
                 entry[cm.province_e] = ret['name_e']

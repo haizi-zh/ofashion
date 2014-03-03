@@ -105,7 +105,7 @@ def fetch_countries(data):
         if not m:
             continue
 
-        if code!='PL':
+        if code != 'PL':
             continue
 
         val['baseUrl'] = m.group(1)

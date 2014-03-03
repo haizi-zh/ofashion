@@ -29,22 +29,22 @@ def fetch_stores(data):
     store_list = []
     for s in json.loads(body):
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-        entry[cm.country_e]=u'CHINA'
+        entry[cm.country_e] = u'CHINA'
 
-        entry[cm.province_c]=s['region'].strip()
-        city = s['city'].replace(u'市','').strip()
-        if city=='':
+        entry[cm.province_c] = s['region'].strip()
+        city = s['city'].replace(u'市', '').strip()
+        if city == '':
             city = entry[cm.province_c]
-        entry[cm.city_c]=city
-        entry[cm.district_c]=s['area']
-        entry[cm.hours]=s['business']
-        entry[cm.name_e]=s['name']
-        entry[cm.addr_e]=s['address']
-        entry[cm.tel]=s['phone']
-        if s['lat']!='':
-            entry[cm.lat]=string.atof(s['lat'])
-        if s['lng']!='':
-            entry[cm.lng]=string.atof(s['lng'])
+        entry[cm.city_c] = city
+        entry[cm.district_c] = s['area']
+        entry[cm.hours] = s['business']
+        entry[cm.name_e] = s['name']
+        entry[cm.addr_e] = s['address']
+        entry[cm.tel] = s['phone']
+        if s['lat'] != '':
+            entry[cm.lat] = string.atof(s['lat'])
+        if s['lng'] != '':
+            entry[cm.lng] = string.atof(s['lng'])
 
         gs.field_sense(entry)
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],

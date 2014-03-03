@@ -168,22 +168,25 @@ class LacosteSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        del_node = sel.xpath('//div[@id="allVariants"]//div[@itemprop="offers"]//span[@class="price-standar"]/del[text()]')
-        if del_node:    # 打折
+        del_node = sel.xpath(
+            '//div[@id="allVariants"]//div[@itemprop="offers"]//span[@class="price-standar"]/del[text()]')
+        if del_node:  # 打折
             try:
                 old_price = del_node.xpath('./text()').extract()[0]
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
-            discount_node = sel.xpath('//div[@id="allVariants"]//div[@itemprop="offers"]//span[@class="price-sales"]/span[text()]')
+            discount_node = sel.xpath(
+                '//div[@id="allVariants"]//div[@itemprop="offers"]//span[@class="price-sales"]/span[text()]')
             if discount_node:
                 try:
                     new_price = discount_node.xpath('./text()').extract()[0]
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 未打折
-            price_node = sel.xpath('//div[@id="allVariants"]//div[@itemprop="offers"]//span[@class="price-sales"]/span[text()]')
+        else:  # 未打折
+            price_node = sel.xpath(
+                '//div[@id="allVariants"]//div[@itemprop="offers"]//span[@class="price-sales"]/span[text()]')
             if price_node:
                 try:
                     old_price = price_node.xpath('./text()').extract()[0]

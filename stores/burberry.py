@@ -65,7 +65,7 @@ def fetch_provinces(data):
 
 def fetch_stores(data):
     url = data['host'] + data['data_url']
-    if data['province_code']!='':
+    if data['province_code'] != '':
         param = {'region': data['continent'], 'country': data['country_code'], 'state': data['province_code']}
     else:
         param = {'region': data['continent'], 'country': data['country_code']}

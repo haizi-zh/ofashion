@@ -103,7 +103,7 @@ def filter_floor_level_1(v, logger):
                (temp.strip() for temp in new_term_list)))
 
     if len(term_list) != len(new_term_list):
-    #     检测到楼层信息
+        #     检测到楼层信息
         temp = list(new_term_list)
         temp.extend(addr_terms[3:])
         new_addr = u', '.join(temp)

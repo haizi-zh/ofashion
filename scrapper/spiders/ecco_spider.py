@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class EccoSpider(MFashionSpider):
 
+class EccoSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10114,
         'home_urls': {
@@ -67,7 +67,7 @@ class EccoSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -92,7 +92,7 @@ class EccoSpider(MFashionSpider):
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -112,7 +112,7 @@ class EccoSpider(MFashionSpider):
 
                                 if tag_text and tag_name:
                                     mcc['tags_mapping']['category-2'] = [
-                                        {'name': tag_name, 'title': tag_text,},
+                                        {'name': tag_name, 'title': tag_text, },
                                     ]
 
                                     gender = common.guess_gender(tag_name)
@@ -157,18 +157,18 @@ class EccoSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
-        # product_nodes = sel.xpath('//ul[@id="product-list-cont"]/li//a[@href]')
-        # for node in product_nodes:
-        #     m = copy.deepcopy(metadata)
-        #
-        #     href = node.xpath('.//a[@href]/@href').extract()[0]
-        #     href = self.process_href(href, response.url)
-        #
-        #     yield Request(url=href,
-        #                   callback=self.parse_product,
-        #                   errback=self.onerr,
-        #                   meta={'userdata': m},
-        #                   dont_filter=True)
+            # product_nodes = sel.xpath('//ul[@id="product-list-cont"]/li//a[@href]')
+            # for node in product_nodes:
+            #     m = copy.deepcopy(metadata)
+            #
+            #     href = node.xpath('.//a[@href]/@href').extract()[0]
+            #     href = self.process_href(href, response.url)
+            #
+            #     yield Request(url=href,
+            #                   callback=self.parse_product,
+            #                   errback=self.onerr,
+            #                   meta={'userdata': m},
+            #                   dont_filter=True)
 
     def parse_product(self, response):
 
@@ -239,7 +239,7 @@ class EccoSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -259,7 +259,7 @@ class EccoSpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -279,7 +279,7 @@ class EccoSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mcc['tags_mapping']['category-2'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -380,11 +380,12 @@ class EccoSpider(MFashionSpider):
             metadata['description'] = description
 
         image_urls = None
-        image_node = sel.xpath('//div[@class="product-main-info"]//div[@class="float-left"]/div/a[child::img[@src]][@href]')
+        image_node = sel.xpath(
+            '//div[@class="product-main-info"]//div[@class="float-left"]/div/a[child::img[@src]][@href]')
         if image_node:
             try:
                 image_urls = [
-                    self.process_href(val , response.url)
+                    self.process_href(val, response.url)
                     for val in image_node.xpath('./@href').extract()
                 ]
             except(TypeError, IndexError):
@@ -417,7 +418,7 @@ class EccoSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -437,7 +438,7 @@ class EccoSpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -457,7 +458,7 @@ class EccoSpider(MFashionSpider):
 
                             if tag_text and tag_name:
                                 mcc['tags_mapping']['category-2'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -640,7 +641,8 @@ class EccoSpider(MFashionSpider):
                 pass
         elif region == 'ca':
             try:
-                name_model_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
+                name_model_node = sel.xpath(
+                    '//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
                 if name_model_node:
                     name_model_text = name_model_node.xpath('./text()').extract()[0]
                     name_model_text = cls.reformat(name_model_text)
@@ -652,7 +654,8 @@ class EccoSpider(MFashionSpider):
                 pass
         else:
             try:
-                model_node = sel.xpath('//div[@class="pdetail-cont-left"]/div/p[@class="art-number"]/span[@id="prd-item-number"][text()]')
+                model_node = sel.xpath(
+                    '//div[@class="pdetail-cont-left"]/div/p[@class="art-number"]/span[@id="prd-item-number"][text()]')
                 if model_node:
                     model_text = model_node.xpath('./text()').extract()[0]
                     model_text = cls.reformat(model_text)
@@ -701,7 +704,8 @@ class EccoSpider(MFashionSpider):
                         pass
         elif region == 'ca':
             # 检查是不是打折
-            discount_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//div[contains(@class, "product-prices")]')
+            discount_node = sel.xpath(
+                '//div[@class="product-main-info"]//div[@class="product-info"]//div[contains(@class, "product-prices")]')
             if discount_node:
                 price_node = discount_node.xpath('.//span[contains(@id, "old_price")]//strike')
                 if price_node:
@@ -723,7 +727,8 @@ class EccoSpider(MFashionSpider):
                 except(TypeError, IndexError):
                     pass
             else:
-                price_node = sel.xpath('//div[@class="product-main-info"]//div[@class="clear"]//span[contains(@id, "line_discounted_price")]')
+                price_node = sel.xpath(
+                    '//div[@class="product-main-info"]//div[@class="clear"]//span[contains(@id, "line_discounted_price")]')
                 if price_node:
                     try:
                         old_price = ''.join(
@@ -734,7 +739,8 @@ class EccoSpider(MFashionSpider):
                     except(TypeError, IndexError):
                         pass
         else:
-            price_node = sel.xpath('//div[@itemprop="offers"]/div[contains(@class, "prd-price") and not(contains(@class, "hidden"))]')
+            price_node = sel.xpath(
+                '//div[@itemprop="offers"]/div[contains(@class, "prd-price") and not(contains(@class, "hidden"))]')
             if price_node:
                 del_node = price_node.xpath('./del[text()]')
                 if del_node:
@@ -784,7 +790,8 @@ class EccoSpider(MFashionSpider):
                     pass
         elif region == 'ca':
             try:
-                name_model_node = sel.xpath('//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
+                name_model_node = sel.xpath(
+                    '//div[@class="product-main-info"]//div[@class="product-info"]//h1[@class="mainbox-title"][text()]')
                 if name_model_node:
                     name_model_text = name_model_node.xpath('./text()').extract()[0]
                     name_model_text = cls.reformat(name_model_text)
@@ -864,7 +871,8 @@ class EccoSpider(MFashionSpider):
 
         colors = []
         if region == 'us':
-            color_nodes = sel.xpath('//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@title]')
+            color_nodes = sel.xpath(
+                '//div[contains(@class, "product-detail")]//ul[@class="swatches Color"]/li/a[@title]')
             for node in color_nodes:
                 try:
                     color_text = node.xpath('./@title').extract()[0]

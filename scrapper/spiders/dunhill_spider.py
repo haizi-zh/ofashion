@@ -185,7 +185,8 @@ class DunhillSpider(MFashionSpider):
             price_discount = None
             if not price:
                 price = ''.join(sel.xpath('//span[contains(@class,"product-price-old")]//text()').extract())
-                price_discount = ''.join(sel.xpath('//span[contains(@class,"product-price-markdown")]//text()').extract())
+                price_discount = ''.join(
+                    sel.xpath('//span[contains(@class,"product-price-markdown")]//text()').extract())
             if price:
                 old_price = cls.reformat(price)
                 if price_discount:
@@ -208,7 +209,8 @@ class DunhillSpider(MFashionSpider):
         try:
             details_sel = sel.xpath('//ul[@class="ctg-accordion-set"]//li')[:2]
             # 去掉有js代码的
-            details = '\r'.join(cls.reformat(val) for val in details_sel.xpath('./*[not(@type="text/javascript")]//text()').extract())
+            details = '\r'.join(
+                cls.reformat(val) for val in details_sel.xpath('./*[not(@type="text/javascript")]//text()').extract())
             details = cls.reformat(details)
         except(TypeError, IndexError):
             details = None

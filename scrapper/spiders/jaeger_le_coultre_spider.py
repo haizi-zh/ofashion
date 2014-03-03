@@ -11,6 +11,7 @@ import copy
 import common
 from utils.utils import unicodify, iterable
 
+
 class JaegerLeCoultreSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10178,
@@ -19,11 +20,11 @@ class JaegerLeCoultreSpider(MFashionSpider):
                           k.upper() if k != 'uk' else 'GB',
                           'en' if k != 'cn' else 'zh')
             for k in {
-                'cn', 'us', 'fr', 'uk', 'hk',
-                'jp', 'it', 'ae', 'sg', 'de',
-                'es', 'ch', 'ru', 'kr', 'my',
-                'nl', 'au',
-            }
+            'cn', 'us', 'fr', 'uk', 'hk',
+            'jp', 'it', 'ae', 'sg', 'de',
+            'es', 'ch', 'ru', 'kr', 'my',
+            'nl', 'au',
+        }
         },
     }
 
@@ -55,7 +56,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                 if tag_text and tag_name:
                     m = copy.deepcopy(metadata)
                     m['tags_mapping']['collection'] = [
-                        {'name': tag_name, 'title': tag_text,},
+                        {'name': tag_name, 'title': tag_text, },
                     ]
 
                     href = node.xpath('./@href').extract()[0]
@@ -93,7 +94,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                         if tag_text and tag_name:
                             m = copy.deepcopy(metadata)
                             m['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             href = node.xpath('./a/@href').extract()[0]
@@ -129,7 +130,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                     if tag_text and tag_name:
                         m = copy.deepcopy(metadata)
                         m['tags_mapping']['category-2'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         href = node.xpath('./a/@href').extract()[0]
@@ -166,7 +167,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                     if tag_text and tag_name:
                         m = copy.deepcopy(metadata)
                         m['tags_mapping']['category-3'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         href = node.xpath('./a/@href').extract()[0]
@@ -375,7 +376,7 @@ class JaegerLeCoultreSpider(MFashionSpider):
                 allText = ''.join(cls.reformat(val) for val in node.xpath('.//text()').extract())
                 # dt标签说明他是一行的开头
                 if node_name == 'dt':
-                    return '\r'+allText
+                    return '\r' + allText
                 elif node_name == 'dd':
                     return allText
                 return allText

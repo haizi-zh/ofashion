@@ -144,8 +144,8 @@ def fetch_store_details(url, data):
                 terms = tmp.split(',')
                 ret = gs.look_up(terms[-1], 1)
                 if ret is not None:
-                # t2 = cm.geo_translate(terms[-1])
-                # if len(t2) != 0:
+                    # t2 = cm.geo_translate(terms[-1])
+                    # if len(t2) != 0:
                     # 这是一个国家
                     # 把最后的国家项分离出来
                     street_addr = ', '.join(terms[:-1])
@@ -164,8 +164,8 @@ def fetch_store_details(url, data):
                 entry[cm.addr_e] = cm.reformat_addr(street_addr)
                 ret = gs.look_up(country, 1)
                 if ret is None:
-                # t2 = cm.geo_translate(country)
-                # if len(t2) == 0:
+                    # t2 = cm.geo_translate(country)
+                    # if len(t2) == 0:
                     entry[cm.country_c] = country
                 else:
                     entry[cm.country_c] = ret['name_c']

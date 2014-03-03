@@ -298,8 +298,8 @@ class PublishRelease(object):
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
         entry['fetch_time'] = \
-        sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
-            0].strftime("%Y-%m-%d %H:%M:%S")
+            sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
+                0].strftime("%Y-%m-%d %H:%M:%S")
 
         url_dict = {val['idproducts']: val['url'] for val in prods}
         offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}

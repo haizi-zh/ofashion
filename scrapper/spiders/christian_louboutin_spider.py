@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class ChristianLouboutinSpider(MFashionSpider):
 
+class ChristianLouboutinSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10084,
         'currency': {
@@ -65,7 +65,7 @@ class ChristianLouboutinSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name, extra={'male': [], 'female': ['lady']})
@@ -89,7 +89,8 @@ class ChristianLouboutinSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        sub_nav_nodes = sel.xpath('//div[@id="main"]/div/div[contains(@class, "navigation")]/ul/li/ul/li/ul/li/a[text()]')
+        sub_nav_nodes = sel.xpath(
+            '//div[@id="main"]/div/div[contains(@class, "navigation")]/ul/li/ul/li/ul/li/a[text()]')
         for sub_node in sub_nav_nodes:
             m = copy.deepcopy(metadata)
 
@@ -99,7 +100,7 @@ class ChristianLouboutinSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-1'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name, extra={'male': [], 'female': ['lady']})
@@ -126,7 +127,8 @@ class ChristianLouboutinSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        third_nav_nodes = sel.xpath('//div[@id="main"]/div/div[contains(@class, "navigation")]/ul/li/ul/li/ul/li/ul/li/a[text()]')
+        third_nav_nodes = sel.xpath(
+            '//div[@id="main"]/div/div[contains(@class, "navigation")]/ul/li/ul/li/ul/li/ul/li/a[text()]')
         for sub_node in third_nav_nodes:
             m = copy.deepcopy(metadata)
 
@@ -136,7 +138,7 @@ class ChristianLouboutinSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-2'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name, extra={'male': [], 'female': ['lady']})

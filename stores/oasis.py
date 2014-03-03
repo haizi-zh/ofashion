@@ -103,7 +103,7 @@ def fetch_store_details(data):
     addr_list = []
     for i in xrange(1, 4):
         tmp = cm.html2plain(raw['address%d' % i]).strip()
-        if tmp!='':
+        if tmp != '':
             addr_list.append(tmp)
     entry[cm.addr_e] = ', '.join(addr_list)
     state = raw['countryRegion']

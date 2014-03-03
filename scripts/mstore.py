@@ -516,7 +516,7 @@ class ImageCheck(object):
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
             ' AND '.join(self.cond)))
         self.tot = int(rs.fetch_row(maxrows=0)[0][0])
-        storage_path = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images'))
+        storage_path = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), 'products/images'))
         rs = self.db.query(str.format(
             'SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',

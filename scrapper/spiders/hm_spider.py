@@ -23,12 +23,12 @@ class HMSpider(MFashionSpider):
         'home_urls': {
             k: str.format('http://www.hm.com/{0}', k if k != 'uk' else 'gb')
             for k in {
-                # 'au', 'br',
-                'cn', 'us', 'fr', 'uk', 'hk',
-                'jp', 'it', 'ae', 'sg', 'de',
-                'ca', 'es', 'ch', 'ru', 'th',
-                'kr', 'my', 'nl',
-            }
+            # 'au', 'br',
+            'cn', 'us', 'fr', 'uk', 'hk',
+            'jp', 'it', 'ae', 'sg', 'de',
+            'ca', 'es', 'ch', 'ru', 'th',
+            'kr', 'my', 'nl',
+        }
         },
     }
 
@@ -119,7 +119,7 @@ class HMSpider(MFashionSpider):
                 metadata['tags_mapping'][category_type] = [
                     {'name': type_name, 'title': type_text}
                 ]
-                category_index+=1
+                category_index += 1
 
                 gender = common.guess_gender(type_name)
                 if gender:

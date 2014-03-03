@@ -192,7 +192,7 @@ class FendiSpider(MFashionSpider):
             return Request(url=url, meta={'userdata': metadata, 'item': item}, callback=self.parse_image,
                            dont_filter=True)
         else:
-        #     没有图片
+            #     没有图片
             return item
 
     def parse_image(self, response):

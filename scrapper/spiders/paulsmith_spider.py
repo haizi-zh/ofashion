@@ -11,8 +11,8 @@ from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
 
-
 from utils.utils import unicodify, iterable
+
 __author__ = 'wuya'
 #brand_id	brand_name	url
 #10299	 Paul Smith	 http://www.paulsmith.co.uk/uk-en/shop/
@@ -31,7 +31,7 @@ class PaulsmithSpider(MFashionSpider):
     #强制允许一次重复抓取.否则会被dupefilter过滤掉一次重定向导致爬虫无法运行
     def start_requests(self):
         for request in super(PaulsmithSpider, self).start_requests():
-            request.dont_filter=True
+            request.dont_filter = True
             yield request
 
     def __init__(self, region):
@@ -167,7 +167,8 @@ class PaulsmithSpider(MFashionSpider):
 
         model = None
         try:
-            model = ''.join(cls.reformat(val) for val in sel.xpath('//p[@class="product-ids"]//strong//text()').extract())
+            model = ''.join(
+                cls.reformat(val) for val in sel.xpath('//p[@class="product-ids"]//strong//text()').extract())
             model = cls.reformat(model)
         except(TypeError, IndexError):
             model = None
@@ -197,11 +198,14 @@ class PaulsmithSpider(MFashionSpider):
         old_price = None
         new_price = None
         try:
-            price = ''.join(sel.xpath('//div[@class="product-main-info"]//span[@class="regular-price"]//text()').extract())
+            price = ''.join(
+                sel.xpath('//div[@class="product-main-info"]//span[@class="regular-price"]//text()').extract())
             price_discount = None
             if not price:
-                price = ''.join(sel.xpath('//div[@class="product-main-info"]//p[@class="old-price"]//span[2]//text()').extract())
-                price_discount = ''.join(sel.xpath('//div[@class="product-main-info"]//p[@class="special-price"]//span[2]//text()').extract())
+                price = ''.join(
+                    sel.xpath('//div[@class="product-main-info"]//p[@class="old-price"]//span[2]//text()').extract())
+                price_discount = ''.join(sel.xpath(
+                    '//div[@class="product-main-info"]//p[@class="special-price"]//span[2]//text()').extract())
             if price:
                 old_price = cls.reformat(price)
                 if price_discount:
@@ -222,7 +226,8 @@ class PaulsmithSpider(MFashionSpider):
 
         description = None
         try:
-            description = ''.join(cls.reformat(val) for val in sel.xpath('//div[@id="product-details"]//div[1]//text()').extract())
+            description = ''.join(
+                cls.reformat(val) for val in sel.xpath('//div[@id="product-details"]//div[1]//text()').extract())
             description = cls.reformat(description)
         except(TypeError, IndexError):
             description = None

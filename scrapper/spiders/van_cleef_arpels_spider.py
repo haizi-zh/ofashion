@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class VanCleffArpelsSpider(MFashionSpider):
 
+class VanCleffArpelsSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10369,
         'home_urls': {
@@ -47,14 +47,15 @@ class VanCleffArpelsSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
                 if gender:
                     m['gender'] = [gender]
 
-                sub_nodes = node.xpath('//nav[@id="left-nav"]/ul[@id="left-ul"]/li[child::h4[text()]]/div[@class="sub-nav"]/div/ul/li[child::a[@href][text()]]')
+                sub_nodes = node.xpath(
+                    '//nav[@id="left-nav"]/ul[@id="left-ul"]/li[child::h4[text()]]/div[@class="sub-nav"]/div/ul/li[child::a[@href][text()]]')
                 for sub_node in sub_nodes:
                     try:
                         tag_text = sub_node.xpath('./a[text()]/text()').extract()[0]
@@ -67,7 +68,7 @@ class VanCleffArpelsSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -106,7 +107,7 @@ class VanCleffArpelsSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-2'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 try:
@@ -167,9 +168,7 @@ class VanCleffArpelsSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -177,28 +176,23 @@ class VanCleffArpelsSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         colors = self.fetch_color(response)
         if color:
             metadata['color'] = colors
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
             metadata['price'] = ret['price']
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
-
 
         image_urls = []
         image_nodes = sel.xpath('//div[@id="product-left-part"]//ul[@class="caroussel-ul"]/li/img[@src]')
@@ -212,7 +206,6 @@ class VanCleffArpelsSpider(MFashionSpider):
                         image_urls += [image_url]
             except(TypeError, IndexError):
                 continue
-
 
         item = ProductItem()
         item['url'] = metadata['url']

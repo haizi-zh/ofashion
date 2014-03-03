@@ -170,7 +170,7 @@ class CartierSpider(MFashionSpider):
                 # metadata['page_id'] = 0
 
         if sel.xpath('//div[@class="product-header"]//span[@class="page-product-title"]'):
-        #     实际上是单品页面
+            #     实际上是单品页面
             yield self.parse_products(response)
         else:
             flag = False

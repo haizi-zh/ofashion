@@ -13,7 +13,6 @@ if 'windows' in platform.platform().lower():
 else:
     WIN32 = False
 
-
 __author__ = 'Zephyre'
 
 continent_map = None
@@ -241,7 +240,7 @@ def addr_sense(addr, country=None, province=None, city=None):
         tmp = look_up(re.sub(ur'\d+', '', terms[i]).strip().upper(), 3)
         if tmp is not None:
             if country is not None and country != tmp['country']['name_e'] and tmp['name_e'] != 'HONG KONG' \
-                and tmp['name_e'] != 'MACAU':
+                    and tmp['name_e'] != 'MACAU':
                 continue
             else:
                 city = tmp['name_e']

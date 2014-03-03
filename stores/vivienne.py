@@ -26,7 +26,7 @@ def fetch_countries(data):
         d = data.copy()
         d['url'] = m[0]
         d['country'] = m[1].strip().upper()
-        if d['country']=='GERMANY':
+        if d['country'] == 'GERMANY':
             results.append(d)
     return results
 

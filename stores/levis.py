@@ -20,10 +20,10 @@ def fetch_cn(data):
     start = html.find('arrData = [')
     if start == -1:
         return []
-    sub, start, end=cm.extract_closure(html[start:], ur'\[', ur'\]')
-    raw_list=json.loads(sub)
+    sub, start, end = cm.extract_closure(html[start:], ur'\[', ur'\]')
+    raw_list = json.loads(sub)
 
-    store_list=[]
+    store_list = []
     for v1 in raw_list:
         # 省
         province = v1[0].strip()
@@ -33,17 +33,18 @@ def fetch_cn(data):
             for v3 in v2[1]:
                 # 商店
                 entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])
-                terms=v3.split(';')
-                if len(terms)<2:
+                terms = v3.split(';')
+                if len(terms) < 2:
                     continue
-                entry['name_c']=terms[0].strip()
-                entry['addr_e']=terms[1].strip()
-                cm.update_entry(entry, {cm.city_c:city, cm.province_c:province, cm.country_c:u'中国',
-                                        cm.country_e:u'CHINA', cm.continent_c:u'亚洲', cm.continent_e:u'ASIA'})
+                entry['name_c'] = terms[0].strip()
+                entry['addr_e'] = terms[1].strip()
+                cm.update_entry(entry, {cm.city_c: city, cm.province_c: province, cm.country_c: u'中国',
+                                        cm.country_e: u'CHINA', cm.continent_c: u'亚洲', cm.continent_e: u'ASIA'})
 
                 print '(%s/%d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                          entry[cm.name_c], entry[cm.addr_e], entry[cm.city_e],
-                                                          entry[cm.country_e], entry[cm.continent_e])
+                                                                    entry[cm.name_c], entry[cm.addr_e],
+                                                                    entry[cm.city_e],
+                                                                    entry[cm.country_e], entry[cm.continent_e])
                 store_list.append(entry)
                 db.insert_record(entry, 'stores')
 

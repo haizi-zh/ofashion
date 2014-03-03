@@ -60,7 +60,6 @@ def fetch_stores(data):
                 else:
                     entry[cm.addr_e] = unicode(tmp)
 
-
         entry[cm.country_e] = data['country_code']
         if 'latitude' in s and s['latitude'] is not None and s['latitude'] != '':
             entry[cm.lat] = string.atof(s['latitude'])

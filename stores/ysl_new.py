@@ -15,8 +15,6 @@ def fetch_stores(data):
         cm.dump('Error in fetching stores: %s' % url, log_name)
         return ()
 
-
-
     store_list = []
     for s in []:
         entry = cm.init_store_entry(data['brand_id'], data['brandname_e'], data['brandname_c'])

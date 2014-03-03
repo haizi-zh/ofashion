@@ -300,7 +300,7 @@ class ValentinoSpider(MFashionSpider):
         old_price = None
         new_price = None
         discount_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]//*[@class="newprice"][text()]')
-        if discount_node:   # 打折
+        if discount_node:  # 打折
             try:
                 new_price = discount_node.xpath('./text()').extract()[0]
                 new_price = cls.reformat(new_price)
@@ -314,7 +314,7 @@ class ValentinoSpider(MFashionSpider):
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 未打折
+        else:  # 未打折
             price_node = sel.xpath('//div[@id="wrapColumns"]//div[@class="itemBoxPrice"]/span[text()]')
             if price_node:
                 try:
@@ -380,7 +380,8 @@ class ValentinoSpider(MFashionSpider):
         sel = Selector(response)
 
         colors = []
-        color_node = sel.xpath('//div[@class="innerCol"]//div[@id="colorsContainer"]//div[@class="colorBoxSelected"][@title]')
+        color_node = sel.xpath(
+            '//div[@class="innerCol"]//div[@id="colorsContainer"]//div[@class="colorBoxSelected"][@title]')
         if color_node:
             try:
                 colors = [cls.reformat(val) for val in color_node.xpath('./text()').extract()]

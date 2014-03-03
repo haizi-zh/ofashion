@@ -187,7 +187,7 @@ class StellaMcCartneySpider(MFashionSpider):
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 不打折
+        else:  # 不打折
             try:
                 price_node = sel.xpath('//div[@id="itemDetails"]//div[@id="itemPrice"]//div[@class="newprice"][text()]')
                 old_price = ''.join(price_node.xpath('.//text()').extract())

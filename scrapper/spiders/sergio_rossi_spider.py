@@ -22,7 +22,7 @@ _regions = [
     'us',
     'fr',
     'it',
-    'gb', #替换uk
+    'gb',  #替换uk
     #type two
     'hk',
     'jp',

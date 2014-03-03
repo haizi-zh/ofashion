@@ -80,7 +80,7 @@ def fetch_stores(data):
         body = body[end:]
 
         if ('Country' in m.group(1) and 'Language' in m.group(1)) \
-            or 'href' in m.group(1) or 'products' in m.group(1):
+                or 'href' in m.group(1) or 'products' in m.group(1):
             continue
 
         tmp = cm.reformat_addr(sub).split(',')

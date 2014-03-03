@@ -451,7 +451,7 @@ def geocode_query(db, id_range=None, extra_condition=None, overwrite=False, logg
             geo_result_list += temp
             search_term_list += [term] * len(temp)
             # If loc_o doesn't exist, there's no need to get all the geo_results
-            if len(geo_result_list) >= 1:# and not loc_o:
+            if len(geo_result_list) >= 1:  # and not loc_o:
                 break
 
         if len(geo_result_list) == 0:
@@ -1246,7 +1246,7 @@ def gen_addr_hash(db, block_size=50):
                             'ORDER BY idstores LIMIT {1}', max_idstores, block_size))
         record_set = db.store_result()
         for i in xrange(record_set.num_rows()):
-        # while True:
+            # while True:
             result = record_set.fetch_row(how=1)[0]
             # if len(result) == 0:
             #     break

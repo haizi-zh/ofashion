@@ -36,8 +36,8 @@ def fetch_stores(data):
         gs.field_sense(entry)
 
         cm.dump('(%s / %d) Found store: %s, %s (%s, %s, %s)' % (data['brandname_e'], data['brand_id'],
-                                                            entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
-                                                            entry[cm.country_e], entry[cm.continent_e]), log_name)
+                                                                entry[cm.name_e], entry[cm.addr_e], entry[cm.city_e],
+                                                                entry[cm.country_e], entry[cm.continent_e]), log_name)
         db.insert_record(entry, 'stores')
         store_list.append(entry)
 

@@ -113,7 +113,7 @@ def get_stores(data):
         if 'state' in data:
             entry[common.province_e] = data['state']
         country_e = data['name'].strip().upper()
-        entry[common.country_e]=country_e
+        entry[common.country_e] = country_e
         gs.field_sense(entry)
 
         print '%s Found store: %s, %s (%s, %s)' % (

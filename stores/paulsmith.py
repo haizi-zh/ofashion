@@ -45,7 +45,7 @@ def fetch_countries(data):
                 d[cm.continent_e] = continent_e
                 d[cm.country_e] = m1[1].strip().upper()
                 d[cm.url] = data['host'] + m1[0]
-                if d[cm.country_e]=='SINGAPORE':
+                if d[cm.country_e] == 'SINGAPORE':
                     country_list.append(d)
 
     return country_list

@@ -184,7 +184,7 @@ class MissoniSpider(MFashionSpider):
         old_price = None
         new_price = None
         del_node = sel.xpath('//div[@id="infoContent"]//div[@class="itemBoxPrice"]//div[@class="oldprice"][text()]')
-        if del_node:    # 打折
+        if del_node:  # 打折
             try:
                 old_price = del_node.xpath('./text()').extract()[0]
                 old_price = cls.reformat(old_price)
@@ -192,12 +192,13 @@ class MissoniSpider(MFashionSpider):
                 pass
 
             try:
-                discount_node = sel.xpath('//div[@id="infoContent"]//div[@class="itemBoxPrice"]//div[@class="newprice"][text()]')
+                discount_node = sel.xpath(
+                    '//div[@id="infoContent"]//div[@class="itemBoxPrice"]//div[@class="newprice"][text()]')
                 new_price = discount_node.xpath('./text()').extract()[0]
                 new_price = cls.reformat(new_price)
             except(TypeError, IndexError):
                 pass
-        else:   # 未打折
+        else:  # 未打折
             try:
                 old_price_node = sel.xpath('//div[@id="infoContent"]//div[@class="itemBoxPrice"]//span[text()]')
                 old_price = old_price_node.xpath('./text()').extract()[0]

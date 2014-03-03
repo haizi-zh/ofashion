@@ -78,9 +78,9 @@ class MStoreFileHandler(logging.FileHandler):
         if not filename:
             filename = '.'.join(os.path.basename(sys.modules['__main__'].__file__).split('.')[:-1]).decode('utf-8')
             # filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
-        filename = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/log', str.format('{0}_{1}.log', filename,
-                                                                                               datetime.datetime.now().strftime(
-                                                                                                   '%Y%m%d'))))
+        filename = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), 'products/log',
+                                                 str.format('{0}_{1}.log', filename,
+                                                            datetime.datetime.now().strftime('%Y%m%d'))))
         super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
 
 
@@ -469,7 +469,7 @@ def extract_tel(text):
     :rtype : 电话号码。如果不是，则为''
     :param text:
     """
-    pat_tel = ur'[+ \.\d\-\(\)]{5,}' # ur'[+ \d\-]*\d{3,}[+ \d\-]*+'
+    pat_tel = ur'[+ \.\d\-\(\)]{5,}'  # ur'[+ \d\-]*\d{3,}[+ \d\-]*+'
     m_tel = re.findall(pat_tel, text)
     for m in m_tel:
         if len(re.findall(ur'\d', m)) >= 6:
@@ -895,6 +895,7 @@ def make_sure_path_exists(path):
     except OSError as exception:
         if exception.errno != errno.EEXIST:
             raise
+
 
 # TODO Needed to be removed.
 def norm_url(url, host=None):

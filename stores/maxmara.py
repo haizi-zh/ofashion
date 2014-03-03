@@ -91,7 +91,7 @@ def fetch_stores(data):
             entry[cm.hours] = cm.extract_closure(sub[start:], ur'<p>', ur'</p>')[0].strip()
 
         ret = None
-        if entry[cm.lat]!='' and entry[cm.lng]!='':
+        if entry[cm.lat] != '' and entry[cm.lng] != '':
             ret = gs.geocode(latlng='%f,%f' % (entry[cm.lat], entry[cm.lng]))
         if ret is None:
             tmp = [tmp1.strip() for tmp1 in entry[cm.addr_e].split(',')]

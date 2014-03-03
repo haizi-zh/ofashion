@@ -140,7 +140,7 @@ def fetch_stores(url, type, data):
                 if col is not None:
                     stores.extend(col)
             else:
-                col = fetch_stores(url, 2, {'country_name':c['name'], 'code': c['code'], 'region': 0})
+                col = fetch_stores(url, 2, {'country_name': c['name'], 'code': c['code'], 'region': 0})
                 if col is not None:
                     stores.extend(col)
         return stores

@@ -85,8 +85,8 @@ def spider_prog_report(param_dict):
                 <p>暂无</p>
                 '''
     recipients = [unicode.format(u'{0} <{1}>', item[0], item[1]) for item in gs.EMAIL_ADDR.items()]
-        # ['Haizi Zheng <haizi.zh@gmail.com>', 'Haizi Zheng <haizi.zh@qq.com>']
-    recipent_addrs = gs.EMAIL_ADDR.values()# ['haizi.zh@gmail.com', 'haizi.zh@qq.com']
+    # ['Haizi Zheng <haizi.zh@gmail.com>', 'Haizi Zheng <haizi.zh@qq.com>']
+    recipent_addrs = gs.EMAIL_ADDR.values()  # ['haizi.zh@gmail.com', 'haizi.zh@qq.com']
 
     cur = datetime.datetime.now()
     from_time = cur - datetime.timedelta(1)

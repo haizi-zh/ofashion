@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class DVFSpider(MFashionSpider):
 
+class DVFSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10617,
         'home_urls': {
@@ -34,7 +34,8 @@ class DVFSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        nav_nodes = sel.xpath('//div[@id="container"]/div[@id="header"]/div[@class="cont-main-menu"]/div[@class="inner-menu"]/ul/li[child::a[@href][text()]]')
+        nav_nodes = sel.xpath(
+            '//div[@id="container"]/div[@id="header"]/div[@class="cont-main-menu"]/div[@class="inner-menu"]/ul/li[child::a[@href][text()]]')
         for node in nav_nodes:
             try:
                 tag_text = node.xpath('./a/text()').extract()[0]
@@ -47,7 +48,7 @@ class DVFSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -67,7 +68,7 @@ class DVFSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -134,8 +135,8 @@ class DVFSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
-        other_product_nodes = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@href]')
+        other_product_nodes = sel.xpath(
+            '//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@href]')
         for node in other_product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -150,9 +151,7 @@ class DVFSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -160,16 +159,13 @@ class DVFSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
-
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -177,16 +173,13 @@ class DVFSpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
 
-
         detail = self.fetch_details(response)
         if detail:
             metadata['details'] = detail
-
 
         image_urls = []
         origin_image_node = sel.xpath('//div[@id="content"]//div[@id="pdp-pinterest-container"]/img[@src]')
@@ -203,7 +196,6 @@ class DVFSpider(MFashionSpider):
                     ]
             except(TypeError, IndexError):
                 pass
-
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -222,24 +214,32 @@ class DVFSpider(MFashionSpider):
         # TODO 有价格是一个区间的 ：http://uk.dvf.com/on/demandware.store/Sites-DvF_UK-Site/default/Product-Variation?pid=D5873607T13B&dwvar_D5873607T13B_color=&dwvar_D5873607T13B_size=L
         old_price = None
         new_price = None
-        discount_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
+        discount_node = sel.xpath(
+            '//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]')
         if discount_node:
             try:
-                old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]/text()').extract()[0]
+                old_price = sel.xpath(
+                    '//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-standard"][text()]/text()').extract()[
+                    0]
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
 
             try:
-                new_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
+                new_price = sel.xpath(
+                    '//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[
+                    0]
                 new_price = cls.reformat(new_price)
             except(TypeError, IndexError):
                 pass
         else:
-            old_price_node = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
+            old_price_node = sel.xpath(
+                '//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]')
             if old_price_node:
                 try:
-                    old_price = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[0]
+                    old_price = sel.xpath(
+                        '//div[@id="content"]//div[@id="product-content"]//div[@class="product-price"]/span[@class="price-sales"][text()]/text()').extract()[
+                        0]
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
@@ -326,7 +326,8 @@ class DVFSpider(MFashionSpider):
         sel = Selector(response)
 
         colors = []
-        color_nodes = sel.xpath('//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@data-colorname]')
+        color_nodes = sel.xpath(
+            '//div[@id="content"]//div[@id="product-content"]//div[@class="product-variations"]/ul/li/div/ul[@class="swatches Color"]/li/a[@data-colorname]')
         for color_node in color_nodes:
             try:
                 color_name = color_node.xpath('./@data-colorname').extract()[0]

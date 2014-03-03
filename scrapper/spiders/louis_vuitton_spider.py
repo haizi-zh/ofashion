@@ -256,7 +256,7 @@ class LouisVuittonSpider(MFashionSpider):
                 #     if image_src:
                 #         image_urls += [image_src]
                 image_src = str.format("{0}{1}",
-                                           self.spider_data['image_host'], image_src)
+                                       self.spider_data['image_host'], image_src)
                 if image_src:
                     image_urls += [image_src]
             except(TypeError, IndexError):

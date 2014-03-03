@@ -80,7 +80,7 @@ class PradaSpider(MFashionSpider):
             href = self.process_href(node._root.attrib['href'], response.url)
             # temp = node.xpath('./figcaption/div[@class="name"]')
             # if not temp:
-                # continue
+            # continue
             # m['name'] = unicodify(temp[0]._root.text)
             yield Request(url=href, callback=self.parse_details, meta={'userdata': m}, errback=self.onerr)
 

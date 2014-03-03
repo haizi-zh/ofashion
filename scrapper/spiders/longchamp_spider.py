@@ -3,7 +3,6 @@
 
 __author__ = 'Ryan'
 
-
 from scrapper.spiders.mfashion_spider import MFashionSpider
 from scrapper.items import ProductItem
 from scrapy.http import Request
@@ -12,6 +11,7 @@ from scrapy.selector import Selector
 import common
 import copy
 import re
+
 
 class LongchampSpider(MFashionSpider):
     """
@@ -83,7 +83,7 @@ class LongchampSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -103,7 +103,7 @@ class LongchampSpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name)
@@ -126,7 +126,8 @@ class LongchampSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@id="page"]/div[@class="region region-content page"]/div[@class="coverflow"]//ul/li/a[@href]')
+        product_nodes = sel.xpath(
+            '//div[@id="page"]/div[@class="region region-content page"]/div[@class="coverflow"]//ul/li/a[@href]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -147,7 +148,6 @@ class LongchampSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         other_nodes = sel.xpath('//div[@id="aside"]//div[@id="couleurs"]//ul/li/a[@href][@data-label]')
         for node in other_nodes:
             m = copy.deepcopy(metadata)
@@ -163,9 +163,7 @@ class LongchampSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -173,11 +171,9 @@ class LongchampSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -185,21 +181,17 @@ class LongchampSpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         details = self.fetch_details(response)
         if details:
             metadata['details'] = details
 
-
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
-
 
         image_urls = None
         image_nodes = sel.xpath('//div[@id="article"]//ul/li/img[@data-hd]')
@@ -211,7 +203,6 @@ class LongchampSpider(MFashionSpider):
                 ]
             except(TypeError, IndexError):
                 pass
-
 
         item = ProductItem()
         item['url'] = metadata['url']

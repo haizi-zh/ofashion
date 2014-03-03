@@ -12,8 +12,8 @@ import copy
 import re
 from utils.utils import unicodify, iterable
 
-class DknySpider(MFashionSpider):
 
+class DknySpider(MFashionSpider):
     spider_data = {
         'brand_id': 10108,
         'curreny': {
@@ -65,7 +65,8 @@ class DknySpider(MFashionSpider):
 
             tmp = self.spider_data['home_urls']['common']
             cookie = {
-                'DKI_FiftyOneInternationalCookie': str.format('{0}-{1}', region.upper(), self.spider_data['curreny'][region])
+                'DKI_FiftyOneInternationalCookie': str.format('{0}-{1}', region.upper(),
+                                                              self.spider_data['curreny'][region])
             }
             start_urls = tmp if iterable(tmp) else [tmp]
             for url in start_urls:
@@ -106,7 +107,7 @@ class DknySpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -130,7 +131,7 @@ class DknySpider(MFashionSpider):
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -150,7 +151,7 @@ class DknySpider(MFashionSpider):
 
                                 if tag_text and tag_name:
                                     mcc['tags_mapping']['category-2'] = [
-                                        {'name': tag_name, 'title': tag_text,},
+                                        {'name': tag_name, 'title': tag_text, },
                                     ]
 
                                     gender = common.guess_gender(tag_name)
@@ -178,7 +179,7 @@ class DknySpider(MFashionSpider):
 
                         if tag_text and tag_name:
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -210,7 +211,8 @@ class DknySpider(MFashionSpider):
         #     except(TypeError, IndexError):
         #         pass
 
-        product_nodes = sel.xpath('//div[@id="container"]/div[contains(@class, "view-product_list")]//ul/li[@class="product"]')
+        product_nodes = sel.xpath(
+            '//div[@id="container"]/div[contains(@class, "view-product_list")]//ul/li[@class="product"]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -264,7 +266,7 @@ class DknySpider(MFashionSpider):
                         if mt:
                             # TODO 套装解析
                             continue
-                        else:   # 说明它不是一个套装
+                        else:  # 说明它不是一个套装
                             m['price'] = price
 
             try:
@@ -341,7 +343,8 @@ class DknySpider(MFashionSpider):
         else:
             return
 
-        description_node = sel.xpath('//div[contains(@class, "view-product_detail")]//div[@class="product-description"]')
+        description_node = sel.xpath(
+            '//div[contains(@class, "view-product_detail")]//div[@class="product-description"]')
         if description_node:
             try:
                 description = '\r'.join(
@@ -369,7 +372,8 @@ class DknySpider(MFashionSpider):
             metadata['color'] = colors
 
         image_urls = []
-        image_nodes = sel.xpath('//div[contains(@class, "view-product_detail")]//div[@class="partial-product_viewer"]/ul/li/a/img[@src]')
+        image_nodes = sel.xpath(
+            '//div[contains(@class, "view-product_detail")]//div[@class="partial-product_viewer"]/ul/li/a/img[@src]')
         for image_node in image_nodes:
             try:
                 src = image_node.xpath('./@src').extract()[0]
@@ -421,7 +425,7 @@ class DknySpider(MFashionSpider):
 
         yield item
 
-    # def parse_other_color(self, response):
-    #
-    #     metadata = response.meta['userdata']
-    #     sel = Selector(response)
+        # def parse_other_color(self, response):
+        #
+        #     metadata = response.meta['userdata']
+        #     sel = Selector(response)

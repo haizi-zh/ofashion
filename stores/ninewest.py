@@ -34,31 +34,30 @@ def fetch_stores(data):
     cookie_map_new['invited_visitor_22225'] = '1'
     cookie_map = cookie_map_new
 
-
     try:
         html = cm.post_data(url, {'dwfrm_storelocator_startaddress': 'kingman',
-                                         'dwfrm_storelocator_maxDistance': 30.00,
-                                         'dwfrm_storelocator_outlet': 'true',
-                                         'dwfrm_storelocator_retail': 'true',
-                                         'dwfrm_storelocator_optical': 'true',
-                                         'dwfrm_storelocator_eyewear': 'true',
-                                         'dwfrm_storelocator_apparel': 'true',
-                                         'dwfrm_storelocator_attire': 'true',
-                                         'dwfrm_storelocator_department': 'true',
-                                         'dwfrm_storelocator_IsMensFootwear': 'true',
-                                         'dwfrm_storelocator_IsRRR': 'true',
-                                         'dwfrm_storelocator_IsRRNY': 'true',
-                                         'dwfrm_storelocator_IsRRS': 'true',
-                                         'dwfrm_storelocator_wholesale': 'true',
-                                         'dwfrm_storelocator_bba': 'true',
-                                         'dwfrm_storelocator_ba': 'true',
-                                         'dwfrm_storelocator_search.x': 0,
-                                         'dwfrm_storelocator_search.y': 0,
-                                         'dwfrm_storelocator_countryCode': 'US',
-                                         'dwfrm_storelocator_postalCode': '67068',
-                                         'dwfrm_storelocator_distanceUnit': 'mi',
-                                         'dwfrm_storelocator_long': -98.117208,
-                                         'dwfrm_storelocator_lat': 37.647131,}, cookie=cookie_map)
+                                  'dwfrm_storelocator_maxDistance': 30.00,
+                                  'dwfrm_storelocator_outlet': 'true',
+                                  'dwfrm_storelocator_retail': 'true',
+                                  'dwfrm_storelocator_optical': 'true',
+                                  'dwfrm_storelocator_eyewear': 'true',
+                                  'dwfrm_storelocator_apparel': 'true',
+                                  'dwfrm_storelocator_attire': 'true',
+                                  'dwfrm_storelocator_department': 'true',
+                                  'dwfrm_storelocator_IsMensFootwear': 'true',
+                                  'dwfrm_storelocator_IsRRR': 'true',
+                                  'dwfrm_storelocator_IsRRNY': 'true',
+                                  'dwfrm_storelocator_IsRRS': 'true',
+                                  'dwfrm_storelocator_wholesale': 'true',
+                                  'dwfrm_storelocator_bba': 'true',
+                                  'dwfrm_storelocator_ba': 'true',
+                                  'dwfrm_storelocator_search.x': 0,
+                                  'dwfrm_storelocator_search.y': 0,
+                                  'dwfrm_storelocator_countryCode': 'US',
+                                  'dwfrm_storelocator_postalCode': '67068',
+                                  'dwfrm_storelocator_distanceUnit': 'mi',
+                                  'dwfrm_storelocator_long': -98.117208,
+                                  'dwfrm_storelocator_lat': 37.647131, }, cookie=cookie_map)
     except Exception:
         print 'Error occured in getting country list: %s' % url
         dump_data = {'level': 1, 'time': cm.format_time(), 'data': {'url': url}, 'brand_id': data['brand_id']}

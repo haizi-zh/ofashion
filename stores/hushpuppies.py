@@ -57,7 +57,7 @@ def fetch_stores(data):
         m2 = re.search(ur'<\s*br\s*>(.+?)<\s*br\s*>', sub[m1.end():])
         type_sub = cm.html2plain(m2.group(1)).strip()
         if 'women' in type_sub.lower() or 'men' in type_sub.lower() \
-            or 'kid' in type_sub.lower() or 'child' in type_sub.lower():
+                or 'kid' in type_sub.lower() or 'child' in type_sub.lower():
             entry[cm.store_type] = type_sub
 
         entry[cm.city_e] = cm.html2plain(addr_list[-2]).strip().upper()

@@ -310,7 +310,8 @@ class GucciSpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        description_node = sel.xpath('//div[@id="content"]//div[@id="container_title_description"]//div[@id="description"]//li[text()]')
+        description_node = sel.xpath(
+            '//div[@id="content"]//div[@id="container_title_description"]//div[@id="description"]//li[text()]')
         if description_node:
             description = '\r'.join(cls.reformat(val) for val in description_node.xpath('./text()').extract())
             description = cls.reformat(description)

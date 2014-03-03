@@ -351,7 +351,7 @@ class FerragamoSpider(MFashionSpider):
                 pass
         else:
             tmp = cls.reformat(''.join(sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"product_SKU_")]'
-                                              '/descendant-or-self::text()').extract()))
+                                                 '/descendant-or-self::text()').extract()))
             try:
                 # 试图找出产品编号
                 mt = re.search(cls.spider_data['model_template'][region], tmp, flags=re.I | re.U)
@@ -384,22 +384,24 @@ class FerragamoSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
         else:
-            discount_node = sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"price_display_")]/span[@itemprop="price"][@class="discount"][text()]')
-            if discount_node:   # 打折
+            discount_node = sel.xpath(
+                '//div[contains(@id, "product_name_")]/*[contains(@id,"price_display_")]/span[@itemprop="price"][@class="discount"][text()]')
+            if discount_node:  # 打折
                 try:
                     new_price = discount_node.xpath('./text()').extract()[0]
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
 
-                price_node = sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"price_display_")]/span[@itemprop="price"][@class="product_original_price"][text()]')
+                price_node = sel.xpath(
+                    '//div[contains(@id, "product_name_")]/*[contains(@id,"price_display_")]/span[@itemprop="price"][@class="product_original_price"][text()]')
                 if price_node:
                     try:
                         old_price = price_node.xpath('./text()').extract()[0]
                         old_price = cls.reformat(old_price)
                     except(TypeError, IndexError):
                         pass
-            else:   # 未打折
+            else:  # 未打折
                 try:
                     tmp = '\r'.join(cls.reformat(val) for val in
                                     sel.xpath('//div[contains(@id, "product_name_")]'
@@ -473,8 +475,8 @@ class FerragamoSpider(MFashionSpider):
                 #                    sel.xpath('//div[contains(@id, "product_name_")]/*[contains(@id,"product_SKU_")]'
                 #                              '/text()').extract()])
                 desc_terms.extend([cls.reformat(val) for val in sel.xpath('//div[contains(@id, "product_name_")]'
-                                                                           '/p[contains(@class,"model_shortdescription")]'
-                                                                           '/text()').extract()])
+                                                                          '/p[contains(@class,"model_shortdescription")]'
+                                                                          '/text()').extract()])
                 desc_terms.extend([cls.reformat(val) for val in
                                    sel.xpath('//div[@id="tabContainer"]//*[@itemprop="description"]/text()').extract()])
                 desc = '\r'.join(val for val in desc_terms if val)
@@ -499,7 +501,7 @@ class FerragamoSpider(MFashionSpider):
         if region == 'cn':
             try:
                 tmp = '\r'.join(cls.reformat(val) for val in sel.xpath('//div[@class="product-desc"]'
-                                                                        '/div[@class="field-content"]/text()').extract())
+                                                                       '/div[@class="field-content"]/text()').extract())
                 if tmp:
                     details = tmp
             except(TypeError, IndexError):

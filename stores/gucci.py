@@ -97,7 +97,7 @@ def fetch_stores(data):
         if s['event_link'] is not None:
             cm.dump('Event link: %s' % s['event_link'], log_name)
         if s['additional'] != '':
-            entry[cm.comments]=s['additional'].strip()
+            entry[cm.comments] = s['additional'].strip()
 
         gs.field_sense(entry)
         ret = gs.addr_sense(entry[cm.addr_e], entry[cm.country_e])

@@ -42,7 +42,7 @@ def fetch_stores(data):
             tmp = [tmp1.strip() for tmp1 in entry[cm.addr_e].split(',')]
             if 'MAX' in tmp[0]:
                 del tmp[0]
-            if cm.extract_tel(tmp[-1])!='':
+            if cm.extract_tel(tmp[-1]) != '':
                 del tmp[-1]
             if len(tmp) > 0:
                 ret = gs.geocode(', '.join(tmp))

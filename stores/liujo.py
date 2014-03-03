@@ -48,6 +48,7 @@ def fetch_cities(data):
         results.append(d)
     return results
 
+
 #action=getStoresFromAjax&country=AT&region=AUSTRIA&collection=
 
 

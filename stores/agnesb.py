@@ -93,11 +93,11 @@ def fetch_store_details(data):
 
     if entry[cm.country_e] == '' or entry[cm.city_e] == '':
         ret = None
-        location_valid=True
+        location_valid = True
         if entry[cm.lat] != '' and entry[cm.lng] != '':
             ret = gs.geocode(latlng='%f,%f' % (entry[cm.lat], entry[cm.lng]))
         if ret is None:
-            location_valid=False
+            location_valid = False
             ret = gs.geocode(entry[cm.addr_e])
 
         if ret is not None:
@@ -121,8 +121,8 @@ def fetch_store_details(data):
             entry[cm.zip_code] = zip_code
 
             if not location_valid:
-                entry[cm.lat]= ret[0]['geometry']['location']['lat']
-                entry[cm.lng]= ret[0]['geometry']['location']['lng']
+                entry[cm.lat] = ret[0]['geometry']['location']['lat']
+                entry[cm.lng] = ret[0]['geometry']['location']['lng']
 
             gs.field_sense(entry)
             ret = gs.addr_sense(entry[cm.addr_e])

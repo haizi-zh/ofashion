@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class FolliFollieSpider(MFashionSpider):
 
+class FolliFollieSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10138,
         'home_urls': {
@@ -52,7 +52,7 @@ class FolliFollieSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 try:
@@ -71,7 +71,8 @@ class FolliFollieSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        sub_nav_nodes = sel.xpath('//*[@id="content"]/div[@class="main-slider"]/div[@class="list"]/div/ul/li/a[@href][text()]')
+        sub_nav_nodes = sel.xpath(
+            '//*[@id="content"]/div[@class="main-slider"]/div[@class="list"]/div/ul/li/a[@href][text()]')
         for sub_nav_node in sub_nav_nodes:
             m = copy.deepcopy(metadata)
 
@@ -84,7 +85,7 @@ class FolliFollieSpider(MFashionSpider):
 
             if tag_text and tag_name:
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 try:
@@ -139,7 +140,8 @@ class FolliFollieSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        other_nodes = sel.xpath('//div[@class="product-container"]//div[@class="prod-options"]/div[@class="colors"]/ul/li/a[@href]')
+        other_nodes = sel.xpath(
+            '//div[@class="product-container"]//div[@class="prod-options"]/div[@class="colors"]/ul/li/a[@href]')
         for node in other_nodes:
             m = copy.deepcopy(metadata)
 
@@ -226,7 +228,8 @@ class FolliFollieSpider(MFashionSpider):
 
         model = None
         try:
-            model_node = sel.xpath('//div[@class="product-container"]//div[@class="prod-descr-wrap"]//p[@class="code"][text()]')
+            model_node = sel.xpath(
+                '//div[@class="product-container"]//div[@class="prod-descr-wrap"]//p[@class="code"][text()]')
             if model_node:
                 model_text = model_node.xpath('./text()').extract()[0]
                 model_text = cls.reformat(model_text)
@@ -246,7 +249,8 @@ class FolliFollieSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        price_node = sel.xpath('//div[@class="product-container"]//div[@class="product-inner"]//div[@class="prod-options"]/div[@id="prices"]')
+        price_node = sel.xpath(
+            '//div[@class="product-container"]//div[@class="product-inner"]//div[@class="prod-options"]/div[@id="prices"]')
         if price_node:
             old_price_node = price_node.xpath('./div[@class="price-offer"]/span[@class="strike"][text()]')
             if old_price_node:
@@ -280,7 +284,8 @@ class FolliFollieSpider(MFashionSpider):
         sel = Selector(response)
 
         name = None
-        name_node = sel.xpath('//div[@class="product-container"]//div[@class="product-inner"]/div[@class="right"]/h2[text()]')
+        name_node = sel.xpath(
+            '//div[@class="product-container"]//div[@class="product-inner"]/div[@class="right"]/h2[text()]')
         if name_node:
             try:
                 name = name_node.xpath('./text()').extract()[0]
@@ -295,7 +300,8 @@ class FolliFollieSpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        description_node = sel.xpath('//div[@class="product-container"]//div[@class="right"]/div[@class="prod-descr-wrap"]/ul/li[1]/div[@class="cnt"]/div[@class="in"][text()]')
+        description_node = sel.xpath(
+            '//div[@class="product-container"]//div[@class="right"]/div[@class="prod-descr-wrap"]/ul/li[1]/div[@class="cnt"]/div[@class="in"][text()]')
         if description_node:
             try:
                 description = '\r'.join(
@@ -313,7 +319,8 @@ class FolliFollieSpider(MFashionSpider):
         sel = Selector(response)
 
         detail = None
-        detail_node = sel.xpath('//div[@class="product-container"]//div[@class="right"]/div[@class="prod-descr-wrap"]/ul/li[2]/div[@class="cnt"]/div[@class="in"][text()]')
+        detail_node = sel.xpath(
+            '//div[@class="product-container"]//div[@class="right"]/div[@class="prod-descr-wrap"]/ul/li[2]/div[@class="cnt"]/div[@class="in"][text()]')
         if detail_node:
             try:
                 detail = '\r'.join(
@@ -331,7 +338,8 @@ class FolliFollieSpider(MFashionSpider):
         sel = Selector(response)
 
         colors = None
-        color_node = sel.xpath('//div[@class="product-container"]//div[@class="prod-options"]/div[@class="colors"]/ul/li[contains(@class, "active")]//div[@class="inner"][text()]')
+        color_node = sel.xpath(
+            '//div[@class="product-container"]//div[@class="prod-options"]/div[@class="colors"]/ul/li[contains(@class, "active")]//div[@class="inner"][text()]')
         if color_node:
             try:
                 colors = [cls.reformat(val)

@@ -3,7 +3,6 @@
 
 __author__ = 'Ryan'
 
-
 from scrapper.spiders.mfashion_spider import MFashionSpider
 from scrapper.items import ProductItem
 from scrapy.http import Request
@@ -15,7 +14,6 @@ import re
 
 
 class MarcJacobsSpider(MFashionSpider):
-
     spider_data = {
         'brand_id': 10239,
         'home_urls': {
@@ -48,7 +46,7 @@ class MarcJacobsSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name)
@@ -71,7 +69,7 @@ class MarcJacobsSpider(MFashionSpider):
                             mc = copy.deepcopy(m)
 
                             mc['tags_mapping']['category-1'] = [
-                                {'name': tag_name, 'title': tag_text,},
+                                {'name': tag_name, 'title': tag_text, },
                             ]
 
                             gender = common.guess_gender(tag_name)
@@ -90,7 +88,7 @@ class MarcJacobsSpider(MFashionSpider):
                                     mcc = copy.deepcopy(mc)
 
                                     mcc['tags_mapping']['category-2'] = [
-                                        {'name': tag_name, 'title': tag_text,},
+                                        {'name': tag_name, 'title': tag_text, },
                                     ]
 
                                     gender = common.guess_gender(tag_name)
@@ -121,7 +119,7 @@ class MarcJacobsSpider(MFashionSpider):
                                 mc = copy.deepcopy(m)
 
                                 mc['tags_mapping']['category-1'] = [
-                                    {'name': tag_name, 'title': tag_text,},
+                                    {'name': tag_name, 'title': tag_text, },
                                 ]
 
                                 gender = common.guess_gender(tag_name)
@@ -144,7 +142,8 @@ class MarcJacobsSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@class="page-container"]/div[@class="partial-product_listpage"]/ul/li//a[@href][not(contains(text(),"Quick View"))]')
+        product_nodes = sel.xpath(
+            '//div[@class="page-container"]/div[@class="partial-product_listpage"]/ul/li//a[@href][not(contains(text(),"Quick View"))]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -188,8 +187,8 @@ class MarcJacobsSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
-        other_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
+        other_nodes = sel.xpath(
+            '//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
         for node in other_nodes:
             m = copy.deepcopy(metadata)
 
@@ -204,9 +203,7 @@ class MarcJacobsSpider(MFashionSpider):
                           errback=self.onerr,
                           meta={'userdata': m})
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -214,11 +211,9 @@ class MarcJacobsSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -226,19 +221,17 @@ class MarcJacobsSpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
-
         image_urls = []
-        image_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="variant-thumbnail-set"]/li/a/img[@src]')
+        image_nodes = sel.xpath(
+            '//div[@class="product-detail-container"]//ul[@class="variant-thumbnail-set"]/li/a/img[@src]')
         for node in image_nodes:
             try:
                 url = node.xpath('./@src').extract()[0]
@@ -249,7 +242,6 @@ class MarcJacobsSpider(MFashionSpider):
                         image_urls += [image_url]
             except(TypeError, IndexError):
                 pass
-
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -339,7 +331,8 @@ class MarcJacobsSpider(MFashionSpider):
         sel = Selector(response)
 
         colors = None
-        color_nodes = sel.xpath('//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
+        color_nodes = sel.xpath(
+            '//div[@class="product-detail-container"]//ul[@class="swatch-set clearfix"]/li/a[@href][@title]')
         if color_nodes:
             try:
                 colors = [

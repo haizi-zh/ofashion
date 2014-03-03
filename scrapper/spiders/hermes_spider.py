@@ -155,10 +155,10 @@ class HermesSpider(MFashionSpider):
             #
             for attrib in data['attributes']:
                 attrib_name = attrib['code']
-            #     if re.search(r'color[\b_]', attrib_name):
-            #         attrib_name = 'color'
-            #     elif re.search('size_sized', attrib_name):
-            #         attrib_name = 'size'
+                #     if re.search(r'color[\b_]', attrib_name):
+                #         attrib_name = 'color'
+                #     elif re.search('size_sized', attrib_name):
+                #         attrib_name = 'size'
 
                 temp = [unicodify(val['label']).lower() for val in attrib['options'] if
                         product_id in val['products']]
@@ -191,16 +191,13 @@ class HermesSpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
 
-
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -208,11 +205,9 @@ class HermesSpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         idx = response.body.find('spConfig.init')
         if idx == -1:

@@ -193,8 +193,9 @@ class BottegaSpider(MFashionSpider):
 
         name = None
         try:
-            tmp = sel.xpath('//div[@id="itemInfoBox"]//h1[@class="product-title"]/*[@class="infoProd" and @itemprop="name"]'
-                            '/text()').extract()
+            tmp = sel.xpath(
+                '//div[@id="itemInfoBox"]//h1[@class="product-title"]/*[@class="infoProd" and @itemprop="name"]'
+                '/text()').extract()
             if tmp:
                 name = cls.reformat(tmp[0])
         except(TypeError, IndexError):

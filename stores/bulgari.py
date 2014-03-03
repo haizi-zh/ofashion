@@ -65,7 +65,7 @@ def fetch_states(data):
         return []
 
     results = []
-    raw=json.loads(body)
+    raw = json.loads(body)
     if 'geoEntityLocaleList' not in raw:
         return []
     for c in raw['geoEntityLocaleList']:

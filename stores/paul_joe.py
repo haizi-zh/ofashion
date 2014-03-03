@@ -101,7 +101,7 @@ def fetch_stores(db, data, logger):
                 entry[cm.lat], entry[cm.lng] = lat, lng
 
             entry[cm.name_e] = store_a[j].text
-            entry[cm.addr_e] = cm.reformat_addr(str(pq(store_b[j])))# cm.reformat_addr(str(store_b[j]))
+            entry[cm.addr_e] = cm.reformat_addr(str(pq(store_b[j])))  # cm.reformat_addr(str(store_b[j]))
             entry[cm.country_e] = country
 
             gs.field_sense(entry)
@@ -121,7 +121,6 @@ def fetch_stores(db, data, logger):
             cm.insert_record(db, entry, 'spider_stores.stores')
 
     return tuple(store_list)
-
 
 
 def fetch(db, data=None, user='root', passwd=''):

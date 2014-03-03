@@ -10,7 +10,7 @@ import global_settings as glob
 __author__ = 'Zephyre'
 
 # base_path = '../products'
-base_path = os.path.join(glob.STORAGE_PATH, 'products')
+base_path = os.path.join(getattr(glob, 'STORAGE_PATH'), 'products')
 tags_mapping = {}
 
 

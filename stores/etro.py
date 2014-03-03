@@ -99,8 +99,8 @@ def fetch_store_details(data):
         entry[cm.store_type] = cm.reformat_addr(m.group(1))
 
     m = re.search(ur'google.maps.LatLng\(\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)', body, re.S)
-    entry[cm.lat]=string.atof(m.group(1))
-    entry[cm.lng]=string.atof(m.group(2))
+    entry[cm.lat] = string.atof(m.group(1))
+    entry[cm.lng] = string.atof(m.group(2))
 
     gs.field_sense(entry)
     print '(%s / %d) Found store: %s, %s (%s, %s)' % (data['brandname_e'], data['brand_id'],

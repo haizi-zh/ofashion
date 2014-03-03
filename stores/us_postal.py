@@ -90,6 +90,7 @@ def fetch_cities(data):
 
 def fetch(level=1, data=None, user='root', passwd=''):
     global data_map
+
     def func(data, level):
         """
         :param data:

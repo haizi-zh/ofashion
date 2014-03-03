@@ -11,6 +11,7 @@ import copy
 import re
 import common
 
+
 class FurlaSpider(MFashionSpider):
     """
     中国，
@@ -28,14 +29,14 @@ class FurlaSpider(MFashionSpider):
             k: str.format('http://www.furla.com/{0}/eshop', k if k != 'uk' else 'en')
             if k != 'cn' else 'http://www.furla.com/cn/collections/slide'
             for k in {
-                'cn', 'uk', 'us', 'fr', 'jp',
-                'it', 'oc', 'bg', 'ke', 'fi',
-                'ie', 'lt', 'nl', 'cz', 'si',
-                'hu', 'at', 'dk', 'lu', 'pl',
-                'ro', 'es', 'be', 'cy', 'ee',
-                'de', 'el', 'lv', 'mt', 'pt',
-                'sk', 'se',
-            }
+            'cn', 'uk', 'us', 'fr', 'jp',
+            'it', 'oc', 'bg', 'ke', 'fi',
+            'ie', 'lt', 'nl', 'cz', 'si',
+            'hu', 'at', 'dk', 'lu', 'pl',
+            'ro', 'es', 'be', 'cy', 'ee',
+            'de', 'el', 'lv', 'mt', 'pt',
+            'sk', 'se',
+        }
         },
     }
 
@@ -83,7 +84,7 @@ class FurlaSpider(MFashionSpider):
         sidebar_nodes = sel.xpath('//div[@class="sidebar"]/ul/li')
         for node in sidebar_nodes:
             try:
-                tag_text= node.xpath('./a/text()').extract()[0]
+                tag_text = node.xpath('./a/text()').extract()[0]
                 tag_text = self.reformat(tag_text)
                 tag_name = tag_text.lower()
             except(TypeError, IndexError):
@@ -112,7 +113,7 @@ class FurlaSpider(MFashionSpider):
 
                     if tag_text and tag_name:
                         mc = copy.deepcopy(m)
-                        mc['tags_mapping']['category-1']= [
+                        mc['tags_mapping']['category-1'] = [
                             {'name': tag_name, 'title': tag_text},
                         ]
 
@@ -155,7 +156,8 @@ class FurlaSpider(MFashionSpider):
         sel = Selector(response)
 
         # 这个xpath是去掉一些指向微博，facebook或它自己注册页面的链接
-        product_nodes = sel.xpath('//ul[@class="collection_list"]//li[not(contains(@class, "big"))]//a[contains(@href, "furla.com")]')
+        product_nodes = sel.xpath(
+            '//ul[@class="collection_list"]//li[not(contains(@class, "big"))]//a[contains(@href, "furla.com")]')
         for node in product_nodes:
             try:
                 href = node.xpath('./@href').extract()[0]
@@ -563,22 +565,25 @@ class FurlaSpider(MFashionSpider):
         if region == 'cn':
             pass
         else:
-            del_node = sel.xpath('//div[@id="container"]//div[@id="prodotto_descrizione"]//p[@class="prezzo"]/span[contains(@style, "text-decoration")][text()]')
-            if del_node:    # 打折
+            del_node = sel.xpath(
+                '//div[@id="container"]//div[@id="prodotto_descrizione"]//p[@class="prezzo"]/span[contains(@style, "text-decoration")][text()]')
+            if del_node:  # 打折
                 try:
                     old_price = del_node.xpath('./text()').extract()[0]
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
-                discount_node = sel.xpath('//div[@id="container"]//div[@id="prodotto_descrizione"]//p[@class="prezzo"]/span[not(contains(@style, "text-decoration"))][text()]')
+                discount_node = sel.xpath(
+                    '//div[@id="container"]//div[@id="prodotto_descrizione"]//p[@class="prezzo"]/span[not(contains(@style, "text-decoration"))][text()]')
                 if discount_node:
                     try:
                         new_price = discount_node.xpath('./text()').extract()[0]
                         new_price = cls.reformat(new_price)
                     except(TypeError, IndexError):
                         pass
-            else:   # 未打折
-                price_node = sel.xpath('//div[@id="container"]//div[@id="prodotto_descrizione"]//p[@class="prezzo"]/span[text()]')
+            else:  # 未打折
+                price_node = sel.xpath(
+                    '//div[@id="container"]//div[@id="prodotto_descrizione"]//p[@class="prezzo"]/span[text()]')
                 if price_node:
                     try:
                         old_price = price_node.xpath('./text()').extract()[0]
@@ -640,7 +645,8 @@ class FurlaSpider(MFashionSpider):
             pass
         else:
             try:
-                description = '\r'.join(cls.reformat(val) for val in sel.xpath('//p[contains(@id, "prod")]//text()').extract())
+                description = '\r'.join(
+                    cls.reformat(val) for val in sel.xpath('//p[contains(@id, "prod")]//text()').extract())
                 description = cls.reformat(description)
             except(TypeError, IndexError):
                 pass
@@ -674,7 +680,8 @@ class FurlaSpider(MFashionSpider):
         else:
             detail = None
             try:
-                detail = '\r'.join(cls.reformat(val) for val in sel.xpath('//div[@class="select"]/p[preceding-sibling::p[1]][following-sibling::p[contains(text(), "code")]]//text()').extract())
+                detail = '\r'.join(cls.reformat(val) for val in sel.xpath(
+                    '//div[@class="select"]/p[preceding-sibling::p[1]][following-sibling::p[contains(text(), "code")]]//text()').extract())
                 detail = cls.reformat(detail)
             except(TypeError, IndexError):
                 pass
@@ -699,7 +706,8 @@ class FurlaSpider(MFashionSpider):
             try:
                 colors = filter(None, list(
                     cls.reformat(val)
-                    for val in sel.xpath('//ul[@class="colors_materials"]//ul//li[not(child::a) or descendant::img[@class="selected"]]//text()').extract()
+                    for val in sel.xpath(
+                        '//ul[@class="colors_materials"]//ul//li[not(child::a) or descendant::img[@class="selected"]]//text()').extract()
                 ))
             except(TypeError, IndexError):
                 pass

@@ -28,12 +28,12 @@ class McQueenSpider(MFashionSpider):
                      'tw': 'USD'},
         'brand_id': 10008}
     region_list = {'us', 'fr', 'it', 'uk', 'au', 'at', 'bh', 'be', 'bn', 'bg', 'ca', 'cy', 'cz', 'dk', 'fi', 'ge',
-                       'de', 'gr', 'hu', 'is', 'in', 'id', 'ie', 'il', 'jp', 'jo', 'kw', 'lv', 'li', 'lt', 'lu', 'mo',
-                       'mk', 'my', 'mt', 'mx', 'mc', 'nl', 'eg', 'nz', 'no', 'pl', 'pt', 'qa', 'ru', 'sg', 'si', 'sk',
-                       'kr', 'es', 'se', 'ch', 'tw', }
+                   'de', 'gr', 'hu', 'is', 'in', 'id', 'ie', 'il', 'jp', 'jo', 'kw', 'lv', 'li', 'lt', 'lu', 'mo',
+                   'mk', 'my', 'mt', 'mx', 'mc', 'nl', 'eg', 'nz', 'no', 'pl', 'pt', 'qa', 'ru', 'sg', 'si', 'sk',
+                   'kr', 'es', 'se', 'ch', 'tw', }
     spider_data['hosts'] = {k: 'http://www.alexandermcqueen.com' for k in region_list}
     spider_data['home_urls'] = {k: str.format('http://www.alexandermcqueen.com/{0}', k if k != 'uk' else 'gb')
-                                     for k in region_list}
+                                for k in region_list}
 
 
     @classmethod
@@ -234,22 +234,24 @@ class McQueenSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        discount_node = sel.xpath('//div[@id="productWrapper"]//div[@class="itemBoxPrice"]//div[@class="newprice"][text()]')
-        if discount_node:   # 打折
+        discount_node = sel.xpath(
+            '//div[@id="productWrapper"]//div[@class="itemBoxPrice"]//div[@class="newprice"][text()]')
+        if discount_node:  # 打折
             try:
                 new_price = discount_node.xpath('./text()').extract()[0]
                 new_price = cls.reformat(new_price)
             except(TypeError, IndexError):
                 pass
 
-            price_node = sel.xpath('//div[@id="productWrapper"]//div[@class="itemBoxPrice"]//div[@class="oldprice"][text()]')
+            price_node = sel.xpath(
+                '//div[@id="productWrapper"]//div[@class="itemBoxPrice"]//div[@class="oldprice"][text()]')
             if price_node:
                 try:
                     old_price = price_node.xpath('./text()').extract()[0]
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 未打折
+        else:  # 未打折
             price_node = sel.xpath('//div[@id="productWrapper"]//div[@class="itemBoxPrice"]')
             if price_node:
                 try:

@@ -138,7 +138,7 @@ class SyncProducts(object):
         return val
 
     def get_msg(self):
-        if self.tot>0:
+        if self.tot > 0:
             return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot, float(self.progress) / self.tot)
         else:
             return str.format('{0}/{1} PROCESSED', self.progress, self.tot)
@@ -193,7 +193,7 @@ class EditorPriceProcessor(object):
         return str.format('{0} out of {1} completed({2:.1%})', self.progress, self.tot, float(self.progress) / self.tot)
 
 
-def spider2editor(src=glob.SPIDER_SPEC, dst=glob.DB_SPEC, table='products'):
+def spider2editor(src=getattr(glob, 'SPIDER_SPEC'), dst=getattr(glob, 'DB_SPEC'), table='products'):
     """
     从spider库到editor库的更新机制
     """
@@ -257,7 +257,8 @@ def process_editor_price(db_spec=glob.DB_SPEC, table='products', extra_cond=None
         db.close()
 
 
-def process_editor_tags(db_spec=glob.DB_SPEC, db_spider_spec=glob.SPIDER_SPEC, table='products', extra_cond=None):
+def process_editor_tags(db_spec=getattr(glob, 'DB_SPEC'), db_spider_spec=getattr(glob, 'SPIDER_SPEC'),
+                        table='products', extra_cond=None):
     """
     给editor库的数据添加tags字段
     """

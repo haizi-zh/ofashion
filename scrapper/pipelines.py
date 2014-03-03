@@ -571,7 +571,7 @@ class ProductImagePipeline(ImagesPipeline):
         brand_id = item['metadata']['brand_id']
         model = unicodify(item['metadata']['model'])
         for status, r in filter(lambda val: val[0], results):
-            path = r['path']    #.replace(u'\\', u'/')
+            path = r['path']  #.replace(u'\\', u'/')
 
             # 框架返回的文件名，有可能后缀是错的。需要找到真实的图片文件名称
             full_path = os.path.normpath(os.path.join(self.store.basedir, path))

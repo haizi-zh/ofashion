@@ -31,10 +31,10 @@ def fetch_stores(data):
             continue
         entry[cm.name_c] = m1.group(1)
         sub = sub.replace(m1.group(0), '')
-        m1=re.search(ur'聯系電話(?::|：)(.+?)<', sub)
+        m1 = re.search(ur'聯系電話(?::|：)(.+?)<', sub)
         if m1 is not None:
-            entry[cm.tel]=m1.group(1)
-            sub=sub.replace(m1.group(0), '<')
+            entry[cm.tel] = m1.group(1)
+            sub = sub.replace(m1.group(0), '<')
         sub = re.sub(ur'<img\b.*?/>', '', sub)
         entry[cm.addr_c] = cm.reformat_addr(sub)
 

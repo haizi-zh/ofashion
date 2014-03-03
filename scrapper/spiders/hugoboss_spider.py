@@ -17,16 +17,15 @@ from utils.utils import iterable
 
 
 class HogoBossSpider(MFashionSpider):
-
     spider_data = {
         'brand_id': 10169,
         'home_urls': {
             reg: str.format('http://store-{0}.hugoboss.com', reg)
             if reg != 'cn' else 'http://store.hugoboss.cn'
             for reg in {
-                'cn', 'us', 'fr', 'uk', 'de',
-                'it', 'es', 'ch','nl',
-            }
+            'cn', 'us', 'fr', 'uk', 'de',
+            'it', 'es', 'ch', 'nl',
+        }
         },
     }
 
@@ -131,7 +130,7 @@ class HogoBossSpider(MFashionSpider):
                     metadata['tags_mapping'][category_type] = [
                         {'name': type_name, 'title': type_text}
                     ]
-                    category_index+=1
+                    category_index += 1
             except(TypeError, IndexError):
                 continue
 
@@ -299,7 +298,8 @@ class HogoBossSpider(MFashionSpider):
         price_node = sel.xpath('//div[@class="product-prices"]//dd[@class="saleprice"]')
         if not price_node:
             # 其他
-            price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
+            price_node = sel.xpath(
+                '//div[@class="price mainPrice"]//div[@class="standardprice" or @class="salesprice"]')
 
         if price_node:
             try:
@@ -311,7 +311,8 @@ class HogoBossSpider(MFashionSpider):
 
                         # 其他国家一样找不到pre_price_node，摒弃price_node找到的是原售价
                         # 这里检查是不是有折扣价
-                        discount_price_node = sel.xpath('//div[@class="price mainPrice"]//div[@class="salesprice issalesprice"]')
+                        discount_price_node = sel.xpath(
+                            '//div[@class="price mainPrice"]//div[@class="salesprice issalesprice"]')
                         if discount_price_node:
                             discount_price = discount_price_node.xpath('./text()').extract()[0]
                             discount_price = cls.reformat(discount_price)

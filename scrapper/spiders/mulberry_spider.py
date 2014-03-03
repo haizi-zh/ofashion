@@ -11,8 +11,8 @@ import common
 import copy
 import re
 
-class MulberrySpider(MFashionSpider):
 
+class MulberrySpider(MFashionSpider):
     spider_data = {
         'brand_id': 10270,
         'home_urls': {
@@ -49,13 +49,13 @@ class MulberrySpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
 
                 m['tags_mapping']['category-0'] = [
-                    {'name': tag_name, 'title': tag_text,},
+                    {'name': tag_name, 'title': tag_text, },
                 ]
 
                 gender = common.guess_gender(tag_name,
                                              extra={'male': [],
                                                     'female': ['womenswear'],
-                                                    })
+                                             })
                 if gender:
                     m['gender'] = [gender]
 
@@ -72,7 +72,7 @@ class MulberrySpider(MFashionSpider):
                         mc = copy.deepcopy(m)
 
                         mc['tags_mapping']['category-1'] = [
-                            {'name': tag_name, 'title': tag_text,},
+                            {'name': tag_name, 'title': tag_text, },
                         ]
 
                         gender = common.guess_gender(tag_name,
@@ -98,7 +98,8 @@ class MulberrySpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@id="content"]/section[contains(@class,"products")]/div[contains(@class,"product")]/a[@href]')
+        product_nodes = sel.xpath(
+            '//div[@id="content"]/section[contains(@class,"products")]/div[contains(@class,"product")]/a[@href]')
         for node in product_nodes:
             m = copy.deepcopy(metadata)
 
@@ -112,7 +113,7 @@ class MulberrySpider(MFashionSpider):
                           callback=self.parse_product,
                           errback=self.onerr,
                           meta={'userdata': m},
-                          dont_filter=True,)
+                          dont_filter=True, )
 
         # 页面下拉到底部会自动加载更多，需要模拟请求，解析返回的json
         # 测试发现，在原有url后边添加 ?page=2 也可以取到第二页内容
@@ -155,7 +156,8 @@ class MulberrySpider(MFashionSpider):
         # 有些有折扣价 ：http://www.mulberry.com/shop/sale/sale-womenswear/pleated-dress-black-mini-meadow-triple-georgette
         old_price = None
         new_price = None
-        name_price_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
+        name_price_node = sel.xpath(
+            '//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
         if name_price_node:
             was_price_node = name_price_node.xpath('.//div[@class="wasPrice"]')
             if was_price_node:  # 有折扣
@@ -178,7 +180,7 @@ class MulberrySpider(MFashionSpider):
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
-            else:   # 无折扣
+            else:  # 无折扣
                 try:
                     name = ' '.join(
                         cls.reformat(val)
@@ -206,7 +208,8 @@ class MulberrySpider(MFashionSpider):
         sel = Selector(response)
 
         model = None
-        model_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div/p/strong[text()]')
+        model_node = sel.xpath(
+            '//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div/p/strong[text()]')
         if model_node:
             try:
                 model = model_node.xpath('./text()').extract()[0]
@@ -221,9 +224,7 @@ class MulberrySpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-
         metadata['url'] = response.url
-
 
         model = self.fetch_model(response)
         if model:
@@ -231,11 +232,9 @@ class MulberrySpider(MFashionSpider):
         else:
             return
 
-
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
-
 
         ret = self.fetch_price(response)
         if 'price' in ret:
@@ -243,24 +242,21 @@ class MulberrySpider(MFashionSpider):
         if 'price_discount' in ret:
             metadata['price_discount'] = ret['price_discount']
 
-
         description = self.fetch_description(response)
         if description:
             metadata['description'] = description
-
 
         colors = self.fetch_color(response)
         if colors:
             metadata['color'] = colors
 
-
         detail = self.fetch_details(response)
         if detail:
             metadata['details'] = detail
 
-
         image_urls = []
-        image_nodes = sel.xpath('//div[@id="content"]/section[@class="section-hero"]//div[@id="carousel-hero"]/ul/li/a[@data-zoom]')
+        image_nodes = sel.xpath(
+            '//div[@id="content"]/section[@class="section-hero"]//div[@id="carousel-hero"]/ul/li/a[@data-zoom]')
         for image_node in image_nodes:
             try:
                 image_urls += [
@@ -269,7 +265,6 @@ class MulberrySpider(MFashionSpider):
                 ]
             except(TypeError, IndexError):
                 continue
-
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -285,7 +280,8 @@ class MulberrySpider(MFashionSpider):
         sel = Selector(response)
 
         name = None
-        name_price_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
+        name_price_node = sel.xpath(
+            '//div[@id="content"]/section[@class="section-hero"]/div[@class="row"]/div[@class="fourcol last"]/div[@class="product-info"]/h1[@id="prodEssentials"]')
         if name_price_node:
             was_price_node = name_price_node.xpath('.//div[@class="wasPrice"]')
             if was_price_node:  # 有折扣
@@ -296,7 +292,7 @@ class MulberrySpider(MFashionSpider):
                     )
                 except(TypeError, IndexError):
                     pass
-            else:   # 无折扣
+            else:  # 无折扣
                 try:
                     name = ' '.join(
                         cls.reformat(val)
@@ -312,7 +308,8 @@ class MulberrySpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        description_node = sel.xpath('//div[@id="content"]/section[@class="section-hero"]//div[@class="product-description"]/p[text()]')
+        description_node = sel.xpath(
+            '//div[@id="content"]/section[@class="section-hero"]//div[@class="product-description"]/p[text()]')
         if description_node:
             try:
                 description = cls.reformat(description_node.xpath('./text()').extract()[0])
@@ -326,7 +323,8 @@ class MulberrySpider(MFashionSpider):
         sel = Selector(response)
 
         detail = None
-        detail_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div[@class="detailed-info"]/*[1 < position()][position() < last()-1]')
+        detail_node = sel.xpath(
+            '//div[@id="content"]/section[@class="more-details"]/div[@class="row"]/div[contains(@class,"baseline")]/div[@class="detailed-info"]/*[1 < position()][position() < last()-1]')
         if detail_node:
             try:
                 detail = '\r'.join(
@@ -343,7 +341,8 @@ class MulberrySpider(MFashionSpider):
         sel = Selector(response)
 
         colors = None
-        color_node = sel.xpath('//div[@id="content"]/section[@class="more-details"]//div[@class="additional-product"][1]//div[@class="sixcol"]/h3[text()]')
+        color_node = sel.xpath(
+            '//div[@id="content"]/section[@class="more-details"]//div[@class="additional-product"][1]//div[@class="sixcol"]/h3[text()]')
         if color_node:
             try:
                 colors = [cls.reformat(val)

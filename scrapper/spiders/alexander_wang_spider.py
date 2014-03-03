@@ -62,7 +62,7 @@ class AlexanderWangSpider(MFashionSpider):
         'home_urls': {
             'cn': 'http://www.alexanderwang.cn/',
             'it': 'http://store.alexanderwang.com/it',
-            'us': 'http://store.alexanderwang.com/us', # 虽然此页不存在，但可以避免被重定向到中国官网
+            'us': 'http://store.alexanderwang.com/us',  # 虽然此页不存在，但可以避免被重定向到中国官网
             'fr': 'http://store.alexanderwang.com/fr',
             'uk': 'http://store.alexanderwang.com/gb',
             'hk': 'http://store.alexanderwang.com/hk',
@@ -129,7 +129,7 @@ class AlexanderWangSpider(MFashionSpider):
         sel = Selector(response)
 
         nav_nodes = sel.xpath('//nav[@id="sitenav"]/ul/li[child::a[@href]]')
-        if not nav_nodes:   # 针对美国官网
+        if not nav_nodes:  # 针对美国官网
             nav_nodes = sel.xpath('//div[@class="global-nav"]/ul/li')
         for node in nav_nodes:
             try:
@@ -193,7 +193,7 @@ class AlexanderWangSpider(MFashionSpider):
 
         # 有些类别有第三级展开，比如中国，促销，女装
         nav_nodes = sel.xpath('//nav[@id="navMenu"]//ul//ul//ul//li//a[@href]')
-        if not nav_nodes:   # 针对美国官网
+        if not nav_nodes:  # 针对美国官网
             nav_nodes = sel.xpath('//div[@class="left-navigation"]//ul/li/ul/li/a[@href]')
         for node in nav_nodes:
             try:
@@ -234,7 +234,7 @@ class AlexanderWangSpider(MFashionSpider):
         sel = Selector(response)
 
         product_nodes = sel.xpath('//div[contains(@class, "content")]//ul[@class="productsContainer"]//li')
-        if not product_nodes:   # 针对美国官网
+        if not product_nodes:  # 针对美国官网
             product_nodes = sel.xpath('//div[@class="fixer products-grid"]/ul/li')
         for node in product_nodes:
             m = copy.deepcopy(metadata)

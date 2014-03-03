@@ -286,7 +286,8 @@ class ChaumetSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        price_node = sel.xpath('//div[@id="pageContent"]//div[@class="mod productInfosMod"]//*[@itemprop="price"][text()]')
+        price_node = sel.xpath(
+            '//div[@id="pageContent"]//div[@class="mod productInfosMod"]//*[@itemprop="price"][text()]')
         if price_node:
             try:
                 old_price = price_node.xpath('./text()').extract()[0]

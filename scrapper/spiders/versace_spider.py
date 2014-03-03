@@ -198,15 +198,17 @@ class VersaceSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        origin_price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="standard-price-old standardprice"][text()]')
-        if origin_price_node:   # 打折
+        origin_price_node = sel.xpath(
+            '//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="standard-price-old standardprice"][text()]')
+        if origin_price_node:  # 打折
             try:
                 old_price = origin_price_node.xpath('./text()').extract()[0]
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
 
-            discount_price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="salesprice hasStandardPrice"][text()]')
+            discount_price_node = sel.xpath(
+                '//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="salesprice hasStandardPrice"][text()]')
             if discount_price_node:
                 try:
                     new_price = discount_price_node.xpath('./text()').extract()[0]
@@ -214,8 +216,9 @@ class VersaceSpider(MFashionSpider):
                     new_price = re.sub(ur'\r', '', new_price)
                 except(TypeError, IndexError):
                     pass
-        else:   # 未打折
-            price_node = sel.xpath('//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="price singleprice"][text()]')
+        else:  # 未打折
+            price_node = sel.xpath(
+                '//div[@class="productinfo"]//div[@itemprop="offerDetails"]//div[@class="price singleprice"][text()]')
             if price_node:
                 try:
                     old_price = ''.join(cls.reformat(val) for val in price_node.xpath('.//text()').extract())

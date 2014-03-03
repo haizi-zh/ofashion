@@ -85,15 +85,50 @@ def backup_all(param_dict):
         logger.info('UPLOADING...')
         ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
         os.system(str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
-        os.system(str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
+        os.system(
+            str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
 
     logger.info(str.format('AUTO BACKUP COMPLETED: {0}', backup_name))
     os.chdir(original_path)
 
 
+def restore(param_dict):
+    """
+    导入最近的一次数据库文件
+    @param param:
+    """
+    user = param_dict['u'][0] if 'u' in param_dict and param_dict['u'] else None
+    password = param_dict['p'][0] if 'p' in param_dict and param_dict['p'] else None
+    host = param_dict['host'][0] if 'host' in param_dict and param_dict['host'] else None
+    port = param_dict['port'][0] if 'port' in param_dict and param_dict['port'] else None
+    db = param_dict['db'][0] if 'db' in param_dict and param_dict['db'] else None
+    dst = param_dict['dst'][0] if 'dst' in param_dict and param_dict['dst'] else ''
+
+    os.chdir(dst)
+
+    # 查找最近的一次.done文件
+    file_candates = sorted(filter(lambda val: re.search(r'\d{8}_\d{6}[^\\/]+\.done$', val), os.listdir(dst)))
+    # 最近的一个.done文件对应的日期距今不应该超过24小时
+    if not file_candates:
+        return
+    done_name = file_candates[-1]
+    done_time = datetime.datetime.strptime(re.search(r'(\d{8}_\d{6})[^\\/]+\.done$', done_name).group(1),
+                                           '%Y%m%d_%H%M%S')
+    if datetime.datetime.now() - done_time >= datetime.timedelta(1):
+        # 不早于24小时
+        return
+    # 找到数据文件的名字
+    file_name = re.sub(r'(.+)\.done$', r'\1', done_name)
+    if not os.path.isfile(file_name):
+        return
+    os.system(str.format('7z x {0}', file_name))
+
+    pass
+
+
 if __name__ == "__main__":
     ret = parse_args(sys.argv)
-    func_dict = {'test': test, 'backup-all': backup_all, 'sync': sync}
+    func_dict = {'test': test, 'backup-all': backup_all, 'restore': restore}
     if ret:
         cmd = ret['cmd']
         param = ret['param']
