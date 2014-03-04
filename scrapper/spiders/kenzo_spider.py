@@ -241,9 +241,9 @@ class KenzoSpider(MFashionSpider):
                 continue
 
         if old_price:
-            ret['price'] = old_price
+            ret['price'] = str(old_price)
         if new_price:
-            ret['price_discount'] = new_price
+            ret['price_discount'] = str(new_price)
 
         return ret
 

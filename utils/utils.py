@@ -16,10 +16,11 @@ def guess_currency(price, region=None):
         if s in price:
             return symbols[s]
 
-    # 如果$前面没有两个大写的字母，即没有出现CA$，AU $等情况，则说明货币是美元。
+    # 如果$前面没有紧贴一至两个大写的字母，即没有出现CA$，AU $等情况，则说明货币是美元。
     if '$' in price:
-        mt = re.search(r'[A-Z]{2}\s*\$', price, flags=re.U)
-        if not mt:
+        mt1 = re.search(r'[A-Z]{2}\s{0,2}\$', price, flags=re.U)
+        mt2 = re.search(r'[A-Z]{1}\$', price, flags=re.U)
+        if not mt1 and not mt2:
             return 'USD'
 
     if u'¥' in price and region in ('cn', 'hk', 'mo', 'tw'):
