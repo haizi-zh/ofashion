@@ -203,5 +203,6 @@ def newly_fetched(brand_list=None, start=None, end=None):
 
 
 if __name__ == '__main__':
-    rec = price_changed()
+    rec = price_changed(brand_list=[10006])
+    print rec
     pass

@@ -916,7 +916,7 @@ def norm_url(url, host=None):
 
 def get_spider_module(spider_name):
     spider_path = os.path.normpath(
-        os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}_spider.py', spider_name)))
+        os.path.join(getattr(glob, 'HOME_PATH'), str.format('scrapper/spiders/{0}_spider.py', spider_name)))
     return imp.load_source(spider_name, spider_path)
 
 
@@ -967,8 +967,8 @@ def get_spider_info(brand_id=None, brand_name=None):
 
     def func():
         for v in filter(lambda v: not re.search(r'^__init__\.py$', v) and not re.search(r'\.pyc$', v),
-                        os.listdir(os.path.join(glob.HOME_PATH, 'scrapper/spiders'))):
-            full_path = os.path.join(glob.HOME_PATH, str.format('scrapper/spiders/{0}', v))
+                        os.listdir(os.path.join(getattr(glob, 'HOME_PATH'), 'scrapper/spiders'))):
+            full_path = os.path.join(getattr(glob, 'HOME_PATH'), str.format('scrapper/spiders/{0}', v))
             name = os.path.splitext(os.path.split(full_path)[-1])[0]
 
             if name in (v[1]['module_name'] for v in get_spider_info.data.items()):

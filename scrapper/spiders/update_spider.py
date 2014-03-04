@@ -53,9 +53,9 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     url = data['url']
                     region = data['region']
 
-                    # url = 'http://www.tiffany.fr/Engagement/item.aspx?groupSKU=GRP10018'
+                    # url = 'https://www.kenzo.com/fr/shop/femme_101/collection-permanente_1207/robe-tiger_9707/'
                     # region = 'fr'
-                    # pid = 386765
+                    # pid = 649534
                     #
                     # return [Request(url=url,
                     #                 callback=self.parse,
@@ -96,10 +96,8 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response)
-            if 'price' in ret:
-                metadata['price'] = ret['price']
-            if 'price_discount' in ret:
-                metadata['price_discount'] = ret['price_discount']
+            if ret:
+                metadata['price'] = ret
 
         if 'fetch_name' in dir(sc):
             name = getattr(sc, 'fetch_name')(response)
@@ -126,10 +124,51 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
             if color:
                 metadata['color'] = color
 
+        return self.resolve_requests(item)
+
+    def update_callback(self, response):
+        spider_cb = response.meta['spider_cb']
+        item = response.meta['item']
+        key = response.meta['key']
+        ret = spider_cb(response)
+        if ret:
+            if key == 'price':
+                if 'price' in ret:
+                    item['metadata']['price'] = ret['price']
+                if 'price_discount' in ret:
+                    item['metadata']['price_discount'] = ret['price_discount']
+            else:
+                item['metadata'][key] = ret
+        return self.resolve_requests(item)
+
+    def resolve_requests(self, item):
+        """
+        检查metadata里面是否有Request对象。如果有，需要进一步提交这些request。
+        仅当所有的对象都不是Request时，该过程才结束。
+        @param metadata:
+        """
+
+        metadata = item['metadata']
+        while True:
+            resolved = True
+            for func_key, value in metadata.items():
+                if isinstance(value, Request):
+                    value.meta['spider_cb'] = value.callback
+                    value.meta['item'] = item
+                    value.meta['key'] = func_key
+                    value.callback = self.update_callback
+                    value.dont_filter = True
+                    return value
+
+            # 如果
+            if resolved:
+                break
+
         return item
 
-    def onerror(self, reason):
 
+    @staticmethod
+    def onerror(reason):
         meta = None
         if hasattr(reason.value, 'response'):
             response = reason.value.response
