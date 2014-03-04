@@ -53,9 +53,9 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     url = data['url']
                     region = data['region']
 
-                    # url = 'https://www.kenzo.com/fr/shop/femme_101/collection-permanente_1207/robe-tiger_9707/'
-                    # region = 'fr'
-                    # pid = 649534
+                    # url = 'http://www.cartier.us/collections/accessories/mens-accessories/writing-instruments/st240037-roadster-cartier-transatlantique-fountain-pen'
+                    # region = 'us'
+                    # pid = 350042
                     #
                     # return [Request(url=url,
                     #                 callback=self.parse,
@@ -96,8 +96,13 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response)
-            if ret:
+            if isinstance(ret, Request):
                 metadata['price'] = ret
+            else:
+                if 'price' in ret:
+                    metadata['price'] = ret['price']
+                if 'price_discount' in ret:
+                    metadata['price_discount'] = ret['price_discount']
 
         if 'fetch_name' in dir(sc):
             name = getattr(sc, 'fetch_name')(response)
