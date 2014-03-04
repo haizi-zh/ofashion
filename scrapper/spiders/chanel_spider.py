@@ -20,6 +20,7 @@ __author__ = 'Zephyre'
 
 brand_id = 10074
 
+# TODO 这个的update，只写了is_offline，model，name，price，其余没写
 
 class ChanelSpider(MFashionSpider):
     allowed_domains = ['chanel.com']
@@ -594,3 +595,152 @@ class ChanelSpider(MFashionSpider):
             item['model'] = metadata['model']
             item['metadata'] = metadata
             yield item
+
+    @classmethod
+    def is_offline(cls, response):
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
+
+        if model and name:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        model = None
+        model_node = sel.xpath('//meta[@name="sku"][@content]')
+        if model_node:
+            try:
+                model = model_node.xpath('@content').extract()[0]
+                model = cls.reformat(model)
+            except(TypeError, IndexError):
+                pass
+        else:
+            model_node = sel.xpath('//div[@class="details"]/div[@class="information"]/p[@class="ref info"][text()]')
+            if model_node:
+                try:
+                    model = model_node.xpath('./text()').extract()[0]
+                    model = cls.reformat(model)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                model_node = sel.xpath('//meta[contains(@property, ":id")][@content]')
+                if model_node:
+                    try:
+                        model = model_node.xpath('./@content').extract()[0]
+                        model = cls.reformat(model)
+                    except(TypeError, IndexError):
+                        pass
+
+        return model
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        name = None
+        name_node = sel.xpath('//div[@id="contentWrapper"]//div[@id="mainProduct"]//span[@class="familyText"][text()]')
+        if name_node:
+            try:
+                name = name_node.xpath('./text()').extract()[0]
+                name = cls.reformat(name)
+            except(TypeError, IndexError):
+                pass
+        else:
+            name_node = sel.xpath('//div[@class="details"]/div[@class="information"]//h2[@class="cat info"][text()]')
+            if name_node:
+                try:
+                    name = name_node.xpath('./text()').extract()[0]
+                    name = cls.reformat(name)
+                except(TypeError, IndexError):
+                    pass
+            else:
+                name_node = sel.xpath('//div[@id="pdpContainer"]/div[@id="leftCol"]//h1[@class="product_name"][text()]')
+                if name_node:
+                    try:
+                        name = name_node.xpath('./text()').extract()[0]
+                        name = cls.reformat(name)
+                    except(TypeError, IndexError):
+                        pass
+
+        return name
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        region_code = '|'.join(cls.spider_data['base_url'][reg] for reg in cls.get_supported_regions())
+        watch_code = []
+        for r in cls.get_supported_regions():
+            if r in cls.spider_data['watch_term']:
+                watch_code.extend(cls.spider_data['watch_term'][r])
+        watch_code = '|'.join(watch_code)
+
+        old_price = None
+        new_price = None
+
+        mt = re.search(unicode.format(ur'chanel\.com/({0})/({1})/.+', region_code, watch_code), response.url)
+        if mt:  # 对应 parse_watch
+            price_url = str.format(
+                    'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
+                    cls.spider_data['base_url'][region], cls.spider_data['watch_term'][region][0], cls.fetch_model(response))
+            return Request(url=price_url,
+                           callback=cls.fetch_price_request_watch,
+                           errback=cls.onerr,
+                           meta=response.meta)
+        else:
+            mt = re.search(str.format(r'chanel\.com/({0})/.+\?sku=\d+$', region_code), response.url)
+            if mt:  # 对应 parse_sku1
+                # TODO 这种类型url找不到原来取价格的代码
+                pass
+            else:
+                mt = re.search(str.format(r'chanel\.com/({0})/.+/sku/\d+$', region_code), response.url)
+                if mt:  # 对应 parse_sku2
+                    temp = sel.xpath('//div[contains(@class, "product_detail_container")]')
+                    if len(temp) > 0:
+                        product_name = temp[0]
+                        temp = product_name.xpath('.//h3[@class="product_price"]')
+                        if len(temp) > 0:
+                            old_price = unicodify(temp[0]._root.text)
+                else:
+                    pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_price_request_watch(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+
+        try:
+            data = json.loads(response.body)
+            tmp = data['product'][0]['price']
+            if not re.search(r'^\s*-1', tmp):
+                old_price = data['product'][0]['price']
+        except (IndexError, KeyError, ValueError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
