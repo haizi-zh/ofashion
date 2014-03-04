@@ -28,7 +28,20 @@ class LouisVuittonSpider(MFashionSpider):
             'fr': 'http://m.louisvuitton.fr',
             'de': 'http://m.louisvuitton.de',
             'es': 'http://m.louisvuitton.es',
-            'it': 'http://m.louisvuitton.it'
+            'it': 'http://m.louisvuitton.it',
+            'uk': 'http://m.louisvuitton.uk',
+            'ru': 'http://m.louisvuitton.ru',
+            'br': 'http://m.louisvuitton.br',
+            'ca': 'http://m.louisvuitton.ca',
+            'hk': 'http://m.louisvuitton.hk',
+            'jp': 'http://m.louisvuitton.jp',
+            'kr': 'http://m.louisvuitton.kr',
+            'tw': 'http://m.louisvuitton.tw',
+            'au': 'http://m.louisvuitton.au',
+            # 'eu': 'http://m.louisvuitton.eu',
+        },
+        'currency': {
+            'ca': 'USD',
         },
         'image_host': 'http://images.louisvuitton.com/content/dam/lv/online/picture/',
     }
