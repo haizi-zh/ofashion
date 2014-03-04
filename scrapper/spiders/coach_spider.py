@@ -322,3 +322,263 @@ class CoachSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         return item
+
+    @classmethod
+    def is_offline(cls, response):
+        model = cls.fetch_model(response)
+        name = cls.fetch_name(response)
+
+        if model and name:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def fetch_model(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        model = None
+        if region != 'cn':
+            # 商品信息在var productJSONObject中
+            mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+            if mt:
+                data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                    '"').replace(r"\'",
+                                                                                                                 "'"))
+                if 'style' in data:
+                    model = data['style']
+        else:
+            tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="styleCode" and @value]')
+            if tmp:
+                model = tmp[0]._root.attrib['value']
+
+        return model
+
+    @classmethod
+    def fetch_name(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        name = None
+        if region != 'cn':
+            # 商品信息在var productJSONObject中
+            mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+            if mt:
+                data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                    '"').replace(r"\'",
+                                                                                                                 "'"))
+                if 'productName' in data:
+                    name = cls.reformat(data['productName'])
+        else:
+            tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="title" and @value]')
+            if tmp:
+                name = unicodify(tmp[0]._root.attrib['value'])
+
+        return name
+
+    @classmethod
+    def fetch_price(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        old_price = None
+        new_price = None
+        if region != 'cn':
+            # 商品信息在var productJSONObject中
+            mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+            if not mt:
+                return
+            data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                '"').replace(r"\'",
+                                                                                                             "'"))
+            # 价格信息
+            try:
+                for item in data['swatchGroup']['swatches']:
+                    if 'listPrice' in item:
+                        old_price = cls.reformat(item['listPrice'])
+                        if 'unitPrice' in item:
+                            new_price = cls.reformat(item['unitPrice'])
+                        break
+            except KeyError:
+                pass
+        else:
+            tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="skuCode" and @value]')
+            sku_code = None
+            if tmp:
+                sku_code = tmp[0]._root.attrib['value']
+            if sku_code:
+                # 价格信息
+                return Request(url=cls.spider_data['price_url'][region], method='POST', dont_filter=True,
+                               body=str.format('skuCode={0}', sku_code), callback=cls.fetch_price_request,
+                               errback=cls.onerr,
+                               headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                        'Accept-Encoding': 'gzip,deflate,sdch',
+                                        'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
+                               meta=response.meta)
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_price_request(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            data = json.loads(response.body)
+            price_set = set([])
+            for key in ['retailPrice', 'skuPrice']:
+                if key not in data:
+                    continue
+                try:
+                    price_set.add(float(data[key]))
+                except (ValueError, TypeError):
+                    continue
+            if len(price_set) >= 2:
+                old_price = str(max(price_set))
+                new_price = str(min(price_set))
+            elif len(price_set) == 1:
+                old_price = str(list(price_set)[0])
+        except (ValueError, KeyError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_description(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        description = None
+        if region != 'cn':
+            # TODO 没找到原爬虫解析非中国的单品描述的代码
+            pass
+        else:
+            # 说明信息
+            return Request(url=cls.spider_data['desc_url'][region], method='POST', dont_filter=True,
+                           body=str.format('styleCode={0}', cls.fetch_model(response)),
+                           callback=cls.fetch_description_request,
+                           headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Accept-Encoding': 'gzip,deflate,sdch',
+                                    'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
+                           errback=cls.onerr, meta=response.meta)
+
+        return description
+
+    @classmethod
+    def fetch_description_request(cls, response):
+        sel = Selector(response)
+
+        description = None
+        try:
+            data = json.loads(response.body)
+            if data['description'][0]['description']:
+                description = cls.reformat(
+                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['description']))
+        except (ValueError, IndexError, KeyError):
+            pass
+
+        return description
+
+    @classmethod
+    def fetch_details(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        details = None
+        if region != 'cn':
+            # TODO 没找到原爬虫解析非中国的单品描述的代码
+            pass
+        else:
+            # 说明信息
+            return Request(url=cls.spider_data['desc_url'][region], method='POST', dont_filter=True,
+                           body=str.format('styleCode={0}', cls.fetch_model(response)),
+                           callback=cls.fetch_description_request,
+                           headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Accept-Encoding': 'gzip,deflate,sdch',
+                                    'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
+                           errback=cls.onerr, meta=response.meta)
+
+        return details
+
+    @classmethod
+    def fetch_details_request(cls, response):
+        sel = Selector(response)
+
+        details = None
+        try:
+            data = json.loads(response.body)
+            if data['description'][0]['detail']:
+                details = cls.reformat(
+                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['detail']))
+        except (ValueError, IndexError, KeyError):
+            pass
+
+        return details
+
+    @classmethod
+    def fetch_color(cls, response):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        colors = []
+        if region != 'cn':
+            try:
+                # 商品信息在var productJSONObject中
+                mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+                if mt:
+                    data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                        '"').replace(r"\'", "'"))
+                    colors = [cls.reformat(swatch['color']).lower() for swatch in data['swatchGroup']['swatches']
+                              if 'color' in swatch]
+            except KeyError:
+                colors = None
+                pass
+        else:
+            # TODO 没找到原爬虫解析中国的单品颜色的代码
+            pass
+
+        return colors
