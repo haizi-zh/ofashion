@@ -14,28 +14,6 @@ from scrapper.spiders.mfashion_spider import MFashionSpider
 import inspect
 import imp
 
-# if sys.platform in ('win32', ):
-#     STORAGE_PATH = u'd:/Users/Zephyre/Development/mstore/storage'
-#     HOME_PATH = u'd:/Users/Zephyre/RoseVision/MStore_src'
-# elif sys.platform in ('darwin', ):  # MAC
-#     STORAGE_PATH = u'/Users/Ryan/Desktop/MStoreSpiderStorage'
-#     HOME_PATH = u'/Users/Ryan/Desktop/MStoreSpiderGit'
-# else:
-#     STORAGE_PATH = u'/home/rose/MStore/storage'
-#     HOME_PATH = u'/home/rose/MStore/src'
-
-
-# # Database
-# REMOTE_CONN = True
-# if sys.platform not in ('win32', ):
-#     REMOTE_CONN = False
-#
-# DB_SPEC = {'host': '127.0.0.1', 'username': 'rose', 'password': 'rose123',
-#            'port': 1228 if REMOTE_CONN else 3306, 'schema': 'editor_stores'}
-# SPIDER_SPEC = {}
-# RELEASE_SPEC = {}
-# TMP_SPEC = {}
-
 
 def __fetch_brand_info():
     with core.MySqlDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:

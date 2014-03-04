@@ -22,7 +22,7 @@ __author__ = 'Zephyre'
 class KenzoSpider(MFashionSpider):
     spider_data = {'brand_id': 10192,
                    'image_data': 'https://www.kenzo.com/en/services/product/',
-                   'currency': {'us', 'EUR'},
+                   'currency': {'us': 'EUR'},
                    'home_urls': {'us': 'https://www.kenzo.com/en'}}
 
     @classmethod
@@ -204,12 +204,12 @@ class KenzoSpider(MFashionSpider):
         model = cls.fetch_model(response)
         if model:
             url = cls.spider_data['image_data'] + str(model)
-            yield Request(url=url,
-                          callback=cls.fetch_price_server,
-                          errback=cls.onerr,
-                          meta=response.meta)
+            return Request(url=url,
+                           callback=cls.fetch_price_server,
+                           errback=cls.onerr,
+                           meta=response.meta)
         else:
-            yield ret
+            return ret
 
     @classmethod
     def fetch_price_server(cls, response):
@@ -241,9 +241,9 @@ class KenzoSpider(MFashionSpider):
                 continue
 
         if old_price:
-            ret['price'] = old_price
+            ret['price'] = str(old_price)
         if new_price:
-            ret['price_discount'] = new_price
+            ret['price_discount'] = str(new_price)
 
         return ret
 
@@ -282,12 +282,12 @@ class KenzoSpider(MFashionSpider):
         model = cls.fetch_model(response)
         if model:
             url = cls.spider_data['image_data'] + str(model)
-            yield Request(url=url,
-                          callback=cls.fetch_color_server,
-                          errback=cls.onerr,
-                          meta=response.meta)
+            return Request(url=url,
+                           callback=cls.fetch_color_server,
+                           errback=cls.onerr,
+                           meta=response.meta)
         else:
-            yield None
+            return None
 
     @classmethod
     def fetch_color_server(cls, response):
@@ -304,7 +304,7 @@ class KenzoSpider(MFashionSpider):
                 model = clr_item['id']
                 color = cls.reformat(clr_item['name'])
                 if color:
-                    colors += color
+                    colors.append(color)
             except (IndexError, KeyError):
                 continue
 
