@@ -22,7 +22,7 @@ __author__ = 'Zephyre'
 class KenzoSpider(MFashionSpider):
     spider_data = {'brand_id': 10192,
                    'image_data': 'https://www.kenzo.com/en/services/product/',
-                   'currency': {'us', 'EUR'},
+                   'currency': {'us': 'EUR'},
                    'home_urls': {'us': 'https://www.kenzo.com/en'}}
 
     @classmethod
@@ -36,7 +36,7 @@ class KenzoSpider(MFashionSpider):
     def get_instance(cls, region=None):
         return cls(region)
 
-    def parse(self, response):
+    def parse(self, respnse):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
@@ -94,12 +94,12 @@ class KenzoSpider(MFashionSpider):
         else:
             return
 
-        if 'fetch_price' in dir(self.__class__):
-            ret = getattr(self.__class__, 'fetch_price')(response)
-            if 'price' in ret:
-                metadata['price'] = ret['price']
-            if 'price_discount' in ret:
-                metadata['price_discount'] = ret['price_discount']
+        # if 'fetch_price' in dir(self.__class__):
+        #     ret = getattr(self.__class__, 'fetch_price')(response)
+        #     if 'price' in ret:
+        #         metadata['price'] = ret['price']
+        #     if 'price_discount' in ret:
+        #         metadata['price_discount'] = ret['price_discount']
 
         name = self.fetch_name(response)
         if name:
@@ -117,10 +117,10 @@ class KenzoSpider(MFashionSpider):
         if description:
             metadata['description'] = description
 
-        if 'fetch_color' in dir(self.__class__):
-            colors = getattr(self.__class__, 'fetch_color')(response)
-            if colors:
-                metadata['color'] = colors
+        # if 'fetch_color' in dir(self.__class__):
+        #     colors = getattr(self.__class__, 'fetch_color')(response)
+        #     if colors:
+        #         metadata['color'] = colors
 
         url = self.spider_data['image_data'] + str(model)
         yield Request(url=url, callback=self.parse_image, errback=self.onerr, meta={'userdata': metadata})
@@ -147,19 +147,19 @@ class KenzoSpider(MFashionSpider):
                 m = copy.deepcopy(metadata)
                 try:
                     image_urls = [val['image_src'] for val in clr_item['images']]
-                    # model = clr_item['id']
-                    # color = self.reformat(clr_item['name'])
-                    #
-                    # prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
-                    # tmp = prod_item[0]
-                    # try:
-                    #     price = float(tmp['price']) / 100 if 'price' in tmp else None
-                    # except (TypeError, ValueError):
-                    #     price = None
-                    # try:
-                    #     price_discount = float(tmp['price_sale']) / 100 if 'price_sale' in tmp else None
-                    # except (TypeError, ValueError):
-                    #     price_discount = None
+                    model = clr_item['id']
+                    color = self.reformat(clr_item['name'])
+
+                    prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
+                    tmp = prod_item[0]
+                    try:
+                        price = str(float(tmp['price']) / 100) if 'price' in tmp else None
+                    except (TypeError, ValueError):
+                        price = None
+                    try:
+                        price_discount = str(float(tmp['price_sale']) / 100) if 'price_sale' in tmp else None
+                    except (TypeError, ValueError):
+                        price_discount = None
                 except (IndexError, KeyError):
                     continue
 
@@ -204,12 +204,12 @@ class KenzoSpider(MFashionSpider):
         model = cls.fetch_model(response)
         if model:
             url = cls.spider_data['image_data'] + str(model)
-            yield Request(url=url,
+            return Request(url=url,
                           callback=cls.fetch_price_server,
                           errback=cls.onerr,
                           meta=response.meta)
         else:
-            yield ret
+            return ret
 
     @classmethod
     def fetch_price_server(cls, response):
@@ -230,11 +230,11 @@ class KenzoSpider(MFashionSpider):
                 prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
                 tmp = prod_item[0]
                 try:
-                    old_price = float(tmp['price']) / 100 if 'price' in tmp else None
+                    old_price = str(float(tmp['price']) / 100) if 'price' in tmp else None
                 except (TypeError, ValueError):
                     old_price = None
                 try:
-                    new_price = float(tmp['price_sale']) / 100 if 'price_sale' in tmp else None
+                    new_price = str(float(tmp['price_sale']) / 100) if 'price_sale' in tmp else None
                 except (TypeError, ValueError):
                     new_price = None
             except (IndexError, KeyError):
@@ -282,12 +282,12 @@ class KenzoSpider(MFashionSpider):
         model = cls.fetch_model(response)
         if model:
             url = cls.spider_data['image_data'] + str(model)
-            yield Request(url=url,
+            return Request(url=url,
                           callback=cls.fetch_color_server,
                           errback=cls.onerr,
                           meta=response.meta)
         else:
-            yield None
+            return None
 
     @classmethod
     def fetch_color_server(cls, response):
@@ -304,7 +304,7 @@ class KenzoSpider(MFashionSpider):
                 model = clr_item['id']
                 color = cls.reformat(clr_item['name'])
                 if color:
-                    colors += color
+                    colors += [color]
             except (IndexError, KeyError):
                 continue
 
