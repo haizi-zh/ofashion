@@ -288,6 +288,12 @@ class GucciSpider(MFashionSpider):
         sel = Selector(response)
         ret = {}
 
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
         old_price = None
         new_price = None
         price_node = sel.xpath('//div[@id="content"]//div[@id="product_card"]//p[@id="price"][text()]')
@@ -297,6 +303,40 @@ class GucciSpider(MFashionSpider):
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
+        else:
+            style_id = os.path.split(response.url)[1]
+            url = str.format('{0}/{1}/styles/{2}/load_style.js', cls.spider_data['hosts'][region],
+                             'ca-en' if region == 'ca' else region, style_id)
+            dynamic_url = response.url + '/2/populate_dynamic_content'
+            return Request(url=url,
+                           meta=response.meta,
+                           callback=cls.fetch_price_request,
+                           dont_filter=True,
+                           headers={'Accept': 'application/json, text/javascript, */*'})
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_price_request(cls, response):
+        sel = Selector(response)
+        ret = {}
+
+        old_price = None
+        new_price = None
+        try:
+            data = json.loads(response.body)['style_wrappers']
+            k = data.keys()[0]
+            data = data[k]
+
+            if 'price' in data and data['price']:
+                old_price = data['price']
+        except(TypeError, IndexError):
+            pass
 
         if old_price:
             ret['price'] = old_price
@@ -310,10 +350,13 @@ class GucciSpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        description_node = sel.xpath(
-            '//div[@id="content"]//div[@id="container_title_description"]//div[@id="description"]//li[text()]')
-        if description_node:
-            description = '\r'.join(cls.reformat(val) for val in description_node.xpath('./text()').extract())
-            description = cls.reformat(description)
+        try:
+            description_node = sel.xpath(
+                '//div[@id="content"]//div[@id="container_title_description"]//div[@id="description"]//li[text()]')
+            if description_node:
+                description = '\r'.join(cls.reformat(val) for val in description_node.xpath('./text()').extract())
+                description = cls.reformat(description)
+        except(TypeError, IndexError):
+            pass
 
         return description

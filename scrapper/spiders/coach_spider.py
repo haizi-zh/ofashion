@@ -345,18 +345,24 @@ class CoachSpider(MFashionSpider):
 
         model = None
         if region != 'cn':
-            # 商品信息在var productJSONObject中
-            mt = re.search(r'var\s+productJSONObject\s*=', response.body)
-            if mt:
-                data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
-                                                                                                    '"').replace(r"\'",
-                                                                                                                 "'"))
-                if 'style' in data:
-                    model = data['style']
+            try:
+                # 商品信息在var productJSONObject中
+                mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+                if mt:
+                    data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                        '"').replace(r"\'",
+                                                                                                                     "'"))
+                    if 'style' in data:
+                        model = data['style']
+            except(TypeError, IndexError):
+                pass
         else:
-            tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="styleCode" and @value]')
-            if tmp:
-                model = tmp[0]._root.attrib['value']
+            try:
+                tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="styleCode" and @value]')
+                if tmp:
+                    model = tmp[0]._root.attrib['value']
+            except(TypeError, IndexError):
+                pass
 
         return model
 
@@ -372,18 +378,24 @@ class CoachSpider(MFashionSpider):
 
         name = None
         if region != 'cn':
-            # 商品信息在var productJSONObject中
-            mt = re.search(r'var\s+productJSONObject\s*=', response.body)
-            if mt:
-                data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
-                                                                                                    '"').replace(r"\'",
-                                                                                                                 "'"))
-                if 'productName' in data:
-                    name = cls.reformat(data['productName'])
+            try:
+                # 商品信息在var productJSONObject中
+                mt = re.search(r'var\s+productJSONObject\s*=', response.body)
+                if mt:
+                    data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                        '"').replace(r"\'",
+                                                                                                                     "'"))
+                    if 'productName' in data:
+                        name = cls.reformat(data['productName'])
+            except(TypeError, IndexError):
+                pass
         else:
-            tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="title" and @value]')
-            if tmp:
-                name = unicodify(tmp[0]._root.attrib['value'])
+            try:
+                tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="title" and @value]')
+                if tmp:
+                    name = unicodify(tmp[0]._root.attrib['value'])
+            except(TypeError, IndexError):
+                pass
 
         return name
 
@@ -403,21 +415,20 @@ class CoachSpider(MFashionSpider):
         if region != 'cn':
             # 商品信息在var productJSONObject中
             mt = re.search(r'var\s+productJSONObject\s*=', response.body)
-            if not mt:
-                return
-            data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
-                                                                                                '"').replace(r"\'",
-                                                                                                             "'"))
-            # 价格信息
-            try:
-                for item in data['swatchGroup']['swatches']:
-                    if 'listPrice' in item:
-                        old_price = cls.reformat(item['listPrice'])
-                        if 'unitPrice' in item:
-                            new_price = cls.reformat(item['unitPrice'])
-                        break
-            except KeyError:
-                pass
+            if mt:
+                data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                    '"').replace(r"\'",
+                                                                                                                 "'"))
+                # 价格信息
+                try:
+                    for item in data['swatchGroup']['swatches']:
+                        if 'listPrice' in item:
+                            old_price = cls.reformat(item['listPrice'])
+                            if 'unitPrice' in item:
+                                new_price = cls.reformat(item['unitPrice'])
+                            break
+                except KeyError:
+                    pass
         else:
             tmp = sel.xpath('//div[@id="hidden_sku_value"]/input[@id="skuCode" and @value]')
             sku_code = None
