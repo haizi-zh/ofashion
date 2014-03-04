@@ -7,6 +7,7 @@ from core import MySqlDb
 import global_settings as gs
 import common as cm
 import json
+from scripts.push_utils import price_changed
 from utils.utils import unicodify, iterable, gen_fingerprint
 
 __author__ = 'Zephyre'
@@ -152,6 +153,44 @@ class PriceCheck(object):
                                          gs.brand_info()[brand]['brandname_e'])
 
         db.close()
+
+
+class PriceChangeDetect(object):
+    def get_msg(self):
+        return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
+                          float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
+
+    def __init__(self, param=None):
+        self.tot = 1
+        self.progress = 0
+        # 是否处于静默模式
+        self.silent = ('s' in param)
+        # 如果没有指定brand，则对数据库中存在的所有brand进行处理
+        self.brand_list = [int(val) for val in param['brand']] if 'brand' in param else None
+        self.start_ts = param['start'][0] if 'start' in param else None
+        self.end_ts = param['end'][0] if 'end' in param else None
+
+    def run(self):
+        ret = price_changed(self.brand_list, self.start_ts, self.end_ts)
+        with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+            for change_type in ['discount_down', 'price_down', 'discount_up', 'price_up']:
+                for brand in ret[change_type]:
+                    db.start_transaction()
+                    try:
+                        for fingerprint, model_data in ret[change_type][brand].items():
+                            for product in model_data['products']:
+                                pid = product['idproducts']
+                                c = '0'
+                                if change_type in ['discount_down', 'price_down']:
+                                    c = 'D'
+                                elif change_type in ['discount_up', 'price_up']:
+                                    c = 'U'
+                                db.update({'price_change': c}, 'products', str.format('idproducts={0}', pid))
+                    except:
+                        db.rollback()
+                        raise
+                    finally:
+                        db.commit()
 
 
 class ProcessTags(object):

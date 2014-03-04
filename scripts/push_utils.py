@@ -60,10 +60,9 @@ def price_changed(brand_list=None, start=None, end=None):
             rs = db.query_match(['brand_id'], 'products', distinct=True)
             brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
 
-        if not (start and end):
-            # 获得默认的时间区间
-            start = (datetime.datetime.now() - datetime.timedelta(1)).date()
-            end = datetime.datetime.now().date()
+        # 获得默认的时间区间
+        start = datetime.datetime.strptime(start, '%Y-%m-%d') if start else (datetime.datetime.now() - datetime.timedelta(1)).date()
+        end = datetime.datetime.strptime(end, '%Y-%m-%d') if end else datetime.datetime.now().date()
 
         results = {'warnings': [], 'price_up': {}, 'discount_up': {}, 'price_down': {}, 'discount_down': {}}
         for brand in brand_list:
@@ -81,11 +80,16 @@ def price_changed(brand_list=None, start=None, end=None):
             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
             WHERE p1.idproducts IN ({0}) ORDER BY p2.date DESC''', ','.join(tmp[1] for tmp in pid_list))).fetch_row(
                 maxrows=0)
-            # 按照pid归并
+
             rs = {}
+            # 按照pid归并，即rs[pid] = [该pid所对应的价格历史]
+            # 开始的时候，pid_set保留了所有需要处理的pid。归并的原则是，每个pid，取最近的最多两条有效记录。如果两条记录取满，
+            # 该pid从pid_set中移除。今后，就算再次遇到这个pid，也不作处理了。
             pid_set = set([val[0] for val in tmp])
             for pid, model, region, fp, price, discount, currency, date in tmp:
-                if pid not in pid_set:
+                # 如果pid不在pid_set中，说明该pid对应的两条记录都已经取到。
+                # 如果price为None，说明该记录不包含有效价格数据，跳过不处理。
+                if pid not in pid_set or not price:
                     continue
                 if int(pid) in rs and len(rs[int(pid)]) >= 2:
                     # 最近两条数据已满，跳过该pid

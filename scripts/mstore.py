@@ -19,8 +19,7 @@ from products.utils import fetch_image
 from scripts import dbman
 from scripts.extract import SampleExtractor
 from scripts.sandbox import Sandbox
-# from scripts.sync_product import SyncProducts
-from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck
+from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report
 import core
 from utils.utils import process_price, unicodify, iterable, parse_args
@@ -633,6 +632,10 @@ def sandbox(param_dict):
     core.func_carrier(Sandbox(param_dict), 1)
 
 
+def price_change(param_dict):
+    PriceChangeDetect(param_dict).run()
+
+
 def fingerprint_check(param_dict):
     core.func_carrier(FingerprintCheck(param_dict), 1)
 
@@ -683,7 +686,7 @@ if __name__ == "__main__":
     func_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
                  'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report,
                  'price-check': price_check, 'extract': extract, 'sandbox': sandbox,
-                 'fingerprint-check': fingerprint_check}
+                 'fingerprint-check': fingerprint_check, 'price-change':price_change}
     if ret:
         cmd = ret['cmd']
         param = ret['param']

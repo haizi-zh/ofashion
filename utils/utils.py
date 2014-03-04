@@ -168,13 +168,13 @@ def parse_args(args):
     param_value = None
     while not q.empty():
         term = q.get()
-        if re.search(r'--(?=[^\-])', term):
+        if re.search(r'^--(?=[^\-])', term):
             tmp = re.sub('^-+', '', term)
             if param_name:
                 param_dict[param_name] = param_value
             param_name = tmp
             param_value = None
-        elif re.search(r'-(?=[^\-])', term):
+        elif re.search(r'^-(?=[^\-])', term):
             tmp = re.sub('^-+', '', term)
             for tmp in list(tmp):
                 if param_name:
