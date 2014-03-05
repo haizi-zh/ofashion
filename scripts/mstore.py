@@ -686,7 +686,7 @@ if __name__ == "__main__":
     func_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
                  'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report,
                  'price-check': price_check, 'extract': extract, 'sandbox': sandbox,
-                 'fingerprint-check': fingerprint_check, 'price-change':price_change}
+                 'fingerprint-check': fingerprint_check, 'price-change': price_change}
     if ret:
         cmd = ret['cmd']
         param = ret['param']

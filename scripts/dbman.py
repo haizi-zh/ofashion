@@ -71,7 +71,8 @@ class FingerprintCheck(object):
                                                  model, pid, brand, fingerprint, new_fp)
                         if self.update_fingerprint:
                             # 自动更新MD5指纹
-                            db.update({'fingerprint': new_fp}, 'products', str.format('idproducts={0}', pid))
+                            db.update({'fingerprint': new_fp}, 'products', str.format('idproducts={0}', pid),
+                                      timestamps=['update_time'])
             except:
                 db.rollback()
                 raise
@@ -172,25 +173,32 @@ class PriceChangeDetect(object):
 
     def run(self):
         ret = price_changed(self.brand_list, self.start_ts, self.end_ts)
+        changes = {'U': [], 'D': []}
+        for change_type in ['discount_down', 'price_down', 'discount_up', 'price_up']:
+            for brand in ret[change_type]:
+                for fingerprint, model_data in ret[change_type][brand].items():
+                    for product in model_data['products']:
+                        pid = product['idproducts']
+                        c = '0'
+                        if change_type in ['discount_down', 'price_down']:
+                            c = 'D'
+                        elif change_type in ['discount_up', 'price_up']:
+                            c = 'U'
+                        if c != '0':
+                            changes[c].append(pid)
+
         with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
-            for change_type in ['discount_down', 'price_down', 'discount_up', 'price_up']:
-                for brand in ret[change_type]:
-                    db.start_transaction()
-                    try:
-                        for fingerprint, model_data in ret[change_type][brand].items():
-                            for product in model_data['products']:
-                                pid = product['idproducts']
-                                c = '0'
-                                if change_type in ['discount_down', 'price_down']:
-                                    c = 'D'
-                                elif change_type in ['discount_up', 'price_up']:
-                                    c = 'U'
-                                db.update({'price_change': c}, 'products', str.format('idproducts={0}', pid))
-                    except:
-                        db.rollback()
-                        raise
-                    finally:
-                        db.commit()
+            db.start_transaction()
+            try:
+                for change_type in ['U', 'D']:
+                    db.update({'price_change': change_type}, 'products',
+                              str.format('idproducts IN ({0})', ','.join(str(tmp) for tmp in changes[change_type])),
+                              timestamps=['update_time'])
+            except:
+                db.rollback()
+                raise
+            finally:
+                db.commit()
 
 
 class ProcessTags(object):
@@ -286,7 +294,6 @@ class PublishRelease(object):
                          extra_cond)
         # 某一单品最大发布的图片数量
         self.max_images = max_images
-        self.db = None
         self.brand_id = brand_id
         if not extra_cond:
             extra_cond = ['1']
@@ -305,11 +312,12 @@ class PublishRelease(object):
         self.ot_tbl = 'original_tags'
         self.price_hist = 'products_price_history'
 
-    def merge_prods(self, prods):
+    def merge_prods(self, prods, db):
         """
         按照国家顺序，挑选主记录
         :param prods:
         """
+        # 挑选primary记录
         sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
         entry = {k: unicodify(main_entry[k]) for k in (
@@ -318,16 +326,16 @@ class PublishRelease(object):
             entry['name'] = u'单品'
 
         mfashion_tags = [unicodify(val[0]) for val in
-                         self.db.query(str.format('SELECT DISTINCT p1.tag FROM mfashion_tags AS p1 '
-                                                  'JOIN products_mfashion_tags AS p2 ON p1.idmfashion_tags=p2.id_mfashion_tags '
-                                                  'WHERE p2.idproducts IN ({0})',
-                                                  ','.join(val['idproducts'] for val in prods))).fetch_row(
+                         db.query(str.format('SELECT DISTINCT p1.tag FROM mfashion_tags AS p1 '
+                                             'JOIN products_mfashion_tags AS p2 ON p1.idmfashion_tags=p2.id_mfashion_tags '
+                                             'WHERE p2.idproducts IN ({0})',
+                                             ','.join(val['idproducts'] for val in prods))).fetch_row(
                              maxrows=0)]
 
         original_tags = [int(val[0]) for val in
-                         self.db.query(str.format('SELECT DISTINCT id_original_tags FROM products_original_tags '
-                                                  'WHERE idproducts IN ({0})',
-                                                  ','.join(val['idproducts'] for val in prods))).fetch_row(
+                         db.query(str.format('SELECT DISTINCT id_original_tags FROM products_original_tags '
+                                             'WHERE idproducts IN ({0})',
+                                             ','.join(val['idproducts'] for val in prods))).fetch_row(
                              maxrows=0)]
 
         entry['mfashion_tags'] = json.dumps(mfashion_tags, ensure_ascii=False)
@@ -336,33 +344,37 @@ class PublishRelease(object):
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
+        # 该单品在所有国家的记录中，第一次被抓取到的时间，作为release的fetch_time
         entry['fetch_time'] = \
             sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
                 0].strftime("%Y-%m-%d %H:%M:%S")
 
-        url_dict = {val['idproducts']: val['url'] for val in prods}
+        url_dict = {int(val['idproducts']): val['url'] for val in prods}
         offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}
-
+        price_change_dict = {int(val['idproducts']): val['price_change'] for val in prods}
         # pid和region之间的关系
-        pid_region_dict = {int(val['idproducts']): val['region'] for val in prods}
+        region_dict = {int(val['idproducts']): val['region'] for val in prods}
         price_list = {}
         # 以pid为主键，将全部的价格历史记录合并起来
-        for item in self.db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
-                                        self.price_hist, {},
-                                        str.format('idproducts IN ({0})',
-                                                   ','.join(val['idproducts'] for val in prods))).fetch_row(maxrows=0,
-                                                                                                            how=1):
+        for item in db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
+                                   self.price_hist, {},
+                                   str.format('idproducts IN ({0})',
+                                              ','.join(val['idproducts'] for val in prods))).fetch_row(maxrows=0,
+                                                                                                       how=1):
             pid = int(item['idproducts'])
-            region = pid_region_dict[pid]
+            region = region_dict[pid]
+            offline = offline_dict[pid]
             if pid not in price_list:
                 price_list[pid] = []
-            price_list[pid].append({'price': float(item['price']) if item['price'] else None,
-                                    'price_discount': float(item['price_discount']) if item['price_discount'] else None,
-                                    'currency': item['currency'],
+            price = float(item['price']) if item['price'] else None
+            if offline == 0:
+                price_discount = float(item['price_discount']) if item['price_discount'] else None
+            else:
+                price_discount = None
+            price_list[pid].append({'price': price, 'price_discount': price_discount, 'currency': item['currency'],
                                     'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
-                                    'offline': offline_dict[pid],
-                                    'code': region, 'country': gs.region_info()[region]['name_c'],
-                                    'url': url_dict[item['idproducts']]})
+                                    'price_change': price_change_dict[pid], 'url': url_dict[pid],
+                                    'offline': offline, 'code': region, 'country': gs.region_info()[region]['name_c']})
 
         # 对price_list进行简并操作。
         # 策略：如果有正常的最新价格，则返回正常的价格数据。
@@ -384,7 +396,6 @@ class PublishRelease(object):
                     # 取最近一次价格，同时取消折扣价，保留最新记录的offline状态
                     tmp = tmp[0]
                     tmp['price_discount'] = None
-                    # tmp['offline'] = offline_dict[pid]
                     price_list[pid] = tmp
 
         # 如果没有价格信息，则不发布
@@ -394,6 +405,8 @@ class PublishRelease(object):
         for val in price_list.values():
             val.pop('date')
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
+        entry['offline'] = entry['price_list'][0]['offline']
+        entry['price_change'] = entry['price_list'][0]['price_change']
 
         # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
         discounts = [val for val in entry['price_list'] if val['price_discount']]
@@ -415,9 +428,9 @@ class PublishRelease(object):
         checksums = []
         cover_checksum = None
         p = prods[0]
-        rs = self.db.query_match(['checksum'], 'products_image',
-                                 {'brand_id': p['brand_id'], 'model': p['model']},
-                                 tail_str='ORDER BY idproducts_image').fetch_row(maxrows=0)
+        rs = db.query_match(['checksum'], 'products_image',
+                            {'brand_id': p['brand_id'], 'model': p['model']},
+                            tail_str='ORDER BY idproducts_image').fetch_row(maxrows=0)
         for val in rs:
             if val[0] in checksums:
                 continue
@@ -430,9 +443,9 @@ class PublishRelease(object):
         if not checksums:
             return
 
-        rs = self.db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
-                                 str.format('checksum IN ({0})',
-                                            ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
+        rs = db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
+                            str.format('checksum IN ({0})',
+                                       ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
             maxrows=0, how=1)
         image_list = []
         for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
@@ -443,35 +456,32 @@ class PublishRelease(object):
 
         entry['image_list'] = json.dumps(image_list[:self.max_images], ensure_ascii=False)
 
-        self.db.insert(entry, 'products_release')
+        db.insert(entry, 'products_release')
 
     def run(self):
-        self.db = MySqlDb()
-        self.db.conn(gs.DB_SPEC)
+        with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+            # 删除原有的数据
+            db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
+            rs = db.query_match(['COUNT(*)'], self.products_tbl, {'brand_id': self.brand_id})
+            self.tot = int(rs.fetch_row()[0][0])
+            # 得到该品牌所有的记录
+            record_list = db.query_match(['*'], self.products_tbl, {'brand_id': self.brand_id},
+                                         tail_str='ORDER BY model').fetch_row(how=1, maxrows=0)
 
-        self.db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
+            # 每一个model，对应哪些pid需要合并？
+            model_list = {}
+            for self.progress, record in enumerate(record_list):
+                record = {k: cm.unicodify(record[k]) for k in record}
+                if record['model'] not in model_list:
+                    if model_list.keys():
+                        # 归并上一个model
+                        self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
+                    model_list[record['model']] = [record]
+                else:
+                    model_list[record['model']].append(record)
 
-        rs = self.db.query_match(['COUNT(*)'], self.products_tbl, {'brand_id': self.brand_id})
-        self.tot = int(rs.fetch_row()[0][0])
-        rs = self.db.query_match(['*'], self.products_tbl, {'brand_id': self.brand_id}, tail_str='ORDER BY model')
-        record_list = rs.fetch_row(how=1, maxrows=0)
-
-        # 每一个model，对应哪些pid需要合并？
-        model_list = {}
-        for self.progress, record in enumerate(record_list):
-            record = {k: cm.unicodify(record[k]) for k in record}
-            if record['model'] not in model_list:
-                if model_list.keys():
-                    # 归并上一个model
-                    self.merge_prods(model_list.pop(list(model_list.keys())[0]))
-                model_list[record['model']] = [record]
-            else:
-                model_list[record['model']].append(record)
-
-        # 归并最后一个model
-        self.merge_prods(model_list.pop(list(model_list.keys())[0]))
-
-        self.db.close()
+            # 归并最后一个model
+            self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
