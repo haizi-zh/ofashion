@@ -37,9 +37,9 @@ def price_changed(brand_list=None, start=None, end=None):
         # 如果价格变化超过threshold，则认为old和new差异过大
         threshold = 5
 
-        if price1 == price2 and discount1 == discount2:
-            err_no = -1
-        elif (not price1 and discount1) or (not price2 and discount2):
+        # if price1 == price2 and discount1 == discount2:
+        #     err_no = -1
+        if (not price1 and discount1) or (not price2 and discount2):
             err_no = -2
         elif (price1 and discount1 and price1 <= discount1) or (price2 and discount2 and price2 <= discount2):
             err_no = -3
@@ -61,7 +61,8 @@ def price_changed(brand_list=None, start=None, end=None):
             brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
 
         # 获得默认的时间区间
-        start = datetime.datetime.strptime(start, '%Y-%m-%d') if start else (datetime.datetime.now() - datetime.timedelta(1)).date()
+        start = datetime.datetime.strptime(start, '%Y-%m-%d') if start else (
+            datetime.datetime.now() - datetime.timedelta(1)).date()
         end = datetime.datetime.strptime(end, '%Y-%m-%d') if end else datetime.datetime.now().date()
 
         results = {'warnings': [], 'price_up': {}, 'discount_up': {}, 'price_down': {}, 'discount_down': {}}
@@ -140,12 +141,8 @@ def price_changed(brand_list=None, start=None, end=None):
 
                     fp = price_history[0][2]
                     if fp not in results[key][brand]:
-                        name = unicodify(sorted(
-                            db.query_match(['name', 'region'], 'products', {'fingerprint': fp}).fetch_row(
-                                maxrows=0, how=1),
-                            key=lambda val: gs.region_info()[val['region']]['weight'])[0]['name'])
                         results[key][brand][fp] = {'model': model, 'brand_id': brand, 'fingerprint': fp,
-                                                   'products': [], 'name': name}
+                                                   'products': []}
 
                     # 获得单品的优先名称
                     region = price_history[0][1]
@@ -162,6 +159,32 @@ def price_changed(brand_list=None, start=None, end=None):
                          'new_price': {'price': price_new, 'price_discount': discount_new,
                                        'currency': currency_new}
                         })
+
+            # results中的记录，还需要单品名称信息。首先获得result中的所有fingerprint，并从数据库中查找对应的名称
+            fp_list = []
+            for change_type in ['price_up', 'price_down', 'discount_up', 'discount_down']:
+                if brand in results[change_type]:
+                    fp_list.extend(results[change_type][brand].keys())
+            fp_list = list(set(fp_list))
+
+            # 获得fingerprint和name的关系
+            fp_name_map = {}
+            if fp_list:
+                for fp, name, region in db.query_match(['fingerprint', 'name', 'region'], 'products',
+                                                       extra=str.format('fingerprint IN ({0})', ','.join(
+                                                               str.format('"{0}"', tmp) for tmp in fp_list))).fetch_row(
+                        maxrows=0):
+                    if fp not in fp_name_map:
+                        fp_name_map[fp] = {'name': unicodify(name), 'region': region}
+                    elif gs.region_info()[region]['weight'] < gs.region_info()[fp_name_map[fp]['region']]['weight']:
+                        # 更高优先级的国家，替换：
+                        fp_name_map[fp] = {'name': unicodify(name), 'region': region}
+
+                for change_type in ['price_up', 'price_down', 'discount_up', 'discount_down']:
+                    if brand not in results[change_type]:
+                        continue
+                    for fp in results[change_type][brand]:
+                        results[change_type][brand][fp]['name'] = fp_name_map[fp]['name']
 
         return results
 
