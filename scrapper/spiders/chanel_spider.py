@@ -297,21 +297,6 @@ class ChanelSpider(MFashionSpider):
 
         yield self.init_item(metadata)
 
-    def reformat(self, text):
-        """
-        格式化地址字符串，将多余的空格、换行、制表符等合并
-        """
-        if text is None:
-            return None
-        text = cm.html2plain(text.strip())
-        # <br/>换成换行符
-        text = re.subn(ur'<\s*br\s*/?>', u'\r\n', text)[0]
-        # 去掉多余的标签
-        text = re.subn(ur'<[^<>]*?>', u'', text)[0]
-        # 换行转换
-        text = re.subn(ur'(?:[\r\n])+', ', ', text)[0]
-        return text
-
     def func1(self, metadata, info):
         pricing_service = metadata.pop('pricing_service')
 
