@@ -686,7 +686,7 @@ class ChanelSpider(MFashionSpider):
                 cls.fetch_model(response))
             return Request(url=price_url,
                            callback=cls.fetch_price_request_watch,
-                           errback=spider.onerr,
+                           errback=spider.onerror,
                            meta=response.meta)
         else:
             mt = re.search(str.format(r'chanel\.com/({0})/.+\?sku=\d+$', region_code), response.url)
@@ -719,7 +719,7 @@ class ChanelSpider(MFashionSpider):
                                                meta=response.meta,
                                                callback=cls.fetch_price_request_fashion_json,
                                                dont_filter=True,
-                                               errback=spider.onerr)
+                                               errback=spider.onerror)
                             else:
                                 return cls.fetch_price_request_fashion(response.meta, data['sectionCache'], spider)
                         except (KeyError, TypeError, IndexError):
@@ -782,7 +782,7 @@ class ChanelSpider(MFashionSpider):
                     return Request(url=url,
                                    meta={'handle_httpstatus_list': [400]},
                                    callback=cls.fetch_price_request_fashion_price,
-                                   errback=spider.onerr,
+                                   errback=spider.onerror,
                                    dont_filter=True)
 
         return None

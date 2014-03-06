@@ -438,7 +438,7 @@ class CoachSpider(MFashionSpider):
                 # 价格信息
                 return Request(url=cls.spider_data['price_url'][region], method='POST', dont_filter=True,
                                body=str.format('skuCode={0}', sku_code), callback=cls.fetch_price_request,
-                               errback=cls.onerr,
+                               errback=spider.onerror,
                                headers={'Content-Type': 'application/x-www-form-urlencoded',
                                         'Accept-Encoding': 'gzip,deflate,sdch',
                                         'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
@@ -505,7 +505,7 @@ class CoachSpider(MFashionSpider):
                            headers={'Content-Type': 'application/x-www-form-urlencoded',
                                     'Accept-Encoding': 'gzip,deflate,sdch',
                                     'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
-                           errback=cls.onerr, meta=response.meta)
+                           errback=spider.onerror, meta=response.meta)
 
         return description
 
@@ -546,7 +546,7 @@ class CoachSpider(MFashionSpider):
                            headers={'Content-Type': 'application/x-www-form-urlencoded',
                                     'Accept-Encoding': 'gzip,deflate,sdch',
                                     'X-Requested-With': 'XMLHttpRequest', 'Accept': '*/*'},
-                           errback=cls.onerr, meta=response.meta)
+                           errback=spider.onerror, meta=response.meta)
 
         return details
 

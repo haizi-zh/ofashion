@@ -206,7 +206,7 @@ class KenzoSpider(MFashionSpider):
             url = cls.spider_data['image_data'] + str(model)
             return Request(url=url,
                           callback=cls.fetch_price_server,
-                          errback=cls.onerr,
+                          errback=spider.onerror,
                           meta=response.meta)
         else:
             return ret
@@ -284,7 +284,7 @@ class KenzoSpider(MFashionSpider):
             url = cls.spider_data['image_data'] + str(model)
             return Request(url=url,
                           callback=cls.fetch_color_server,
-                          errback=cls.onerr,
+                          errback=spider.onerror,
                           meta=response.meta)
         else:
             return None
