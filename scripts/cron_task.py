@@ -68,12 +68,13 @@ def backup_all(param_dict):
     logger.info('ZIPPING...')
     backup_name = os.path.join(storage_path, 'backups',
                                str.format('{0}_auto_backup.7z', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
-    os.system(str.format('7z a -mx7 {0} {1} > null', backup_name,
+    os.system(str.format('7z a -mx7 {0} {1} > /dev/null', backup_name,
                          ' '.join(str.format('/tmp/{0}.sql', tmp) for tmp in tables)))
 
     # 移除临时sql文件
     logger.info('REMOVING TEMPORARY SQL FILES...')
-    os.system(str.format('rm {0}', ' '.join(str.format('/tmp/{0}.sql', tmp) for tmp in tables)))
+    for rm_file in [str.format('/tmp/{0}.sql', tmp) for tmp in tables]:
+        os.remove(rm_file)
 
     # 建立完成标志
     with open(backup_name + '.done', 'w') as f:
@@ -84,9 +85,9 @@ def backup_all(param_dict):
         # 指明了SSH信息，需要上传到远程服务器作为备份
         logger.info('UPLOADING...')
         ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
-        os.system(str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
+        os.system(str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
         os.system(
-            str.format('scp {0} {4} {1}@{2}:{3} > null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
+            str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
 
     logger.info(str.format('AUTO BACKUP COMPLETED: {0}', backup_name))
     os.chdir(original_path)
