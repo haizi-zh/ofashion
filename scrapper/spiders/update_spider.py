@@ -55,26 +55,26 @@ class UpdateSpider(MFashionBaseSpider):
                     url = data['url']
                     region = data['region']
 
-                    url = 'http://www-cn.chanel.com/pt_BR/moda/produtos/bolsas/g/s.bolsa-de-couro-de-cordeiro-com.13K.A67972Y0826294305.c.13K.html'
-                    region = 'br'
-                    pid = 273180
-
-                    return [Request(url=url,
-                                    callback=self.parse,
-                                    meta={'brand': brand, 'pid': pid, 'region': region},
-                                    errback=self.onerror,
-                                    dont_filter=True)]
-                    # if url:
-                    #     try:
-                    #         yield Request(url=url,
-                    #                       callback=self.parse,
-                    #                       meta={'brand': brand, 'pid': pid, 'region': region},
-                    #                       errback=self.onerror,
-                    #                       dont_filter=True)
-                    #     except TypeError:
-                    #         continue
-                    # else:
-                    #     continue
+                    # url = 'http://www-cn.chanel.com/pt_BR/moda/produtos/bolsas/g/s.bolsa-de-couro-de-cordeiro-com.13K.A67972Y0826294305.c.13K.html'
+                    # region = 'br'
+                    # pid = 273180
+                    #
+                    # return [Request(url=url,
+                    #                 callback=self.parse,
+                    #                 meta={'brand': brand, 'pid': pid, 'region': region},
+                    #                 errback=self.onerror,
+                    #                 dont_filter=True)]
+                    if url:
+                        try:
+                            yield Request(url=url,
+                                          callback=self.parse,
+                                          meta={'brand': brand, 'pid': pid, 'region': region},
+                                          errback=self.onerror,
+                                          dont_filter=True)
+                        except TypeError:
+                            continue
+                    else:
+                        continue
 
     def parse(self, response):
         brand = response.meta['brand']
