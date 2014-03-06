@@ -164,6 +164,8 @@ class PriceChangeDetect(object):
     def __init__(self, param=None):
         self.tot = 1
         self.progress = 0
+        # 价格变化报告
+        self.change_detection = None
         # 是否处于静默模式
         self.silent = ('s' in param)
         # 如果没有指定brand，则对数据库中存在的所有brand进行处理
@@ -172,11 +174,11 @@ class PriceChangeDetect(object):
         self.end_ts = param['end'][0] if 'end' in param else None
 
     def run(self):
-        ret = price_changed(self.brand_list, self.start_ts, self.end_ts)
+        change_detection = price_changed(self.brand_list, self.start_ts, self.end_ts)
         changes = {'U': [], 'D': []}
         for change_type in ['discount_down', 'price_down', 'discount_up', 'price_up']:
-            for brand in ret[change_type]:
-                for fingerprint, model_data in ret[change_type][brand].items():
+            for brand in change_detection[change_type]:
+                for fingerprint, model_data in change_detection[change_type][brand].items():
                     for product in model_data['products']:
                         pid = product['idproducts']
                         c = '0'
@@ -199,6 +201,9 @@ class PriceChangeDetect(object):
                 raise
             finally:
                 db.commit()
+
+        self.change_detection = change_detection
+        return change_detection
 
 
 class ProcessTags(object):

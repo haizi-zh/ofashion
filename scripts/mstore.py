@@ -9,8 +9,7 @@ import logging
 import codecs
 import os
 import _mysql
-import re
-import shutil
+import datetime
 from threading import Thread
 import urllib2
 import _mysql_exceptions
@@ -35,9 +34,6 @@ cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
 verbose = False
 force_overwrite = False
-
-debug_flag = False
-debug_port = glob.DEBUG_PORT
 
 logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
 logger = logging.getLogger()
@@ -633,7 +629,41 @@ def sandbox(param_dict):
 
 
 def price_change(param_dict):
-    PriceChangeDetect(param_dict).run()
+    logger.log('PRICE-CHANGE DETECTION STARTED.')
+    detection_param = {key: param_dict[key] for key in param_dict if key in ('brand', 'start', 'end')}
+    obj = PriceChangeDetect(detection_param)
+    result = obj.run()
+    if not result:
+        return
+
+    dst = param_dict['dst'][0] if 'dst' in param_dict and param_dict['dst'] else '~/push_works/push.log'
+    ssh_user, ssh_host, ssh_port = [None] * 3
+    if 'ssh' in param_dict and param_dict['ssh']:
+        ssh_str = param_dict['ssh'][0]
+        ssh_user, ssh = ssh_str.split('@')
+        if ':' in ssh:
+            ssh_host, ssh_port = ssh.split(':')
+        else:
+            ssh_host = ssh
+            # Default ssh port
+            ssh_port = ''
+
+    if not ssh_host:
+        # 如果没有SSH信息，说明不需要通过SFTP将结果传输到远端服务器上
+        return
+
+    # 将变动结果写入临时目录
+    file_name = str.format('/tmp/price_change_{0}.log', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+    with open(file_name, 'wb') as f:
+        f.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+
+    # 指明了SSH信息，需要上传到远程服务器作为备份
+    logger.info('UPLOADING...')
+    ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
+    os.system(str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, file_name))
+    os.remove(file_name)
+
+    logger.info('DONE')
 
 
 def fingerprint_check(param_dict):
