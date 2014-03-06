@@ -5,11 +5,13 @@ from core import MySqlDb
 from scrapy.http import Request
 from scrapper.items import UpdateItem
 import global_settings as glob
+from scrapper.spiders.mfashion_spider import MFashionBaseSpider
 
 __author__ = 'Zephyre'
 
 
-class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
+# class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
+class UpdateSpider(MFashionBaseSpider):
     handle_httpstatus_list = [404]
 
     def __init__(self, brand_list, region_list, db_spec, *a, **kw):
@@ -53,26 +55,26 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     url = data['url']
                     region = data['region']
 
-                    # url = 'http://www.cartier.us/collections/accessories/mens-accessories/writing-instruments/st240037-roadster-cartier-transatlantique-fountain-pen'
-                    # region = 'us'
-                    # pid = 350042
-                    #
-                    # return [Request(url=url,
-                    #                 callback=self.parse,
-                    #                 meta={'brand': brand, 'pid': pid, 'region': region},
-                    #                 errback=self.onerror,
-                    #                 dont_filter=True)]
-                    if url:
-                        try:
-                            yield Request(url=url,
-                                          callback=self.parse,
-                                          meta={'brand': brand, 'pid': pid, 'region': region},
-                                          errback=self.onerror,
-                                          dont_filter=True)
-                        except TypeError:
-                            continue
-                    else:
-                        continue
+                    url = 'http://www-cn.chanel.com/pt_BR/moda/produtos/bolsas/g/s.bolsa-de-couro-de-cordeiro-com.13K.A67972Y0826294305.c.13K.html'
+                    region = 'br'
+                    pid = 273180
+
+                    return [Request(url=url,
+                                    callback=self.parse,
+                                    meta={'brand': brand, 'pid': pid, 'region': region},
+                                    errback=self.onerror,
+                                    dont_filter=True)]
+                    # if url:
+                    #     try:
+                    #         yield Request(url=url,
+                    #                       callback=self.parse,
+                    #                       meta={'brand': brand, 'pid': pid, 'region': region},
+                    #                       errback=self.onerror,
+                    #                       dont_filter=True)
+                    #     except TypeError:
+                    #         continue
+                    # else:
+                    #     continue
 
     def parse(self, response):
         brand = response.meta['brand']
@@ -138,21 +140,30 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
         ret = spider_cb(response)
         if ret:
             if key == 'price':
-                if 'price' in ret:
-                    item['metadata']['price'] = ret['price']
-                if 'price_discount' in ret:
-                    item['metadata']['price_discount'] = ret['price_discount']
+                for tmp in ('price', 'price_discount'):
+                    if tmp in ret:
+                        item['metadata'][tmp] = ret[tmp]
+                    else:
+                        item['metadata'].pop(tmp)
             else:
                 item['metadata'][key] = ret
+        else:
+            # 如果返回值为None，说明没有相对应的信息。
+            if key == 'price':
+                for tmp in ('price', 'price_discount'):
+                    if tmp in item['metadata']:
+                        item['metadata'].pop(tmp)
+            else:
+                item['metadata'].pop(key)
         return self.resolve_requests(item)
 
     def resolve_requests(self, item):
         """
         检查metadata里面是否有Request对象。如果有，需要进一步提交这些request。
         仅当所有的对象都不是Request时，该过程才结束。
+        应该注意的是，metadata中的键只会处理一次。
         @param metadata:
         """
-
         metadata = item['metadata']
         while True:
             resolved = True
@@ -165,7 +176,6 @@ class UpdateSpider(scrapy.contrib.spiders.CrawlSpider):
                     value.dont_filter = True
                     return value
 
-            # 如果
             if resolved:
                 break
 
