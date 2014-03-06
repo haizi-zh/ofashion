@@ -207,7 +207,7 @@ class DVFSpider(MFashionSpider):
         yield item
 
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -262,7 +262,7 @@ class DVFSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         model = None
@@ -277,7 +277,7 @@ class DVFSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         name = None
@@ -292,7 +292,7 @@ class DVFSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response):
+    def fetch_description(cls, response, spider):
         sel = Selector(response)
 
         description = None
@@ -307,7 +307,7 @@ class DVFSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response):
+    def fetch_details(cls, response, spider):
         sel = Selector(response)
 
         detail = None
@@ -322,7 +322,7 @@ class DVFSpider(MFashionSpider):
         return detail
 
     @classmethod
-    def fetch_color(cls, response):
+    def fetch_color(cls, response, spider):
         sel = Selector(response)
 
         colors = []

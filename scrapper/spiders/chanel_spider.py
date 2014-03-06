@@ -592,7 +592,7 @@ class ChanelSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         model = None
@@ -624,7 +624,7 @@ class ChanelSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         name = None
@@ -656,7 +656,7 @@ class ChanelSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -686,7 +686,7 @@ class ChanelSpider(MFashionSpider):
                 cls.fetch_model(response))
             return Request(url=price_url,
                            callback=cls.fetch_price_request_watch,
-                           errback=cls.onerr,
+                           errback=spider.onerr,
                            meta=response.meta)
         else:
             mt = re.search(str.format(r'chanel\.com/({0})/.+\?sku=\d+$', region_code), response.url)
@@ -719,9 +719,9 @@ class ChanelSpider(MFashionSpider):
                                                meta=response.meta,
                                                callback=cls.fetch_price_request_fashion_json,
                                                dont_filter=True,
-                                               errback=cls.onerr)
+                                               errback=spider.onerr)
                             else:
-                                return cls.fetch_price_request_fashion(response.meta, data['sectionCache'])
+                                return cls.fetch_price_request_fashion(response.meta, data['sectionCache'], spider)
                         except (KeyError, TypeError, IndexError):
                             pass
                     else:
@@ -763,7 +763,7 @@ class ChanelSpider(MFashionSpider):
         return cls.fetch_price_request_fashion_json(response.meta, json_data)
 
     @classmethod
-    def fetch_price_request_fashion(cls, meta, json_data):
+    def fetch_price_request_fashion(cls, meta, json_data, spider):
         for url, product_info in json_data.items():
             if url not in meta['url']:
                 continue
@@ -782,7 +782,7 @@ class ChanelSpider(MFashionSpider):
                     return Request(url=url,
                                    meta={'handle_httpstatus_list': [400]},
                                    callback=cls.fetch_price_request_fashion_price,
-                                   errback=cls.onerr,
+                                   errback=spider.onerr,
                                    dont_filter=True)
 
         return None

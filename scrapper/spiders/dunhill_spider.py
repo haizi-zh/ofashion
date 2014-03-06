@@ -146,7 +146,7 @@ class DunhillSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         model = None
@@ -160,7 +160,7 @@ class DunhillSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         name = None
@@ -174,7 +174,7 @@ class DunhillSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -202,7 +202,7 @@ class DunhillSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_details(cls, response):
+    def fetch_details(cls, response, spider):
         sel = Selector(response)
 
         details = None

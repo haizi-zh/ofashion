@@ -334,7 +334,7 @@ class CoachSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         region = None
@@ -367,7 +367,7 @@ class CoachSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         region = None
@@ -400,7 +400,7 @@ class CoachSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -484,7 +484,7 @@ class CoachSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_description(cls, response):
+    def fetch_description(cls, response, spider):
         sel = Selector(response)
 
         region = None
@@ -525,7 +525,7 @@ class CoachSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response):
+    def fetch_details(cls, response, spider):
         sel = Selector(response)
 
         region = None
@@ -566,7 +566,7 @@ class CoachSpider(MFashionSpider):
         return details
 
     @classmethod
-    def fetch_color(cls, response):
+    def fetch_color(cls, response, spider):
         sel = Selector(response)
 
         region = None

@@ -226,7 +226,7 @@ class ChaumetSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         region = None
@@ -280,7 +280,7 @@ class ChaumetSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -303,7 +303,7 @@ class ChaumetSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         name = NameError
@@ -317,7 +317,7 @@ class ChaumetSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response):
+    def fetch_description(cls, response, spider):
         sel = Selector(response)
 
         description = None
@@ -334,7 +334,7 @@ class ChaumetSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response):
+    def fetch_details(cls, response, spider):
         sel = Selector(response)
 
         details = None

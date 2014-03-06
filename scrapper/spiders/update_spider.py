@@ -97,7 +97,7 @@ class UpdateSpider(MFashionBaseSpider):
                 return item
 
         if 'fetch_price' in dir(sc):
-            ret = getattr(sc, 'fetch_price')(response)
+            ret = getattr(sc, 'fetch_price')(response, self)
             if isinstance(ret, Request):
                 metadata['price'] = ret
             else:
@@ -107,27 +107,27 @@ class UpdateSpider(MFashionBaseSpider):
                     metadata['price_discount'] = ret['price_discount']
 
         if 'fetch_name' in dir(sc):
-            name = getattr(sc, 'fetch_name')(response)
+            name = getattr(sc, 'fetch_name')(response, self)
             if name:
                 metadata['name'] = name
 
         if 'fetch_model' in dir(sc):
-            model = getattr(sc, 'fetch_model')(response)
+            model = getattr(sc, 'fetch_model')(response, self)
             if model:
                 metadata['model'] = model
 
         if 'fetch_description' in dir(sc):
-            description = getattr(sc, 'fetch_description')(response)
+            description = getattr(sc, 'fetch_description')(response, self)
             if description:
                 metadata['description'] = description
 
         if 'fetch_details' in dir(sc):
-            details = getattr(sc, 'fetch_details')(response)
+            details = getattr(sc, 'fetch_details')(response, self)
             if details:
                 metadata['details'] = details
 
         if 'fetch_color' in dir(sc):
-            color = getattr(sc, 'fetch_color')(response)
+            color = getattr(sc, 'fetch_color')(response, self)
             if color:
                 metadata['color'] = color
 

@@ -489,7 +489,7 @@ class TodsSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         # 尝试从url中取得model
@@ -501,7 +501,7 @@ class TodsSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -538,7 +538,7 @@ class TodsSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         name = None
@@ -551,7 +551,7 @@ class TodsSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response):
+    def fetch_description(cls, response, spider):
         sel = Selector(response)
 
         description = None
@@ -567,7 +567,7 @@ class TodsSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response):
+    def fetch_details(cls, response, spider):
         sel = Selector(response)
 
         details = None

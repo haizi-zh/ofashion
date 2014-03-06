@@ -148,7 +148,7 @@ class ChristofleSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response):
+    def fetch_model(cls, response, spider):
         sel = Selector(response)
 
         model = None
@@ -162,7 +162,7 @@ class ChristofleSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_name(cls, response):
+    def fetch_name(cls, response, spider):
         sel = Selector(response)
 
         name = None
@@ -181,7 +181,7 @@ class ChristofleSpider(MFashionSpider):
     # 断货产品详细页无价格，单在列表页面有价格
     # http://www.christofle.com/fr/160-36-pieces-pour-6-personnes/23629-ens-36-pieces-origine-mat
     @classmethod
-    def fetch_price(cls, response):
+    def fetch_price(cls, response, spider):
         sel = Selector(response)
         ret = {}
 
@@ -191,7 +191,7 @@ class ChristofleSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_description(cls, response):
+    def fetch_description(cls, response, spider):
         sel = Selector(response)
 
         description = None
