@@ -629,7 +629,7 @@ def sandbox(param_dict):
 
 
 def price_change(param_dict):
-    logger.log('PRICE-CHANGE DETECTION STARTED.')
+    logger.info('PRICE-CHANGE DETECTION STARTED.')
     detection_param = {key: param_dict[key] for key in param_dict if key in ('brand', 'start', 'end')}
     obj = PriceChangeDetect(detection_param)
     result = obj.run()
