@@ -14,7 +14,7 @@ from scrapy.settings import Settings
 from twisted.internet import reactor
 import global_settings as glob
 import common as cm
-from scrapper.spiders.mfashion_spider import MFashionSpider
+from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
 from scrapy.contrib.spiders import CrawlSpider
 from scrapper.spiders.update_spider import UpdateSpider
 import scrapper.spiders.update_spider as ups
@@ -67,7 +67,7 @@ def set_up_spider(spider_class, data, is_update=False):
             region_list = data['r']
         else:
             region_list = None
-        spider = spider_class(brand_list, region_list, glob.DB_SPEC)
+        spider = spider_class(brand_list, region_list, getattr(glob,'DB_SPEC'))
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} if glob.WRITE_DATABASE else {}
@@ -156,16 +156,12 @@ def main():
 
         if cmd:
             spider_module = cm.get_spider_module(cmd)
-            spider_class = UpdateSpider if cmd == 'update' else MFashionSpider
+            spider_class = MFashionBaseSpider if cmd == 'update' else MFashionSpider
             is_update = (not spider_class == MFashionSpider)
 
-            if is_update:
-                sc_list = list(ifilter(lambda val: isinstance(val, type) and issubclass(val, CrawlSpider),
-                                       (getattr(spider_module, tmp) for tmp in dir(spider_module))))
-            else:
-                sc_list = list(ifilter(lambda val:
-                                       isinstance(val, type) and issubclass(val, spider_class) and val != spider_class,
-                                       (getattr(spider_module, tmp) for tmp in dir(spider_module))))
+            sc_list = list(ifilter(lambda val:
+                                   isinstance(val, type) and issubclass(val, spider_class) and val != spider_class,
+                                   (getattr(spider_module, tmp) for tmp in dir(spider_module))))
 
             if 'r' not in param:
                 param['r'] = []

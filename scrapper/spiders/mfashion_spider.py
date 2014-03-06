@@ -11,21 +11,7 @@ from utils.utils import unicodify, iterable
 __author__ = 'Zephyre'
 
 
-class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
-    @classmethod
-    def get_supported_regions(cls):
-        """
-        获得爬虫支持的区域列表
-        """
-        raise NotImplementedError
-
-    @staticmethod
-    def process_href(href, referer):
-        ret = urlparse.urlparse(href)
-        netloc = ret.netloc if ret.netloc else urlparse.urlparse(referer).netloc
-        scheme = ret.scheme if ret.scheme else urlparse.urlparse(referer).scheme
-        return urlparse.urlunparse((scheme, netloc, ret.path, ret.params, ret.query, ret.fragment))
-
+class MFashionBaseSpider(scrapy.contrib.spiders.CrawlSpider):
     @staticmethod
     def reformat(text):
         """
@@ -45,6 +31,22 @@ class MFashionSpider(scrapy.contrib.spiders.CrawlSpider):
         # 去掉连续的多个空格
         text = re.sub(r'[ \t]+', ' ', text)
         return text
+
+
+class MFashionSpider(MFashionBaseSpider):
+    @classmethod
+    def get_supported_regions(cls):
+        """
+        获得爬虫支持的区域列表
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def process_href(href, referer):
+        ret = urlparse.urlparse(href)
+        netloc = ret.netloc if ret.netloc else urlparse.urlparse(referer).netloc
+        scheme = ret.scheme if ret.scheme else urlparse.urlparse(referer).scheme
+        return urlparse.urlunparse((scheme, netloc, ret.path, ret.params, ret.query, ret.fragment))
 
     def __init__(self, name, region, *a, **kw):
         self.name = name
