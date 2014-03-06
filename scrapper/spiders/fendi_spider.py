@@ -221,7 +221,7 @@ class FendiSpider(MFashionSpider):
         return item
 
     @classmethod
-    def is_offline(cls, response):
+    def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
         if model:

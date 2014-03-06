@@ -255,7 +255,7 @@ class HogoBossSpider(MFashionSpider):
             super(HogoBossSpider, self).onerr(reason)
 
     @classmethod
-    def is_offline(cls, response):
+    def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
         name = cls.fetch_name(response)
 

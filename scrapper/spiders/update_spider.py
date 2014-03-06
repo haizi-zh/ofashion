@@ -92,7 +92,7 @@ class UpdateSpider(MFashionBaseSpider):
             item['offline'] = 1
             return item
         else:
-            item['offline'] = 1 if getattr(sc, 'is_offline')(response) else 0
+            item['offline'] = 1 if getattr(sc, 'is_offline')(response, self) else 0
             if item['offline'] == 1:
                 return item
 
