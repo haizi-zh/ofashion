@@ -117,7 +117,7 @@ def price_changed(brand_list=None, start=None, end=None):
                 # 是否可能有错误？
                 ret = price_check((price2, discount2), (price1, discount1))
                 if ret != 0:
-                    results['warnings'].append({'idproducts': pid, 'model': model, 'msg': ret[1]})
+                    results['warnings'].append({'idproducts': pid, 'model': price_history[0][0], 'msg': ret[1]})
                     continue
 
                 if price1 and price2 and price1 < price2:
@@ -141,7 +141,7 @@ def price_changed(brand_list=None, start=None, end=None):
 
                     fp = price_history[0][2]
                     if fp not in results[key][brand]:
-                        results[key][brand][fp] = {'model': model, 'brand_id': brand, 'fingerprint': fp,
+                        results[key][brand][fp] = {'model': price_history[0][0], 'brand_id': brand, 'fingerprint': fp,
                                                    'products': []}
 
                     # 获得单品的优先名称
