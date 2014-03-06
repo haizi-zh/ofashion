@@ -604,7 +604,8 @@ class ChanelSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
         else:
-            model_node = sel.xpath('//div[@class="details"]/div[@class="information"]/p[@class="ref info"][text()]')
+            model_node = sel.xpath(
+                '//div[@class="details"]/div[@class="information"]/p[contains(@class, "ref info")][text()]')
             if model_node:
                 try:
                     model = model_node.xpath('./text()').extract()[0]
@@ -635,7 +636,8 @@ class ChanelSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
         else:
-            name_node = sel.xpath('//div[@class="details"]/div[@class="information"]//h2[@class="cat info"][text()]')
+            name_node = sel.xpath(
+                '//div[@class="details"]/div[@class="information"]//h2[contains(@class, "cat info")][text()]')
             if name_node:
                 try:
                     name = name_node.xpath('./text()').extract()[0]
@@ -658,6 +660,8 @@ class ChanelSpider(MFashionSpider):
         sel = Selector(response)
         ret = {}
 
+        response.meta['url'] = response.url
+
         region = None
         if 'userdata' in response.meta:
             region = response.meta['userdata']['region']
@@ -677,8 +681,9 @@ class ChanelSpider(MFashionSpider):
         mt = re.search(unicode.format(ur'chanel\.com/({0})/({1})/.+', region_code, watch_code), response.url)
         if mt:  # 对应 parse_watch
             price_url = str.format(
-                    'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
-                    cls.spider_data['base_url'][region], cls.spider_data['watch_term'][region][0], cls.fetch_model(response))
+                'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
+                cls.spider_data['base_url'][region], cls.spider_data['watch_term'][region][0],
+                cls.fetch_model(response))
             return Request(url=price_url,
                            callback=cls.fetch_price_request_watch,
                            errback=cls.onerr,
@@ -698,7 +703,29 @@ class ChanelSpider(MFashionSpider):
                         if len(temp) > 0:
                             old_price = unicodify(temp[0]._root.text)
                 else:
-                    pass
+                    mt = re.search(str.format(r'chanel\.com/({0})/.+(?<=/)s\.[^/]+\.html', region_code), response.url)
+                    if mt:
+                        mt = re.search(r'var\s+settings', response.body)
+                        content = cm.extract_closure(response.body[mt.start():], '{', '}')[0]
+                        try:
+                            data = json.loads(content)
+                            if 'detailsGridJsonUrl' in data['sectionCache']:
+                                temp = data['sectionCache']['detailsGridJsonUrl']
+                                if re.search(r'^http://', temp):
+                                    url = temp
+                                else:
+                                    url = str.format('{0}{1}', cls.spider_data['hosts'][region], temp)
+                                return Request(url=url,
+                                               meta=response.meta,
+                                               callback=cls.fetch_price_request_fashion_json,
+                                               dont_filter=True,
+                                               errback=cls.onerr)
+                            else:
+                                return cls.fetch_price_request_fashion(response.meta, data['sectionCache'])
+                        except (KeyError, TypeError, IndexError):
+                            pass
+                    else:
+                        pass
 
         if old_price:
             ret['price'] = old_price
@@ -721,6 +748,62 @@ class ChanelSpider(MFashionSpider):
             if not re.search(r'^\s*-1', tmp):
                 old_price = data['product'][0]['price']
         except (IndexError, KeyError, ValueError):
+            pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
+
+        return ret
+
+    @classmethod
+    def fetch_price_request_fashion_json(cls, response):
+        json_data = json.loads(response.body)
+        return cls.fetch_price_request_fashion_json(response.meta, json_data)
+
+    @classmethod
+    def fetch_price_request_fashion(cls, meta, json_data):
+        for url, product_info in json_data.items():
+            if url not in meta['url']:
+                continue
+
+            info = product_info['data']['details']['information']
+
+            if 'ref' in info:
+                if 'refPrice' in info:
+                    region = None
+                    if 'userdata' in meta:
+                        region = meta['userdata']['region']
+                    else:
+                        region = meta['region']
+
+                    url = cls.spider_data['pricing'] % (cls.spider_data['base_url'][region], info['refPrice'])
+                    return Request(url=url,
+                                   meta={'handle_httpstatus_list': [400]},
+                                   callback=cls.fetch_price_request_fashion_price,
+                                   errback=cls.onerr,
+                                   dont_filter=True)
+
+        return None
+
+# TODO http://www.chanel.com/zh_CN/fashion/products/handbags/g/s.graffiti-printed-canvas-backpack.14S.A92352Y0874594305.c.14S.html
+    @classmethod
+    def fetch_price_request_fashion_price(cls, response):
+        ret = {}
+
+        old_price = None
+        new_price = None
+
+        try:
+            price_data = json.loads(response.body)
+            if len(price_data) > 0:
+                price_data = price_data[0]['price']
+                if 'amount' in price_data and 'currency-symbol' in price_data and price_data['amount']:
+                    old_price = price_data['amount']
+                elif price_data['formatted-amount']:
+                    old_price = price_data['formatted-amount']
+        except(TypeError, IndexError):
             pass
 
         if old_price:
