@@ -194,7 +194,7 @@ class MonclerSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response, spider):
+    def fetch_model(cls, response, spider=None):
         sel = Selector(response)
 
         model = None
@@ -211,7 +211,7 @@ class MonclerSpider(MFashionSpider):
         return model.upper() if model else None
 
     @classmethod
-    def fetch_price(cls, response, spider):
+    def fetch_price(cls, response, spider=None):
         sel = Selector(response)
         ret = {}
 
@@ -235,7 +235,7 @@ class MonclerSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response, spider):
+    def fetch_name(cls, response, spider=None):
         sel = Selector(response)
 
         name = None
@@ -249,7 +249,7 @@ class MonclerSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response, spider):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         description = None
@@ -263,7 +263,7 @@ class MonclerSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response, spider):
+    def fetch_details(cls, response, spider=None):
         sel = Selector(response)
 
         details = None
@@ -277,7 +277,7 @@ class MonclerSpider(MFashionSpider):
         return details
 
     @classmethod
-    def fetch_color(cls, response, spider):
+    def fetch_color(cls, response, spider=None):
         sel = Selector(response)
 
         colors = []

@@ -278,7 +278,7 @@ class JimmyChooSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response, spider):
+    def fetch_model(cls, response, spider=None):
         sel = Selector(response)
 
         # model隐藏在源码的一个link里边
@@ -298,7 +298,7 @@ class JimmyChooSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_price(cls, response, spider):
+    def fetch_price(cls, response, spider=None):
         sel = Selector(response)
         ret = {}
 
@@ -339,7 +339,7 @@ class JimmyChooSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response, spider):
+    def fetch_name(cls, response, spider=None):
         sel = Selector(response)
 
         name = None
@@ -355,7 +355,7 @@ class JimmyChooSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response, spider):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         description = None
@@ -370,7 +370,7 @@ class JimmyChooSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response, spider):
+    def fetch_details(cls, response, spider=None):
         sel = Selector(response)
 
         details = None
@@ -392,7 +392,7 @@ class JimmyChooSpider(MFashionSpider):
         return details
 
     @classmethod
-    def fetch_color(cls, response, spider):
+    def fetch_color(cls, response, spider=None):
         sel = Selector(response)
 
         # 有些时候，这个单品的颜色，在list里边不会展示

@@ -139,7 +139,7 @@ class LiujoSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response, spider):
+    def fetch_model(cls, response, spider=None):
         sel = Selector(response)
 
         model = None
@@ -153,7 +153,7 @@ class LiujoSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_price(cls, response, spider):
+    def fetch_price(cls, response, spider=None):
         sel = Selector(response)
         ret = {}
 
@@ -177,7 +177,7 @@ class LiujoSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response, spider):
+    def fetch_name(cls, response, spider=None):
         sel = Selector(response)
 
         name = None
@@ -191,7 +191,7 @@ class LiujoSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response, spider):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         description = None

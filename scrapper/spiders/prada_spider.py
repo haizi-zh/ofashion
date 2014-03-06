@@ -194,7 +194,7 @@ class PradaSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response, spider):
+    def fetch_model(cls, response, spider=None):
         sel = Selector(response)
 
         model = None
@@ -208,7 +208,7 @@ class PradaSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_price(cls, response, spider):
+    def fetch_price(cls, response, spider=None):
         sel = Selector(response)
         ret = {}
 
@@ -229,7 +229,7 @@ class PradaSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response, spider):
+    def fetch_name(cls, response, spider=None):
         sel = Selector(response)
 
         name = None
@@ -244,7 +244,7 @@ class PradaSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response, spider):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         description = None
@@ -257,7 +257,7 @@ class PradaSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_color(cls, response, spider):
+    def fetch_color(cls, response, spider=None):
         sel = Selector(response)
 
         colors = []

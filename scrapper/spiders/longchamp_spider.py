@@ -224,7 +224,7 @@ class LongchampSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response, spider):
+    def fetch_model(cls, response, spider=None):
         sel = Selector(response)
 
         model = None
@@ -239,7 +239,7 @@ class LongchampSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_price(cls, response, spider):
+    def fetch_price(cls, response, spider=None):
         sel = Selector(response)
         ret = {}
 
@@ -258,7 +258,7 @@ class LongchampSpider(MFashionSpider):
         return ret
 
     @classmethod
-    def fetch_name(cls, response, spider):
+    def fetch_name(cls, response, spider=None):
         sel = Selector(response)
 
         name = None
@@ -273,7 +273,7 @@ class LongchampSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response, spider):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         description = None
@@ -291,7 +291,7 @@ class LongchampSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response, spider):
+    def fetch_details(cls, response, spider=None):
         sel = Selector(response)
 
         details = None
@@ -309,7 +309,7 @@ class LongchampSpider(MFashionSpider):
         return details
 
     @classmethod
-    def fetch_color(cls, response, spider):
+    def fetch_color(cls, response, spider=None):
         sel = Selector(response)
 
         colors = None

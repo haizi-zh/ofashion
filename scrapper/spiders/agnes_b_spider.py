@@ -214,7 +214,7 @@ class AgnesBSpider(MFashionSpider):
                           dont_filter=True)
 
     @classmethod
-    def fetch_price(cls, response, spider):
+    def fetch_price(cls, response, spider=None):
         sel = Selector(response)
         ret = {}
         old_price_node = sel.xpath(
@@ -260,7 +260,7 @@ class AgnesBSpider(MFashionSpider):
             return True
 
     @classmethod
-    def fetch_model(cls, response, spider):
+    def fetch_model(cls, response, spider=None):
         sel = Selector(response)
 
         # 货号在点开+details中的reference后边
@@ -279,18 +279,18 @@ class AgnesBSpider(MFashionSpider):
         return model
 
     @classmethod
-    def fetch_color(cls, response, spider):
+    def fetch_color(cls, response, spider=None):
         sel = Selector(response)
         return [cls.reformat(val).lower() for val in
                 sel.xpath('//div[@class="carre_couleur"]/a/img[@title]/@title').extract()]
 
     @classmethod
-    def fetch_name(cls, response, spider):
+    def fetch_name(cls, response, spider=None):
         tmp = Selector(response).xpath('//div[@id="infos_produit"]/div/div/p[@class="titre"][text()]/text()').extract()
         return cls.reformat(tmp[0]) if tmp else None
 
     @classmethod
-    def fetch_description(cls, response, spider):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         # 这里你点开那个+details，才能看到完整的description
@@ -305,7 +305,7 @@ class AgnesBSpider(MFashionSpider):
         return description
 
     @classmethod
-    def fetch_details(cls, response, spider):
+    def fetch_details(cls, response, spider=None):
         sel = Selector(response)
         details = None
 
