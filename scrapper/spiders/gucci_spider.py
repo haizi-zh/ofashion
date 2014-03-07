@@ -218,14 +218,17 @@ class GucciSpider(MFashionSpider):
     def parse_dynamic(self, response):
         self.log(unicode.format(u'PARSE_DETAILS: URL={0}', response.url), level=log.DEBUG)
         metadata = response.meta['userdata']
-        data = json.loads(response.body)['style_wrappers']
-        k = data.keys()[0]
-        data = data[k]
+        try:
+            data = json.loads(response.body)['style_wrappers']
+            k = data.keys()[0]
+            data = data[k]
 
-        if 'price' in data and data['price']:
-            metadata['price'] = data['price']
-        if 'style_code' in data:
-            metadata['model'] = data['style_code']
+            if 'price' in data and data['price']:
+                metadata['price'] = data['price']
+            if 'style_code' in data:
+                metadata['model'] = data['style_code']
+        except(KeyError, IndexError):
+            pass
 
         metadata['color'] = []
 
@@ -335,7 +338,7 @@ class GucciSpider(MFashionSpider):
 
             if 'price' in data and data['price']:
                 old_price = data['price']
-        except(TypeError, IndexError):
+        except(TypeError, IndexError, KeyError):
             pass
 
         if old_price:
