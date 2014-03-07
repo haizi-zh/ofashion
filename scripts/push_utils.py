@@ -61,9 +61,21 @@ def price_changed(brand_list=None, start=None, end=None):
             brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
 
         # 获得默认的时间区间
-        start = datetime.datetime.strptime(start, '%Y-%m-%d') if start else (
-            datetime.datetime.now() - datetime.timedelta(1)).date()
-        end = datetime.datetime.strptime(end, '%Y-%m-%d') if end else datetime.datetime.now().date()
+        if start:
+            try:
+                start = datetime.datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                start = datetime.datetime.strptime(start, '%Y-%m-%d')
+        else:
+            start = (datetime.datetime.now() - datetime.timedelta(1)).date()
+
+        if end:
+            try:
+                end = datetime.datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                end = datetime.datetime.strptime(end, '%Y-%m-%d')
+        else:
+            end = datetime.datetime.now().date()
 
         results = {'warnings': [], 'price_up': {}, 'discount_up': {}, 'price_down': {}, 'discount_down': {}}
         for brand in brand_list:
@@ -230,6 +242,6 @@ def newly_fetched(brand_list=None, start=None, end=None):
 
 
 if __name__ == '__main__':
-    rec = price_changed(brand_list=[10006])
+    rec = price_changed(brand_list=[10006], start='2013-03-01 22:00:00', end='2013-03-03')
     print rec
     pass
