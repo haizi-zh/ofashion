@@ -18,13 +18,65 @@ from PIL import Image
 
 from core import MySqlDb
 import global_settings as glob
-from utils.utils import process_price, unicodify, iterable
+from utils.utils import process_price, unicodify, iterable, gen_fingerprint
 
 
-class UpdatePipeline(object):
+class MStorePipeline(object):
+    @staticmethod
+    def update_db_price(metadata, pid, brand, region, db):
+        price = None
+        discount = None
+        try:
+            currency = glob.spider_info()[brand].spider_data['currency'][region]
+        except KeyError:
+            currency = None
+        if 'price' in metadata:
+            price = process_price(metadata['price'], region, currency=currency)
+            try:
+                discount = process_price(metadata['price_discount'], region, currency=currency)
+            except KeyError:
+                discount = None
+        if price and price['price'] > 0:
+            # 该单品最后的价格信息
+            price_value = price['price']
+            discount_value = discount['price'] if discount else None
+
+            # 如果折扣价格大于或等于原价，则取消折扣价，并作出相应的警告
+            if discount_value and discount_value >= price_value:
+                discount_value = None
+
+            rs = db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
+                                {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
+            insert_flag = False
+            if rs.num_rows() == 0:
+                insert_flag = True
+            else:
+                ret = rs.fetch_row()[0]
+                db_entry = [float(val) if val else None for val in ret[:2]]
+                old_currency = ret[2]
+                if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price[
+                    'currency']:
+                    insert_flag = True
+
+            if insert_flag:
+                db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
+                           'price_discount': (
+                               discount_value if discount_value < price_value else None)},
+                          'products_price_history')
+        else:
+            # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理
+            rs = db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
+                                {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
+            tmp = rs.fetch_row(maxrows=0, how=1)
+            if tmp and tmp[0]['price']:
+                db.insert({'idproducts': pid, 'price': None, 'currency': tmp[0]['currency'],
+                           'price_discount': None}, 'products_price_history')
+
+
+class UpdatePipeline(MStorePipeline):
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(glob.DB_SPEC)
+        return cls(getattr(glob, 'DB_SPEC'))
 
     def __init__(self, db_spec):
         self.db = MySqlDb()
@@ -88,14 +140,6 @@ class UpdatePipeline(object):
 
     def process_item(self, item, spider):
         pid = item['idproduct']
-        brand = item['brand']
-        region = item['region']
-
-        sc = glob.spider_info()[brand]
-        try:
-            currency = sc.spider_data['currency'][region]
-        except KeyError:
-            currency = None
 
         self.db.start_transaction()
         try:
@@ -108,7 +152,6 @@ class UpdatePipeline(object):
             record = rs.fetch_row(how=1)[0]
             update_data = self.get_update_data(spider, item, record)
 
-            metadata = item['metadata']
             if update_data:
                 self.db.update(update_data, 'products', str.format('idproducts={0}', pid),
                                timestamps=['update_time', 'touch_time'])
@@ -117,63 +160,10 @@ class UpdatePipeline(object):
                 self.db.update({'offline': item['offline']}, 'products', str.format('idproducts={0}', pid),
                                timestamps=['touch_time'])
 
-            skip_price = False
-            if 'offline' in update_data:
-                if update_data['offline'] == 1:
-                    skip_price = True
-            elif 'offline' in item:
-                if item['offline'] == 1:
-                    skip_price = True
-
-            if not skip_price:
-                price = None
-                discount = None
-                if 'price' in metadata:
-                    price = process_price(metadata['price'], region, currency=currency)
-                    try:
-                        discount = process_price(metadata['price_discount'], region, currency=currency)
-                    except KeyError:
-                        discount = None
-
-                if price and price['price'] > 0:
-                    # 该单品最后的价格信息
-                    price_value = price['price']
-                    discount_value = discount['price'] if discount else None
-
-                    # 如果折扣价格大于或等于原价，则取消折扣价，并作出相应的警告
-                    if discount_value and discount_value >= price_value:
-                        spider.log(
-                            str.format('idproducts={0}: the discount price is equal or greater than the original '
-                                       'price! The discount price is ignored.', pid), log.WARNING)
-                        discount_value = None
-
-                    rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
-                                             {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
-                    insert_flag = False
-                    if rs.num_rows() == 0:
-                        insert_flag = True
-                    else:
-                        ret = rs.fetch_row()[0]
-                        db_entry = [float(val) if val else None for val in ret[:2]]
-                        old_currency = ret[2]
-                        if db_entry[0] != price_value or db_entry[1] != discount_value or old_currency != price[
-                            'currency']:
-                            insert_flag = True
-
-                    if insert_flag:
-                        self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
-                                        'price_discount': (
-                                            discount_value if discount_value < price_value else None)},
-                                       'products_price_history')
-                else:
-                    # 如果没有抓到任何任何信息
-                    rs = self.db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
-                                             {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
-                    tmp = rs.fetch_row(maxrows=0, how=1)
-                    if tmp and tmp[0]['price']:
-                        # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理
-                        self.db.insert({'idproducts': pid, 'price': None, 'currency': tmp[0]['currency'],
-                                        'price_discount': None}, 'products_price_history')
+            # 更新数据库中的价格记录
+            if not (('offline' in update_data and update_data['offline'] == 1) or (
+                            'offline' in item and item['offline'] == 1)):
+                self.update_db_price(item['metadata'], pid, item['brand'], item['region'], self.db)
         except:
             self.db.rollback()
             raise
@@ -181,10 +171,10 @@ class UpdatePipeline(object):
             self.db.commit()
 
 
-class ProductPipeline(object):
+class ProductPipeline(MStorePipeline):
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(glob.DB_SPEC)
+        return cls(getattr(glob, 'DB_SPEC'))
 
     def __init__(self, db_spec):
         self.db = MySqlDb()
@@ -192,37 +182,20 @@ class ProductPipeline(object):
         self.processed_tags = set([])
 
     @staticmethod
-    def process_gender(entry):
+    def process_gender(gender):
         """
-        检查entry的gender字段。如果male/female都出现，说明该entry和性别无关，设置gender为None。
+        检查entry的gender字段。如果male/female都出现，说明该entry和性别无关，unisex。
         :param entry:
         """
-        if 'gender' not in entry:
-            return
+        if not gender:
+            return None
+        else:
+            gender = list(set(gender))
 
-        gender = None
-        tmp = entry['gender']
-        if tmp:
-            if tmp == 'male':
-                gender = 'male'
-            elif tmp == 'female':
-                gender = 'female'
-            else:
-                tmp = json.loads(tmp)
-                val = 0
-                for g in tmp:
-                    if g in ('female', 'women'):
-                        val |= 1
-                    elif g in ('male', 'men'):
-                        val |= 2
-                if val == 3 or val == 0:
-                    gender = None
-                elif val == 1:
-                    gender = 'female'
-                elif val == 2:
-                    gender = 'male'
-
-        entry['gender'] = gender
+        if 'female' in gender and 'male' in gender:
+            return 'unisex'
+        else:
+            return gender[0]
 
     def process_tags_mapping(self, tags, entry, pid):
         """
@@ -285,53 +258,82 @@ class ProductPipeline(object):
         # 整理
         return dict((k, list(dest[k])) for k in dest)
 
+    @staticmethod
+    def merge_list(old_list, term):
+        """
+        将新抓取到的数据，合并到旧数据里面
+        @rtype : 返回新列表的JSON字符串。
+        @param old_list: 原color数据，为json.dump字符串形式，或者为None
+        @param term:
+        """
+        term = [unicodify(tmp.lower()) for tmp in term] if term else []
+
+        if old_list:
+            old_list = [unicodify(tmp.lower()) for tmp in json.loads(old_list) if tmp]
+            old_list.extend(term)
+        else:
+            old_list = term
+
+        if old_list is not None:
+            return json.dumps(sorted(list(set(old_list))), ensure_ascii=False)
+        else:
+            return None
+
+    @staticmethod
+    def merge_gender(old_gender, gender):
+        if gender:
+            gender = gender[0]
+        else:
+            return old_gender
+
+        if old_gender:
+            if old_gender != unicodify(gender).lower():
+                old_gender = None
+        else:
+            if gender:
+                old_gender = unicodify(gender).lower()
+
+        return old_gender
+
     def process_item(self, item, spider):
         entry = item['metadata']
-        tags_mapping = entry.pop('tags_mapping')
         if 'model' not in entry or not entry['model']:
             raise DropItem()
+        entry['fingerprint'] = gen_fingerprint(entry['brand_id'], entry['model'])
 
         self.db.start_transaction()
         try:
-            results = self.db.query_match('*', 'products', {'brand_id': entry['brand_id'], 'model': entry['model'],
+            tags_mapping = entry.pop('tags_mapping')
+            results = self.db.query_match('*', 'products', {'fingerprint': entry['fingerprint'],
                                                             'region': entry['region']}).fetch_row(maxrows=0, how=1)
             if not results:
+                # 数据库中无相关数据，插入新记录
                 if 'color' in entry and entry['color']:
-                    entry['color'] = json.dumps(entry['color'], ensure_ascii=False)
-                if 'gender' in entry and entry['gender']:
-                    entry['gender'] = json.dumps(entry['gender'], ensure_ascii=False)
-                    self.process_gender(entry)
+                    entry['color'] = json.dumps(entry['color'], ensure_ascii=False).lower()
+                if 'gender' in entry:
+                    entry['gender'] = self.process_gender(entry['gender'])
 
                 self.db.insert(entry, 'products', ['touch_time', 'update_time'])
                 pid = int(self.db.query('SELECT LAST_INSERT_ID()').fetch_row()[0][0])
                 spider.log(unicode.format(u'INSERT: {0}', entry['model']), log.DEBUG)
             else:
-                pid = results[0]['idproducts']
-                # 需要处理合并的字段
-                dest = {}
-                src = {}
-                for k in ('color', 'gender'):
-                    tmp = results[0][k]
-                    if tmp:
-                        try:
-                            dest[k] = json.loads(tmp)
-                        except ValueError:
-                            dest[k] = [unicodify(tmp)]
-                    if k in entry:
-                        tmp = entry[k]
-                        if tmp:
-                            src[k] = tmp if iterable(tmp) else [tmp]
+                # 需要将新数据合并到旧数据中
+                record = results[0]
 
-                dest = self.product_tags_merge(src, dest)
-                dest = {k: json.dumps(dest[k], ensure_ascii=False) if dest[k] else None for k in dest}
-                self.process_gender(dest)
+                dest = {'offline': 0}
+                if 'color' in entry:
+                    dest['color'] = self.merge_list(record['color'], entry['color'])
+                if 'category' in entry:
+                    dest['category'] = self.merge_list(record['category'], entry['category'])
+                if 'gender' in entry:
+                    dest['gender'] = self.process_gender(entry['gender'])
 
-                for k in ('name', 'url', 'description', 'details', 'price', 'price_discount'):
+                for k in (
+                        'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
                     if k in entry:
                         dest[k] = entry[k]
 
                 # 比较内容是否发生实质性变化
-                # cmp_keys = ('name', 'url', 'description', 'details', 'price', 'category', 'color', 'gender')
                 md5_o = hashlib.md5()
                 md5_n = hashlib.md5()
                 flag = True
@@ -346,6 +348,7 @@ class ProductPipeline(object):
                         flag = False
                         break
 
+                pid = results[0]['idproducts']
                 if flag:
                     self.db.update({}, 'products', str.format('idproducts={0}', pid), ['touch_time'])
                 else:
@@ -354,41 +357,11 @@ class ProductPipeline(object):
                 spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
 
             # 处理价格变化。其中，如果spider提供了货币信息，则优先使用之。
-            if 'price' in entry:
-                try:
-                    currency = spider.spider_data['currency'][entry['region']]
-                except KeyError:
-                    currency = None
-
-                price = process_price(entry['price'], entry['region'], currency=currency)
-                try:
-                    discount = process_price(entry['price_discount'], entry['region'], currency=currency)
-                except KeyError:
-                    discount = None
-
-                if price and price['price'] > 0:
-                    # 该单品最后的价格信息
-                    price_value = price['price']
-                    discount_value = discount['price'] if discount else None
-                    rs = self.db.query_match(['price', 'price_discount'], 'products_price_history', {'idproducts': pid},
-                                             tail_str='ORDER BY date DESC LIMIT 1')
-                    insert_flag = False
-                    if rs.num_rows() == 0:
-                        insert_flag = True
-                    else:
-                        db_entry = [float(val) if val else None for val in rs.fetch_row()[0]]
-                        if db_entry[0] != price_value:
-                            insert_flag = True
-                        else:
-                            if db_entry[1] != discount_value:
-                                insert_flag = True
-                    if insert_flag:
-                        self.db.insert({'idproducts': pid, 'price': price_value, 'currency': price['currency'],
-                                        'price_discount': (discount_value if discount_value < price_value else None)},
-                                       'products_price_history')
+            self.update_db_price(entry, pid, entry['brand_id'], entry['region'], self.db)
 
             # 处理标签变化
             self.process_tags_mapping(tags_mapping, entry, pid)
+
             self.db.commit()
         except:
             self.db.rollback()

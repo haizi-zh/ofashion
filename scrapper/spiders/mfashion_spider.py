@@ -60,10 +60,10 @@ class MFashionSpider(MFashionBaseSpider):
 
     def start_requests(self):
         for region in self.region_list:
-            metadata = {'region': region, 'brand_id': self.spider_data['brand_id'],
+            metadata = {'region': region, 'brand_id': getattr(self, 'spider_data')['brand_id'],
                         'tags_mapping': {}, 'category': []}
 
-            tmp = self.spider_data['home_urls'][region]
+            tmp = getattr(self, 'spider_data')['home_urls'][region]
             start_urls = tmp if iterable(tmp) else [tmp]
             for url in start_urls:
                 m = copy.deepcopy(metadata)
