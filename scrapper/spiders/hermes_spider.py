@@ -171,8 +171,8 @@ class HermesSpider(MFashionSpider):
                     m['tags_mapping'][unicodify(attrib_name).lower()] = \
                         [{'name': val.lower(), 'title': val} for val in temp]
 
-            if 'category-1' in m['tags_mapping']:
-                m['category'] = [val['name'] for val in m['tags_mapping']['category-1']]
+            # if 'category-1' in m['tags_mapping']:
+            #     m['category'] = [val['name'] for val in m['tags_mapping']['category-1']]
 
             item = ProductItem()
             item['image_urls'] = [image_url]

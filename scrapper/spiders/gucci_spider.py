@@ -227,7 +227,7 @@ class GucciSpider(MFashionSpider):
                 metadata['price'] = data['price']
             if 'style_code' in data:
                 metadata['model'] = data['style_code']
-        except(KeyError, IndexError):
+        except(KeyError, IndexError, KeyError):
             pass
 
         metadata['color'] = []
