@@ -172,9 +172,8 @@ class BurberrySpider(MFashionSpider):
     @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
-        name = cls.fetch_name(response)
 
-        if model and name:
+        if model:
             return False
         else:
             return True
@@ -184,11 +183,14 @@ class BurberrySpider(MFashionSpider):
         sel = Selector(response)
 
         model = None
-        tmp = sel.xpath('//p[contains(@class,"product-id")]/text()').extract()
-        if tmp and tmp[0]:
-            mt = re.search(r'(\d+)', cls.reformat(tmp[0]))
-            if mt:
-                model = mt.group(1)
+        try:
+            tmp = sel.xpath('//p[contains(@class,"product-id")]/text()').extract()
+            if tmp and tmp[0]:
+                mt = re.search(r'(\d+)', cls.reformat(tmp[0]))
+                if mt:
+                    model = mt.group(1)
+        except(TypeError, IndexError):
+            pass
 
         return model
 
@@ -199,12 +201,15 @@ class BurberrySpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        tmp = sel.xpath("//div[@class='price']//span[@class='price-amount']/text()").extract()
-        if tmp and tmp[0]:
-            old_price = cls.reformat(tmp[0])
-        tmp = sel.xpath("//div[@class='price']//span[@class='price-sale']/text()").extract()
-        if tmp and tmp[0]:
-            new_price = cls.reformat(tmp[0])
+        try:
+            tmp = sel.xpath("//div[@class='price']//span[@class='price-amount']/text()").extract()
+            if tmp and tmp[0]:
+                old_price = cls.reformat(tmp[0])
+            tmp = sel.xpath("//div[@class='price']//span[@class='price-sale']/text()").extract()
+            if tmp and tmp[0]:
+                new_price = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
 
         if old_price:
             ret['price'] = old_price
@@ -218,9 +223,12 @@ class BurberrySpider(MFashionSpider):
         sel = Selector(response)
 
         name = None
-        tmp = sel.xpath("//div[@class='product-title-container']/h1/text()").extract()
-        if tmp:
-            name = cls.reformat(tmp[0])
+        try:
+            tmp = sel.xpath("//div[@class='product-title-container']/h1/text()").extract()
+            if tmp:
+                name = cls.reformat(tmp[0])
+        except(TypeError, IndexError):
+            pass
 
         return name
 
@@ -229,9 +237,12 @@ class BurberrySpider(MFashionSpider):
         sel = Selector(response)
 
         description = None
-        tmp = sel.xpath("//li[@id='description-panel']//ul//li/text()").extract()
-        if tmp:
-            description = ', '.join(cls.reformat(val) for val in tmp if val)
+        try:
+            tmp = sel.xpath("//li[@id='description-panel']//ul//li/text()").extract()
+            if tmp:
+                description = ', '.join(cls.reformat(val) for val in tmp if val)
+        except(TypeError, IndexError):
+            pass
 
         return description
 
@@ -240,9 +251,12 @@ class BurberrySpider(MFashionSpider):
         sel = Selector(response)
 
         details = None
-        tmp = sel.xpath("//li[@id='feature-care-panel']//ul//li/text()").extract()
-        if tmp:
-            details = ', '.join(cls.reformat(val) for val in tmp if val)
+        try:
+            tmp = sel.xpath("//li[@id='feature-care-panel']//ul//li/text()").extract()
+            if tmp:
+                details = ', '.join(cls.reformat(val) for val in tmp if val)
+        except(TypeError, IndexError):
+            pass
 
         return details
 

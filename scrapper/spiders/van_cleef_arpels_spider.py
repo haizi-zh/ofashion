@@ -219,9 +219,8 @@ class VanCleffArpelsSpider(MFashionSpider):
     @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
-        name = cls.fetch_name(response)
 
-        if model and name:
+        if model:
             return False
         else:
             return True

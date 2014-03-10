@@ -209,9 +209,8 @@ class FolliFollieSpider(MFashionSpider):
     @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
-        name = cls.fetch_name(response)
 
-        if model and name:
+        if model:
 
             # 针对中国，对下架单品加入了跳转代码的查找
             mt = re.search(ur'<script>document.location=', response.body)
