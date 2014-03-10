@@ -44,7 +44,7 @@ def gen_fingerprint(brand, model):
     salt_plain = 'roseVision88'
     salt = hashlib.md5(salt_plain).digest()
 
-    idstores = str(brand) + model
+    idstores = str(brand) + unicodify(model).encode('utf-8')
     d1 = hashlib.md5(idstores).digest()
     return ''.join(map((lambda x, y: '{0:x}'.format((ord(x) + ord(y)) % 256)), d1, salt))
 
