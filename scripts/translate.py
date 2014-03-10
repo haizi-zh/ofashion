@@ -57,9 +57,44 @@ def is_chs(val):
     @param val:
     """
     if val:
+        flag = False
+
         for c in val.decode('utf-8'):
             if ord(c) >= 0x4e00 and ord(c) < 0x9fa5:
-                return True
+                flag = True
+
+        if flag:
+            try:
+                val.decode('utf-8').encode('gb2312')
+            except:
+                flag = False
+
+        return flag
+
+    return False
+
+
+def is_cht(val):
+    """
+    val是否含有繁体中文
+    @param val:
+    """
+    if val:
+        flag = False
+
+        for c in val.decode('utf-8'):
+            if ord(c) >= 0x4e00 and ord(c) < 0x9fa5:
+                flag = True
+
+        if flag:
+            flag = False
+
+            try:
+                val.decode('utf-8').encode('gb2312')
+            except:
+                flag = True
+
+        return flag
 
     return False
 
@@ -82,25 +117,31 @@ def is_eng(val):
 def check_cns_region(product_infos, key):
     """
     按顺序检查指定字段是否含有中文
-    返回含有中文字段所在的region
+    返回含有中文字段
     """
     cns = ['cn', 'hk', 'tw', 'mo']
     for region in cns:
         if region in product_infos:
             if key in product_infos[region]:
-                return product_infos[region][key]
+                temp = product_infos[region][key]
+                if is_chs(temp):
+                    return temp
+                elif is_cht(temp):
+                    return temp
 
 
 def check_ens_region(product_infos, key):
     """
     按顺序检查指定字段是否是英文
-    返回英文字段所在的region
+    返回英文字段
     """
     ens = ['us', 'uk', 'ca']
     for region in ens:
         if region in product_infos:
             if key in product_infos[region]:
-                return product_infos[region][key]
+                temp = product_infos[region][key]
+                if is_eng(temp):
+                    return temp
 
 
 def translate_text_to(gs, text, to, source='', backup_gs=None):
@@ -164,8 +205,13 @@ def translate_main():
 
             if is_chs(description_cn):
                 final_description_cn = description_cn
+            elif is_cht(description_cn):
+                final_description_cn = translate_text_to(gs, description_cn, 'zh-cn', backup_gs=backup_gs)
+
             if is_chs(details_cn):
                 final_details_cn = details_cn
+            elif is_cht(details_cn):
+                final_details_cn = translate_text_to(gs, details_cn, 'zh-cn', backup_gs=backup_gs)
 
             description_en = check_ens_region(product_infos, 'description')
             details_en = check_ens_region(product_infos, 'details')
@@ -231,5 +277,11 @@ def translate_main():
 
     db.close()
 
+# re1 = is_cht("中華人民共和國")
+# re2 = is_chs("中華人民共和國")
+# re3 = is_chs('中华人民共和国')
+# re4 = is_cht('中华人民共和国')
+# re5 = is_chs('alsdhasdfgl')
+# re6 = is_cht('adslhgadsflkj')
 
 translate_main()
