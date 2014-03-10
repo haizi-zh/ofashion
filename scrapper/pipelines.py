@@ -323,8 +323,8 @@ class ProductPipeline(MStorePipeline):
                 dest = {'offline': 0}
                 if 'color' in entry:
                     dest['color'] = self.merge_list(record['color'], entry['color'])
-                if 'category' in entry:
-                    dest['category'] = self.merge_list(record['category'], entry['category'])
+                # if 'category' in entry:
+                #     dest['category'] = self.merge_list(record['category'], entry['category'])
                 if 'gender' in entry:
                     dest['gender'] = self.process_gender(entry['gender'])
 
