@@ -150,6 +150,9 @@ def translate_text_to(gs, text, to, source='', backup_gs=None):
     except:
         pass
 
+    if not source and is_cht(text):
+        source = 'zh-cn'
+
     result = None
     try:
         result = gs.translate(text, to, source)
@@ -206,12 +209,12 @@ def translate_main():
             if is_chs(description_cn):
                 final_description_cn = description_cn
             elif is_cht(description_cn):
-                final_description_cn = translate_text_to(gs, description_cn, 'zh-cn', backup_gs=backup_gs)
+                final_description_cn = translate_text_to(gs, description_cn, 'zh-cn', source='zh-cn', backup_gs=backup_gs)
 
             if is_chs(details_cn):
                 final_details_cn = details_cn
             elif is_cht(details_cn):
-                final_details_cn = translate_text_to(gs, details_cn, 'zh-cn', backup_gs=backup_gs)
+                final_details_cn = translate_text_to(gs, details_cn, 'zh-cn', source='zh-cn', backup_gs=backup_gs)
 
             description_en = check_ens_region(product_infos, 'description')
             details_en = check_ens_region(product_infos, 'details')
