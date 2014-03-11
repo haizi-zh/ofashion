@@ -1,4 +1,5 @@
 # coding=utf-8
+import os
 import random
 
 import smtplib
@@ -139,7 +140,7 @@ class ProcessLog(object):
 
     def __init__(self, param=None):
         if 'log-path' in param:
-            self.log_path = param['log_path'][0]
+            self.log_path = param['log-path'][0]
         else:
             self.log_path = None
 
@@ -168,7 +169,7 @@ class ProcessLog(object):
 
         # 确定收信人
         try:
-            group = getattr(gs, 'REPORTS')['DEV_STATUS']
+            group = getattr(gs, 'REPORTS')['CRAWLER_STATUS']
             if not isinstance(group, list):
                 group = [group]
             recipients = {}
@@ -184,9 +185,15 @@ class ProcessLog(object):
         for file in files:
             #通过文件名获取信息
             # file = 'update_10192_20140304172558.log'
-            file_name = file.split('.')[0]
-            if file_name.split('_')[0] == 'update':
-                (update, model, dt) = file_name.split('_')
+            file_name = os.path.basename(os.path.splitext(file)[0])
+            # file_name = file.split('.')[0]
+            if re.search(r'^update', file_name):  # file_name.split('_')[0] == 'update':
+                tmp = re.split(r'_', file_name)
+                if len(tmp) == 2:
+                    (update, dt) = tmp
+                    model = 'MIX'
+                elif len(tmp) == 3:
+                    (update, model, dt) = tmp
             else:
                 update = ''
                 dt = file_name.split('_')[-1]
@@ -239,6 +246,8 @@ class ProcessLog(object):
                 for index in xrange(0, len(error_list)):
                     if type(error_list[index]) is not list:
                         error_lineno = error_list[index] + 1
+                        # 使用下面这个
+                        # re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*)', lines[error_list[index]])
                         error_time = ''.join(re.findall(r'(\S+)-(\S+)-(\S+) (\S+):(\S+):(\S+)\+\d{4} \[\S+\] ERROR:',
                                                         lines[error_list[index]])[0])
                         error_info = ''.join(
