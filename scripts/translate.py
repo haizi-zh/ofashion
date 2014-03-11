@@ -1,4 +1,8 @@
 # coding=utf-8
+import getopt
+import logging
+import optparse
+import sys
 
 __author__ = 'Ryan'
 
@@ -23,7 +27,7 @@ def get_fingerprints(db, start=0, count=50):
     """
     取得不重复单品的fingerprint
     """
-    rows = db.query(str.format('SELECT fingerprint from products group by fingerprint limit {0}, {1}', start, count))
+    rows = db.query(str.format('SELECT fingerprint from products group by fingerprint order by fingerprint limit {0}, {1}', start, count))
     result = []
     for row in rows.fetch_row(maxrows=0, how=1):
         fingerprint = row['fingerprint']
@@ -157,11 +161,13 @@ def translate_text_to(gs, text, to, source='', backup_gs=None):
     try:
         result = gs.translate(text, to, source)
     except:
+        logger.info(str.format("Error: gs translate error with text : {0}       source : {1}        target : {2}", text, source, to))
         pass
     if not result and backup_gs:
         try:
             result = backup_gs.translate(text, to, source)
         except:
+            logger.info(str.format("Error: backupgs translate error with text : {0}       source : {1}        target : {2}", text, source, to))
             pass
 
     return result
@@ -182,13 +188,24 @@ def translate_main():
     backup_gs = goslate.Goslate(opener=opener, debug=True)
 
     sorted_region = get_sorted_region(db)
+
     fingerprint_start = 0
     fingerprint_count = 50
+    opts, args = getopt.getopt(sys.argv[1:], "s:c:")
+    for opt, arg in opts:
+        if opt == '-s':
+            fingerprint_start = int(arg)
+        elif opt == '-c':
+            fingerprint_count = int(arg)
+
+    logger.info(str.format("Translate process start"))
     while 1:
         fingerprints = get_fingerprints(db, fingerprint_start, fingerprint_count)
         if not fingerprints:
+            logger.info(str.format("Translate process end"))
             break
         else:
+            logger.info(str.format("Translate process offset : {0} count : {1}", fingerprint_start, len(fingerprints)))
             fingerprint_start += fingerprint_count
 
         for fingerprint in fingerprints:
@@ -276,7 +293,10 @@ def translate_main():
                     else:
                         db.update(insert_dict, 'products_translate', str.format('fingerprint="{0}"', fingerprint))
                 except:
+                    logger.info(str.format("Error: Insert or update sql error with {0}", insert_dict))
                     pass
+            else:
+                logger.info(str.format("Error: No insert_dict for fingerprint : {0}", fingerprint))
 
     db.close()
 
@@ -287,4 +307,11 @@ def translate_main():
 # re5 = is_chs('alsdhasdfgl')
 # re6 = is_cht('adslhgadsflkj')
 
+logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
+logger = logging.getLogger()
+
+logger.info(str.format("Script start"))
+
 translate_main()
+
+logger.info(str.format("Script end"))
