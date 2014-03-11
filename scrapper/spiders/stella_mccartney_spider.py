@@ -21,8 +21,7 @@ class StellaMcCartneySpider(MFashionSpider):
                        region: str.format('http://www.stellamccartney.com/{0}', region if region != 'uk' else 'gb') for
                        region in
                        {'us', 'it', 'uk', 'fr', 'de', 'ca', 'au', 'be', 'cz', 'dk', 'eg', 'fi', 'gr', 'hk', 'ie', 'jp',
-                        'mo',
-                        'my', 'mc', 'nl', 'nz', 'no', 'ru', 'sg', 'kr', 'es', 'se', 'ch', 'tw', 'th', }}}
+                        'mo', 'cn', 'my', 'mc', 'nl', 'nz', 'no', 'ru', 'sg', 'kr', 'es', 'se', 'ch', 'tw', 'th', }}}
 
     @classmethod
     def get_supported_regions(cls):
