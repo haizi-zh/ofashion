@@ -19,7 +19,7 @@ from scripts import dbman
 from scripts.extract import SampleExtractor
 from scripts.sandbox import Sandbox
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
-from scripts.report_core import spider_prog_report
+from scripts.report_core import spider_prog_report, process_log
 import core
 from utils.utils import process_price, unicodify, iterable, parse_args
 
@@ -715,7 +715,7 @@ if __name__ == "__main__":
     ret = parse_args(sys.argv)
     func_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
                  'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report,
-                 'price-check': price_check, 'extract': extract, 'sandbox': sandbox,
+                 'gen-dev-reports': process_log, 'price-check': price_check, 'extract': extract, 'sandbox': sandbox,
                  'fingerprint-check': fingerprint_check, 'price-change': price_change}
     if ret:
         cmd = ret['cmd']
