@@ -104,6 +104,56 @@ def _load_user_cfg(cfg_file=None):
     config = ConfigParser.ConfigParser()
     config.optionxform = str
 
+    def parse_val(val):
+        """
+        解析字符串val。如果是true/false，返回bool值；如果为整数，返回int值；如果为浮点数，返回float值。
+        @param val:
+        """
+        if val.lower() == 'true':
+            return True
+        elif val.lower() == 'false':
+            return False
+
+        try:
+            num = float(val)
+            # 判断是浮点数还是整数
+            if num == int(num):
+                return int(num)
+            else:
+                return num
+        except ValueError:
+            pass
+
+        try:
+            # val为字符串，尝试是否可以解析为JSON
+            return json.loads(val)
+        except ValueError:
+            pass
+
+        # 尝试解析为日期字符串
+        try:
+            return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            pass
+        try:
+            return datetime.datetime.strptime(val, '%Y-%m-%d')
+        except ValueError:
+            pass
+        try:
+            return datetime.datetime.strptime(val, '%m/%d/%Y %H:%M:%S')
+        except ValueError:
+            pass
+        try:
+            return datetime.datetime.strptime(val, '%m/%d/%Y')
+        except ValueError:
+            pass
+
+        # 作为原始字符串返回
+        return val
+
+    def read_section(section):
+        return section, {option: parse_val(config.get(section, option)) for option in config.options(section)}
+
     def read_settings(section, option, var=None, proc=lambda x: x):
         """
         从config文件中指定的section，读取指定的option，并写到全局变量var中。
@@ -136,6 +186,11 @@ def _load_user_cfg(cfg_file=None):
             config.readfp(cf)
     except IOError:
         pass
+
+    data = dict(map(read_section, config.sections()))
+    self_module = sys.modules[__name__]
+    for key, value in data.items():
+        setattr(self_module, key, value)
 
     # SECTION: DEBUG
     section = 'DEBUG'
