@@ -67,11 +67,11 @@ def set_up_spider(spider_class, data, is_update=False):
             region_list = data['r']
         else:
             region_list = None
-        spider = spider_class(brand_list, region_list, getattr(glob,'DB_SPEC'))
+        spider = spider_class(brand_list, region_list, getattr(glob, 'DB_SPEC'))
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
-            if getattr(glob,'WRITE_DATABASE') else {}
+            if getattr(glob, 'WRITE_DATABASE') else {}
         if 'job' in data:
             job_path = get_job_path(spider_class.spider_data['brand_id']) + '-1'
             if 'rst-job' in data:
@@ -156,7 +156,17 @@ def main():
         param = ret['param']
 
         if cmd:
-            spider_module = cm.get_spider_module(cmd)
+            # 如果输入的不是spider名称，而是品牌编号，则进行查找
+            try:
+                brand_id = int(cmd)
+                brand_info = glob.brand_info()
+                if brand_id in brand_info:
+                    spider_module = cm.get_spider_module(brand_info[brand_id]['brandname_s'])
+                else:
+                    spider_module = None
+            except ValueError:
+                spider_module = cm.get_spider_module(cmd)
+
             spider_class = MFashionBaseSpider if cmd == 'update' else MFashionSpider
             is_update = (not spider_class == MFashionSpider)
 
