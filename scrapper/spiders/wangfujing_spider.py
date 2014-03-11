@@ -138,9 +138,12 @@ class WangfujingSpider(MFashionSpider):
                             m = copy.deepcopy(metadata)
                             m['brand_id'] = brand_id
 
-                            href = node.xpath('./@href').extract()[0]
-                            href = self.process_href(href, response.url)
-                            href = self.process_href(href, response.url)
+                            try:
+                                href = node.xpath('./@href').extract()[0]
+                                href = self.process_href(href, response.url)
+                                href = self.process_href(href, response.url)
+                            except(TypeError, IndexError):
+                                continue
 
                             yield Request(url=href,
                                           callback=self.parse_product_list,
