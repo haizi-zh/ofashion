@@ -220,7 +220,7 @@ class ProcessLog(object):
 
                 #获取文件最后生成时间
                 for l in xrange(len(lines) - 1, 0, -1):
-                    last = re.findall(r'(\S+)-(\S+)-(\S+) (\S+):(\S+):(\S+)\+\d{4} \[\S+\]', lines[l])
+                    last = re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[\S+\]', lines[l])
                     if last:
                         last_time = ''.join(last[0])
                         break
@@ -231,7 +231,7 @@ class ProcessLog(object):
 
                 #整理错误行号列表
                 while i < len(lines):
-                    if re.findall(r'\S+-\S+-\S+ \S+:\S+:\S+\+\d{4} \[\S+\] [ERROR|Error]', lines[i]):
+                    if re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] [ERROR|Error]', lines[i]):
                         error_list.append(i)
                         t = []
                         while lines[i + 1].startswith('\t') and (lines[i + 1].strip() != ''):
@@ -248,11 +248,14 @@ class ProcessLog(object):
                         error_lineno = error_list[index] + 1
                         # 使用下面这个
                         # re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*)', lines[error_list[index]])
-                        error_time = ''.join(re.findall(r'(\S+)-(\S+)-(\S+) (\S+):(\S+):(\S+)\+\d{4} \[\S+\] ERROR:',
+                        error_time = ''.join(re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[\S+\] ERROR:',
                                                         lines[error_list[index]])[0])
-                        error_info = ''.join(
-                            re.findall(r'\S+-\S+-\S+ \S+:\S+:\S+\+\d{4} \[\S+\] (ERROR: .*) <GET.*?>(.*)',
-                                       lines[error_list[index]])[0])
+                        if re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) <GET.*?>(.*)'):
+                            error_info = ''.join(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) <GET.*?>(.*)',
+                                                            lines[error_list[index]])[0])
+                        else:
+                            error_info = ''.join(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) (.*)',
+                                                            lines[error_list[index]])[0])
 
                         if process_error[file] and process_error[file][-1]['error_info'] != error_info:
                             process_error[file].append(
