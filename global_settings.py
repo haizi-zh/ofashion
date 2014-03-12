@@ -16,7 +16,7 @@ import imp
 
 
 def __fetch_brand_info():
-    with core.MySqlDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
         tmp = db.query('SELECT * FROM brand_info').fetch_row(how=1, maxrows=0)
         return {int(k['brand_id']): {'brandname_e': k['brandname_e'].decode('utf-8') if k['brandname_e'] else None,
                                      'brandname_c': k['brandname_c'].decode('utf-8') if k['brandname_c'] else None,
@@ -25,7 +25,7 @@ def __fetch_brand_info():
 
 
 def __fetch_region_info():
-    with core.MySqlDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
         tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
         return {k['iso_code']: {'iso_code3': k['iso_code3'],
                                 'weight': int(k['weight']), 'rate': float(k['rate']),

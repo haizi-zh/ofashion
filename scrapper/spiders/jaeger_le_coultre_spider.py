@@ -9,7 +9,7 @@ from scrapy.selector import Selector
 
 import copy
 import common
-from utils.utils import unicodify, iterable
+from utils.utils_core import unicodify, iterable
 
 
 class JaegerLeCoultreSpider(MFashionSpider):

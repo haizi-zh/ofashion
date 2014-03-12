@@ -17,7 +17,7 @@ import sys
 import errno
 import imp
 import global_settings as glob
-from utils.utils import unicodify
+from utils.utils_core import unicodify
 
 __author__ = 'Zephyre'
 

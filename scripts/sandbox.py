@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding=utf-8
+import sys
 import hashlib
 import json
-from core import MySqlDb
+from core import RoseVisionDb
 import global_settings as gs
 
 
@@ -38,7 +39,7 @@ class Sandbox(object):
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
 
     def run(self):
-        with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             db.start_transaction()
             try:
                 for pid, color in db.query(

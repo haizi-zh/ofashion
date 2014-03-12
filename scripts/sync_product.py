@@ -5,12 +5,12 @@ from _mysql_exceptions import OperationalError
 import time
 import core
 import common as cm
-from utils.utils import process_price, unicodify, iterable
+from utils.utils_core import process_price, unicodify, iterable
 
 __author__ = 'Zephyre'
 
 import global_settings as glob
-from core import MySqlDb
+from core import RoseVisionDb
 
 
 class SyncProducts(object):
@@ -28,9 +28,9 @@ class SyncProducts(object):
         self.dst_spec = dst_spec
 
     def run(self):
-        db_src = MySqlDb()
+        db_src = RoseVisionDb()
         db_src.conn(self.src_spec)
-        db_dst = MySqlDb()
+        db_dst = RoseVisionDb()
         db_dst.conn(self.dst_spec)
 
         # 备选记录
@@ -197,9 +197,9 @@ def spider2editor(src=getattr(glob, 'SPIDER_SPEC'), dst=getattr(glob, 'DB_SPEC')
     """
     从spider库到editor库的更新机制
     """
-    scr_db = MySqlDb()
+    scr_db = RoseVisionDb()
     scr_db.conn(src)
-    dst_db = MySqlDb()
+    dst_db = RoseVisionDb()
     dst_db.conn(dst)
 
     # 根据update_time字段判断哪些记录是需要更新的
@@ -236,7 +236,7 @@ def process_editor_price(db_spec=glob.DB_SPEC, table='products', extra_cond=None
     :param db_spec: 需要操作的数据库，默认为editor库。
     :param extra_cond: 筛选条件。
     """
-    db = MySqlDb()
+    db = RoseVisionDb()
     db.conn(db_spec)
     extra_cond = ' AND '.join(
         unicode.format(u'({0})', tuple(unicodify(v))) for v in extra_cond) if extra_cond else '1'
@@ -262,7 +262,7 @@ def process_editor_tags(db_spec=getattr(glob, 'DB_SPEC'), db_spider_spec=getattr
     """
     给editor库的数据添加tags字段
     """
-    db = MySqlDb()
+    db = RoseVisionDb()
     db.conn(db_spider_spec)
     try:
         extra_cond = ' AND '.join(

@@ -14,14 +14,14 @@ from threading import Thread
 import urllib2
 import _mysql_exceptions
 import global_settings as glob
-from products.utils import fetch_image
+from products.products_utils import fetch_image
 from scripts import dbman
 from scripts.extract import SampleExtractor
 from scripts.sandbox import Sandbox
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report, process_log
 import core
-from utils.utils import process_price, unicodify, iterable, parse_args
+from utils.utils_core import process_price, unicodify, iterable, parse_args
 
 __author__ = 'Zephyre'
 
@@ -448,7 +448,7 @@ class ImageCheck(object):
         self.checksum_mismatch = 0
         self.path_error = 0
 
-        self.db = core.MySqlDb()
+        self.db = core.RoseVisionDb()
         self.db.conn(db_spec)
 
         self.progress = 0

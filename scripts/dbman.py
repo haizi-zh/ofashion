@@ -3,12 +3,12 @@ from cStringIO import StringIO
 import csv
 import sys
 import datetime
-from core import MySqlDb
+from core import RoseVisionDb
 import global_settings as gs
 import common as cm
 import json
 from scripts.push_utils import price_changed
-from utils.utils import unicodify, iterable, gen_fingerprint
+from utils.utils_core import unicodify, iterable, gen_fingerprint
 
 __author__ = 'Zephyre'
 
@@ -35,7 +35,7 @@ class FingerprintCheck(object):
         self.report = []
 
     def run(self):
-        db = MySqlDb()
+        db = RoseVisionDb()
         db.conn(gs.DB_SPEC)
 
         if not self.brand_list:
@@ -102,7 +102,7 @@ class PriceCheck(object):
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
 
     def run(self):
-        db = MySqlDb()
+        db = RoseVisionDb()
         db.conn(gs.DB_SPEC)
 
         if not self.brand_list:
@@ -189,7 +189,7 @@ class PriceChangeDetect(object):
                         if c != '0':
                             changes[c].append(pid)
 
-        with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             db.start_transaction()
             try:
                 for change_type in ['U', 'D']:
@@ -222,7 +222,7 @@ class ProcessTags(object):
 
     def __init__(self, last_update=None, extra_cond=None):
         print str.format('Processing tags (last_update="{0}", extra_cond="{1}")...', last_update, extra_cond)
-        self.db = MySqlDb()
+        self.db = RoseVisionDb()
         self.db.conn(self.db_spec)
         self.last_update = last_update
         self.extra_cond = extra_cond
@@ -464,7 +464,7 @@ class PublishRelease(object):
         db.insert(entry, 'products_release')
 
     def run(self):
-        with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             # 删除原有的数据
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
             rs = db.query_match(['COUNT(*)'], self.products_tbl, {'brand_id': self.brand_id})
@@ -498,7 +498,7 @@ def currency_update(param_dict):
     更新货币的汇率信息
     @param param_dict:
     """
-    db = MySqlDb()
+    db = RoseVisionDb()
     db.conn(gs.DB_SPEC)
     rs = db.query_match(['iso_code', 'currency'], 'region_info').fetch_row(maxrows=0)
     db.start_transaction()

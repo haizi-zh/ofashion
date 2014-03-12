@@ -3,12 +3,12 @@
 
 import datetime
 import logging
-import sys
 import os
 import errno
 import global_settings as glob
 import re
-from utils.utils import parse_args
+# from utils import utils
+from utils.utils_core import parse_args, unicodify, get_logger
 
 __author__ = 'Zephyre'
 
@@ -26,10 +26,6 @@ def make_sure_path_exists(path):
     except OSError as exception:
         if exception.errno != errno.EEXIST:
             raise
-
-
-def test(param_dict):
-    logger.info('TEST COMPLETED')
 
 
 def backup_all(param_dict):
@@ -87,7 +83,8 @@ def backup_all(param_dict):
         ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
         os.system(str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
         os.system(
-            str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
+            str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst,
+                       backup_name + '.done'))
 
     logger.info(str.format('AUTO BACKUP COMPLETED: {0}', backup_name))
     os.chdir(original_path)
@@ -127,13 +124,40 @@ def restore(param_dict):
     pass
 
 
+def my_import(name):
+    tmp = name.split('.')
+    if len(tmp) == 1:
+        kclass = __import__(name)
+    else:
+        mod_name, mod_class = '.'.join(tmp[:-1]), tmp[-1]
+        mod = __import__(mod_name, fromlist=[mod_class])
+        kclass = getattr(mod, mod_class)
+
+    return kclass
+    # mod = __import__(name)
+    # components = name.split('.')
+    # for comp in components[1:]:
+    #     mod = getattr(mod, comp)
+    # return mod
+
+
 if __name__ == "__main__":
-    ret = parse_args(sys.argv)
-    func_dict = {'test': test, 'backup-all': backup_all, 'restore': restore}
-    if ret:
-        cmd = ret['cmd']
-        param = ret['param']
-        if cmd not in func_dict:
-            logger.error(str.format('INVALID COMMAND: {0}', cmd))
-        else:
-            func_dict[cmd](param)
+    # ret = parse_args(sys.argv)
+    # func_dict = {'backup-all': backup_all, 'restore': restore}
+    # if ret:
+    #     cmd = ret['cmd']
+    #     param = ret['param']
+    #     if cmd not in func_dict:
+    #         logger.error(str.format('INVALID COMMAND: {0}', cmd))
+    #     else:
+    #         func_dict[cmd](param)'
+
+    for task_name, task_param in getattr(glob, 'CRON_TASK', {}).items():
+        try:
+            class_name = task_param['classname']
+            func = getattr(my_import(class_name),'run')
+            func(**task_param['param'])
+
+        except (KeyError,):
+            logger = get_logger(to_file=True).exception(unicode.format(u'Invalid task name: {0}',
+                                                                       unicodify(task_name)).encode('utf-8'))

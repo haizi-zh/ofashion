@@ -13,12 +13,12 @@ from lxml.etree import ParserError
 from pyquery import PyQuery as pq
 
 import common as cm
-from core import MySqlDb
-from products.utils import get_image_path, fetch_image, get_data_path
+from core import RoseVisionDb
+from products.products_utils import get_image_path, fetch_image, get_data_path
 import global_settings as glob
 from scrapper.items import ProductItem
 from scrapper.pipelines import ProductPipeline, ProductImagePipeline
-from utils.utils import process_price, unicodify
+from products_utils.utils import process_price, unicodify
 
 
 __author__ = 'Zephyre'
@@ -159,7 +159,7 @@ categories = {'books--stationery', 'handbags', 'travel', 'watches', 'timepieces'
               'accessories/key-holders-bag-charms-and-more', 'accessories/scarves-ties-and-more',
               'accessories/key-holders-and-other-accessories'}
 
-db = MySqlDb()
+db = RoseVisionDb()
 db.conn(glob.DB_SPEC)
 
 

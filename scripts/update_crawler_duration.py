@@ -1,5 +1,5 @@
 #coding: utf-8
-from core import MySqlDb
+from core import RoseVisionDb
 import global_settings as gs
 import os
 import re
@@ -11,7 +11,7 @@ def foo():
     brand = 10006
     log_path = r'G:\scrapy programs\ErrorReport\10152_gucci_20131104_1'
     file_list = []
-    with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
         # db.update({'start_time':'', 'end_time':'', 'duration':''}, 'crawler_duration', str.format('brand_id={0}', brand))
         files = os.listdir(log_path)
         #过滤文件名

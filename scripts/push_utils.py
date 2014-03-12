@@ -1,8 +1,8 @@
 # coding=utf-8
 import datetime
-from core import MySqlDb
+from core import RoseVisionDb
 import global_settings as gs
-from utils.utils import unicodify
+from utils.utils_core import unicodify
 
 __author__ = 'Zephyre'
 
@@ -55,7 +55,7 @@ def price_changed(brand_list=None, start=None, end=None):
 
     # 主要国家列表。只监控这些国家的单品的价格变化过程。
     main_countries = [tmp[0] for tmp in filter(lambda val: val[1]['weight'] < 999999, gs.region_info().items())]
-    with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
         if not brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
             brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]
@@ -209,7 +209,7 @@ def newly_fetched(brand_list=None, start=None, end=None):
     @param start: datetime.date或datetime.datetime对象
     @param end:
     """
-    with MySqlDb(getattr(gs, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
         if not brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
             brand_list = [int(val[0]) for val in rs.fetch_row(maxrows=0)]

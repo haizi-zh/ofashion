@@ -6,7 +6,7 @@ from scrapy import log
 import scrapy.contrib.spiders
 from scrapy.http import Request
 import common as cm
-from utils.utils import unicodify, iterable
+from utils.utils_core import unicodify, iterable
 
 __author__ = 'Zephyre'
 

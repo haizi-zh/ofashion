@@ -4,11 +4,11 @@ import csv
 import random
 import sys
 import datetime
-from core import MySqlDb
+from core import RoseVisionDb
 import global_settings as gs
 import common as cm
 import json
-from utils.utils import unicodify, iterable
+from utils.utils_core import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -61,7 +61,7 @@ class SampleExtractor(object):
         return ret
 
     def run(self):
-        db = MySqlDb()
+        db = RoseVisionDb()
         db.conn(gs.DB_SPEC)
 
         # 如果没有指定brand_list，则默认使用数据库中所有的brand_list
