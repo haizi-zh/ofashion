@@ -5,6 +5,7 @@ import datetime
 import logging
 import os
 import errno
+import sys
 import global_settings as glob
 import re
 # from utils import utils
@@ -134,23 +135,10 @@ def my_import(name):
         kclass = getattr(mod, mod_class)
 
     return kclass
-    # mod = __import__(name)
-    # components = name.split('.')
-    # for comp in components[1:]:
-    #     mod = getattr(mod, comp)
-    # return mod
 
 
 if __name__ == "__main__":
-    # ret = parse_args(sys.argv)
-    # func_dict = {'backup-all': backup_all, 'restore': restore}
-    # if ret:
-    #     cmd = ret['cmd']
-    #     param = ret['param']
-    #     if cmd not in func_dict:
-    #         logger.error(str.format('INVALID COMMAND: {0}', cmd))
-    #     else:
-    #         func_dict[cmd](param)'
+    ret = parse_args(sys.argv)
 
     for task_name, task_param in getattr(glob, 'CRON_TASK', {}).items():
         try:

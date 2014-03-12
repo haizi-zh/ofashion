@@ -1,4 +1,4 @@
-# coding=utf-8
+﻿# coding=utf-8
 from Queue import Queue
 import hashlib
 import logging
@@ -157,15 +157,21 @@ def parse_args(args):
     @param args:
     @return:
     """
-    if len(args) < 2:
-        return None
+    if len(args) == 1:
+        return {'cmd': None, 'param': None}
 
     cmd = args[1]
+    # 如果以-开头，说明不是cmd，而是参数列表
+    if re.search('^\-', cmd):
+        cmd = None
+        param_idx = 1
+    else:
+        param_idx = 2
 
     # 解析命令行参数
     param_dict = {}
     q = Queue()
-    for tmp in args[2:]:
+    for tmp in args[param_idx:]:
         q.put(tmp)
     param_name = None
     param_value = None
@@ -219,13 +225,15 @@ def get_logger(logger_name='RoseVision', filename=None, to_file=False,
     """
     if to_file and not filename:
         filename = os.path.join(getattr(glob, 'STORAGE_PATH'), 'log',
-                                unicode.format(u'{0}_{1}', unicodify(logger_name),
+                                unicode.format(u'{0}_{1}.log', unicodify(logger_name),
                                                datetime.datetime.now().strftime('%Y%m%d')))
-    if filename:
-        logging.basicConfig(format=log_format, level=level, filename=filename)
-    else:
-        logging.basicConfig(format=log_format, level=level)
-    return logging.getLogger(logger_name)
+    fh = logging.FileHandler(filename, encoding='utf-8') if filename else None
+    logging.basicConfig(format=log_format, level=level)
+    logger = logging.getLogger(logger_name)
+    if fh:
+        logger.addHandler(fh)
+        logger
+    return logger
 
 
 def unicodify(val):
