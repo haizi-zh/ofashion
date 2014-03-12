@@ -39,14 +39,6 @@ class BackupTasker(object):
             logger.exception('Invalid database specification.')
             return
 
-        # user = kwargs['user']
-        # password = kwargs['password']
-        # host = param_dict['host'][0] if 'host' in param_dict and param_dict['host'] else None
-        # port = param_dict['port'][0] if 'port' in param_dict and param_dict['port'] else None
-        # db = param_dict['db'][0] if 'db' in param_dict and param_dict['db'] else None
-        # dst = param_dict['dst'][0] if 'dst' in param_dict and param_dict['dst'] else ''
-        # ssh_user, ssh_host, ssh_port = [None] * 3
-
         host_str = str.format('-h{0}', host) if host else ''
         port_str = str.format('-P{0}', port) if port else ''
 
@@ -68,17 +60,11 @@ class BackupTasker(object):
         for rm_file in [str.format('/tmp/{0}.sql', tmp) for tmp in tables]:
             os.remove(rm_file)
 
-        # 建立完成标志
-        with open(backup_name + '.done', 'w') as f:
-            f.write('DONE\n')
-
         # SCP
         if ssh_user and ssh_host and ssh_port:
             # 指明了SSH信息，需要上传到远程服务器作为备份
             logger.info('UPLOADING...')
             ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
             os.system(str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
-            os.system(
-                str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name + '.done'))
 
         logger.info(str.format('AUTO BACKUP COMPLETED: {0}', backup_name))
