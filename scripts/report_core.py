@@ -139,6 +139,7 @@ class ProcessLog(object):
     """
 
     def __init__(self, param=None):
+        self.max_err_cnt = 10
         if 'log-path' in param:
             self.log_path = param['log-path'][0]
         else:
@@ -212,15 +213,13 @@ class ProcessLog(object):
 
                 #默认文件最后生成时间为now
                 last_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-                process_error[file] = []
-
                 lines = f.readlines()
                 i = 0
                 error_list = []
 
                 #获取文件最后生成时间
                 for l in xrange(len(lines) - 1, 0, -1):
-                    last = re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[\S+\]', lines[l])
+                    last = re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[[^\[\]]*\]', lines[l])
                     if last:
                         last_time = ''.join(last[0])
                         break
@@ -229,9 +228,10 @@ class ProcessLog(object):
                 if int(self.start_time) > int(last_time):
                     continue
 
+                process_error[file] = []
                 #整理错误行号列表
                 while i < len(lines):
-                    if re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] [ERROR|Error]', lines[i]):
+                    if re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR|Error)', lines[i]):
                         error_list.append(i)
                         t = []
                         while lines[i + 1].startswith('\t') and (lines[i + 1].strip() != ''):
@@ -244,18 +244,29 @@ class ProcessLog(object):
 
                 process_error[file] = []
                 for index in xrange(0, len(error_list)):
+                    if len(process_error[file]) >= self.max_err_cnt:
+                        break
+
                     if type(error_list[index]) is not list:
                         error_lineno = error_list[index] + 1
                         # 使用下面这个
                         # re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*)', lines[error_list[index]])
-                        error_time = ''.join(re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[\S+\] ERROR:',
-                                                        lines[error_list[index]])[0])
-                        if re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) <GET.*?>(.*)'):
-                            error_info = ''.join(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) <GET.*?>(.*)',
-                                                            lines[error_list[index]])[0])
+                        error_time = ''.join(
+                            re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[\S+\] ERROR:',
+                                       lines[error_list[index]])[0])
+
+                        tmp2 = re.findall(
+                            r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) <GET.*?>(.*)',
+                            lines[error_list[index]])
+                        if tmp2:
+                            error_info = ''.join(tmp2[0])
                         else:
-                            error_info = ''.join(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) (.*)',
-                                                            lines[error_list[index]])[0])
+                            tmp2 = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR: .*) (.*)',
+                                              lines[error_list[index]])
+                            if tmp2:
+                                error_info = ''.join(tmp2[0])
+                            else:
+                                error_info = 'UNKNOWN ERROR'
 
                         if process_error[file] and process_error[file][-1]['error_info'] != error_info:
                             process_error[file].append(
@@ -273,7 +284,6 @@ class ProcessLog(object):
                                  'error_info': error_info,
                                  'error_count': 1,
                                  'Traceback': []})
-
                     else:
                         for i in range(error_list[index][-1], error_list[index][0] + 1, -1):
                             detail = re.findall(r'File "(/home/rose/MStore\S+)", line (\S+), in (\S+)',
@@ -355,4 +365,3 @@ class ProcessLog(object):
         server.login('buddy@mfashion.com.cn', 'rose123')
         server.sendmail('buddy@mfashion.com.cn', recipients.values(), msg.as_string())
         server.quit()
-
