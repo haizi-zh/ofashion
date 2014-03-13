@@ -25,23 +25,25 @@ def foo():
                 # (product, name, log_time) = re.split(r'_', os.path.basename(os.path.splitext(file)[0]))
                 f = open(log_path+os.sep+log, 'rb')
                 lines = f.readlines()
-                st = re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[[^\[\]]*\] INFO: Scrapy \d{1}.\d{2}.\d{1} started', lines[0])
+                st = re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[[^\[\]]*\] INFO: Spider started, processing the following regions:', lines[0])
                 ed = re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[[^\[\]]*\] INFO: Spider closed \(finished\)', lines[-1])
-                if st and ed:
+                regions = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[[^\[\]]*\] INFO: Spider started, processing the following regions: (.*)', lines[0])
+                if st and ed and regions:
                     start_time = '%s-%s-%s %s:%s:%s'% (st[0])
                     end_time = '%s-%s-%s %s:%s:%s'% (ed[0])
+                    regions_no = len([x.strip() for x in regions[0].split(',')])
                     duration =datetime.datetime.strptime(''.join(ed[0]),'%Y%m%d%H%M%S') - datetime.datetime.strptime(''.join(st[0]),'%Y%m%d%H%M%S')
+
                     break
                 else:
-                    start_time = 'crawling or break'
-                    end_time = 'crawling or break'
-                    duration = 'overtime or break'
-        else:
-            start_time = 'NA'
-            end_time = 'NA'
-            duration = 'NA'
+                    start_time = end_time = duration = 'overtime or break'
+                    regions_no = 0
 
-        db.update({'start_time':start_time, 'end_time':end_time, 'duration':duration}, 'crawler_duration', str.format('brand_id={0}', brand))
+        else:
+            start_time = end_time = duration = 'NA'
+            regions_no = 0
+
+        db.update({'start_time':start_time, 'end_time':end_time, 'duration':duration, 'regions_no':regions_no}, 'crawler_duration', str.format('brand_id={0}', brand))
 
 
 
