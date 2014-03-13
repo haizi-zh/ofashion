@@ -13,9 +13,6 @@ import re
 import global_settings as glob
 
 
-# TODO tags_mapping信息
-
-
 class AmazonSpider(EShopSpider):
     spider_data = {
         'brand_id': 8001,
@@ -97,12 +94,41 @@ class AmazonSpider(EShopSpider):
 
             m = copy.deepcopy(metadata)
 
+            category_node = node.xpath('.//span[@class="bold orng"][text()]')
+            if category_node:
+                try:
+                    category_text = category_node.xpath('./text()').extract()[0]
+                    category_text = self.reformat(category_text)
+                    # 去掉:
+                    mt = re.search(ur'([^:]+)', category_text)
+                    if mt:
+                        category_text = mt.group(1)
+                    category_name = category_text.lower()
+
+                    if category_name and category_text:
+                        m['tags_mapping']['category-0'] = [
+                            {'name': category_name, 'title': category_text}
+                        ]
+                except(TypeError, IndexError):
+                    pass
+
             yield Request(url=href,
                           callback=self.parse_product,
                           errback=self.onerr,
                           meta={'userdata': m})
 
-            # TODO 下一页
+        next_node = sel.xpath('//div[@id="centerBelowMinus"]//div[@id="pagn"]//a[@id="pagnNextLink"][@href]')
+        if next_node:
+            try:
+                next_href = next_node.xpath('./@href').extract()[0]
+                next_href = self.process_href(next_href, response.url)
+
+                yield Request(url=next_href,
+                              callback=self.parse_product_list,
+                              errback=self.onerr,
+                              meta={'userdata': metadata})
+            except(TypeError, IndexError):
+                pass
 
     def parse_product(self, response):
 
@@ -135,7 +161,11 @@ class AmazonSpider(EShopSpider):
         image_nodes = sel.xpath('//div[@id="altImages"]//img[@src]')
         for node in image_nodes:
             origin_src = node.xpath('./@src').extract()[0]
-            src = re.sub(ur'\.\w+\.', ur'.', origin_src)
+            # 去掉了gif图
+            mt = re.search(ur'\.gif$', origin_src)
+            if mt:
+                continue
+            src = re.sub(ur'\._\S+?_\.', ur'.', origin_src)
             src = self.process_href(src, response.url)
             if src:
                 image_urls += [src]
@@ -225,10 +255,3 @@ class AmazonSpider(EShopSpider):
                 pass
 
         return description
-
-        # @classmethod
-        # def fetch_color(cls, response, spider=None):
-        #     sel = Selector(response)
-        #
-        #     colors = []
-        #
