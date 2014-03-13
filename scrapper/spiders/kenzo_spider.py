@@ -36,7 +36,7 @@ class KenzoSpider(MFashionSpider):
     def get_instance(cls, region=None):
         return cls(region)
 
-    def parse(self, respnse):
+    def parse(self, response):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
