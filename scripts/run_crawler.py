@@ -122,6 +122,17 @@ def set_up_spider(spider_class, data, is_update=False):
     else:
         crawler.settings.values['USER_AGENT'] = ua
 
+    # 设置spider的proxy信息
+    crawler.settings.values['DOWNLOADER_MIDDLEWARES'] = {
+    'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1}
+    if 'proxy' in data:
+        try:
+            crawler.settings.values['PROXY_ENABLED'] = True
+        except AttributeError:
+            crawler.settings.values['PROXY_ENABLED'] = False
+    else:
+        crawler.settings.values['PROXY_ENABLED'] = False
+
     cookie_flag = getattr(glob, 'COOKIES_ENABLED', False)
     try:
         cookie_flag = (data['cookie'][0].lower() == 'true')
