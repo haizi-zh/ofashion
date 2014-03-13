@@ -1,7 +1,7 @@
 # coding=utf-8
 import scrapy.contrib.spiders
 from scrapy import log
-from core import MySqlDb
+from core import RoseVisionDb
 from scrapy.http import Request
 from scrapper.items import UpdateItem
 import global_settings as glob
@@ -19,7 +19,7 @@ class UpdateSpider(MFashionBaseSpider):
         super(UpdateSpider, self).__init__(*a, **kw)
         self.brand_list = brand_list
         self.region_list = region_list
-        self.db = MySqlDb()
+        self.db = RoseVisionDb()
         self.db.conn(db_spec)
 
     def start_requests(self):

@@ -6,7 +6,7 @@ import sys
 
 __author__ = 'Ryan'
 
-from core import MySqlDb
+from core import RoseVisionDb
 import goslate
 import urllib2
 import socket
@@ -179,7 +179,7 @@ def translate_main():
         "username": "rose", "password": "rose123",
         "schema": "translateTest"
     }
-    db = MySqlDb()
+    db = RoseVisionDb()
     db.conn(db_spec)
 
     gs = goslate.Goslate()

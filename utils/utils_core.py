@@ -1,9 +1,12 @@
 # coding=utf-8
 from Queue import Queue
 import hashlib
+import logging
 import re
 import types
+import datetime
 import global_settings as glob
+import os
 
 __author__ = 'Zephyre'
 
@@ -201,6 +204,28 @@ def parse_args(args):
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
 
     return {'cmd': cmd, 'param': param_dict}
+
+
+def get_logger(logger_name='RoseVision', filename=None, to_file=False,
+               log_format='%(asctime)-24s%(levelname)-8s%(message)s', level=logging.INFO):
+    """
+    返回日志处理器
+    @param logger_name:
+    @param to_file: 是否要写到文件中
+    @param filename:
+    @param log_format:
+    @param level:
+    @return:
+    """
+    if to_file and not filename:
+        filename = os.path.join(getattr(glob, 'STORAGE_PATH'), 'log',
+                                unicode.format(u'{0}_{1}', unicodify(logger_name),
+                                               datetime.datetime.now().strftime('%Y%m%d')))
+    if filename:
+        logging.basicConfig(format=log_format, level=level, filename=filename)
+    else:
+        logging.basicConfig(format=log_format, level=level)
+    return logging.getLogger(logger_name)
 
 
 def unicodify(val):

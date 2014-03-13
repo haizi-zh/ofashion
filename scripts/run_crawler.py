@@ -18,7 +18,7 @@ from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
 from scrapy.contrib.spiders import CrawlSpider
 from scrapper.spiders.update_spider import UpdateSpider
 import scrapper.spiders.update_spider as ups
-from utils.utils import iterable, parse_args
+from utils.utils_core import iterable, parse_args
 
 __author__ = 'Zephyre'
 

@@ -10,7 +10,7 @@ from scrapy.selector import Selector
 import common
 import copy
 import re
-from utils.utils import iterable, process_price
+from utils.utils_core import iterable, process_price
 import global_settings as glob
 import json
 

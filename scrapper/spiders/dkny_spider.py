@@ -10,7 +10,7 @@ from scrapy.selector import Selector
 import common
 import copy
 import re
-from utils.utils import unicodify, iterable
+from utils.utils_core import unicodify, iterable
 
 
 class DknySpider(MFashionSpider):

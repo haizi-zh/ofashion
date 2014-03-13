@@ -5,13 +5,12 @@ import datetime
 import threading
 import time
 import sys
-import common as cm
-from utils.utils import unicodify, iterable
+from utils.utils_core import unicodify, iterable
 
 __author__ = 'Zephyre'
 
 
-class MySqlDb(object):
+class RoseVisionDb(object):
     LOCK_READ = 0
     LOCK_WRITE = 1
 
@@ -65,7 +64,7 @@ class MySqlDb(object):
 
     def lock(self, tbl_list, lock_type=LOCK_WRITE):
         statement = str.format('LOCK TABLES {0}', ', '.join(
-            str.format('{0} {1}', tbl, 'READ' if lock_type == MySqlDb.LOCK_READ else 'WRITE') for tbl in tbl_list))
+            str.format('{0} {1}', tbl, 'READ' if lock_type == RoseVisionDb.LOCK_READ else 'WRITE') for tbl in tbl_list))
         self.db.query(statement)
 
     def unlock(self):
@@ -89,9 +88,12 @@ class MySqlDb(object):
 
     def insert(self, entry, table, timestamps=None, time_fmt='%Y-%m-%d %H:%M:%S', ignore=False, replace=False):
         """
-        :param entry:
-        :param table:
-        :param timestamps: 用来在记录上添加时间戳。比如：timestamps=['ts1', 'ts2']，则自动在添加的记录上添加时间戳：ts1和ts2。
+        @param entry:
+        @param table:
+        @param timestamps: 用来在记录上添加时间戳。比如：timestamps=['ts1', 'ts2']，则自动在添加的记录上添加时间戳：ts1和ts2。
+        @param time_fmt:
+        @param ignore: 是否启用SQL中的IGNORE开关。如果启用，则INSERT的时候，跳过主键约束或唯一性索引的记录。
+        @param replace: 是否使用REPLACE INTO
         """
         entry_list = [entry] if isinstance(entry, dict) else entry
         if not entry_list:

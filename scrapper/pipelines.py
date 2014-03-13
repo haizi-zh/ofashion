@@ -16,9 +16,9 @@ from scrapy.exceptions import DropItem
 from scrapy.http import Request
 from PIL import Image
 
-from core import MySqlDb
+from core import RoseVisionDb
 import global_settings as glob
-from utils.utils import process_price, unicodify, iterable, gen_fingerprint
+from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint
 
 
 class MStorePipeline(object):
@@ -79,7 +79,7 @@ class UpdatePipeline(MStorePipeline):
         return cls(getattr(glob, 'DB_SPEC'))
 
     def __init__(self, db_spec):
-        self.db = MySqlDb()
+        self.db = RoseVisionDb()
         self.db.conn(db_spec)
         self.processed_tags = set([])
 
@@ -177,7 +177,7 @@ class ProductPipeline(MStorePipeline):
         return cls(getattr(glob, 'DB_SPEC'))
 
     def __init__(self, db_spec):
-        self.db = MySqlDb()
+        self.db = RoseVisionDb()
         self.db.conn(db_spec)
         self.processed_tags = set([])
 
@@ -373,7 +373,7 @@ class ProductImagePipeline(ImagesPipeline):
     def __init__(self, store_uri):
         super(ProductImagePipeline, self).__init__(store_uri)
         self.url_map = {}
-        self.db = MySqlDb()
+        self.db = RoseVisionDb()
         self.db.conn(glob.DB_SPEC)
 
     def get_images(self, response, request, info):

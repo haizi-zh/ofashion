@@ -7,7 +7,7 @@ from scrapy.selector import Selector
 import common as cm
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
-from utils.utils import unicodify
+from utils.utils_core import unicodify
 
 __author__ = 'Zephyre'
 
