@@ -26,7 +26,7 @@ class AmazonSpider(EShopSpider):
         return cls.spider_data['home_urls'].keys()
 
     def __init__(self, region):
-        super(AmazonSpider, self).__init__('anazon', region)
+        super(AmazonSpider, self).__init__('amazon', region)
 
     def parse(self, response):
 
