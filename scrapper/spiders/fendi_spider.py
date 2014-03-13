@@ -126,7 +126,7 @@ class FendiSpider(MFashionSpider):
                 yield Request(url=url, meta={'userdata': m}, callback=self.parse_category_2)
         else:
             for item in sel.xpath(
-                    "//div[@id='page']/div[@class='view-all']/ul[@id='slider']/li/a[@href and @data-id]"):
+                    "//div[@id='page']/div[contains(@class, 'view-all')]/ul[@id='slider']/li/a[@href and @data-id]"):
                 href = unicodify(item._root.attrib['href'])
                 m = copy.deepcopy(metadata)
                 url = self.process_href(href, response.url)
@@ -174,7 +174,7 @@ class FendiSpider(MFashionSpider):
         item['metadata'] = metadata
 
         ret = sel.xpath("//div[@id='page']/div[@class='fullscreen-image']/a[@href]")
-        if ret > 0:
+        if len(ret) > 0:
             # 小尺寸版本的图片，以供不时之需
             node = ret[0]
             tmp = node.xpath('./img[@src]')
