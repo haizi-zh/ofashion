@@ -8,7 +8,9 @@ from scrapy import log
 from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
 from scrapy.contrib.spiders import Rule
 from scrapy.http import Request
+from scrapper.scrapy_ex import ProxiedRequest
 from scrapy.selector import Selector
+import global_settings as gs
 
 import common as cm
 from scrapper.items import ProductItem
@@ -24,6 +26,8 @@ brand_id = 10074
 
 class ChanelSpider(MFashionSpider):
     allowed_domains = ['chanel.com']
+
+    handle_httpstatus_list = [400]
 
     spider_data = {'brand_id': 10074,
                    'base_url': {'cn': 'zh_CN', 'us': 'en_US', 'fr': 'fr_FR', 'it': 'it_IT', 'uk': 'en_GB',
@@ -77,7 +81,7 @@ class ChanelSpider(MFashionSpider):
         self._compile_rules()
 
         for region in self.region_list:
-            yield Request(
+            yield ProxiedRequest(
                 url=str.format('{0}/{1}/', self.spider_data['hosts'][region], self.spider_data['base_url'][region]))
 
     def parse_watch(self, response):
@@ -124,13 +128,14 @@ class ChanelSpider(MFashionSpider):
                 price_url = str.format(
                     'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
                     self.spider_data['base_url'][region], self.spider_data['watch_term'][region][0], m['model'])
-                yield Request(url=price_url, callback=self.parse_watch_price, errback=self.onerr, meta={'userdata': m})
+                yield ProxiedRequest(url=price_url, callback=self.parse_watch_price, errback=self.onerr,
+                                     meta={'userdata': m})
         else:
             for node in sel.xpath('//*[@href]'):
                 url = self.process_href(node.xpath('@href').extract()[0], response.url)
                 if re.search(unicode.format(ur'chanel\.com/{0}/({1})/.+', self.spider_data['base_url'][region],
                                             '|'.join(self.spider_data['watch_term'][region])), url, flags=re.I | re.U):
-                    yield Request(url=url, callback=self.parse_watch, errback=self.onerr)
+                    yield ProxiedRequest(url=url, callback=self.parse_watch, errback=self.onerr)
 
     @staticmethod
     def parse_watch_price(response):
@@ -189,8 +194,14 @@ class ChanelSpider(MFashionSpider):
                 url = temp
             else:
                 url = str.format('{0}{1}', self.spider_data['hosts'][region], temp)
-            yield Request(url=url, meta={'userdata': metadata}, callback=self.parse_json_request, dont_filter=True,
-                          errback=self.onerr)
+
+            try:
+                proxy_enabled = self.crawler.settings.values['PROXY_ENABLED']
+            except IndexError:
+                proxy_enabled = False
+            yield ProxiedRequest(url=url, meta={'userdata': metadata}, callback=self.parse_json_request,
+                                 dont_filter=True, errback=self.onerr, proxy_region=metadata['region'],
+                                 proxy_enabled=proxy_enabled)
         else:
             for val in self.parse_json(metadata, data['sectionCache']):
                 yield val
@@ -271,8 +282,13 @@ class ChanelSpider(MFashionSpider):
     def func2(self, metadata):
         modules_url = metadata.pop('modules_url')
         if modules_url:
-            yield Request(url=modules_url, meta={'userdata': metadata}, callback=self.parse_modules,
-                          errback=self.onerr, dont_filter=True)
+            try:
+                proxy_enabled = self.crawler.settings.values['PROXY_ENABLED']
+            except IndexError:
+                proxy_enabled = False
+            yield ProxiedRequest(url=modules_url, meta={'userdata': metadata}, callback=self.parse_modules,
+                                 errback=self.onerr, dont_filter=True, proxy_region=metadata['region'],
+                                 proxy_enabled=proxy_enabled)
         else:
             yield self.init_item(metadata)
 
@@ -317,8 +333,13 @@ class ChanelSpider(MFashionSpider):
         # price
         if pricing_service and 'refPrice' in info:
             url = self.spider_data['pricing'] % (self.spider_data['base_url'][metadata['region']], info['refPrice'])
-            yield Request(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
-                          callback=self.parse_price, errback=self.onerr, dont_filter=True)
+            try:
+                proxy_enabled = self.crawler.settings.values['PROXY_ENABLED']
+            except IndexError:
+                proxy_enabled = False
+            yield ProxiedRequest(url=url, meta={'userdata': metadata, 'handle_httpstatus_list': [400]},
+                                 callback=self.parse_price, errback=self.onerr, dont_filter=True,
+                                 proxy_region=metadata['region'], proxy_enabled=proxy_enabled)
         else:
             for val in self.func2(metadata):
                 yield val
@@ -678,11 +699,13 @@ class ChanelSpider(MFashionSpider):
         new_price = None
 
         mt = re.search(unicode.format(ur'chanel\.com/({0})/({1})/.+', region_code, watch_code), response.url)
+
         if mt:  # 对应 parse_watch
             price_url = str.format(
                 'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
                 cls.spider_data['base_url'][region], cls.spider_data['watch_term'][region][0],
                 cls.fetch_model(response))
+
             return Request(url=price_url,
                            callback=cls.fetch_price_request_watch,
                            errback=spider.onerror,
@@ -786,7 +809,7 @@ class ChanelSpider(MFashionSpider):
 
         return None
 
-# TODO http://www.chanel.com/zh_CN/fashion/products/handbags/g/s.graffiti-printed-canvas-backpack.14S.A92352Y0874594305.c.14S.html
+    # TODO http://www.chanel.com/zh_CN/fashion/products/handbags/g/s.graffiti-printed-canvas-backpack.14S.A92352Y0874594305.c.14S.html
     @classmethod
     def fetch_price_request_fashion_price(cls, response):
         ret = {}
