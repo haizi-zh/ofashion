@@ -154,8 +154,11 @@ class CoachSpider(MFashionSpider):
         mt = re.search(r'var\s+productJSONObject\s*=', response.body)
         if not mt:
             return
-        data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
-                                                                                            '"').replace(r"\'", "'"))
+        try:
+            data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                '"').replace(r"\'", "'"))
+        except(TypeError, IndexError, ValueError):
+            return
         if 'style' not in data:
             return
         metadata['model'] = data['style']
@@ -353,7 +356,7 @@ class CoachSpider(MFashionSpider):
                                                                                                                      "'"))
                     if 'style' in data:
                         model = data['style']
-            except(TypeError, IndexError):
+            except(TypeError, IndexError, ValueError):
                 pass
         else:
             try:
@@ -386,7 +389,7 @@ class CoachSpider(MFashionSpider):
                                                                                                                      "'"))
                     if 'productName' in data:
                         name = cls.reformat(data['productName'])
-            except(TypeError, IndexError):
+            except(TypeError, IndexError, ValueError):
                 pass
         else:
             try:
@@ -415,9 +418,12 @@ class CoachSpider(MFashionSpider):
             # 商品信息在var productJSONObject中
             mt = re.search(r'var\s+productJSONObject\s*=', response.body)
             if mt:
-                data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
-                                                                                                    '"').replace(r"\'",
+                try:
+                    data = json.loads(cm.extract_closure(response.body[mt.end():], "{", "}")[0].replace(r'\"',
+                                                                                                        '"').replace(r"\'",
                                                                                                                  "'"))
+                except(TypeError, IndexError, ValueError):
+                    return ret
                 # 价格信息
                 try:
                     for item in data['swatchGroup']['swatches']:
@@ -584,7 +590,7 @@ class CoachSpider(MFashionSpider):
                                                                                                         '"').replace(r"\'", "'"))
                     colors = [cls.reformat(swatch['color']).lower() for swatch in data['swatchGroup']['swatches']
                               if 'color' in swatch]
-            except KeyError:
+            except (KeyError, ValueError, TypeError, IndexError):
                 colors = None
                 pass
         else:
