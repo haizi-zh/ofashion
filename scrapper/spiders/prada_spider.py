@@ -112,13 +112,16 @@ class PradaSpider(MFashionSpider):
         if description:
             metadata['description'] = description
 
-        temp = sel.xpath('//article[@class="product"]/figure[@class="slider"]/img[@data-zoom-url]')
-        image_urls = [self.process_href(val._root.attrib['data-zoom-url'], response.url) for val in temp]
-
-        # metadata['category'] = [val['name'] for val in
-        #                         metadata['tags_mapping'][
-        #                             'category-1' if 'category-1' in metadata['tags_mapping'] else 'category-0']
-        #                         if val]
+        image_urls = []
+        for image_node in sel.xpath('//article[@class="product"]/figure[@class="slider"]/img[@data-zoom-url]'):
+            tmp = image_node.xpath('./@data-zoom-url').extract()
+            if tmp:
+                if tmp[0] == '/static_assets/images/products/placeholders/standard.jpg':
+                    tmp = image_node.xpath('./@src').extract()
+                    if tmp and re.search(r'\.(jpg|png|jpeg)', tmp[0], flags=re.IGNORECASE):
+                        image_urls.append(self.process_href(tmp[0], response.url))
+                else:
+                    image_urls.append(self.process_href(tmp[0], response.url))
 
         gender = cm.guess_gender(metadata['tags_mapping']['category-0'][0]['name'])
         if gender:
