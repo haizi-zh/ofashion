@@ -10,7 +10,6 @@ import sys
 import core
 import pkgutil
 import scrapper.spiders
-from scrapper.spiders.mfashion_spider import MFashionSpider
 import inspect
 import imp
 
@@ -49,6 +48,7 @@ def region_info():
 
 
 def fetch_spider_info():
+    from scrapper.spiders.mfashion_spider import MFashionSpider
     info = {}
     for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
         f, filename, description = imp.find_module(modname, ['scrapper/spiders'])
@@ -63,8 +63,9 @@ def fetch_spider_info():
         if not sc_list:
             continue
         sc_name, sc_class = sc_list[0]
-        brand_id = sc_class.spider_data['brand_id']
-        info[brand_id] = sc_class
+        if 'brand_id' in sc_class.spider_data:
+            brand_id = sc_class.spider_data['brand_id']
+            info[brand_id] = sc_class
 
     return info
 
