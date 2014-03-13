@@ -15,6 +15,7 @@ from twisted.internet import reactor
 import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
+from scrapper.spiders.eshop_spider import EShopSpider
 from scrapy.contrib.spiders import CrawlSpider
 from scrapper.spiders.update_spider import UpdateSpider
 import scrapper.spiders.update_spider as ups
@@ -179,10 +180,11 @@ def main():
                 spider_module = cm.get_spider_module(cmd)
 
             spider_class = MFashionBaseSpider if cmd == 'update' else MFashionSpider
+            eshop_spider_class = EShopSpider
             is_update = (not spider_class == MFashionSpider)
 
             sc_list = list(ifilter(lambda val:
-                                   isinstance(val, type) and issubclass(val, spider_class) and val != spider_class,
+                                   isinstance(val, type) and issubclass(val, spider_class) and val != spider_class and val != eshop_spider_class,
                                    (getattr(spider_module, tmp) for tmp in dir(spider_module))))
 
             if 'r' not in param:

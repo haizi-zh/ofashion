@@ -2,7 +2,7 @@
 
 __author__ = 'Ryan'
 
-from scrapper.spiders.mfashion_spider import MFashionSpider
+from scrapper.spiders.eshop_spider import EShopSpider
 from scrapper.items import ProductItem
 from scrapy.http import Request
 from scrapy.selector import Selector
@@ -10,19 +10,16 @@ from scrapy.selector import Selector
 import common
 import copy
 import re
-from utils.utils_core import iterable, process_price
-import global_settings as glob
-import json
+from utils.utils_core import process_price
 
-class WangfujingSpider(MFashionSpider):
 
+class WangfujingSpider(EShopSpider):
     spider_data = {
         'brand_id': 8000,
         'home_urls': {
             'cn': 'http://www.wangfujing.com/',
         }
     }
-    brand_list = glob.brand_info()
 
     @classmethod
     def get_supported_regions(cls):
@@ -120,37 +117,25 @@ class WangfujingSpider(MFashionSpider):
             except(TypeError, IndexError):
                 continue
 
-            if brand_name and unicode(brand_name) != u'不限':
-                for brand_id, brand_info in self.brand_list.items():
-                    brand_name_c = brand_info['brandname_c']
-                    brand_name_e = brand_info['brandname_e']
-                    brand_name_s = brand_info['brandname_s']
+            brand_id = self.match_known_brand(brand_name)
+            if brand_id:
+                try:
+                    m = copy.deepcopy(metadata)
+                    m['brand_id'] = brand_id
 
-                    if brand_name_c:
-                        brand_name_c = brand_name_c.lower()
-                    if brand_name_e:
-                        brand_name_e = brand_name_e.lower()
-                    if brand_name_s:
-                        brand_name_s = brand_name_s.lower()
+                    try:
+                        href = node.xpath('./@href').extract()[0]
+                        href = self.process_href(href, response.url)
+                        href = self.process_href(href, response.url)
+                    except(TypeError, IndexError):
+                        continue
 
-                    if unicode(brand_name) == unicode(brand_name_c) or brand_name == brand_name_e or brand_name == brand_name_s:
-                        try:
-                            m = copy.deepcopy(metadata)
-                            m['brand_id'] = brand_id
-
-                            try:
-                                href = node.xpath('./@href').extract()[0]
-                                href = self.process_href(href, response.url)
-                                href = self.process_href(href, response.url)
-                            except(TypeError, IndexError):
-                                continue
-
-                            yield Request(url=href,
-                                          callback=self.parse_product_list,
-                                          errback=self.onerr,
-                                          meta={'userdata': m})
-                        except(TypeError, IndexError):
-                            pass
+                    yield Request(url=href,
+                                  callback=self.parse_product_list,
+                                  errback=self.onerr,
+                                  meta={'userdata': m})
+                except(TypeError, IndexError):
+                    pass
 
     def parse_product_list(self, response):
 
@@ -177,7 +162,7 @@ class WangfujingSpider(MFashionSpider):
             if mt:
                 try:
                     current_page = (int)(mt.group(1))
-                    next_page = current_page+1
+                    next_page = current_page + 1
                     href = re.sub(ur'\d+$', str(next_page), response.url)
                     yield Request(url=href,
                                   callback=self.parse_product_list,

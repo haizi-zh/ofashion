@@ -7,10 +7,8 @@ from scrapper.items import ProductItem
 from scrapy.http import Request
 from scrapy.selector import Selector
 
-import common
 import copy
 import re
-import global_settings as glob
 
 
 class AmazonSpider(EShopSpider):
