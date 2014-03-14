@@ -39,39 +39,66 @@ class MissoniSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        for node0 in sel.xpath('//div[@id="seasonSwitcher"]/div/ul[@id]'):
-            try:
-                cat_title = self.reformat(node0.xpath('./li[contains(@class,"seasonCont")]/text()').extract()[0])
-                cat_name = cat_title.lower()
-            except (IndexError, TypeError):
-                continue
-
-            m0 = copy.deepcopy(metadata)
-            m0['tags_mapping']['category-0'] = [{'title': cat_title, 'name': cat_name}]
-
-            for node1 in node0.xpath('.//ul[contains(@class,"genderMenu")]'):
+        nav_nodes = sel.xpath('//div[@id="seasonSwitcher"]/div/ul[@id]')
+        for node0 in nav_nodes:
+            cat_node = node0.xpath('./li[text()]')
+            if cat_node:
                 try:
-                    cat_title = self.reformat(node1.xpath('./li/a[@title]/@title').extract()[0])
+                    cat_title = self.reformat(node0.xpath('./li/text()').extract()[0])
                     cat_name = cat_title.lower()
                 except (IndexError, TypeError):
                     continue
-                m1 = copy.deepcopy(m0)
-                m1['tags_mapping']['category-1'] = [{'title': cat_title, 'name': cat_name}]
-                gender = cm.guess_gender(cat_title)
-                if gender:
-                    m1['gender'] = [gender]
 
-                for node2 in node1.xpath('./ul[contains(@class,"macroMenu")]/li/a[@href]'):
+                m0 = copy.deepcopy(metadata)
+                m0['tags_mapping']['category-0'] = [{'title': cat_title, 'name': cat_name}]
+
+                for node1 in node0.xpath('.//ul[contains(@class,"genderMenu")]'):
                     try:
-                        url = self.process_href(node2.xpath('@href').extract()[0], response.url)
-                        tmp = node2.xpath('text()').extract()
-                        cat_title = self.reformat(tmp[0])
+                        cat_title = self.reformat(node1.xpath('./li/a[@title]/@title').extract()[0])
                         cat_name = cat_title.lower()
                     except (IndexError, TypeError):
                         continue
-                    m2 = copy.deepcopy(m1)
-                    m2['tags_mapping']['category-2'] = [{'title': cat_title, 'name': cat_name}]
-                    yield Request(url=url, callback=self.parse_list, errback=self.onerr, meta={'userdata': m2})
+                    m1 = copy.deepcopy(m0)
+                    m1['tags_mapping']['category-1'] = [{'title': cat_title, 'name': cat_name}]
+                    gender = cm.guess_gender(cat_title)
+                    if gender:
+                        m1['gender'] = [gender]
+
+                    for node2 in node1.xpath('./ul[contains(@class,"macroMenu")]/li/a[@href]'):
+                        try:
+                            url = self.process_href(node2.xpath('@href').extract()[0], response.url)
+                            tmp = node2.xpath('text()').extract()
+                            cat_title = self.reformat(tmp[0])
+                            cat_name = cat_title.lower()
+                        except (IndexError, TypeError):
+                            continue
+                        m2 = copy.deepcopy(m1)
+                        m2['tags_mapping']['category-2'] = [{'title': cat_title, 'name': cat_name}]
+                        yield Request(url=url, callback=self.parse_list, errback=self.onerr, meta={'userdata': m2})
+            else:
+                for node1 in node0.xpath('.//ul[contains(@class,"genderMenu")]'):
+                    try:
+                        cat_title = self.reformat(node1.xpath('./li/a[@title]/@title').extract()[0])
+                        cat_name = cat_title.lower()
+                    except (IndexError, TypeError):
+                        continue
+                    m1 = copy.deepcopy(metadata)
+                    m1['tags_mapping']['category-0'] = [{'title': cat_title, 'name': cat_name}]
+                    gender = cm.guess_gender(cat_title)
+                    if gender:
+                        m1['gender'] = [gender]
+
+                    for node2 in node1.xpath('./ul[contains(@class,"macroMenu")]/li/a[@href]'):
+                        try:
+                            url = self.process_href(node2.xpath('@href').extract()[0], response.url)
+                            tmp = node2.xpath('text()').extract()
+                            cat_title = self.reformat(tmp[0])
+                            cat_name = cat_title.lower()
+                        except (IndexError, TypeError):
+                            continue
+                        m2 = copy.deepcopy(m1)
+                        m2['tags_mapping']['category-1'] = [{'title': cat_title, 'name': cat_name}]
+                        yield Request(url=url, callback=self.parse_list, errback=self.onerr, meta={'userdata': m2})
 
     def parse_list(self, response):
         metadata = response.meta['userdata']
