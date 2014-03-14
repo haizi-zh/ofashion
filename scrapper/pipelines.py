@@ -26,6 +26,8 @@ class MStorePipeline(object):
     def update_db_price(metadata, pid, brand, region, db):
         price = None
         discount = None
+        # 表示是否更新了价格信息
+        price_updated = False
         try:
             currency = glob.spider_info()[brand].spider_data['currency'][region]
         except KeyError:
@@ -63,6 +65,7 @@ class MStorePipeline(object):
                            'price_discount': (
                                discount_value if discount_value < price_value else None)},
                           'products_price_history')
+            price_updated = insert_flag
         else:
             # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理
             rs = db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
@@ -71,6 +74,9 @@ class MStorePipeline(object):
             if tmp and tmp[0]['price']:
                 db.insert({'idproducts': pid, 'price': None, 'currency': tmp[0]['currency'],
                            'price_discount': None}, 'products_price_history')
+                price_updated = True
+
+        return price_updated
 
 
 class UpdatePipeline(MStorePipeline):
@@ -163,7 +169,9 @@ class UpdatePipeline(MStorePipeline):
             # 更新数据库中的价格记录
             if not (('offline' in update_data and update_data['offline'] == 1) or (
                         'offline' in item and item['offline'] == 1)):
-                self.update_db_price(item['metadata'], pid, item['brand'], item['region'], self.db)
+                if self.update_db_price(item['metadata'], pid, item['brand'], item['region'], self.db):
+                    self.db.update({}, 'products', str.format('idproducts={0}', pid),
+                                       timestamps=['update_time', 'touch_time'])
         except:
             self.db.rollback()
             raise
@@ -357,7 +365,9 @@ class ProductPipeline(MStorePipeline):
                 spider.log(unicode.format(u'UPDATE: {0}', entry['model']), log.DEBUG)
 
             # 处理价格变化。其中，如果spider提供了货币信息，则优先使用之。
-            self.update_db_price(entry, pid, entry['brand_id'], entry['region'], self.db)
+            if self.update_db_price(entry, pid, entry['brand_id'], entry['region'], self.db):
+                self.db.update({}, 'products', str.format('idproducts={0}', pid),
+                                   timestamps=['update_time', 'touch_time'])
 
             # 处理标签变化
             self.process_tags_mapping(tags_mapping, entry, pid)
