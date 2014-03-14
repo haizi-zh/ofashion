@@ -424,7 +424,7 @@ class PublishRelease(object):
                 continue
             if price_item['price_discount']:
                 alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
-                                       ('price', 'price_discount')))
+                                      ('price', 'price_discount')))
             else:
                 alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
 
@@ -451,15 +451,31 @@ class PublishRelease(object):
         checksums = []
         cover_checksum = None
         p = prods[0]
-        rs = db.query_match(['checksum'], 'products_image',
-                            {'brand_id': p['brand_id'], 'model': p['model']},
-                            tail_str='ORDER BY idproducts_image').fetch_row(maxrows=0)
-        for val in rs:
-            if val[0] in checksums:
-                continue
-            checksums.append(val[0])
-            if not cover_checksum:
-                cover_checksum = val[0]
+        rs = db.query(str.format(
+            '''SELECT p1.checksum, p2.region FROM products_image AS p1
+            JOIN products AS p2 ON p1.idproducts_image=p2.idproducts
+            WHERE p2.brand_id={0} AND p2.model="{1}" ORDER BY p1.idproducts_image''',
+            p['brand_id'], p['model'])).fetch_row(maxrows=0)
+        # rs = db.query_match(['checksum'], 'products_image',
+        #                     {'brand_id': p['brand_id'], 'model': p['model']},
+        #                     tail_str='ORDER BY idproducts_image').fetch_row(maxrows=0)
+        region_images = {}
+        for checksum, region in rs:
+            if region not in region_images:
+                region_images[region] = []
+            region_images[region].append(checksum)
+            # 那个国家的图片数量最多？
+        region_order = sorted(region_images.keys(), key=lambda val: len(region_images[val]), reverse=True)
+        if region_order:
+            checksums = region_images[region_order[0]]
+            cover_checksum = checksums[0]
+
+        # for val in rs:
+        #     if val[0] in checksums:
+        #         continue
+        #     checksums.append(val[0])
+        #     if not cover_checksum:
+        #         cover_checksum = val[0]
         checksum_order = {key: idx for idx, key in enumerate(checksums)}
 
         # 如果没有图片，则暂时不添加到release表中
