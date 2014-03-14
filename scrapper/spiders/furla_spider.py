@@ -29,13 +29,8 @@ class FurlaSpider(MFashionSpider):
             k: str.format('http://www.furla.com/{0}/eshop', k if k != 'uk' else 'en')
             if k != 'cn' else 'http://www.furla.com/cn/collections/slide'
             for k in {
-            'cn', 'uk', 'us', 'fr', 'jp',
-            'it', 'oc', 'bg', 'ke', 'fi',
-            'ie', 'lt', 'nl', 'cz', 'si',
-            'hu', 'at', 'dk', 'lu', 'pl',
-            'ro', 'es', 'be', 'cy', 'ee',
-            'de', 'lv', 'mt', 'pt',
-            'sk', 'se',
+            'cn', 'uk', 'us', 'fr', 'jp', 'it', 'fi', 'ie', 'nl', 'hu', 'at', 'dk', 'lu',
+            'pl', 'ro', 'es', 'be', 'de', 'lv', 'mt', 'pt', 'sk', 'se',
         }
         },
     }
@@ -538,7 +533,7 @@ class FurlaSpider(MFashionSpider):
                         model = mt.group(1)
                 except(TypeError, IndexError):
                     pass
-            #尝试从url取得model
+                #尝试从url取得model
             if not model:
                 try:
                     mt = re.search(r'_(\d+)\.', response.url)
