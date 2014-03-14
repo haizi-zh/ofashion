@@ -34,7 +34,7 @@ class FurlaSpider(MFashionSpider):
             'ie', 'lt', 'nl', 'cz', 'si',
             'hu', 'at', 'dk', 'lu', 'pl',
             'ro', 'es', 'be', 'cy', 'ee',
-            'de', 'el', 'lv', 'mt', 'pt',
+            'de', 'lv', 'mt', 'pt',
             'sk', 'se',
         }
         },
