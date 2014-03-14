@@ -40,18 +40,24 @@ class BalenciagaSpider(MFashionSpider):
 
     def parse(self, response):
         metadata = response.meta['userdata']
-        for node in Selector(response).xpath('//nav[@id="mainMenu"]/ul[@class="categories"]/'
-                                             'li[contains(@class,"firstLevel") and not(contains(@class,"experience"))]/'
-                                             'a[@href]'):
+        sel = Selector(response)
+
+        nav_nodes = sel.xpath('//nav[@id="mainMenu"]//ul[@class="firstlevel"]/li[child::span[text()]]')
+        for node in nav_nodes:
             m1 = copy.deepcopy(metadata)
             tag_type = 'category-0'
-            tag_name = unicodify(node._root.text)
+            try:
+                tag_text = node.xpath('./span/text()').extract()[0]
+                tag_text = self.reformat(tag_text)
+                tag_name = tag_text.lower()
+            except(TypeError, IndexError):
+                continue
             if not tag_name:
                 continue
-            m1['tags_mapping'][tag_type] = [{'name': tag_name.lower(), 'title': tag_name}]
+            m1['tags_mapping'][tag_type] = [{'name': tag_name, 'title': tag_text}]
             m1['category'] = [tag_name.lower()]
 
-            for node2 in node.xpath('../div/div[@class="col"]/ul/li/a[@href]'):
+            for node2 in node.xpath('.//div/div[@class="subMenu"]/ul/li/a[@href]'):
                 m2 = copy.deepcopy(m1)
                 tag_type = 'category-1'
                 tag_name = unicodify(node2._root.text)
