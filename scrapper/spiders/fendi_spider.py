@@ -213,7 +213,7 @@ class FendiSpider(MFashionSpider):
                     continue
                 url = lv._root.attrib['href']
                 temp[lv_val] = url
-            image_urls.append(temp[max(temp.keys())])
+            image_urls.append(self.process_href(temp[max(temp.keys())], response.url))
 
         # 如果成功获得图像列表，则替代之前的小尺寸版本
         if image_urls:
