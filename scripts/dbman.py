@@ -381,6 +381,8 @@ class PublishRelease(object):
                                     'price_change': price_change_dict[pid], 'url': url_dict[pid],
                                     'offline': offline, 'code': region, 'country': gs.region_info()[region]['name_c']})
 
+        currency_conv = lambda val, currency: gs.currency_info()[currency] * val
+
         # 对price_list进行简并操作。
         # 策略：如果有正常的最新价格，则返回正常的价格数据。
         # 如果最新价格为None，则取回溯第一条不为None的数据，同时将price_discount置空。
@@ -414,20 +416,36 @@ class PublishRelease(object):
         entry['price_change'] = entry['price_list'][0]['price_change']
 
         # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
-        discounts = [val for val in entry['price_list'] if val['price_discount']]
-        if discounts:
-            price = discounts[0]['price']
-            price_discount = discounts[0]['price_discount']
-            currency = discounts[0]['currency']
-        else:
-            price = entry['price_list'][0]['price']
-            price_discount = None
-            # 取第一个国家的价格，转换成CNY
-            currency = entry['price_list'][0]['currency']
 
-        entry['price'] = gs.currency_info()[currency] * price
-        if price_discount:
-            entry['price_discount'] = gs.currency_info()[currency] * price_discount
+        # 价格排序的列表
+        alt_prices = []
+        for price_item in entry['price_list']:
+            if price_item['offline'] != 0:
+                continue
+            if price_item['price_discount']:
+                alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
+                                       ('price', 'price_discount')))
+            else:
+                alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
+
+        # 返回的价格：如果有折扣价，返回折扣价；如果没有，返回原价
+        alt_prices = sorted(alt_prices, key=lambda val: val[1] if val[1] else val[0])
+        entry['price'], entry['price_discount'] = alt_prices[0] if alt_prices else (None,) * 2
+
+        # discounts = [val for val in entry['price_list'] if val['price_discount']]
+        # if discounts:
+        #     price = discounts[0]['price']
+        #     price_discount = discounts[0]['price_discount']
+        #     currency = discounts[0]['currency']
+        # else:
+        #     price = entry['price_list'][0]['price']
+        #     price_discount = None
+        #     # 取第一个国家的价格，转换成CNY
+        #     currency = entry['price_list'][0]['currency']
+        #
+        # entry['price'] = gs.currency_info()[currency] * price
+        # if price_discount:
+        #     entry['price_discount'] = gs.currency_info()[currency] * price_discount
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         checksums = []
@@ -485,8 +503,9 @@ class PublishRelease(object):
                 else:
                     model_list[record['model']].append(record)
 
-            # 归并最后一个model
-            self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
+            # 归并最后一个model。注意：model_list有可能为空
+            if model_list:
+                self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
