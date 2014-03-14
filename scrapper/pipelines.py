@@ -162,7 +162,7 @@ class UpdatePipeline(MStorePipeline):
 
             # 更新数据库中的价格记录
             if not (('offline' in update_data and update_data['offline'] == 1) or (
-                            'offline' in item and item['offline'] == 1)):
+                        'offline' in item and item['offline'] == 1)):
                 self.update_db_price(item['metadata'], pid, item['brand'], item['region'], self.db)
         except:
             self.db.rollback()
@@ -323,13 +323,13 @@ class ProductPipeline(MStorePipeline):
                 dest = {'offline': 0}
                 if 'color' in entry:
                     dest['color'] = self.merge_list(record['color'], entry['color'])
-                # if 'category' in entry:
+                    # if 'category' in entry:
                 #     dest['category'] = self.merge_list(record['category'], entry['category'])
                 if 'gender' in entry:
                     dest['gender'] = self.process_gender(entry['gender'])
 
                 for k in (
-                        'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
+                    'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
                     if k in entry:
                         dest[k] = entry[k]
 
@@ -424,7 +424,7 @@ class ProductImagePipeline(ImagesPipeline):
             @param r:
             """
             # TODO 利用urlparser库来解析url地址
-            url = item[1]['url']
+            url = r[1]['url']
             idx = url.find('?')
             if idx != -1:
                 url = url[:idx]
