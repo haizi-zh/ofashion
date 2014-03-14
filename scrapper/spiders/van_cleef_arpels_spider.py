@@ -181,7 +181,7 @@ class VanCleffArpelsSpider(MFashionSpider):
             metadata['name'] = name
 
         colors = self.fetch_color(response)
-        if color:
+        if colors:
             metadata['color'] = colors
 
         description = self.fetch_description(response)
