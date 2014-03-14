@@ -36,7 +36,8 @@ class ProxiedRequest(Request):
         if proxy_region and proxy_enabled:
             # 启用代理
             proxy = self.__fetch_proxy(proxy_region)
-            meta['proxy'] = 'http://' + proxy
+            if proxy:
+                meta['proxy'] = 'http://' + proxy
 
         super(ProxiedRequest, self).__init__(url=url, callback=callback, method=method, headers=headers, body=body,
                                              cookies=cookies, meta=meta, encoding=encoding, priority=priority,
