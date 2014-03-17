@@ -7,7 +7,6 @@ import os
 __author__ = 'Zephyre'
 
 import sys
-import core
 import pkgutil
 import scrapper.spiders
 import inspect
@@ -15,6 +14,7 @@ import imp
 
 
 def __fetch_brand_info():
+    import core
     with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
         tmp = db.query('SELECT * FROM brand_info').fetch_row(how=1, maxrows=0)
         return {int(k['brand_id']): {'brandname_e': k['brandname_e'].decode('utf-8') if k['brandname_e'] else None,
@@ -24,6 +24,7 @@ def __fetch_brand_info():
 
 
 def __fetch_region_info():
+    import core
     with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
         tmp = db.query('SELECT * FROM region_info').fetch_row(how=1, maxrows=0)
         return {k['iso_code']: {'iso_code3': k['iso_code3'],

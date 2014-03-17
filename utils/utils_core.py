@@ -229,8 +229,10 @@ def get_logger(logger_name='RoseVision', filename=None, to_file=False,
                                                datetime.datetime.now().strftime('%Y%m%d')))
     fh = logging.FileHandler(filename, encoding='utf-8') if filename else None
     fh.setFormatter(logging.Formatter(fmt=log_format))
+    fh.setLevel(logging.INFO)
     # logging.basicConfig(format=log_format, level=level)
     logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.INFO)
     if fh:
         root_logger = logging.getLogger()
         root_logger.handlers = []

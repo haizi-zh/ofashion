@@ -10,16 +10,14 @@ __author__ = 'Zephyre'
 
 class BackupTasker(object):
     @classmethod
-    def run(cls, logger=None, **kwargs):
-        if not logger:
-            logger = get_logger(to_file=True)
-
+    def run(cls, **kwargs):
+        logger = kwargs['logger'] if 'logger' in kwargs else get_logger(to_file=True)
         logger.info('BACKUP STARTED')
 
         try:
             db_spec = getattr(glob, 'DATABASE')[kwargs['DATABASE']]
             # {"host": "127.0.0.1", "port": 1228, "schema": "editor_stores", "username": "rose", "password": "rose123"}
-            host = db_spec['host']
+            host = db_spec['host'] if 'host' in db_spec else '127.0.0.1'
             port = db_spec['port'] if 'port' in db_spec else 3306
             schema = db_spec['schema']
             db_user = db_spec['username']
@@ -42,9 +40,9 @@ class BackupTasker(object):
         port_str = str.format('-P{0}', port) if port else ''
 
         # 获得schema中的所有table
-        with RoseVisionDb(getattr(glob, 'DB_SPEC')) as db:
+        with RoseVisionDb(db_spec) as db:
             tables = [tmp[0] for tmp in db.query(
-                str.format('select TABLE_SCHEMA from information_schema.tables where TABLE_SCHEMA="{0}"',
+                str.format('select TABLE_NAME from information_schema.tables where TABLE_SCHEMA="{0}"',
                            schema)).fetch_row(maxrows=0)]
 
         # tables = ['brand_info', 'brand_duration', 'translation', 'region_info', 'images_store', 'mfashion_tags',
@@ -77,3 +75,8 @@ class BackupTasker(object):
                 str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, backup_name))
 
         logger.info(str.format('AUTO BACKUP COMPLETED: {0}', backup_name))
+
+
+if __name__ == "__main__":
+    param = {"DATABASE": "DB_SPEC"}
+    BackupTasker.run(DATABASE='DB_SPEC')
