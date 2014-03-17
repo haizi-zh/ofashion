@@ -10,7 +10,7 @@ from urllib2 import quote
 
 
 def urlencode(url):
-    return quote(url, "/?:@&=+$,;")
+    return quote(url, "/?:@&=+$,;#")
 
 
 def get_products(db, start=0, count=100):
