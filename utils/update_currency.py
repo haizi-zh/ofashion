@@ -8,6 +8,7 @@ import common as cm
 import csv
 from cStringIO import StringIO
 
+
 class CurrencyUpdate(object):
     @classmethod
     def run(cls, logger=None, **kwargs):
@@ -34,6 +35,7 @@ class CurrencyUpdate(object):
                 db.rollback()
                 raise
 
-# if __name__ == '__main__':
-#     t= CurrencyUpdate()
-#     t.run()
+
+if __name__ == '__main__':
+    t = CurrencyUpdate()
+    t.run()
