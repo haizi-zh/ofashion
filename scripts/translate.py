@@ -307,11 +307,13 @@ def translate_main():
 # re5 = is_chs('alsdhasdfgl')
 # re6 = is_cht('adslhgadsflkj')
 
-logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
-logger = logging.getLogger()
+if __name__ == '__main__':
+    logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
+    logger = logging.getLogger()
 
-logger.info(str.format("Script start"))
+    logger.info(str.format("Script start"))
 
-translate_main()
+    translate_main()
 
-logger.info(str.format("Script end"))
+    logger.info(str.format("Script end"))
+    pass
