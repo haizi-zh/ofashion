@@ -19,7 +19,7 @@ from PIL import Image
 from core import RoseVisionDb
 import global_settings as glob
 from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint
-
+from scripts.urlprocess import urlencode
 
 class MStorePipeline(object):
     @staticmethod
@@ -308,6 +308,16 @@ class ProductPipeline(MStorePipeline):
         if 'model' not in entry or not entry['model']:
             raise DropItem()
         entry['fingerprint'] = gen_fingerprint(entry['brand_id'], entry['model'])
+
+        origin_url = entry['url']
+        encoded_url = None
+        try:
+            encoded_url = urlencode(origin_url)
+        except:
+            encoded_url = origin_url
+            spider.log(str.format("ERROR: {0} encode url error {1}", entry['fingerprint'], encoded_url))
+            pass
+        entry['url'] = encoded_url
 
         self.db.start_transaction()
         try:
