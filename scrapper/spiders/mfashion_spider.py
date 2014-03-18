@@ -46,7 +46,10 @@ class MFashionSpider(MFashionBaseSpider):
         ret = urlparse.urlparse(href)
         netloc = ret.netloc if ret.netloc else urlparse.urlparse(referer).netloc
         scheme = ret.scheme if ret.scheme else urlparse.urlparse(referer).scheme
-        return urlparse.urlunparse((scheme, netloc, ret.path, ret.params, ret.query, ret.fragment))
+        url_path = ret.path
+        if not href.startswith(ur'http') and not href.startswith(ur'/'):
+            url_path = str.format('{0}{1}', urlparse.urlparse(referer).path, ret.path)
+        return urlparse.urlunparse((scheme, netloc, url_path, ret.params, ret.query, ret.fragment))
 
     def __init__(self, name, region, *a, **kw):
         self.name = name
