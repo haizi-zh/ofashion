@@ -17,7 +17,6 @@ import global_settings as glob
 from products.products_utils import fetch_image
 from scripts import dbman
 from scripts.extract import SampleExtractor
-from scripts.sandbox import Sandbox
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report, process_log
 import core
@@ -30,7 +29,7 @@ __author__ = 'Zephyre'
 import sys
 from PIL import Image
 
-cmd_list = ('help', 'sandbox', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags')
+cmd_list = ('help', 'resize', 'image_check', 'editor_price', 'import_tag', 'process_tags')
 ext_list = ('.jpg', '.jpeg', '.tif', '.tiff', '.png', 'bmp')
 verbose = False
 force_overwrite = False
@@ -624,10 +623,6 @@ def extract(param_dict):
     obj.run()
 
 
-def sandbox(param_dict):
-    core.func_carrier(Sandbox(param_dict), 1)
-
-
 def price_change(param_dict):
     logger.info('PRICE-CHANGE DETECTION STARTED.')
     detection_param = {key: param_dict[key] for key in param_dict if key in ('brand', 'start', 'end')}
@@ -715,7 +710,7 @@ if __name__ == "__main__":
     ret = parse_args(sys.argv)
     func_dict = {'help': mstore_error, 'image-check': image_check, 'process-tags': process_tags, 'release': release,
                  'currency-update': dbman.currency_update, 'gen-reports': spider_prog_report,
-                 'gen-dev-reports': process_log, 'price-check': price_check, 'extract': extract, 'sandbox': sandbox,
+                 'gen-dev-reports': process_log, 'price-check': price_check, 'extract': extract,
                  'fingerprint-check': fingerprint_check, 'price-change': price_change}
     if ret:
         cmd = ret['cmd']
