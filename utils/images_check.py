@@ -35,13 +35,15 @@ class ImagesCheck(object):
                     #check sum
                     with open(full_path, 'rb') as f:
                         cur_check = hashlib.md5(f.read()).hexdigest()
+                    hash_url = hashlib.sha1(url).hexdigest()
                     #check width height format,size
                     img = Image.open(full_path)
                     (cur_width, cur_height) = img.size
                     cur_format = img.format
                     cur_size = os.path.getsize(full_path)
 
-                    if cur_check == checksum and cur_width == int(width) and cur_height == int(
+                    if cur_check == checksum and hash_url == os.path.splitext(os.path.split(path)[-1])[
+                        0] and cur_width == int(width) and cur_height == int(
                             height) and cur_format == fmt and cur_size == int(size):
                         pass
                     else:
