@@ -47,13 +47,14 @@ class UpdateSpider(MFashionBaseSpider):
                 region_list = [tmp['region'] for tmp in rs.fetch_row(maxrows=0, how=1)]
 
             for region in region_list:
-                rs = self.db.query_match({'idproducts', 'url', 'region'}, 'products',
+                rs = self.db.query_match({'idproducts', 'url', 'region', 'model'}, 'products',
                                          {'brand_id': brand, 'region': region})
-                products_map = {int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region']} for tmp in
+                products_map = {int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region'], 'model': tmp['model']} for tmp in
                                 rs.fetch_row(maxrows=0, how=1)}
                 for pid, data in products_map.items():
                     url = data['url']
                     region = data['region']
+                    model = data['model']
 
                     # url = 'http://www-cn.chanel.com/pt_BR/moda/produtos/bolsas/g/s.bolsa-de-couro-de-cordeiro-com.13K.A67972Y0826294305.c.13K.html'
                     # region = 'br'
@@ -68,7 +69,7 @@ class UpdateSpider(MFashionBaseSpider):
                         try:
                             yield Request(url=url,
                                           callback=self.parse,
-                                          meta={'brand': brand, 'pid': pid, 'region': region},
+                                          meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
                                           errback=self.onerror,
                                           dont_filter=True)
                         except TypeError:
