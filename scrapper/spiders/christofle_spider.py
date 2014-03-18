@@ -92,11 +92,11 @@ class ChristofleSpider(MFashionSpider):
             else:
                 old_price_only = True
                 old_price = ''.join(_sel.xpath('.//span[@class="price"]//text()').extract())
-            #价格在此处获取，无货时价格在详情页不会出现
-            if 'price' not in metadata:
-                m['price'] = self.reformat(old_price)
-                if not old_price_only and new_price:
-                    m['price_discount'] = self.reformat(new_price)
+            # 价格在此处获取，无货时价格在详情页不会出现
+            # if 'price' not in metadata:
+            #     m['price'] = self.reformat(old_price)
+            #     if not old_price_only and new_price:
+            #         m['price_discount'] = self.reformat(new_price)
             yield Request(url=url, callback=self.parse_details, errback=self.onerr, meta={'userdata': m})
 
     def parse_details(self, response):
@@ -113,6 +113,12 @@ class ChristofleSpider(MFashionSpider):
         name = self.fetch_name(response)
         if name:
             metadata['name'] = name
+
+        ret = self.fetch_price(response)
+        if 'price' in ret:
+            metadata['price'] = ret['price']
+        if 'price_discount' in ret:
+            metadata['price_discount'] = ret['price_discount']
 
         # 无details
         # details = ''.join(sel.xpath('//span[@class="itemNameTitle"]//text()').extract())
@@ -176,7 +182,6 @@ class ChristofleSpider(MFashionSpider):
 
         return name
 
-    # TODO fetch_price未完成，
     # 断货产品详细页无价格，单在列表页面有价格
     # http://www.christofle.com/fr/160-36-pieces-pour-6-personnes/23629-ens-36-pieces-origine-mat
     @classmethod
@@ -186,6 +191,18 @@ class ChristofleSpider(MFashionSpider):
 
         old_price = None
         new_price = None
+        price_node = sel.xpath('//div[@id="product"]//p[@class="price"][text()]')
+        if price_node:
+            try:
+                old_price = price_node.xpath('./text()').extract()[0]
+                old_price = cls.reformat(old_price)
+            except(TypeError, IndexError):
+                pass
+
+        if old_price:
+            ret['price'] = old_price
+        if new_price:
+            ret['price_discount'] = new_price
 
         return ret
 

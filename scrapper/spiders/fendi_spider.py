@@ -68,7 +68,7 @@ class FendiSpider(MFashionSpider):
 
             if not title:
                 continue
-            temp = re.search(ur'/([^/]+)/?$', href)
+            temp = re.search(ur'/([\w-]+)/?$', href)
             if not temp:
                 continue
             cat = temp.group(1).lower()
@@ -90,7 +90,7 @@ class FendiSpider(MFashionSpider):
             title = unicodify(item._root.text)
             if not title:
                 continue
-            m = re.search(ur'/([^/]+)/?$', href)
+            m = re.search(ur'/([\w-]+)/?$', href)
             if not m:
                 continue
             cat = m.group(1).lower()
@@ -113,7 +113,7 @@ class FendiSpider(MFashionSpider):
                 title = unicodify(item._root.text)
                 if not title:
                     continue
-                m = re.search(ur'/([^/]+)/?$', href)
+                m = re.search(ur'/([\w-]+)/?$', href)
                 if not m:
                     continue
                 cat = m.group(1).lower().strip()
@@ -235,7 +235,7 @@ class FendiSpider(MFashionSpider):
 
         model = None
         try:
-            m = re.search(ur'/([^/]+)/?$', response.url)
+            m = re.search(ur'/([\w-]+)/?$', response.url)
             if m:
                 model = unicodify(m.group(1))
         except(TypeError, IndexError):

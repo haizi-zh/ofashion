@@ -14,8 +14,29 @@ import re
 class YslSpider(MFashionSpider):
     spider_data = {
         'brand_id': 10388,
+        'currency': {
+            'ca': 'USD',
+            'se': 'EUR',
+            'ch': 'EUR',
+            'cz': 'EUR',
+            'dk': 'EUR',
+        },
         'home_urls': {
             'us': 'http://www.ysl.com/us',
+            'jp': 'http://www.ysl.com/jp',
+            'ca': 'http://www.ysl.com/ca',
+            'uk': 'http://www.ysl.com/gb',
+            'se': 'http://www.ysl.com/se',
+            'ch': 'http://www.ysl.com/ch',
+            'es': 'http://www.ysl.com/es',
+            'si': 'http://www.ysl.com/si',
+            'sk': 'http://www.ysl.com/sk',
+            'pt': 'http://www.ysl.com/pt',
+            'it': 'http://www.ysl.com/it',
+            'de': 'http://www.ysl.com/de',
+            'cz': 'http://www.ysl.com/cz',
+            'dk': 'http://www.ysl.com/dk',
+            'be': 'http://www.ysl.com/be',
         }
     }
 

@@ -420,11 +420,12 @@ class PublishRelease(object):
         # 价格排序的列表
         alt_prices = []
         for price_item in entry['price_list']:
-            if price_item['offline'] != 0:
-                continue
-            if price_item['price_discount']:
-                alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
-                                      ('price', 'price_discount')))
+            if price_item['offline']==0:
+                if price_item['price_discount']:
+                    alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
+                                          ('price', 'price_discount')))
+                else:
+                    alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
             else:
                 alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
 
