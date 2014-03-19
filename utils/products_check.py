@@ -2,8 +2,10 @@
 
 import json
 import urlparse
+import re
 
 __author__ = 'Ryan'
+
 
 def is_chs(val):
     """
@@ -67,6 +69,7 @@ def is_eng(val):
     else:
         return False
 
+
 def check_products_color(color):
     if not color:
         return True
@@ -102,9 +105,48 @@ def check_products_url(url):
     else:
         return False
 
+
 def check_products_is_local_lan(region, string):
     if region in ['cn', 'hk', 'tw', 'hk', 'us']:
         if is_chs(string) or is_cht(string) or is_eng(string):
             return True
         else:
             return False
+
+
+common_html_symbol = {
+    '&nbsp;': ' ',
+    '&#160;': ' ',
+
+    '&lt;': '<',
+    '&#60;': '<',
+
+    '&gt;': '>',
+    '&#62;': '>',
+
+    '&amp;': '&',
+    '&#38;': '&',
+}
+
+
+def check_products_is_valid_string(string):
+    if not string:
+        return True
+
+    processed_string = string
+    try:
+        for key, value in common_html_symbol.items():
+            processed_string = processed_string.replace(key, value)
+
+        processed_string = processed_string.strip()
+
+        processed_string = re.sub(ur'&#?\w+;', '', processed_string)
+
+        # TODO 针对html标签的处理
+
+        if processed_string == string:
+            return True
+        else:
+            return False, processed_string
+    except:
+        return False
