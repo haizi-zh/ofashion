@@ -143,9 +143,17 @@ class UpdatePipeline(MStorePipeline):
 
         if item['offline'] != offline:
             update_data['offline'] = item['offline']
-        # 如果原来有价格，后来没有，则定义offline为2
-        if is_price_offline:
-            update_data['offline'] = 2
+
+        # 如果在某一次recrawl或update过程中，
+        # 发现该商品的offline状态依然是0（即没有下线）,
+        # 但是无当前价格，则应该将其offline置为2。
+        if 'offline' not in update_data:
+            if offline == 0:
+                if is_price_offline:
+                    update_data['offline'] = 2
+        elif update_data['offline'] == 0:
+            if is_price_offline:
+                update_data['offline'] = 2
 
         return update_data
 
