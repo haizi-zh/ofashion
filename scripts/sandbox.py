@@ -10,8 +10,9 @@ from core import RoseVisionDb
 import core
 import global_settings as gs
 
-import pydevd
-pydevd.settrace('localhost', port=7102, stdoutToServer=True, stderrToServer=True)
+# import pydevd
+#
+# pydevd.settrace('localhost', port=7102, stdoutToServer=True, stderrToServer=True)
 
 SALT_PLAIN = 'roseVision88'
 SALT_md5 = hashlib.md5()
@@ -46,32 +47,32 @@ class Sandbox(object):
 
     def run(self):
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
-            idx = 0
-            count = 50
-            while True:
-                tot = int(db.query('SELECT COUNT(idproducts) FROM products').fetch_row()[0][0])
-                print str.format('idx={0}, tot={1}', idx, tot)
-                db.start_transaction()
-                try:
-                    results = db.query(
-                        str.format('SELECT idproducts, brand_id, model FROM products LIMIT {0}, {1}', idx,
-                                   count)).fetch_row(maxrows=0)
-                    if not results:
-                        break
+            # self.tot = int(db.query('''
+            # SELECT COUNT(*) FROM products AS p1
+            # JOIN products_image AS p2 ON p1.fingerprint=p2.fingerprint
+            # JOIN images_store AS p3 ON p2.checksum=p3.checksum
+            # ''').fetch_row()[0][0])
+            self.tot = 10000
+            self.progress = 0
 
-                    for pid, brand, model in results:
-                        # 目标checksum
-                        target = [tmp[0] for tmp in db.query_match(['checksum'], 'products_image',
-                                                                   {'brand_id': brand, 'model': model}).fetch_row(
-                            maxrows=0)]
-                        for checksum in target:
-                            db.insert({'idproducts_image': pid, 'brand_id': brand, 'model': model, 'checksum': checksum,
-                                       'processed': 1}, 'products_image')
-                    idx += count
-                    db.commit()
-                except:
-                    db.rollback()
-                    raise
+            rs = db.query('''
+            SELECT p1.brand_id, p3.path FROM products AS p1
+            JOIN products_image AS p2 ON p1.fingerprint=p2.fingerprint
+            JOIN images_store AS p3 ON p2.checksum=p3.checksum
+            ''', use_result=True)
+
+            err_set = set({})
+            while True:
+                bulk = rs.fetch_row(maxrows=100)
+                if not bulk:
+                    break
+
+                for brand_id, path in bulk:
+                    self.progress += 1
+                    if not re.search(str.format('^{0}_', brand_id), path):
+                        print str.format('{0}:{1}', brand_id, path)
+
+            print 'DONE'
 
     def run2(self):
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
@@ -107,6 +108,7 @@ class Sandbox(object):
 
 
 if __name__ == '__main__':
-    # obj = Sandbox()
-    core.func_carrier(Sandbox(), 0.3)
+    obj = Sandbox()
+    obj.run()
+    # core.func_carrier(Sandbox(), 0.3)
     pass

@@ -79,9 +79,12 @@ def price_changed(brand_list=None, start=None, end=None):
 
         results = {'warnings': [], 'price_up': {}, 'discount_up': {}, 'price_down': {}, 'discount_down': {}}
         for brand in brand_list:
-            pid_list = db.query(str.format('''SELECT p1.model,p1.idproducts,p1.region,p1.fingerprint FROM products AS p1
+            pid_list = db.query(str.format('''
+            SELECT p1.model,p1.idproducts,p1.region,p1.fingerprint FROM products AS p1
             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
-            WHERE p1.offline=0 AND p2.price IS NOT NULL AND brand_id={0} AND p1.region IN ({1}) AND p2.date BETWEEN {2} AND {3}''',
+            WHERE p1.offline=0 AND p2.price IS NOT NULL AND brand_id={0} AND p1.region IN ({1})
+            AND p2.date BETWEEN {2} AND {3}
+            ''',
                                            brand, ','.join(str.format('"{0}"', tmp) for tmp in main_countries),
                                            *map(lambda val: val.strftime('"%Y-%m-%d %H:%M:%S"'),
                                                 (start, end)))).fetch_row(maxrows=0)
