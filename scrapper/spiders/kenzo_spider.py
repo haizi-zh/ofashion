@@ -123,7 +123,8 @@ class KenzoSpider(MFashionSpider):
         #         metadata['color'] = colors
 
         url = self.spider_data['image_data'] + str(model)
-        yield Request(url=url, callback=self.parse_image, errback=self.onerr, meta={'userdata': metadata})
+        m = copy.deepcopy(metadata)
+        yield Request(url=url, callback=self.parse_image, errback=self.onerr, meta={'userdata': m})
 
         item = ProductItem()
         item['url'] = metadata['url']
