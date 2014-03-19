@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # coding=utf-8
 
+# import pydevd
+
+# pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
+
+
 import datetime
 import logging
 import os

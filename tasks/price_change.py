@@ -9,6 +9,10 @@ from utils.utils_core import get_logger
 
 __author__ = 'Zephyre'
 
+# import pydevd
+#
+# pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
+
 
 class PriceChangeTasker(object):
     @classmethod
@@ -34,6 +38,8 @@ class PriceChangeTasker(object):
         @param kwargs: brand: 需要处理的品牌。如果为None，则对所有的品牌进行处理。
                         start：价格变化检查的开始时间。如果为None，则为昨天凌晨。
                         end：价格变化检查的结束时间。如果为None，则为今天凌晨。
+                        start_delta: 调整时间（单位为天）。比如：delta为0.5，则表示在start/end的基础上，再往后延长半天。
+                        end_delta
         """
 
         # 是否处于静默模式
@@ -43,9 +49,12 @@ class PriceChangeTasker(object):
         brand_list = [int(val) for val in kwargs['brand']] if 'brand' in kwargs else None
         start_ts = kwargs['start'][0] if 'start' in kwargs else None
         end_ts = kwargs['end'][0] if 'end' in kwargs else None
+        start_delta = datetime.timedelta(kwargs['start_delta']) if 'start_delta' in kwargs else datetime.timedelta(0)
+        end_delta = datetime.timedelta(kwargs['end_delta']) if 'end_delta' in kwargs else datetime.timedelta(0)
+
 
         # 得到价格变化的信息列表
-        change_detection = price_changed(brand_list, start_ts, end_ts)
+        change_detection = price_changed(brand_list, start_ts, end_ts, start_delta, end_delta)
         changes = {'U': [], 'D': []}
         for change_type in ['discount_down', 'price_down', 'discount_up', 'price_up']:
             for brand in change_detection[change_type]:
@@ -80,9 +89,12 @@ class PriceChangeTasker(object):
         logger = kwargs['logger'] if 'logger' in kwargs else get_logger(to_file=True)
         logger.info('PRICE-CHANGE DETECTION STARTED')
 
+        logger.info('CLEARING OUTDATED RECORDS')
         cls.tag_outdated(**kwargs)
+        logger.info('GENERATING PRICE TRENDS')
         result = cls.tag_changed(**kwargs)
         if not result:
+            logger.info('NO PRICE TRENDS DETECTED')
             return
 
         dst = kwargs['dst'][0] if 'dst' in kwargs and kwargs['dst'] else '~/push_works/push.log'
@@ -99,8 +111,10 @@ class PriceChangeTasker(object):
 
         if not ssh_host:
             # 如果没有SSH信息，说明不需要通过SFTP将结果传输到远端服务器上
+            logger.info('DONE')
             return
 
+        logger.info('UPLOADING PRICE TRENDS')
         # 将变动结果写入临时目录
         file_name = str.format('/tmp/price_change_{0}.log', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
         with open(file_name, 'wb') as f:
@@ -113,3 +127,8 @@ class PriceChangeTasker(object):
         os.remove(file_name)
 
         logger.info('DONE')
+
+
+if __name__ == '__main__':
+    pass
+    # PriceChangeTasker.run()
