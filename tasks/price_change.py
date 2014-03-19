@@ -73,6 +73,8 @@ class PriceChangeTasker(object):
             db.start_transaction()
             try:
                 for change_type in ['U', 'D']:
+                    if not changes[change_type]:
+                        continue
                     db.update({'price_change': change_type}, 'products',
                               str.format('idproducts IN ({0})', ','.join(str(tmp) for tmp in changes[change_type])),
                               timestamps=['update_time'])
