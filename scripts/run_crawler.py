@@ -107,7 +107,7 @@ def set_up_spider(spider_class, data, is_update=False):
 
         spider = spider_class(region_list)
 
-    crawler.settings.values['AUTOTHROTTLE_ENABLED'] = True
+    crawler.settings.values['AUTOTHROTTLE_ENABLED'] = False
 
     # 设置spider的user agent
     ua = data['user-agent'][0] if 'user-agent' in data else 'chrome'
