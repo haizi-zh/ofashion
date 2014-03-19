@@ -125,12 +125,14 @@ class UpdatePipeline(MStorePipeline):
         if 'color' in metadata and metadata['color'] != color:
             update_data['color'] = json.dumps(metadata['color'], ensure_ascii=False)
 
+        is_price_offline = False
         # 处理价格（注意：价格属于经常变动的信息，需要及时更新）
         if 'price' in metadata and metadata['price'] != price:
             update_data['price'] = metadata['price']
         elif 'price' not in metadata and price:
             # 原来有价格，现在没有价格
             update_data['price'] = None
+            is_price_offline = True
         if 'price_discount' in metadata:
             if metadata['price_discount'] != price_discount:
                 update_data['price_discount'] = metadata['price_discount']
@@ -141,6 +143,9 @@ class UpdatePipeline(MStorePipeline):
 
         if item['offline'] != offline:
             update_data['offline'] = item['offline']
+        # 如果原来有价格，后来没有，则定义offline为2
+        if is_price_offline:
+            update_data['offline'] = 2
 
         return update_data
 
