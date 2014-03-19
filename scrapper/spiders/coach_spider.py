@@ -262,19 +262,11 @@ class CoachSpider(MFashionSpider):
         if prev_success:
             try:
                 data = json.loads(response.body)
-                price_set = set([])
-                for key in ['retailPrice', 'skuPrice']:
-                    if key not in data:
-                        continue
-                    try:
-                        price_set.add(float(data[key]))
-                    except (ValueError, TypeError):
-                        continue
-                if len(price_set) >= 2:
-                    metadata['price'] = str(max(price_set))
-                    metadata['price_discount'] = str(min(price_set))
-                elif len(price_set) == 1:
-                    metadata['price'] = str(list(price_set)[0])
+                ret = self.get_price_info_from_json(data)
+                if 'price' in ret:
+                    metadata['price'] = ret['price']
+                if 'price_discount' in ret:
+                    metadata['price_discount'] = ret['price_discount']
             except (ValueError, KeyError):
                 pass
 
@@ -291,12 +283,11 @@ class CoachSpider(MFashionSpider):
         if prev_success:
             try:
                 data = json.loads(response.body)
-                if data['description'][0]['description']:
-                    metadata['description'] = self.reformat(
-                        re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['description']))
-                if data['description'][0]['detail']:
-                    metadata['details'] = self.reformat(
-                        re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['detail']))
+                ret = self.get_desc_info_from_json(data)
+                if 'description' in ret:
+                    metadata['description'] = ret['description']
+                if 'details' in ret:
+                    metadata['details'] = ret['details']
             except (ValueError, IndexError, KeyError):
                 pass
 
@@ -325,6 +316,43 @@ class CoachSpider(MFashionSpider):
         item['model'] = metadata['model']
         item['metadata'] = metadata
         return item
+
+    @classmethod
+    def get_price_info_from_json(self, data):
+        ret = {}
+        price_set = set([])
+        try:
+            for key in ['retailPrice', 'skuPrice']:
+                if key not in data:
+                    continue
+                try:
+                    price_set.add(float(data[key]))
+                except (ValueError, TypeError):
+                    continue
+            if len(price_set) >= 2:
+                ret['price'] = str(max(price_set))
+                ret['price_discount'] = str(min(price_set))
+            elif len(price_set) == 1:
+                ret['price'] = str(list(price_set)[0])
+        except(TypeError, IndexError):
+            pass
+
+        return ret
+
+    @classmethod
+    def get_desc_info_from_json(self, data):
+        ret = {}
+        try:
+            if data['description'][0]['description']:
+                ret['description'] = self.reformat(
+                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['description']))
+            if data['description'][0]['detail']:
+                ret['details'] = self.reformat(
+                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['detail']))
+        except (ValueError, IndexError, KeyError):
+            pass
+
+        return ret
 
     @classmethod
     def is_offline(cls, response, spider=None):
@@ -465,19 +493,11 @@ class CoachSpider(MFashionSpider):
         new_price = None
         try:
             data = json.loads(response.body)
-            price_set = set([])
-            for key in ['retailPrice', 'skuPrice']:
-                if key not in data:
-                    continue
-                try:
-                    price_set.add(float(data[key]))
-                except (ValueError, TypeError):
-                    continue
-            if len(price_set) >= 2:
-                old_price = str(max(price_set))
-                new_price = str(min(price_set))
-            elif len(price_set) == 1:
-                old_price = str(list(price_set)[0])
+            infos = cls.get_price_info_from_json(data)
+            if 'price' in infos:
+                old_price = infos['price']
+            if 'price_discount' in infos:
+                new_price = infos['price_discount']
         except (ValueError, KeyError):
             pass
 
@@ -521,9 +541,9 @@ class CoachSpider(MFashionSpider):
         description = None
         try:
             data = json.loads(response.body)
-            if data['description'][0]['description']:
-                description = cls.reformat(
-                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['description']))
+            ret = cls.get_desc_info_from_json(data)
+            if 'description' in ret:
+                description = ret['description']
         except (ValueError, IndexError, KeyError):
             pass
 
@@ -562,9 +582,9 @@ class CoachSpider(MFashionSpider):
         details = None
         try:
             data = json.loads(response.body)
-            if data['description'][0]['detail']:
-                details = cls.reformat(
-                    re.sub(ur'<\s*li\s*/?>', u'\r', data['description'][0]['detail']))
+            ret = cls.get_desc_info_from_json(data)
+            if 'details' in ret:
+                details = ret['details']
         except (ValueError, IndexError, KeyError):
             pass
 
