@@ -220,19 +220,23 @@ class YslSpider(MFashionSpider):
         price_node = sel.xpath('//div[@id="itemContent"]/div[@id="itemDetails"]/div[@id="itemInfo"]/div[@id="itemPrice"]')
         if price_node:
 
-            old_price_node = price_node.xpath('./div[@data-item-prop="priceWithoutPromotion"][text()]')
+            old_price_node = price_node.xpath('./div[@data-item-prop="priceWithoutPromotion"]')
             if old_price_node:
                 try:
-                    old_price = old_price_node.xpath('./text()').extract()[0]
+                    old_price = ''.join(old_price_node.xpath('.//text()').extract())
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
 
-            new_price_node = price_node.xpath('./div[@data-item-prop="price"][text()]')
+            new_price_node = price_node.xpath('./div[@data-item-prop="price"]')
             if new_price_node:
                 try:
-                    new_price = new_price_node.xpath('./text()').extract()[0]
-                    new_price = cls.reformat(new_price)
+                    if old_price:
+                        new_price = ''.join(new_price_node.xpath('.//text()').extract())
+                        new_price = cls.reformat(new_price)
+                    else:
+                        old_price = ''.join(new_price_node.xpath('.//text()').extract())
+                        old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
 
