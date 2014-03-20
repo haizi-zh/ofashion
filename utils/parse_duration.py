@@ -1,16 +1,19 @@
 # coding=utf-8
-__author__ = 'Administrator'
 
 from core import RoseVisionDb
 import global_settings as gs
 import os
 import re
 import datetime
+from utils.utils_core import get_logger
 
 
-class PaserDuration(object):
+class ParseDuration(object):
     @classmethod
     def run(cls, logger=None, **kwargs):
+
+        logger = logger if 'logger' in kwargs else get_logger()
+        logger.info('Parse Duration Check STARTED')
 
         log_path = os.sep.join((getattr(gs, 'STORAGE_PATH'), 'products', 'log'))
         tmp = []
@@ -19,7 +22,7 @@ class PaserDuration(object):
                 tmp.append(re.findall(r'^(\d{5})', x)[0])
         brands = list(set(tmp))
 
-        if brands == []:
+        if not brands:
             pass
         else:
             with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
@@ -38,7 +41,7 @@ class PaserDuration(object):
                             # (product, name, log_time) = re.split(r'_', os.path.basename(os.path.splitext(file)[0]))
                             f = open(log_path + os.sep + log, 'rb')
                             lines = f.readlines()
-                            if lines == []:
+                            if not lines:
                                 continue
                             st = re.findall(
                                 r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[[^\[\]]*\] INFO: Spider started, processing the following regions:',
@@ -60,15 +63,17 @@ class PaserDuration(object):
                                 db.insert({'start_time': start_time, 'end_time': end_time, 'duration': duration.seconds,
                                            'country_cnt': regions_no, 'brand_id': brand},
                                           'brand_duration', replace=True)
-                                print '%s brand-id:%s duration time update' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),brand)
+                                logger.info('%s brand-id:%s duration time update' % (
+                                    datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand))
                                 break
                             else:
                                 pass
                     else:
                         pass
+        logger.info('Parse Duration Check ENDED!!!')
 
 
 if __name__ == '__main__':
-    t = PaserDuration()
+    t = ParseDuration()
     t.run()
 
