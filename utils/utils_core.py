@@ -212,32 +212,13 @@ def parse_args(args):
     return {'cmd': cmd, 'param': param_dict}
 
 
-def get_logger(logger_name='RoseVision', filename=None, to_file=False,
-               log_format='%(asctime)-24s%(levelname)-8s%(message)s', level=logging.INFO):
+def get_logger(logger_name='rosevision'):
     """
     返回日志处理器
     @param logger_name:
-    @param to_file: 是否要写到文件中
-    @param filename:
-    @param log_format:
-    @param level:
     @return:
     """
-    if to_file and not filename:
-        filename = os.path.join(getattr(glob, 'STORAGE_PATH'), 'log',
-                                unicode.format(u'{0}_{1}.log', unicodify(logger_name),
-                                               datetime.datetime.now().strftime('%Y%m%d')))
-    fh = logging.FileHandler(filename, encoding='utf-8') if filename else None
-    fh.setFormatter(logging.Formatter(fmt=log_format))
-    fh.setLevel(logging.INFO)
-    # logging.basicConfig(format=log_format, level=level)
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
-    if fh:
-        root_logger = logging.getLogger()
-        root_logger.handlers = []
-        logger.addHandler(fh)
-    return logger
+    return logging.getLogger(logger_name)
 
 
 def unicodify(val):

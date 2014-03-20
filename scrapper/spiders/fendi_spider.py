@@ -106,7 +106,7 @@ class FendiSpider(MFashionSpider):
         sel = Selector(response)
 
         # 是否有filter？
-        ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='filter']//ul/li/a[@href]")
+        ret = sel.xpath("//aside[contains(@class, 'sidebar-actions')]//div[@class='filter']//ul/li/a[@href]")
         if len(ret) > 0 and 'filter' not in metadata['extra']:
             for item in ret:
                 href = unicodify(item._root.attrib['href'])
@@ -251,10 +251,11 @@ class FendiSpider(MFashionSpider):
         old_price = None
         new_price = None
         try:
-            ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='price']")
-            if len(ret) > 0:
-                temp = unicodify(ret[0]._root.text)
-                old_price = temp.strip() if temp else None
+            temp_node = sel.xpath("//aside[contains(@class, 'sidebar-actions')]//div[@class='price']")
+            if len(temp_node) > 0:
+                price_text = ''.join(cls.reformat(val) for val in temp_node.xpath('./text()').extract())
+                if price_text:
+                    old_price = cls.reformat(price_text)
         except(TypeError, IndexError):
             pass
 
@@ -271,7 +272,7 @@ class FendiSpider(MFashionSpider):
 
         description = None
         try:
-            ret = sel.xpath("//aside[@class='sidebar-actions']//div[@class='desc']")
+            ret = sel.xpath("//aside[contains(@class, 'sidebar-actions')]//div[@class='desc']")
             if len(ret) > 0:
                 temp = unicodify(ret[0]._root.text)
                 description = temp.strip() if temp else None

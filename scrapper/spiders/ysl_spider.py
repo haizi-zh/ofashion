@@ -109,6 +109,8 @@ class YslSpider(MFashionSpider):
         sel = Selector(response)
 
         product_nodes = sel.xpath('//div[@class="productsFromGrid clearfix"]/article[child::a[@href]]')
+        if not product_nodes:
+            product_nodes = sel.xpath('//div[@id="pageContent"]//div[@data-position][child::a[@href]]')
         for node in product_nodes:
             try:
                 href = node.xpath('./a/@href').extract()[0]
@@ -121,7 +123,28 @@ class YslSpider(MFashionSpider):
             yield Request(url=href,
                           callback=self.parse_product,
                           errback=self.onerr,
-                          meta={'userdata': m})
+                          meta={'userdata': m},
+                          dont_filter=True)
+
+        if product_nodes:
+            # 取的当前页数
+            current_page = 1
+            mt = re.search(r'page=(\d+)', response.url)
+            if mt:
+                current_page = (int)(mt.group(1))
+
+            next_page = current_page + 1
+            # 拼下一页的url
+            if mt:
+                next_url = re.sub(r'page=\d+', str.format('page={0}', next_page), response.url)
+            else:
+                next_url = str.format('{0}?page={1}', response.url, next_page)
+
+            # 请求下一页
+            yield Request(url=next_url,
+                          callback=self.parse_product_list,
+                          errback=self.onerr,
+                          meta={'userdata': metadata})
 
     def parse_product(self, response):
 
@@ -220,19 +243,23 @@ class YslSpider(MFashionSpider):
         price_node = sel.xpath('//div[@id="itemContent"]/div[@id="itemDetails"]/div[@id="itemInfo"]/div[@id="itemPrice"]')
         if price_node:
 
-            old_price_node = price_node.xpath('./div[@data-item-prop="priceWithoutPromotion"][text()]')
+            old_price_node = price_node.xpath('./div[@data-item-prop="priceWithoutPromotion"]')
             if old_price_node:
                 try:
-                    old_price = old_price_node.xpath('./text()').extract()[0]
+                    old_price = ''.join(old_price_node.xpath('.//text()').extract())
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
 
-            new_price_node = price_node.xpath('./div[@data-item-prop="price"][text()]')
+            new_price_node = price_node.xpath('./div[@data-item-prop="price"]')
             if new_price_node:
                 try:
-                    new_price = new_price_node.xpath('./text()').extract()[0]
-                    new_price = cls.reformat(new_price)
+                    if old_price:
+                        new_price = ''.join(new_price_node.xpath('.//text()').extract())
+                        new_price = cls.reformat(new_price)
+                    else:
+                        old_price = ''.join(new_price_node.xpath('.//text()').extract())
+                        old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass
 

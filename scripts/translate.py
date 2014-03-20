@@ -105,7 +105,7 @@ def is_cht(val):
 
 def is_eng(val):
     """
-    val是否为cjk字符集
+    val是否为英语
     @param val:
     """
     if val:

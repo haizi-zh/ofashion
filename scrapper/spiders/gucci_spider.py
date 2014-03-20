@@ -220,13 +220,11 @@ class GucciSpider(MFashionSpider):
         metadata = response.meta['userdata']
         try:
             data = json.loads(response.body)['style_wrappers']
-            k = data.keys()[0]
-            data = data[k]
-
-            if 'price' in data and data['price']:
-                metadata['price'] = data['price']
-            if 'style_code' in data:
-                metadata['model'] = data['style_code']
+            ret = self.get_infos_from_json(data)
+            if 'price' in ret and ret['price']:
+                metadata['price'] = ret['price']
+            if 'model' in ret:
+                metadata['model'] = ret['model']
         except(KeyError, IndexError, KeyError):
             pass
 
@@ -243,6 +241,20 @@ class GucciSpider(MFashionSpider):
             return item
         else:
             return None
+
+    @classmethod
+    def get_infos_from_json(cls, data):
+        ret = {}
+
+        k = data.keys()[0]
+        data = data[k]
+
+        if 'price' in data and data['price']:
+            ret['price'] = data['price']
+        if 'style_code' in data:
+            ret['model'] = data['style_code']
+
+        return ret
 
     @classmethod
     def is_offline(cls, response, spider=None):
@@ -332,11 +344,9 @@ class GucciSpider(MFashionSpider):
         new_price = None
         try:
             data = json.loads(response.body)['style_wrappers']
-            k = data.keys()[0]
-            data = data[k]
-
-            if 'price' in data and data['price']:
-                old_price = data['price']
+            infos = cls.get_infos_from_json(data)
+            if 'price' in infos and infos['price']:
+                old_price = infos['price']
         except(TypeError, IndexError, KeyError):
             pass
 

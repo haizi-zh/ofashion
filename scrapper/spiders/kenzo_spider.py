@@ -123,7 +123,8 @@ class KenzoSpider(MFashionSpider):
         #         metadata['color'] = colors
 
         url = self.spider_data['image_data'] + str(model)
-        yield Request(url=url, callback=self.parse_image, errback=self.onerr, meta={'userdata': metadata})
+        m = copy.deepcopy(metadata)
+        yield Request(url=url, callback=self.parse_image, errback=self.onerr, meta={'userdata': m})
 
         item = ProductItem()
         item['url'] = metadata['url']
@@ -141,35 +142,61 @@ class KenzoSpider(MFashionSpider):
         except ValueError:
             return
 
+        image_urls = []
+        infos = self.get_infos_from_json(data)
+        if 'image_urls' in infos:
+            image_urls = infos['image_urls']
+        if 'color' in infos:
+            metadata['color'] = infos['color']
+        if 'price' in infos:
+            metadata['price'] = infos['price']
+        if 'price_discount' in infos:
+            metadata['price_discount'] = infos['price_discount']
+
+        item = ProductItem()
+        item['url'] = metadata['url']
+        item['model'] = metadata['model']
+        if image_urls:
+            item['image_urls'] = image_urls
+        item['metadata'] = metadata
+        yield item
+
+    @classmethod
+    def get_infos_from_json(cls, data):
+        ret = {}
+
+        image_urls = []
+        color = []
+        price = None
+        price_discount = None
+
         for clr_item in data['data']['colors_list']:
-            model = clr_item['id']
-            if model == metadata['model']:
-                m = copy.deepcopy(metadata)
-                try:
-                    image_urls = [val['image_src'] for val in clr_item['images']]
-                    model = clr_item['id']
-                    color = self.reformat(clr_item['name'])
+            try:
+                image_urls += [val['image_src'] for val in clr_item['images']]
+                color += [cls.reformat(clr_item['name'])]
+            except (IndexError, KeyError):
+                continue
+        prod_item = filter(lambda val: val['color_id'], data['data']['products'])
+        tmp = prod_item[0]
+        try:
+            price = str(float(tmp['price']) / 100) if 'price' in tmp else None
+        except (TypeError, ValueError):
+            price = None
+        try:
+            price_discount = str(float(tmp['price_sale']) / 100) if 'price_sale' in tmp else None
+        except (TypeError, ValueError):
+            price_discount = None
 
-                    prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
-                    tmp = prod_item[0]
-                    try:
-                        price = str(float(tmp['price']) / 100) if 'price' in tmp else None
-                    except (TypeError, ValueError):
-                        price = None
-                    try:
-                        price_discount = str(float(tmp['price_sale']) / 100) if 'price_sale' in tmp else None
-                    except (TypeError, ValueError):
-                        price_discount = None
-                except (IndexError, KeyError):
-                    continue
+        if image_urls:
+            ret['image_urls'] = image_urls
+        if color:
+            ret['color'] = color
+        if price:
+            ret['price'] = price
+        if price_discount:
+            ret['price_discount'] = price_discount
 
-                item = ProductItem()
-                item['url'] = m['url']
-                item['model'] = model
-                if image_urls:
-                    item['image_urls'] = image_urls
-                item['metadata'] = m
-                yield item
+        return ret
 
     @classmethod
     def is_offline(cls, response, spider=None):
@@ -205,9 +232,9 @@ class KenzoSpider(MFashionSpider):
         if model:
             url = cls.spider_data['image_data'] + str(model)
             return Request(url=url,
-                          callback=cls.fetch_price_server,
-                          errback=spider.onerror,
-                          meta=response.meta)
+                           callback=cls.fetch_price_server,
+                           errback=spider.onerror,
+                           meta=response.meta)
         else:
             return ret
 
@@ -223,22 +250,11 @@ class KenzoSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        for clr_item in data['data']['colors_list']:
-            try:
-                model = clr_item['id']
-
-                prod_item = filter(lambda val: val['color_id'] == model, data['data']['products'])
-                tmp = prod_item[0]
-                try:
-                    old_price = str(float(tmp['price']) / 100) if 'price' in tmp else None
-                except (TypeError, ValueError):
-                    old_price = None
-                try:
-                    new_price = str(float(tmp['price_sale']) / 100) if 'price_sale' in tmp else None
-                except (TypeError, ValueError):
-                    new_price = None
-            except (IndexError, KeyError):
-                continue
+        infos = cls.get_infos_from_json(data)
+        if 'price' in infos:
+            old_price = infos['price']
+        if 'price_discount' in infos:
+            new_price = infos['price_discount']
 
         if old_price:
             ret['price'] = str(old_price)
@@ -283,9 +299,9 @@ class KenzoSpider(MFashionSpider):
         if model:
             url = cls.spider_data['image_data'] + str(model)
             return Request(url=url,
-                          callback=cls.fetch_color_server,
-                          errback=spider.onerror,
-                          meta=response.meta)
+                           callback=cls.fetch_color_server,
+                           errback=spider.onerror,
+                           meta=response.meta)
         else:
             return None
 
@@ -299,13 +315,8 @@ class KenzoSpider(MFashionSpider):
             return
 
         colors = []
-        for clr_item in data['data']['colors_list']:
-            try:
-                model = clr_item['id']
-                color = cls.reformat(clr_item['name'])
-                if color:
-                    colors += [color]
-            except (IndexError, KeyError):
-                continue
+        infos = cls.get_infos_from_json(data)
+        if 'color' in infos:
+            colors = infos['color']
 
         return colors

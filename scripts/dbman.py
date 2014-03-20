@@ -420,7 +420,7 @@ class PublishRelease(object):
         # 价格排序的列表
         alt_prices = []
         for price_item in entry['price_list']:
-            if price_item['offline']==0:
+            if price_item['offline'] == 0:
                 if price_item['price_discount']:
                     alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
                                           ('price', 'price_discount')))
@@ -449,27 +449,39 @@ class PublishRelease(object):
         #     entry['price_discount'] = gs.currency_info()[currency] * price_discount
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
-        checksums = []
-        cover_checksum = None
         p = prods[0]
-        rs = db.query(str.format(
-            '''SELECT p1.checksum, p2.region FROM products_image AS p1
-            JOIN products AS p2 ON p1.idproducts_image=p2.idproducts
-            WHERE p2.brand_id={0} AND p2.model="{1}" ORDER BY p1.idproducts_image''',
-            p['brand_id'], p['model'])).fetch_row(maxrows=0)
-        # rs = db.query_match(['checksum'], 'products_image',
-        #                     {'brand_id': p['brand_id'], 'model': p['model']},
-        #                     tail_str='ORDER BY idproducts_image').fetch_row(maxrows=0)
-        region_images = {}
-        for checksum, region in rs:
-            if region not in region_images:
-                region_images[region] = []
-            region_images[region].append(checksum)
-            # 那个国家的图片数量最多？
-        region_order = sorted(region_images.keys(), key=lambda val: len(region_images[val]), reverse=True)
-        if region_order:
-            checksums = region_images[region_order[0]]
-            cover_checksum = checksums[0]
+        checksums = []
+        # 爆照checksums中的数据唯一，且顺序和idproducts_image一致
+        for tmp in db.query(str.format('''
+          SELECT p1.checksum, p3.width, p3.height, p3.path FROM products_image AS p1
+          JOIN products AS p2 ON p1.fingerprint=p2.fingerprint
+          JOIN images_store AS p3 ON p1.checksum=p3.checksum
+          WHERE p2.fingerprint="{0}" ORDER BY p1.idproducts_image
+          ''', p['fingerprint'])).fetch_row(maxrows=0, how=1):
+            if tmp not in checksums:
+                checksums.append(tmp)
+
+        # 如果没有图片，则暂时不添加到release表中
+        if not checksums:
+            return
+
+        image_list = []
+        for val in checksums:
+            tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
+            if not image_list:
+                entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
+            image_list.append(tmp)
+
+        # region_images = {}
+        # for checksum in rs:
+        #     if region not in region_images:
+        #         region_images[region] = []
+        #     region_images[region].append(checksum)
+        #     # 那个国家的图片数量最多？
+        # region_order = sorted(region_images.keys(), key=lambda val: len(region_images[val]), reverse=True)
+        # if region_order:
+        #     checksums = region_images[region_order[0]]
+        #     cover_checksum = checksums[0]
 
         # for val in rs:
         #     if val[0] in checksums:
@@ -477,22 +489,18 @@ class PublishRelease(object):
         #     checksums.append(val[0])
         #     if not cover_checksum:
         #         cover_checksum = val[0]
-        checksum_order = {key: idx for idx, key in enumerate(checksums)}
-
-        # 如果没有图片，则暂时不添加到release表中
-        if not checksums:
-            return
-
-        rs = db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
-                            str.format('checksum IN ({0})',
-                                       ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
-            maxrows=0, how=1)
-        image_list = []
-        for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
-            tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
-            image_list.append(tmp)
-            if val['checksum'] == cover_checksum:
-                entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
+        # checksum_order = {key: idx for idx, key in enumerate(checksums)}
+        #
+        # rs = db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
+        #                     str.format('checksum IN ({0})',
+        #                                ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
+        #     maxrows=0, how=1)
+        # image_list = []
+        # for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
+        #     tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
+        #     image_list.append(tmp)
+        #     if val['checksum'] == cover_checksum:
+        #         entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
 
         entry['image_list'] = json.dumps(image_list[:self.max_images], ensure_ascii=False)
 
@@ -506,19 +514,19 @@ class PublishRelease(object):
             self.tot = int(rs.fetch_row()[0][0])
             # 得到该品牌所有的记录
             record_list = db.query_match(['*'], self.products_tbl, {'brand_id': self.brand_id},
-                                         tail_str='ORDER BY model').fetch_row(how=1, maxrows=0)
+                                         tail_str='ORDER BY fingerprint').fetch_row(how=1, maxrows=0)
 
             # 每一个model，对应哪些pid需要合并？
             model_list = {}
             for self.progress, record in enumerate(record_list):
                 record = {k: cm.unicodify(record[k]) for k in record}
-                if record['model'] not in model_list:
+                if record['fingerprint'] not in model_list:
                     if model_list.keys():
                         # 归并上一个model
                         self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
-                    model_list[record['model']] = [record]
+                    model_list[record['fingerprint']] = [record]
                 else:
-                    model_list[record['model']].append(record)
+                    model_list[record['fingerprint']].append(record)
 
             # 归并最后一个model。注意：model_list有可能为空
             if model_list:

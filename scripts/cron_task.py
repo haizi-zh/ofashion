@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # coding=utf-8
 
+# import pydevd
+#
+# pydevd.settrace('localhost', port=7100, stdoutToServer=True, stderrToServer=True)
+
 import datetime
 import logging
 import os
@@ -8,7 +12,6 @@ import errno
 import sys
 import global_settings as glob
 import re
-# from utils import utils
 from utils.utils_core import parse_args, unicodify, get_logger
 
 __author__ = 'Zephyre'
@@ -139,13 +142,21 @@ def my_import(name):
 
 if __name__ == "__main__":
     ret = parse_args(sys.argv)
+    section = ret['cmd']
+    if not section:
+        section = 'CRON_TASK_DEFAULT'
 
-    for task_name, task_param in getattr(glob, 'CRON_TASK', {}).items():
+    logger = get_logger()
+    logger.info(str.format('TASK {0} STARTED.', section))
+
+    for task_name, task_param in getattr(glob, section, {}).items():
         try:
             class_name = task_param['classname']
-            func = getattr(my_import(class_name),'run')
+            func = getattr(my_import(class_name), 'run')
             func(**task_param['param'])
 
         except (KeyError,):
-            logger = get_logger(to_file=True).exception(unicode.format(u'Invalid task name: {0}',
-                                                                       unicodify(task_name)).encode('utf-8'))
+            logger = get_logger().exception(unicode.format(u'Invalid task name: {0}',
+                                                           unicodify(task_name)).encode('utf-8'))
+
+    logger.info(str.format('TASK {0} DONE.', section))

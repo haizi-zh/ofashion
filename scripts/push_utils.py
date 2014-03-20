@@ -7,7 +7,8 @@ from utils.utils_core import unicodify
 __author__ = 'Zephyre'
 
 
-def price_changed(brand_list=None, start=None, end=None):
+def price_changed(brand_list=None, start=None, end=None, start_delta=datetime.timedelta(0),
+                  end_delta=datetime.timedelta(0)):
     """
     获得start到end时间区间内价格发生变化的单品记录。如果start和end中有任何一个为None，则默认采用过去一天的时间区间。
     假设2014/02/25 02:00调用该函数，则默认查找2014/02/24 00:00:00至2014/02/25 00:00:00之间新添加的数据。
@@ -67,7 +68,7 @@ def price_changed(brand_list=None, start=None, end=None):
             except ValueError:
                 start = datetime.datetime.strptime(start, '%Y-%m-%d')
         else:
-            start = (datetime.datetime.now() - datetime.timedelta(1)).date()
+            start = datetime.datetime.fromordinal((datetime.datetime.now() - datetime.timedelta(1)).toordinal())
 
         if end:
             try:
@@ -75,13 +76,19 @@ def price_changed(brand_list=None, start=None, end=None):
             except ValueError:
                 end = datetime.datetime.strptime(end, '%Y-%m-%d')
         else:
-            end = datetime.datetime.now().date()
+            end = datetime.datetime.fromordinal(datetime.datetime.now().date().toordinal())
+
+        start += start_delta
+        end += end_delta
 
         results = {'warnings': [], 'price_up': {}, 'discount_up': {}, 'price_down': {}, 'discount_down': {}}
         for brand in brand_list:
-            pid_list = db.query(str.format('''SELECT p1.model,p1.idproducts,p1.region,p1.fingerprint FROM products AS p1
+            pid_list = db.query(str.format('''
+            SELECT p1.model,p1.idproducts,p1.region,p1.fingerprint FROM products AS p1
             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
-            WHERE p1.offline=0 AND p2.price IS NOT NULL AND brand_id={0} AND p1.region IN ({1}) AND p2.date BETWEEN {2} AND {3}''',
+            WHERE p1.offline=0 AND p2.price IS NOT NULL AND brand_id={0} AND p1.region IN ({1})
+            AND (p2.date BETWEEN {2} AND {3})
+            ''',
                                            brand, ','.join(str.format('"{0}"', tmp) for tmp in main_countries),
                                            *map(lambda val: val.strftime('"%Y-%m-%d %H:%M:%S"'),
                                                 (start, end)))).fetch_row(maxrows=0)
