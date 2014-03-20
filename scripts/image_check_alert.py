@@ -62,7 +62,7 @@ class ImageCheckAlertTasker(object):
 
     @classmethod
     def run(cls, **kwargs):
-        logger = kwargs['logger'] if 'logger' in kwargs else get_logger(to_file=True)
+        logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
         logger.info('IMAGE CHECK ALERT STARTED')
 
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:

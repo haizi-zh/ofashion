@@ -11,7 +11,7 @@ __author__ = 'Zephyre'
 class BackupTasker(object):
     @classmethod
     def run(cls, **kwargs):
-        logger = kwargs['logger'] if 'logger' in kwargs else get_logger(to_file=True)
+        logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
         logger.info('BACKUP STARTED')
 
         try:

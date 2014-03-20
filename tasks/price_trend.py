@@ -9,14 +9,6 @@ from utils.utils_core import get_logger
 
 __author__ = 'Zephyre'
 
-print '1'
-
-import pydevd
-
-pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
-
-print '2'
-
 
 class PriceTrendTasker(object):
     """
@@ -96,7 +88,7 @@ class PriceTrendTasker(object):
 
     @classmethod
     def run(cls, **kwargs):
-        logger = kwargs['logger'] if 'logger' in kwargs else get_logger(to_file=True)
+        logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
         logger.info('PRICE-CHANGE DETECTION STARTED')
 
         logger.info('CLEARING OUTDATED RECORDS')
