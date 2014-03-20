@@ -9,12 +9,21 @@ from utils.utils_core import get_logger
 
 __author__ = 'Zephyre'
 
-# import pydevd
-#
-# pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
+print '1'
+
+import pydevd
+
+pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
+
+print '2'
 
 
-class PriceChangeTasker(object):
+class PriceTrendTasker(object):
+    """
+    功能：1. 将过期的价格趋势标签清除。
+         2. 在指定时间范围内分析单品的价格变化趋势，并打上标签。
+    """
+
     @classmethod
     def tag_outdated(cls, **kwargs):
         """
@@ -47,11 +56,10 @@ class PriceChangeTasker(object):
 
         # 如果没有指定brand，则对数据库中存在的所有brand进行处理
         brand_list = [int(val) for val in kwargs['brand']] if 'brand' in kwargs else None
-        start_ts = kwargs['start'][0] if 'start' in kwargs else None
-        end_ts = kwargs['end'][0] if 'end' in kwargs else None
+        start_ts = kwargs['start'] if 'start' in kwargs else None
+        end_ts = kwargs['end'] if 'end' in kwargs else None
         start_delta = datetime.timedelta(kwargs['start_delta']) if 'start_delta' in kwargs else datetime.timedelta(0)
         end_delta = datetime.timedelta(kwargs['end_delta']) if 'end_delta' in kwargs else datetime.timedelta(0)
-
 
         # 得到价格变化的信息列表
         change_detection = price_changed(brand_list, start_ts, end_ts, start_delta, end_delta)
@@ -99,17 +107,17 @@ class PriceChangeTasker(object):
             logger.info('NO PRICE TRENDS DETECTED')
             return
 
-        dst = kwargs['dst'][0] if 'dst' in kwargs and kwargs['dst'] else '~/push_works/push.log'
+        dst = kwargs['dst'] if 'dst' in kwargs and kwargs['dst'] else '~/push_works/push.log'
         ssh_user, ssh_host, ssh_port = [None] * 3
         if 'ssh' in kwargs and kwargs['ssh']:
-            ssh_str = kwargs['ssh'][0]
+            ssh_str = kwargs['ssh']
             ssh_user, ssh = ssh_str.split('@')
             if ':' in ssh:
                 ssh_host, ssh_port = ssh.split(':')
             else:
                 ssh_host = ssh
                 # Default ssh port
-                ssh_port = ''
+                ssh_port = 22
 
         if not ssh_host:
             # 如果没有SSH信息，说明不需要通过SFTP将结果传输到远端服务器上
