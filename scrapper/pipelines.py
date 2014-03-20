@@ -21,6 +21,7 @@ from core import RoseVisionDb
 import global_settings as glob
 from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint
 
+
 class MStorePipeline(object):
     @staticmethod
     def update_db_price(metadata, pid, brand, region, db):
@@ -168,10 +169,10 @@ class UpdatePipeline(MStorePipeline):
 
             # 更新数据库中的价格记录
             if not (('offline' in update_data and update_data['offline'] == 1) or (
-                        'offline' in item and item['offline'] == 1)):
+                            'offline' in item and item['offline'] == 1)):
                 if self.update_db_price(item['metadata'], pid, item['brand'], item['region'], self.db):
                     self.db.update({}, 'products', str.format('idproducts={0}', pid),
-                                       timestamps=['update_time', 'touch_time'])
+                                     timestamps=['update_time', 'touch_time'])
         except:
             self.db.rollback()
             raise
@@ -345,7 +346,7 @@ class ProductPipeline(MStorePipeline):
                     dest['gender'] = self.process_gender(entry['gender'])
 
                 for k in (
-                    'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
+                        'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
                     if k in entry:
                         dest[k] = entry[k]
 
@@ -375,7 +376,7 @@ class ProductPipeline(MStorePipeline):
             # 处理价格变化。其中，如果spider提供了货币信息，则优先使用之。
             if self.update_db_price(entry, pid, entry['brand_id'], entry['region'], self.db):
                 self.db.update({}, 'products', str.format('idproducts={0}', pid),
-                                   timestamps=['update_time', 'touch_time'])
+                                 timestamps=['update_time', 'touch_time'])
 
             # 处理标签变化
             self.process_tags_mapping(tags_mapping, entry, pid)
@@ -553,8 +554,9 @@ class ProductImagePipeline(ImagesPipeline):
                             'width': data['width'], 'height': data['height'], 'format': data['format'],
                             'size': data['size']}, 'images_store')
 
-        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model}, 'products_image', ignore=True)
-        # self.update_products_image(brand_id, model, checksum)
+        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
+                        'fingerprint': gen_fingerprint(brand_id, model)},
+                       'products_image', ignore=True)
 
     def item_completed(self, results, item, info):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。

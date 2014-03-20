@@ -413,7 +413,6 @@ class PublishRelease(object):
             val.pop('date')
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
         entry['offline'] = entry['price_list'][0]['offline']
-        entry['price_change'] = entry['price_list'][0]['price_change']
 
         # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
 
@@ -422,31 +421,21 @@ class PublishRelease(object):
         for price_item in entry['price_list']:
             if price_item['offline'] == 0:
                 if price_item['price_discount']:
-                    alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
-                                          ('price', 'price_discount')))
+                    tmp = map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
+                              ('price', 'price_discount'))
+                    tmp.append(price_item['price_change'])
+                    alt_prices.append(tmp)
                 else:
-                    alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
+                    alt_prices.append(
+                        [currency_conv(price_item['price'], price_item['currency']), None, price_item['price_change']])
             else:
-                alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
+                alt_prices.append(
+                    [currency_conv(price_item['price'], price_item['currency']), None, price_item['price_change']])
 
         # 返回的价格：如果有折扣价，返回折扣价；如果没有，返回原价
         alt_prices = sorted(alt_prices, key=lambda val: val[1] if val[1] else val[0])
         entry['price'], entry['price_discount'] = alt_prices[0] if alt_prices else (None,) * 2
-
-        # discounts = [val for val in entry['price_list'] if val['price_discount']]
-        # if discounts:
-        #     price = discounts[0]['price']
-        #     price_discount = discounts[0]['price_discount']
-        #     currency = discounts[0]['currency']
-        # else:
-        #     price = entry['price_list'][0]['price']
-        #     price_discount = None
-        #     # 取第一个国家的价格，转换成CNY
-        #     currency = entry['price_list'][0]['currency']
-        #
-        # entry['price'] = gs.currency_info()[currency] * price
-        # if price_discount:
-        #     entry['price_discount'] = gs.currency_info()[currency] * price_discount
+        entry['price_change'] = alt_prices[0][2] if alt_prices else '0'
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
         p = prods[0]
