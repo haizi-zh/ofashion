@@ -28,8 +28,8 @@ class PriceTrendTasker(object):
             db.query(str.format('''
             UPDATE products AS p1
             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
-            SET p1.price_change='0', p1.update_time="{1}"
-            WHERE p1.price_change!='0' AND p2.date<'{0}'
+            SET p1.price_change='0', p1.update_time={1}
+            WHERE p1.price_change!='0' AND p2.date<{0}
             ''',
                                 ts, datetime.datetime.now().strftime('"%Y-%m-%d %H:%M:%S"')))
 
