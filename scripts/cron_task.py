@@ -142,8 +142,14 @@ def my_import(name):
 
 if __name__ == "__main__":
     ret = parse_args(sys.argv)
+    section = ret['cmd']
+    if not section:
+        section = 'CRON_TASK_DEFAULT'
 
-    for task_name, task_param in getattr(glob, 'CRON_TASK', {}).items():
+    logger = get_logger()
+    logger.info(str.format('TASK {0} STARTED.', section))
+
+    for task_name, task_param in getattr(glob, section, {}).items():
         try:
             class_name = task_param['classname']
             func = getattr(my_import(class_name), 'run')
@@ -152,3 +158,5 @@ if __name__ == "__main__":
         except (KeyError,):
             logger = get_logger().exception(unicode.format(u'Invalid task name: {0}',
                                                            unicodify(task_name)).encode('utf-8'))
+
+    logger.info(str.format('TASK {0} DONE.', section))
