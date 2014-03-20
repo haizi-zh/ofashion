@@ -434,7 +434,7 @@ class PublishRelease(object):
 
         # 返回的价格：如果有折扣价，返回折扣价；如果没有，返回原价
         alt_prices = sorted(alt_prices, key=lambda val: val[1] if val[1] else val[0])
-        entry['price'], entry['price_discount'] = alt_prices[0] if alt_prices else (None,) * 2
+        entry['price'], entry['price_discount'] = alt_prices[0][:2] if alt_prices else (None,) * 2
         entry['price_change'] = alt_prices[0][2] if alt_prices else '0'
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
 
