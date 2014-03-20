@@ -1,3 +1,4 @@
+# coding=utf-8
 __author__ = 'Administrator'
 
 from core import RoseVisionDb
@@ -11,7 +12,7 @@ class PaserDuration(object):
     @classmethod
     def run(cls, logger=None, **kwargs):
 
-        log_path = kwargs['LOG_PATH']
+        log_path = os.sep.join((getattr(gs, 'STORAGE_PATH'), 'products', 'log'))
         tmp = []
         for x in os.listdir(log_path):
             if re.findall(r'^\d{5}', x):
@@ -37,6 +38,8 @@ class PaserDuration(object):
                             # (product, name, log_time) = re.split(r'_', os.path.basename(os.path.splitext(file)[0]))
                             f = open(log_path + os.sep + log, 'rb')
                             lines = f.readlines()
+                            if lines == []:
+                                continue
                             st = re.findall(
                                 r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[[^\[\]]*\] INFO: Spider started, processing the following regions:',
                                 lines[0])
@@ -55,8 +58,9 @@ class PaserDuration(object):
                                     ''.join(st[0]), '%Y%m%d%H%M%S')
 
                                 db.insert({'start_time': start_time, 'end_time': end_time, 'duration': duration.seconds,
-                                           'regions_no': regions_no},
-                                          'crawler_duration', str.format('brand_id={0}', brand), replace=True)
+                                           'country_cnt': regions_no, 'brand_id': brand},
+                                          'brand_duration', replace=True)
+                                print '%s brand-id:%s duration time update' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),brand)
                                 break
                             else:
                                 pass
@@ -64,4 +68,7 @@ class PaserDuration(object):
                         pass
 
 
+if __name__ == '__main__':
+    t = PaserDuration()
+    t.run()
 

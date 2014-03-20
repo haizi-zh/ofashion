@@ -23,8 +23,8 @@ class RandomCheck(object):
     @classmethod
     def run(cls, logger=None, **kwargs):
         #必须指定brand-id
-        if 'brand-id' in kwargs.keys():
-            id = kwargs['brand-id']
+        if 'brand_id' in kwargs.keys():
+            id = kwargs['brand_id']
         else:
             return
         #todo  服务器需安装jre+selenium+phantomjs
@@ -33,7 +33,7 @@ class RandomCheck(object):
 
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             rs = db.query_match(['idproducts', 'brand_id', 'model', 'name', 'url', 'description', 'price'],
-                                'products', {'brand_id': '10106', 'offline': '0'}).fetch_row(maxrows=0)
+                                'products', {'brand_id': id, 'offline': '0'}).fetch_row(maxrows=0)
             db.start_transaction()
             #随机抽取500个单品
             rs = random.sample(rs, 500)
@@ -103,4 +103,4 @@ def is_alphabet(uchar):
 
 if __name__ == '__main__':
     t = RandomCheck()
-    t.run()
+    t.run( brand_id =10106)
