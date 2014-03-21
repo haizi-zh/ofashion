@@ -446,12 +446,13 @@ class PublishRelease(object):
 
         # 搜索字段
         search_text = u' '.join(
-            entry[tmp] if entry[tmp] else '' for tmp in ('name', 'description', 'details', 'color', 'model'))
+            entry[tmp] if entry[tmp] else '' for tmp in ('name', 'description', 'details', 'model'))
+        search_color = u' '.join(entry['color']) if entry['color'] else u''
         rs = db.query_match(['description_cn', 'description_en', 'details_cn', 'details_en'], 'products_translate',
                             {'fingerprint': entry['fingerprint']}).fetch_row()
         part_translate = u' ' + u' '.join(unicodify(tmp) for tmp in filter(lambda v: v, rs[0])) if rs else ' '
         search_tags = u' '.join(list(set(mfashion_tags)))
-        entry['searchtext'] = unicode.format(u'{0} {1} {2}', search_text, part_translate, search_tags)
+        entry['searchtext'] = unicode.format(u'{0} {1} {2} {3}', search_text, part_translate, search_tags, search_color)
 
         p = prods[0]
         checksums = []
@@ -483,6 +484,7 @@ class PublishRelease(object):
     def run(self):
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             # 删除原有的数据
+            print 'DELETING OLD RECORDS'
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
             fp_list = [tmp[0] for tmp in db.query(
                 str.format('SELECT DISTINCT fingerprint FROM products WHERE brand_id={0}', self.brand_id)).fetch_row(
@@ -491,18 +493,22 @@ class PublishRelease(object):
             self.progress = 0
 
             # 最多每100次就需要提交一次事务
-            transaction_max = 500
+            transaction_max = 100
 
+            print str.format('TOT: {0} fingerprints', self.tot)
             db.start_transaction()
             for self.progress in xrange(self.tot):
-                if self.progress % transaction_max:
+                if self.progress % transaction_max ==0:
                     db.commit()
                     db.start_transaction()
+                    print str.format('PROCESSED {0}/{1} fingerprints', self.progress, self.tot)
 
                 fp = fp_list[self.progress]
                 model_list = db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1)
                 self.merge_prods(model_list, db)
             db.commit()
+
+            print str.format('DONE!')
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
