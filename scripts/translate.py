@@ -332,8 +332,13 @@ if __name__ == '__main__':
 
 
 class TranslateTasker(object):
+
+    running = False
+
     @classmethod
     def run(cls, **kwargs):
+        cls.running = True
+
         logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
         logger.info(str.format("Translate tasker start"))
 
@@ -344,3 +349,9 @@ class TranslateTasker(object):
         translate_main(start, count, logger, db)
 
         logger.info(str.format("Translate tasker end"))
+
+        cls.running = False
+
+    @classmethod
+    def is_running(cls):
+        return cls.running
