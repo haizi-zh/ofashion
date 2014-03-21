@@ -1,15 +1,13 @@
 # coding=utf-8
 import getopt
 import logging
-import optparse
 import sys
-
-__author__ = 'Ryan'
-
+from utils.utils_core import get_logger
 from core import RoseVisionDb
 import goslate
 import urllib2
-import socket
+
+__author__ = 'Ryan'
 
 
 def get_sorted_region(db):
@@ -27,7 +25,9 @@ def get_fingerprints(db, start=0, count=50):
     """
     取得不重复单品的fingerprint
     """
-    rows = db.query(str.format('SELECT fingerprint from products group by fingerprint order by fingerprint limit {0}, {1}', start, count))
+    rows = db.query(
+        str.format('SELECT fingerprint from products group by fingerprint order by fingerprint limit {0}, {1}', start,
+                   count))
     result = []
     for row in rows.fetch_row(maxrows=0, how=1):
         fingerprint = row['fingerprint']
@@ -161,26 +161,33 @@ def translate_text_to(gs, text, to, source='', backup_gs=None):
     try:
         result = gs.translate(text, to, source)
     except:
-        logger.info(str.format("Error: gs translate error with text : {0}       source : {1}        target : {2}", text, source, to))
+        if not backup_gs:
+            logger.info(
+                str.format("Error: gs translate error with text : {0}       source : {1}        target : {2}", text,
+                           source,
+                           to))
         pass
     if not result and backup_gs:
         try:
             result = backup_gs.translate(text, to, source)
         except:
-            logger.info(str.format("Error: backupgs translate error with text : {0}       source : {1}        target : {2}", text, source, to))
+            logger.info(
+                str.format("Error: backupgs translate error with text : {0}       source : {1}        target : {2}",
+                           text, source, to))
             pass
 
     return result
 
 
-def translate_main():
-    db_spec = {
-        "host": "127.0.0.1", "port": 3306,
-        "username": "rose", "password": "rose123",
-        "schema": "translateTest"
-    }
-    db = RoseVisionDb()
-    db.conn(db_spec)
+def translate_main(start=0, count=100, logger=None, db=None):
+    if not db:
+        db_spec = {
+            "host": "127.0.0.1", "port": 3306,
+            "username": "rose", "password": "rose123",
+            "schema": "translateTest"
+        }
+        db = RoseVisionDb()
+        db.conn(db_spec)
 
     gs = goslate.Goslate()
     proxy = urllib2.ProxyHandler({'http': '173.230.131.197:8888'})
@@ -189,14 +196,8 @@ def translate_main():
 
     sorted_region = get_sorted_region(db)
 
-    fingerprint_start = 0
-    fingerprint_count = 50
-    opts, args = getopt.getopt(sys.argv[1:], "s:c:")
-    for opt, arg in opts:
-        if opt == '-s':
-            fingerprint_start = int(arg)
-        elif opt == '-c':
-            fingerprint_count = int(arg)
+    fingerprint_start = start
+    fingerprint_count = count
 
     logger.info(str.format("Translate process start"))
     while 1:
@@ -209,6 +210,11 @@ def translate_main():
             fingerprint_start += fingerprint_count
 
         for fingerprint in fingerprints:
+
+            is_exist = db.query_match({'fingerprint'}, 'products_translate', {'fingerprint': fingerprint}).num_rows()
+            if is_exist:
+                continue
+
             product_infos = get_product(db, fingerprint)
 
             # 按权重排序
@@ -226,7 +232,8 @@ def translate_main():
             if is_chs(description_cn):
                 final_description_cn = description_cn
             elif is_cht(description_cn):
-                final_description_cn = translate_text_to(gs, description_cn, 'zh-cn', source='zh-cn', backup_gs=backup_gs)
+                final_description_cn = translate_text_to(gs, description_cn, 'zh-cn', source='zh-cn',
+                                                         backup_gs=backup_gs)
 
             if is_chs(details_cn):
                 final_details_cn = details_cn
@@ -246,12 +253,13 @@ def translate_main():
                     for region, info in product_infos.items():
                         if product_infos[region]['description']:
                             final_description_cn = translate_text_to(gs, product_infos[region]['description'],
-                                                                         'zh-cn', backup_gs=backup_gs)
+                                                                     'zh-cn', backup_gs=backup_gs)
                             break
                 if not final_details_cn:
                     for region, info in product_infos.items():
                         if product_infos[region]['details']:
-                            final_details_cn = translate_text_to(gs, product_infos[region]['details'], 'zh-cn', backup_gs=backup_gs)
+                            final_details_cn = translate_text_to(gs, product_infos[region]['details'], 'zh-cn',
+                                                                 backup_gs=backup_gs)
                             break
                 if not final_description_en:
                     for region, info in product_infos.items():
@@ -264,14 +272,16 @@ def translate_main():
                     for region, info in product_infos.items():
                         if region != 'cn':  # 尽量不从中文翻译到其他外语
                             if product_infos[region]['details']:
-                                final_details_en = translate_text_to(gs, product_infos[region]['details'], 'en', backup_gs=backup_gs)
+                                final_details_en = translate_text_to(gs, product_infos[region]['details'], 'en',
+                                                                     backup_gs=backup_gs)
                                 break
 
                 if not final_description_en and final_description_cn:
-                    final_description_en = translate_text_to(gs, final_description_cn, 'en', 'zh-cn', backup_gs=backup_gs)
+                    final_description_en = translate_text_to(gs, final_description_cn, 'en', 'zh-cn',
+                                                             backup_gs=backup_gs)
                 if not final_details_en and final_details_cn:
                     final_details_en = translate_text_to(gs, final_details_cn, 'en', 'zh-cn', backup_gs=backup_gs)
-            except :
+            except:
                 pass
 
             insert_dict = {}
@@ -313,7 +323,41 @@ if __name__ == '__main__':
 
     logger.info(str.format("Script start"))
 
-    translate_main()
+    start = 0
+    count = 100
+    opts, args = getopt.getopt(sys.argv[1:], "s:c:")
+    for opt, arg in opts:
+        if opt == '-s':
+            start = int(arg)
+        elif opt == '-c':
+            count = int(arg)
+
+    translate_main(start, count, logger)
 
     logger.info(str.format("Script end"))
     pass
+
+
+class TranslateTasker(object):
+    running = False
+
+    @classmethod
+    def run(cls, **kwargs):
+        cls.running = True
+
+        logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
+        logger.info(str.format("Translate tasker start"))
+
+        db = kwargs['db'] if 'db' in kwargs else None
+        start = kwargs['start'] if 'start' in kwargs else 0
+        count = kwargs['count'] if 'count' in kwargs else 100
+
+        translate_main(start, count, logger, db)
+
+        logger.info(str.format("Translate tasker end"))
+
+        cls.running = False
+
+    @classmethod
+    def is_running(cls):
+        return cls.running
