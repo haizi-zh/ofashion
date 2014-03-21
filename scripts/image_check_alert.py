@@ -66,6 +66,14 @@ class ImageCheckAlertTasker(object):
         logger.info('IMAGE CHECK ALERT STARTED')
 
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+
+            no_image_fingerprints = db.query('SELECT products.fingerprint FROM products '
+                                             'LEFT JOIN products_image '
+                                             'ON products.fingerprint = products_image.fingerprint '
+                                             'WHERE products_image.fingerprint is NULL; ').fetch_row(maxrows=0)
+            if no_image_fingerprints:
+                cls.alert(str.format('NO Image for those fingerprints'), str.format('{0}', no_image_fingerprints))
+
             rs = db.query('SELECT fingerprint, brand_id, image_list, cover_image FROM products_release',
                           use_result=True)
             while True:
