@@ -161,9 +161,11 @@ def translate_text_to(gs, text, to, source='', backup_gs=None):
     try:
         result = gs.translate(text, to, source)
     except:
-        logger.info(
-            str.format("Error: gs translate error with text : {0}       source : {1}        target : {2}", text, source,
-                       to))
+        if not backup_gs:
+            logger.info(
+                str.format("Error: gs translate error with text : {0}       source : {1}        target : {2}", text,
+                           source,
+                           to))
         pass
     if not result and backup_gs:
         try:
@@ -208,6 +210,11 @@ def translate_main(start=0, count=100, logger=None, db=None):
             fingerprint_start += fingerprint_count
 
         for fingerprint in fingerprints:
+
+            is_exist = db.query_match({'fingerprint'}, 'products_translate', {'fingerprint': fingerprint}).num_rows()
+            if is_exist:
+                continue
+
             product_infos = get_product(db, fingerprint)
 
             # 按权重排序
@@ -325,14 +332,13 @@ if __name__ == '__main__':
         elif opt == '-c':
             count = int(arg)
 
-    translate_main(start, count)
+    translate_main(start, count, logger)
 
     logger.info(str.format("Script end"))
     pass
 
 
 class TranslateTasker(object):
-
     running = False
 
     @classmethod
