@@ -76,7 +76,7 @@ class ChanelSpider(MFashionSpider):
             Rule(SgmlLinkExtractor(allow=(str.format(r'chanel\.com/({0})/.+(?<=/)s\.[^/]+\.html', region_code), )),
                  callback=self.parse_fashion),
             Rule(SgmlLinkExtractor(allow=(r'.+', ),
-                                   deny=(str.format(r'chanel\.com(?!/{0}/)', region_code))))
+                                   deny=(str.format(r'chanel\.com/(?!{0})/', region_code))))
         )
         self._compile_rules()
 
