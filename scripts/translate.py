@@ -184,7 +184,7 @@ def translate_main(start=0, count=100, logger=None, db=None):
         db_spec = {
             "host": "127.0.0.1", "port": 3306,
             "username": "rose", "password": "rose123",
-            "schema": "translateTest"
+            "schema": "editor_stores"
         }
         db = RoseVisionDb()
         db.conn(db_spec)
