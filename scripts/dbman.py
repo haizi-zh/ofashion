@@ -350,10 +350,10 @@ class PublishRelease(object):
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
-        # 该单品在所有国家的记录中，第一次被抓取到的时间，作为release的fetch_time
-        entry['fetch_time'] = \
-            sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
-                0].strftime("%Y-%m-%d %H:%M:%S")
+        # # 该单品在所有国家的记录中，第一次被抓取到的时间，作为release的fetch_time
+        # entry['fetch_time'] = \
+        #     sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
+        #         0].strftime("%Y-%m-%d %H:%M:%S")
 
         url_dict = {int(val['idproducts']): val['url'] for val in prods}
         offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}
@@ -389,8 +389,9 @@ class PublishRelease(object):
         # 如果最新价格为None，则取回溯第一条不为None的数据，同时将price_discount置空。
         # 如果无法找到不为None的价格，则跳过该pid
         for pid, pid_data in price_list.items():
-            # 按照时间顺序逆排序
+            # 按照时间顺序逆排序，同时只保留price不为None的数据
             pid_data = sorted(pid_data, key=lambda val: val['date'], reverse=True)
+
             if pid_data[0]['price']:
                 # 正常情况
                 price_list[pid] = pid_data[0]
@@ -406,6 +407,11 @@ class PublishRelease(object):
                     tmp['price_discount'] = None
                     price_list[pid] = tmp
 
+            # 第一次有效价格对应的时间，为fetch_time
+            pid_data = filter(lambda val: val['price'], sorted(pid_data, key=lambda val: val['date']))
+            if pid_data and pid in price_list:
+                price_list[pid]['fetch_time'] = pid_data[0]['date']
+
         # 如果没有价格信息，则不发布
         if not price_list:
             return
@@ -413,13 +419,15 @@ class PublishRelease(object):
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
         entry['offline'] = entry['price_list'][0]['offline']
 
-        # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
+        # model的fetch_time的确定：所有对应pid中，fetch_time最早的那个。
+        entry['fetch_time'] = min(tmp['fetch_time'] for tmp in entry['price_list']).strftime("%Y-%m-%d %H:%M:%S")
 
         # 价格排序的列表
         alt_prices = []
         for price_item in entry['price_list']:
             # 将datetime序列化，进而保存在release表中。
             price_item['date'] = price_item['date'].strftime("%Y-%m-%d %H:%M:%S")
+            price_item['fetch_time'] = price_item['fetch_time'].strftime("%Y-%m-%d %H:%M:%S")
             if price_item['offline'] == 0:
                 if price_item['price_discount']:
                     tmp = map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
@@ -482,9 +490,10 @@ class PublishRelease(object):
         db.insert(entry, 'products_release')
 
     def run(self):
+        logger = get_logger()
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             # 删除原有的数据
-            print 'DELETING OLD RECORDS'
+            logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
             fp_list = [tmp[0] for tmp in db.query(
                 str.format('SELECT DISTINCT fingerprint FROM products WHERE brand_id={0}', self.brand_id)).fetch_row(
@@ -495,20 +504,21 @@ class PublishRelease(object):
             # 最多每100次就需要提交一次事务
             transaction_max = 100
 
-            print str.format('TOT: {0} fingerprints', self.tot)
+            logger.info(str.format('TOT: {0} fingerprints, brand_id={1}', self.tot, self.brand_id))
             db.start_transaction()
             for self.progress in xrange(self.tot):
-                if self.progress % transaction_max ==0:
+                if self.progress % transaction_max == 0:
                     db.commit()
                     db.start_transaction()
-                    print str.format('PROCESSED {0}/{1} fingerprints', self.progress, self.tot)
+                    logger.info(str.format('PROCESSED {0}/{1} fingerprints, brand_id=_2}', self.progress, self.tot,
+                                           self.brand_id))
 
                 fp = fp_list[self.progress]
                 model_list = db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1)
                 self.merge_prods(model_list, db)
             db.commit()
 
-            print str.format('DONE!')
+            logger.info(str.format('DONE, brand_id={0}', self.brand_id))
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,
