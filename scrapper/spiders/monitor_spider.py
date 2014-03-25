@@ -11,9 +11,10 @@ __author__ = 'Ryan'
 
 
 class MonitorSpider(UpdateSpider):
-    def __init__(self, brand, region, db_spec, *a, **kw):
+    def __init__(self, idmonitor, brand, region, db_spec, *a, **kw):
         super(MonitorSpider, self).__init__([brand], [region], db_spec, *a, **kw)
         self.name = 'monitor'
+        self.idmonitor = idmonitor
         # super(MonitorSpider, self).__init__(*a, **kw)
         # self.brand = brand
         # self.region = region
@@ -41,6 +42,7 @@ class MonitorSpider(UpdateSpider):
                           meta={'brand': int(item['brand_id']),
                                 'pid': item['idproducts'],
                                 'region': item['region'],
-                                'model': item['model']},
+                                'model': item['model'],
+                                'idmonitor': self.idmonitor},
                           errback=self.onerror,
                           dont_filter=True)
