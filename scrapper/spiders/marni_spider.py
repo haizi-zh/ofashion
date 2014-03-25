@@ -73,7 +73,10 @@ class MarniSpider(MFashionSpider):
         links = link_extractor.extract_links(response)
         metadata = response.meta['userdata']
         sel = Selector(response)
-        cat_title = ''.join(sel.xpath('//title/text()').extract()).split()[0]
+        try:
+            cat_title = ''.join(sel.xpath('//title/text()').extract()).split()[0]
+        except (IndexError):
+            return
         cat_name = cat_title.lower()
         for link in links:
             m = copy.deepcopy(metadata)
