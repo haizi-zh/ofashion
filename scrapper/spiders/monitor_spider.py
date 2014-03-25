@@ -38,7 +38,7 @@ class MonitorSpider(UpdateSpider):
         for item in request_items:
             yield Request(url=item['url'],
                           callback=self.parse,
-                          meta={'brand': item['brand_id'],
+                          meta={'brand': int(item['brand_id']),
                                 'pid': item['idproducts'],
                                 'region': item['region'],
                                 'model': item['model']},
