@@ -523,9 +523,10 @@ class PublishRelease(object):
                                            self.brand_id))
 
                 fp = fp_list[self.progress]
-                model_list = filter(lambda val: val['region'] in key_regions,
-                                    db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1))
-                self.merge_prods(model_list, db)
+                model_list = list(filter(lambda val: val['region'] in key_regions,
+                                    db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1)))
+                if model_list:
+                    self.merge_prods(model_list, db)
             db.commit()
 
             logger.info(str.format('DONE, brand_id={0}', self.brand_id))
