@@ -6,12 +6,18 @@ import global_settings as glob
 from core import RoseVisionDb
 from scrapy import log
 import random
+import json
 
 __author__ = 'Ryan'
 
 
 class MonitorSpider(UpdateSpider):
-    def __init__(self, idmonitor, brand, region, db_spec, *a, **kw):
+    def __init__(self, idmonitor, parameter, db_spec, *a, **kw):
+
+        para_json = json.loads(parameter)
+        brand = para_json['brand_id']
+        region = para_json['region']
+
         super(MonitorSpider, self).__init__([brand], [region], db_spec, *a, **kw)
         self.name = 'monitor'
         self.idmonitor = idmonitor
