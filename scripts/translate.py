@@ -64,9 +64,13 @@ def is_chs(val):
     if val:
         flag = False
 
+        if is_jps(val):
+            return False
+
         for c in val.decode('utf-8'):
             if ord(c) >= 0x4e00 and ord(c) < 0x9fa5:
                 flag = True
+                break
 
         if flag:
             try:
@@ -87,9 +91,13 @@ def is_cht(val):
     if val:
         flag = False
 
+        if is_jps(val):
+            return False
+
         for c in val.decode('utf-8'):
             if ord(c) >= 0x4e00 and ord(c) < 0x9fa5:
                 flag = True
+                break
 
         if flag:
             flag = False
@@ -98,6 +106,30 @@ def is_cht(val):
                 val.decode('utf-8').encode('gb2312')
             except:
                 flag = True
+
+        return flag
+
+    return False
+
+
+def is_jps(val):
+    """
+    val是否含有日文假名
+    @param val:
+    """
+    if val:
+        flag = False
+
+        for c in val.decode('utf-8'):
+            if ord(c) >= 0x3040 and ord(c) <= 0x30FF:
+                flag = True
+                break
+            elif ord(c) >= 0x31F0 and ord(c) <= 0x31FF:
+                flag = True
+                break
+            elif ord(c) >= 0xFF65 and ord(c) <= 0xFF9F:
+                flag = True
+                break
 
         return flag
 
