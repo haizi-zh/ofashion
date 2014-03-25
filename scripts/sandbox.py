@@ -65,7 +65,16 @@ class Sandbox(object):
 
 
 if __name__ == '__main__':
-    obj = Sandbox()
+    # obj = Sandbox()
     # obj.run()
-    core.func_carrier(Sandbox(), 0.3)
+    # core.func_carrier(Sandbox(), 0.3)
+    brand_list = [10074, 13084, 10142, 10008, 10105, 10152, 10109, 10308, 10373, 10080, 10259, 10178, 10270, 10305,
+                  10220, 10218, 10006, 10204, 10263, 10076, 10030, 10184, 10149, 10192, 10114, 10333, 10617, 10316,
+                  10106, 10212]
+    for brand in brand_list:
+        cmd1 = str.format('python scripts/mstore.py process-tags --cond brand_id={0}', brand)
+        cmd2 = str.format('python scripts/mstore.py release --brand {0}', brand)
+        cmd = '; '.join([cmd1, cmd2])
+        print cmd
+        os.system(cmd)
     pass
