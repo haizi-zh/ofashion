@@ -498,8 +498,8 @@ class PublishRelease(object):
             logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
             fp_list = [tmp[0] for tmp in db.query(
-                str.format('SELECT DISTINCT fingerprint FROM products WHERE brand_id={0}', self.brand_id)).fetch_row(
-                maxrows=0)]
+                str.format('SELECT fingerprint FROM products WHERE brand_id={0} GROUP BY fingerprint',
+                           self.brand_id)).fetch_row(maxrows=0)]
             self.tot = len(fp_list)
             self.progress = 0
 
@@ -512,7 +512,7 @@ class PublishRelease(object):
                 if self.progress % transaction_max == 0:
                     db.commit()
                     db.start_transaction()
-                    logger.info(str.format('PROCESSED {0}/{1} fingerprints, brand_id=_2}', self.progress, self.tot,
+                    logger.info(str.format('PROCESSED {0}/{1} fingerprints, brand_id={2}', self.progress, self.tot,
                                            self.brand_id))
 
                 fp = fp_list[self.progress]
