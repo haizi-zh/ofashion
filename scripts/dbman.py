@@ -325,6 +325,10 @@ class PublishRelease(object):
         按照国家顺序，挑选主记录
         :param prods:
         """
+        # 将prods转换为unicode
+        for idx in xrange(len(prods)):
+            prods[idx] = {k: unicodify(prods[idx][k]) for k in prods[idx]}
+
         # 挑选primary记录
         sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
@@ -493,6 +497,9 @@ class PublishRelease(object):
 
     def run(self):
         logger = get_logger()
+        # 只处理关键国家的数据
+        tmp = gs.region_info()
+        key_regions = filter(lambda val: tmp[val]['status'] == 1, tmp)
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             # 删除原有的数据
             logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
@@ -516,7 +523,8 @@ class PublishRelease(object):
                                            self.brand_id))
 
                 fp = fp_list[self.progress]
-                model_list = db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1)
+                model_list = filter(lambda val: val['region'] in key_regions,
+                                    db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1))
                 self.merge_prods(model_list, db)
             db.commit()
 

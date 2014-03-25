@@ -28,7 +28,7 @@ def __fetch_region_info():
     import core
 
     with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
-        return {k['iso_code']: {'iso_code3': k['iso_code3'], 'status': k['status'],
+        return {k['iso_code']: {'iso_code3': k['iso_code3'], 'status': int(k['status']),
                                 'weight': int(k['weight']), 'rate': float(k['rate']),
                                 'name_e': k['name_e'].decode('utf-8'),
                                 'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,
