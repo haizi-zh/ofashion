@@ -78,6 +78,8 @@ def fetch_spider_info():
         f, filename, description = imp.find_module(modname, ['scrapper/spiders'])
         try:
             submodule_list = imp.load_module(modname, f, filename, description)
+        except ImportError:
+            continue
         finally:
             f.close()
 
