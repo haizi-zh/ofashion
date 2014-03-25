@@ -9,6 +9,7 @@ import global_settings as gs
 import common as cm
 import json
 from scripts.push_utils import price_changed
+from utils.filters import release_filter
 from utils.utils_core import unicodify, iterable, gen_fingerprint, get_logger
 
 __author__ = 'Zephyre'
@@ -325,6 +326,7 @@ class PublishRelease(object):
         按照国家顺序，挑选主记录
         :param prods:
         """
+        logger = get_logger()
         # 将prods转换为unicode
         for idx in xrange(len(prods)):
             prods[idx] = {k: unicodify(prods[idx][k]) for k in prods[idx]}
@@ -423,6 +425,8 @@ class PublishRelease(object):
             return
 
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
+        entry = release_filter(entry, logger)
+
         entry['offline'] = entry['price_list'][0]['offline']
 
         # model的fetch_time的确定：所有对应pid中，fetch_time最早的那个。
@@ -524,7 +528,8 @@ class PublishRelease(object):
 
                 fp = fp_list[self.progress]
                 model_list = list(filter(lambda val: val['region'] in key_regions,
-                                    db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1)))
+                                         db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0,
+                                                                                                          how=1)))
                 if model_list:
                     self.merge_prods(model_list, db)
             db.commit()
