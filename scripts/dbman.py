@@ -130,8 +130,10 @@ class PriceCheck(object):
             price_data = {}
             for r in records:
                 model = r['model']
-                # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
-                if r['price'] and int(r['offline']) == 0:
+                # # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
+                # if r['price'] and int(r['offline']) == 0:
+                # 这里更改为不管offline，全检查
+                if r['price']:
                     # 首先检查model是否已存在
                     if model not in price_data:
                         price_data[model] = []
