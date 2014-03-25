@@ -4,9 +4,7 @@ import hashlib
 import logging
 import re
 import types
-import datetime
 import global_settings as glob
-import os
 
 __author__ = 'Zephyre'
 

@@ -9,6 +9,7 @@ import global_settings as gs
 import common as cm
 import json
 from scripts.push_utils import price_changed
+from utils.filters import release_filter
 from utils.utils_core import unicodify, iterable, gen_fingerprint, get_logger
 
 __author__ = 'Zephyre'
@@ -130,8 +131,10 @@ class PriceCheck(object):
             price_data = {}
             for r in records:
                 model = r['model']
-                # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
-                if r['price'] and int(r['offline']) == 0:
+                # # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
+                # if r['price'] and int(r['offline']) == 0:
+                # 这里更改为不管offline，全检查
+                if r['price']:
                     # 首先检查model是否已存在
                     if model not in price_data:
                         price_data[model] = []
@@ -323,6 +326,11 @@ class PublishRelease(object):
         按照国家顺序，挑选主记录
         :param prods:
         """
+        logger = get_logger()
+        # 将prods转换为unicode
+        for idx in xrange(len(prods)):
+            prods[idx] = {k: unicodify(prods[idx][k]) for k in prods[idx]}
+
         # 挑选primary记录
         sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
@@ -417,6 +425,8 @@ class PublishRelease(object):
             return
 
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
+        entry = release_filter(entry, logger)
+
         entry['offline'] = entry['price_list'][0]['offline']
 
         # model的fetch_time的确定：所有对应pid中，fetch_time最早的那个。
@@ -491,13 +501,16 @@ class PublishRelease(object):
 
     def run(self):
         logger = get_logger()
+        # 只处理关键国家的数据
+        tmp = gs.region_info()
+        key_regions = filter(lambda val: tmp[val]['status'] == 1, tmp)
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             # 删除原有的数据
             logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
             fp_list = [tmp[0] for tmp in db.query(
-                str.format('SELECT DISTINCT fingerprint FROM products WHERE brand_id={0}', self.brand_id)).fetch_row(
-                maxrows=0)]
+                str.format('SELECT fingerprint FROM products WHERE brand_id={0} GROUP BY fingerprint',
+                           self.brand_id)).fetch_row(maxrows=0)]
             self.tot = len(fp_list)
             self.progress = 0
 
@@ -510,12 +523,15 @@ class PublishRelease(object):
                 if self.progress % transaction_max == 0:
                     db.commit()
                     db.start_transaction()
-                    logger.info(str.format('PROCESSED {0}/{1} fingerprints, brand_id=_2}', self.progress, self.tot,
+                    logger.info(str.format('PROCESSED {0}/{1} fingerprints, brand_id={2}', self.progress, self.tot,
                                            self.brand_id))
 
                 fp = fp_list[self.progress]
-                model_list = db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0, how=1)
-                self.merge_prods(model_list, db)
+                model_list = list(filter(lambda val: val['region'] in key_regions,
+                                         db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0,
+                                                                                                          how=1)))
+                if model_list:
+                    self.merge_prods(model_list, db)
             db.commit()
 
             logger.info(str.format('DONE, brand_id={0}', self.brand_id))

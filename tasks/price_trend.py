@@ -126,9 +126,11 @@ class PriceTrendTasker(object):
             f.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
         # 指明了SSH信息，需要上传到远程服务器作为备份
-        logger.info('UPLOADING...')
+
         ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
-        os.system(str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, file_name))
+        ssh_cmd = str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, file_name)
+        logger.info(str.format('UPLOADING: {0}', ssh_cmd))
+        os.system(ssh_cmd)
         os.remove(file_name)
 
         logger.info('DONE')

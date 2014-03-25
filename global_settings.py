@@ -3,14 +3,21 @@ import ConfigParser
 import datetime
 import json
 import os
-
-__author__ = 'Zephyre'
-
 import sys
 import pkgutil
 import scrapper.spiders
 import inspect
 import imp
+
+__author__ = 'Zephyre'
+
+
+def static_var(varname, value):
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+
+    return decorate
 
 
 def __fetch_brand_info():
@@ -24,11 +31,25 @@ def __fetch_brand_info():
                 for k in tmp}
 
 
+@static_var('currency_info', None)
+def fetch_currency_info():
+    info = getattr(fetch_currency_info, 'currency_info')
+    if info:
+        return info
+
+    import core
+
+    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+        info = {tmp[0]:float(tmp[1]) for tmp in db.query('SELECT currency, rate FROM currency_info').fetch_row(maxrows=0)}
+        setattr(fetch_currency_info, 'currency_info', info)
+        return info
+
+
 def __fetch_region_info():
     import core
 
     with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
-        return {k['iso_code']: {'iso_code3': k['iso_code3'], 'status': k['status'],
+        return {k['iso_code']: {'iso_code3': k['iso_code3'], 'status': int(k['status']),
                                 'weight': int(k['weight']), 'rate': float(k['rate']),
                                 'name_e': k['name_e'].decode('utf-8'),
                                 'name_c': k['name_c'].decode('utf-8') if k['name_c'] else None,

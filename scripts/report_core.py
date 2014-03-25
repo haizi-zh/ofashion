@@ -138,21 +138,21 @@ class ProcessLog(object):
     分析log文件，报告错误位置
     """
 
-    def __init__(self, param=None):
+    def __init__(self, **param):
         self.max_err_cnt = 10
         if 'log-path' in param:
-            self.log_path = param['log-path'][0]
+            self.log_path = param['log-path']
         else:
-            self.log_path = None
+            self.log_path = os.sep.join((getattr(gs, 'STORAGE_PATH'), 'products', 'log'))
 
         if 'interval' in param:
-            self.interval = param['interval'][0]
+            self.interval = param['interval']
         else:
             self.interval = 1
 
         if 'start' in param and 'stop' in param:
-            self.start_time = param['start'][0]
-            self.stop_time = param['stop'][0]
+            self.start_time = param['start']
+            self.stop_time = param['stop']
         else:
             cur = datetime.datetime.now()
             to_time = cur.strftime('%Y%m%d%H%M%S')
@@ -195,10 +195,10 @@ class ProcessLog(object):
                     model = 'MIX'
                 elif len(tmp) == 3:
                     (update, model, dt) = tmp
-            else:
+            elif re.search(r'^\d{5}_', file_name):
                 update = ''
                 dt = file_name.split('_')[-1]
-                dt = dt + '000000'
+                dt += '000000'
                 model = '_'.join(file_name.split('_')[1:-1])
 
             #文件创建时间晚于stop_time,文件跳过不处理
@@ -365,3 +365,7 @@ class ProcessLog(object):
         server.login('buddy@mfashion.com.cn', 'rose123')
         server.sendmail('buddy@mfashion.com.cn', recipients.values(), msg.as_string())
         server.quit()
+
+if __name__ == '__main__':
+    t = ProcessLog(interval=10)
+    t.run()
