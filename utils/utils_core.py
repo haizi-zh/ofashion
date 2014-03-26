@@ -5,7 +5,7 @@ import logging
 import re
 import types
 import datetime
-import lxml.html
+import lxml.html.soupparser as soupparser
 import global_settings as glob
 import os
 
@@ -242,7 +242,7 @@ def lxmlparser(val):
     if val is None:
         return None
     elif isinstance(val, str):
-        return lxml.html.fromstring(val).text_content()
+        return soupparser.fromstring(val).text_content()
     else:
         return val
 
