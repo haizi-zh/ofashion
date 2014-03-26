@@ -188,6 +188,7 @@ class ParseLog(object):
         cls.sendemail(process_error, recipients)
         logger.info('PARSE LOG EMAIL SENDED!!!')
         logger.info('PARSE LOG ENDED!!!')
+
     @staticmethod
     def sendemail(data, recipients):
 

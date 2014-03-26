@@ -13,10 +13,8 @@ __author__ = 'Ryan'
 
 class MonitorSpider(UpdateSpider):
     def __init__(self, idmonitor, parameter, db_spec, *a, **kw):
-
-        para_json = json.loads(parameter)
-        brand = para_json['brand_id']
-        region = para_json['region']
+        brand = parameter['brand_id']
+        region = parameter['region']
 
         super(MonitorSpider, self).__init__([brand], [region], db_spec, *a, **kw)
         self.name = 'monitor'

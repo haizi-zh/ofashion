@@ -626,8 +626,8 @@ class MonitorPipeline(UpdatePipeline):
                 # 这里不判断model和offline的变化
                 if 'model' in update_data:
                     update_data.pop('model')
-                if 'offline' in update_data:
-                    update_data.pop('offline')
+                # if 'offline' in update_data:
+                #     update_data.pop('offline')
 
                 if update_data:
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
