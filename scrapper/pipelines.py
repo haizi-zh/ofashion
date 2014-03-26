@@ -312,7 +312,7 @@ class ProductPipeline(MStorePipeline):
 
         origin_url = entry['url']
         try:
-            encoded_url = quote(origin_url, "/?:@&=+$,;#%")
+            encoded_url = quote(origin_url.encode('utf-8'), "/?:@&=+$,;#%")
         except:
             encoded_url = origin_url
             spider.log(unicode.format(u"ERROR: {0} encode url error {1}", entry['fingerprint'], encoded_url))
