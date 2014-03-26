@@ -34,11 +34,12 @@ def get_job_path(brand_id):
                      unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.brand_info()[brand_id]['brandname_s'])))
 
 
-def get_log_path(brand_id):
+def get_log_path(brand_id, region_list=None):
     return os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
-                                         unicode.format(u'{0}_{1}_{2}.log', brand_id,
+                                         unicode.format(u'{0}_{1}_{2}_{3}.log', brand_id,
                                                         glob.brand_info()[brand_id]['brandname_s'],
-                                                        datetime.datetime.now().strftime('%Y%m%d'))))
+                                                        datetime.datetime.now().strftime('%Y%m%d'),
+                                                        '_'.join(region_list) if region_list else 'all')))
 
 
 def get_images_store(brand_id):
@@ -128,7 +129,7 @@ def set_up_spider(spider_class, data, is_update=False):
 
     # 设置spider的proxy信息
     crawler.settings.values['DOWNLOADER_MIDDLEWARES'] = {
-    'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1}
+        'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1}
     if 'proxy' in data:
         try:
             crawler.settings.values['PROXY_ENABLED'] = True
@@ -187,7 +188,8 @@ def main():
             is_update = (not spider_class == MFashionSpider)
 
             sc_list = list(ifilter(lambda val:
-                                   isinstance(val, type) and issubclass(val, spider_class) and val != spider_class and val != eshop_spider_class,
+                                   isinstance(val, type) and issubclass(val,
+                                                                        spider_class) and val != spider_class and val != eshop_spider_class,
                                    (getattr(spider_module, tmp) for tmp in dir(spider_module))))
 
             if 'r' not in param:
@@ -206,7 +208,7 @@ def main():
                                                                                datetime.datetime.now().strftime(
                                                                                    '%Y%m%d%H%M%S'))))
                     else:
-                        logfile = get_log_path(sc.spider_data['brand_id'])
+                        logfile = get_log_path(sc.spider_data['brand_id'], region_list=param['r'])
                     log.start(loglevel='INFO', logfile=logfile)
 
                 set_up_spider(sc, param, is_update=is_update)
