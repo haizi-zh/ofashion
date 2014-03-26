@@ -100,8 +100,8 @@ class UpdatePipeline(MStorePipeline):
         metadata = item['metadata']
 
         model = unicodify(record['model'])
-        description = lxmlparser(unicodify(record['description']))
-        details = lxmlparser(unicodify(record['details']))
+        description = unicodify(lxmlparser(record['description']))
+        details = unicodify(lxmlparser(record['details']))
         tmp = unicodify(record['color'])
         color = json.loads(tmp) if tmp else None
         price = unicodify(record['price'])
