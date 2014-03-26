@@ -111,14 +111,21 @@ class ParseLog(object):
                 process_error[file] = []
                 #整理错误行号列表
                 while i < len(lines):
+
                     if re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{4} \[\S+\] (ERROR|Error)', lines[i]):
-                        error_list.append(i)
-                        t = []
-                        while i < len(lines) - 1 and lines[i + 1].startswith('\t') and (lines[i + 1].strip() != ''):
-                            t.append(i + 1)
-                            i += 1
-                        if t:
-                            error_list.append(t)
+                        get_time = ''.join(
+                            re.findall(r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\+\d{4} \[\S+\] ERROR:',
+                                       lines[i])[0])
+                        if int(get_time) > int(stop_time) or int(get_time) < int(start_time):
+                            pass
+                        else:
+                            error_list.append(i)
+                            t = []
+                            while i < len(lines) - 1 and lines[i + 1].startswith('\t') and (lines[i + 1].strip() != ''):
+                                t.append(i + 1)
+                                i += 1
+                            if t:
+                                error_list.append(t)
                     i += 1
                 # print(error_list)
 
@@ -188,6 +195,7 @@ class ParseLog(object):
         cls.sendemail(process_error, recipients)
         logger.info('PARSE LOG EMAIL SENDED!!!')
         logger.info('PARSE LOG ENDED!!!')
+
     @staticmethod
     def sendemail(data, recipients):
 
