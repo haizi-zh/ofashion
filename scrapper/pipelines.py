@@ -315,7 +315,7 @@ class ProductPipeline(MStorePipeline):
             encoded_url = quote(origin_url, "/?:@&=+$,;#%")
         except:
             encoded_url = origin_url
-            spider.log(str.format("ERROR: {0} encode url error {1}", entry['fingerprint'], encoded_url))
+            spider.log(unicode.format(u"ERROR: {0} encode url error {1}", entry['fingerprint'], encoded_url))
         entry['url'] = encoded_url
 
         self.db.start_transaction()
