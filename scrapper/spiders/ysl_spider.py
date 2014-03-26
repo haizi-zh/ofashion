@@ -125,7 +125,8 @@ class YslSpider(MFashionSpider):
                 yield Request(url=href,
                               callback=self.parse_product,
                               errback=self.onerr,
-                              meta={'userdata': m})
+                              meta={'userdata': m},
+                              dont_filter=True)
 
             if product_nodes:
                 # 取的当前页数
