@@ -19,8 +19,7 @@ from PIL import Image
 
 from core import RoseVisionDb
 import global_settings as glob
-from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint
-
+from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint, lxmlparser
 
 class MStorePipeline(object):
     @staticmethod
@@ -101,8 +100,8 @@ class UpdatePipeline(MStorePipeline):
         metadata = item['metadata']
 
         model = unicodify(record['model'])
-        description = unicodify(record['description'])
-        details = unicodify(record['details'])
+        description = lxmlparser(unicodify(record['description']))
+        details = lxmlparser(unicodify(record['details']))
         tmp = unicodify(record['color'])
         color = json.loads(tmp) if tmp else None
         price = unicodify(record['price'])
@@ -309,6 +308,9 @@ class ProductPipeline(MStorePipeline):
         if 'model' not in entry or not entry['model']:
             raise DropItem()
         entry['fingerprint'] = gen_fingerprint(entry['brand_id'], entry['model'])
+
+        for k in ('name', 'description', 'details'):
+            entry[k] = lxmlparser(entry[k])
 
         origin_url = entry['url']
         try:

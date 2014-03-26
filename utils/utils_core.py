@@ -4,6 +4,7 @@ import hashlib
 import logging
 import re
 import types
+import lxml.html
 import global_settings as glob
 
 __author__ = 'Zephyre'
@@ -232,6 +233,16 @@ def unicodify(val):
     else:
         return unicode(val).strip()
 
+def lxmlparser(val):
+    """
+    html parser转义html标签及转义字符
+    """
+    if val is None:
+        return None
+    elif isinstance(val, str):
+        return lxml.html.fromstring(val).text_content()
+    else:
+        return val
 
 def iterable(val):
     """
