@@ -4,10 +4,9 @@ import hashlib
 import logging
 import re
 import types
-import datetime
 import lxml.html.soupparser as soupparser
+
 import global_settings as glob
-import os
 
 __author__ = 'Zephyre'
 

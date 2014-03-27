@@ -608,9 +608,11 @@ def release(param_dict):
             max_images = None
 
         if max_images:
-            core.func_carrier(dbman.PublishRelease(brand, max_images=max_images), 1)
+            # core.func_carrier(dbman.PublishRelease(brand, max_images=max_images), 1)
+            dbman.PublishRelease(brand, max_images=max_images).run()
         else:
-            core.func_carrier(dbman.PublishRelease(brand), 1)
+            # core.func_carrier(dbman.PublishRelease(brand), 1)
+            dbman.PublishRelease(brand).run()
 
 
 def price_check(param_dict):

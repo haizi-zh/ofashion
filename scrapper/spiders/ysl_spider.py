@@ -108,43 +108,44 @@ class YslSpider(MFashionSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        product_nodes = sel.xpath('//div[@class="productsFromGrid clearfix"]/article[child::a[@href]]')
-        if not product_nodes:
-            product_nodes = sel.xpath('//div[@id="pageContent"]//div[@data-position][child::a[@href]]')
-        for node in product_nodes:
-            try:
-                href = node.xpath('./a/@href').extract()[0]
-                href = self.process_href(href, response.url)
-            except(TypeError, IndexError):
-                continue
+        no_result_node = sel.xpath('//div[@id="noResult"]')
+        if not no_result_node:
+            product_nodes = sel.xpath('//div[@class="productsFromGrid clearfix"]/article[child::a[@href]]')
+            if not product_nodes:
+                product_nodes = sel.xpath('//div[@id="pageContent"]//div[@data-position][child::a[@href]]')
+            for node in product_nodes:
+                try:
+                    href = node.xpath('./a/@href').extract()[0]
+                    href = self.process_href(href, response.url)
+                except(TypeError, IndexError):
+                    continue
 
-            m = copy.deepcopy(metadata)
+                m = copy.deepcopy(metadata)
 
-            yield Request(url=href,
-                          callback=self.parse_product,
-                          errback=self.onerr,
-                          meta={'userdata': m},
-                          dont_filter=True)
+                yield Request(url=href,
+                              callback=self.parse_product,
+                              errback=self.onerr,
+                              meta={'userdata': m})
 
-        if product_nodes:
-            # 取的当前页数
-            current_page = 1
-            mt = re.search(r'page=(\d+)', response.url)
-            if mt:
-                current_page = (int)(mt.group(1))
+            if product_nodes:
+                # 取的当前页数
+                current_page = 1
+                mt = re.search(r'\?page=(\d+)', response.url)
+                if mt:
+                    current_page = (int)(mt.group(1))
 
-            next_page = current_page + 1
-            # 拼下一页的url
-            if mt:
-                next_url = re.sub(r'page=\d+', str.format('page={0}', next_page), response.url)
-            else:
-                next_url = str.format('{0}?page={1}', response.url, next_page)
+                next_page = current_page + 1
+                # 拼下一页的url
+                if mt:
+                    next_url = re.sub(r'\?page=\d+', str.format('?page={0}', next_page), response.url)
+                else:
+                    next_url = str.format('{0}?page={1}', response.url, next_page)
 
-            # 请求下一页
-            yield Request(url=next_url,
-                          callback=self.parse_product_list,
-                          errback=self.onerr,
-                          meta={'userdata': metadata})
+                # 请求下一页
+                yield Request(url=next_url,
+                              callback=self.parse_product_list,
+                              errback=self.onerr,
+                              meta={'userdata': metadata})
 
     def parse_product(self, response):
 

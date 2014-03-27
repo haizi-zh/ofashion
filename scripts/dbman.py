@@ -1,5 +1,6 @@
 # coding=utf-8
 from cStringIO import StringIO
+import copy
 import csv
 import sys
 import datetime
@@ -8,7 +9,8 @@ import global_settings as gs
 import common as cm
 import json
 from scripts.push_utils import price_changed
-from utils.utils_core import unicodify, iterable, gen_fingerprint
+from utils.filters import release_filter
+from utils.utils_core import unicodify, iterable, gen_fingerprint, get_logger
 
 __author__ = 'Zephyre'
 
@@ -129,8 +131,10 @@ class PriceCheck(object):
             price_data = {}
             for r in records:
                 model = r['model']
-                # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
-                if r['price'] and int(r['offline']) == 0:
+                # # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
+                # if r['price'] and int(r['offline']) == 0:
+                # 这里更改为不管offline，全检查
+                if r['price']:
                     # 首先检查model是否已存在
                     if model not in price_data:
                         price_data[model] = []
@@ -322,6 +326,11 @@ class PublishRelease(object):
         按照国家顺序，挑选主记录
         :param prods:
         """
+        logger = get_logger()
+        # 将prods转换为unicode
+        for idx in xrange(len(prods)):
+            prods[idx] = {k: unicodify(prods[idx][k]) for k in prods[idx]}
+
         # 挑选primary记录
         sorted_prods = sorted(prods, key=lambda k: self.region_order[k['region']])
         main_entry = sorted_prods[0]
@@ -336,23 +345,23 @@ class PublishRelease(object):
                                              'WHERE p2.idproducts IN ({0})',
                                              ','.join(val['idproducts'] for val in prods))).fetch_row(
                              maxrows=0)]
-
-        original_tags = [int(val[0]) for val in
-                         db.query(str.format('SELECT DISTINCT id_original_tags FROM products_original_tags '
-                                             'WHERE idproducts IN ({0})',
-                                             ','.join(val['idproducts'] for val in prods))).fetch_row(
-                             maxrows=0)]
+        #
+        # original_tags = [int(val[0]) for val in
+        #                  db.query(str.format('SELECT DISTINCT id_original_tags FROM products_original_tags '
+        #                                      'WHERE idproducts IN ({0})',
+        #                                      ','.join(val['idproducts'] for val in prods))).fetch_row(
+        #                      maxrows=0)]
 
         entry['mfashion_tags'] = json.dumps(mfashion_tags, ensure_ascii=False)
-        entry['original_tags'] = json.dumps(original_tags, ensure_ascii=False)
+        entry['original_tags'] = ''  #json.dumps(original_tags, ensure_ascii=False)
 
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
         entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
         entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
-        # 该单品在所有国家的记录中，第一次被抓取到的时间，作为release的fetch_time
-        entry['fetch_time'] = \
-            sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
-                0].strftime("%Y-%m-%d %H:%M:%S")
+        # # 该单品在所有国家的记录中，第一次被抓取到的时间，作为release的fetch_time
+        # entry['fetch_time'] = \
+        #     sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
+        #         0].strftime("%Y-%m-%d %H:%M:%S")
 
         url_dict = {int(val['idproducts']): val['url'] for val in prods}
         offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}
@@ -388,8 +397,9 @@ class PublishRelease(object):
         # 如果最新价格为None，则取回溯第一条不为None的数据，同时将price_discount置空。
         # 如果无法找到不为None的价格，则跳过该pid
         for pid, pid_data in price_list.items():
-            # 按照时间顺序逆排序
+            # 按照时间顺序逆排序，同时只保留price不为None的数据
             pid_data = sorted(pid_data, key=lambda val: val['date'], reverse=True)
+
             if pid_data[0]['price']:
                 # 正常情况
                 price_list[pid] = pid_data[0]
@@ -405,49 +415,62 @@ class PublishRelease(object):
                     tmp['price_discount'] = None
                     price_list[pid] = tmp
 
+            # 第一次有效价格对应的时间，为fetch_time
+            pid_data = filter(lambda val: val['price'], sorted(pid_data, key=lambda val: val['date']))
+            if pid_data and pid in price_list:
+                price_list[pid]['fetch_time'] = pid_data[0]['date']
+
         # 如果没有价格信息，则不发布
         if not price_list:
             return
 
-        for val in price_list.values():
-            val.pop('date')
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
-        entry['offline'] = entry['price_list'][0]['offline']
-        entry['price_change'] = entry['price_list'][0]['price_change']
+        entry = release_filter(entry, logger)
 
-        # price_cn的确定方法：如果存在打折价，优先取打折价格。否则，取第一个国家的价格。
+        entry['offline'] = entry['price_list'][0]['offline']
+
+        # model的fetch_time的确定：所有对应pid中，fetch_time最早的那个。
+        entry['fetch_time'] = min(tmp['fetch_time'] for tmp in entry['price_list']).strftime("%Y-%m-%d %H:%M:%S")
 
         # 价格排序的列表
         alt_prices = []
         for price_item in entry['price_list']:
+            # 将datetime序列化，进而保存在release表中。
+            price_item['date'] = price_item['date'].strftime("%Y-%m-%d %H:%M:%S")
+            price_item['fetch_time'] = price_item['fetch_time'].strftime("%Y-%m-%d %H:%M:%S")
             if price_item['offline'] == 0:
                 if price_item['price_discount']:
-                    alt_prices.append(map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
-                                          ('price', 'price_discount')))
+                    tmp = map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
+                              ('price', 'price_discount'))
+                    tmp.extend(
+                        [price_item[key] for key in ('price_change', 'price', 'price_discount', 'currency', 'date')])
+                    alt_prices.append(tmp)
                 else:
-                    alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
+                    alt_prices.append(
+                        [currency_conv(price_item['price'], price_item['currency']), None, price_item['price_change'],
+                         price_item['price'], price_item['price_discount'], price_item['currency'], price_item['date']])
             else:
-                alt_prices.append([currency_conv(price_item['price'], price_item['currency']), None])
+                alt_prices.append(
+                    [currency_conv(price_item['price'], price_item['currency']), None, price_item['price_change'],
+                     price_item['price'], price_item['price_discount'], price_item['currency'], price_item['date']])
 
         # 返回的价格：如果有折扣价，返回折扣价；如果没有，返回原价
         alt_prices = sorted(alt_prices, key=lambda val: val[1] if val[1] else val[0])
-        entry['price'], entry['price_discount'] = alt_prices[0] if alt_prices else (None,) * 2
-
-        # discounts = [val for val in entry['price_list'] if val['price_discount']]
-        # if discounts:
-        #     price = discounts[0]['price']
-        #     price_discount = discounts[0]['price_discount']
-        #     currency = discounts[0]['currency']
-        # else:
-        #     price = entry['price_list'][0]['price']
-        #     price_discount = None
-        #     # 取第一个国家的价格，转换成CNY
-        #     currency = entry['price_list'][0]['currency']
-        #
-        # entry['price'] = gs.currency_info()[currency] * price
-        # if price_discount:
-        #     entry['price_discount'] = gs.currency_info()[currency] * price_discount
+        entry['price'], entry['price_discount'] = alt_prices[0][:2] if alt_prices else (None,) * 2
+        entry['price_change'] = alt_prices[0][2] if alt_prices else '0'
+        entry['o_price'], entry['o_discount'], entry['o_currency'] = alt_prices[0][3:6]
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
+        entry['last_price_ts'] = alt_prices[0][6]
+
+        # 搜索字段
+        search_text = u' '.join(
+            entry[tmp] if entry[tmp] else '' for tmp in ('name', 'description', 'details', 'model'))
+        search_color = u' '.join(entry['color']) if entry['color'] else u''
+        rs = db.query_match(['description_cn', 'description_en', 'details_cn', 'details_en'], 'products_translate',
+                            {'fingerprint': entry['fingerprint']}).fetch_row()
+        part_translate = u' ' + u' '.join(unicodify(tmp) for tmp in filter(lambda v: v, rs[0])) if rs else ' '
+        search_tags = u' '.join(list(set(mfashion_tags)))
+        entry['searchtext'] = unicode.format(u'{0} {1} {2} {3}', search_text, part_translate, search_tags, search_color)
 
         p = prods[0]
         checksums = []
@@ -472,65 +495,46 @@ class PublishRelease(object):
                 entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
             image_list.append(tmp)
 
-        # region_images = {}
-        # for checksum in rs:
-        #     if region not in region_images:
-        #         region_images[region] = []
-        #     region_images[region].append(checksum)
-        #     # 那个国家的图片数量最多？
-        # region_order = sorted(region_images.keys(), key=lambda val: len(region_images[val]), reverse=True)
-        # if region_order:
-        #     checksums = region_images[region_order[0]]
-        #     cover_checksum = checksums[0]
-
-        # for val in rs:
-        #     if val[0] in checksums:
-        #         continue
-        #     checksums.append(val[0])
-        #     if not cover_checksum:
-        #         cover_checksum = val[0]
-        # checksum_order = {key: idx for idx, key in enumerate(checksums)}
-        #
-        # rs = db.query_match(['checksum', 'path', 'width', 'height'], 'images_store', {},
-        #                     str.format('checksum IN ({0})',
-        #                                ','.join(str.format('"{0}"', val) for val in checksums))).fetch_row(
-        #     maxrows=0, how=1)
-        # image_list = []
-        # for val in sorted(rs, key=lambda val: checksum_order[val['checksum']]):
-        #     tmp = {'path': val['path'], 'width': int(val['width']), 'height': int(val['height'])}
-        #     image_list.append(tmp)
-        #     if val['checksum'] == cover_checksum:
-        #         entry['cover_image'] = json.dumps(tmp, ensure_ascii=False)
-
         entry['image_list'] = json.dumps(image_list[:self.max_images], ensure_ascii=False)
 
         db.insert(entry, 'products_release')
 
     def run(self):
+        logger = get_logger()
+        # 只处理关键国家的数据
+        tmp = gs.region_info()
+        key_regions = filter(lambda val: tmp[val]['status'] == 1, tmp)
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             # 删除原有的数据
+            logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))
-            rs = db.query_match(['COUNT(*)'], self.products_tbl, {'brand_id': self.brand_id})
-            self.tot = int(rs.fetch_row()[0][0])
-            # 得到该品牌所有的记录
-            record_list = db.query_match(['*'], self.products_tbl, {'brand_id': self.brand_id},
-                                         tail_str='ORDER BY fingerprint').fetch_row(how=1, maxrows=0)
+            fp_list = [tmp[0] for tmp in db.query(
+                str.format('SELECT fingerprint FROM products WHERE brand_id={0} GROUP BY fingerprint',
+                           self.brand_id)).fetch_row(maxrows=0)]
+            self.tot = len(fp_list)
+            self.progress = 0
 
-            # 每一个model，对应哪些pid需要合并？
-            model_list = {}
-            for self.progress, record in enumerate(record_list):
-                record = {k: cm.unicodify(record[k]) for k in record}
-                if record['fingerprint'] not in model_list:
-                    if model_list.keys():
-                        # 归并上一个model
-                        self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
-                    model_list[record['fingerprint']] = [record]
-                else:
-                    model_list[record['fingerprint']].append(record)
+            # 最多每100次就需要提交一次事务
+            transaction_max = 100
 
-            # 归并最后一个model。注意：model_list有可能为空
-            if model_list:
-                self.merge_prods(model_list.pop(list(model_list.keys())[0]), db)
+            logger.info(str.format('TOT: {0} fingerprints, brand_id={1}', self.tot, self.brand_id))
+            db.start_transaction()
+            for self.progress in xrange(self.tot):
+                if self.progress % transaction_max == 0:
+                    db.commit()
+                    db.start_transaction()
+                    logger.info(str.format('PROCESSED {0}/{1} fingerprints, brand_id={2}', self.progress, self.tot,
+                                           self.brand_id))
+
+                fp = fp_list[self.progress]
+                model_list = list(filter(lambda val: val['region'] in key_regions,
+                                         db.query_match(['*'], 'products', {'fingerprint': fp}).fetch_row(maxrows=0,
+                                                                                                          how=1)))
+                if model_list:
+                    self.merge_prods(model_list, db)
+            db.commit()
+
+            logger.info(str.format('DONE, brand_id={0}', self.brand_id))
 
     def get_msg(self):
         return str.format('{0}/{1}({2:.1%}) PROCESSED', self.progress, self.tot,

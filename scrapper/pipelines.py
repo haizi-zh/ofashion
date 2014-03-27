@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+from urllib2 import quote
 
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
@@ -19,7 +20,6 @@ from PIL import Image
 from core import RoseVisionDb
 import global_settings as glob
 from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint, lxmlparser
-from scripts.urlprocess import urlencode
 
 class MStorePipeline(object):
     @staticmethod
@@ -168,10 +168,10 @@ class UpdatePipeline(MStorePipeline):
 
             # 更新数据库中的价格记录
             if not (('offline' in update_data and update_data['offline'] == 1) or (
-                        'offline' in item and item['offline'] == 1)):
+                            'offline' in item and item['offline'] == 1)):
                 if self.update_db_price(item['metadata'], pid, item['brand'], item['region'], self.db):
                     self.db.update({}, 'products', str.format('idproducts={0}', pid),
-                                       timestamps=['update_time', 'touch_time'])
+                                     timestamps=['update_time', 'touch_time'])
         except:
             self.db.rollback()
             raise
@@ -313,13 +313,11 @@ class ProductPipeline(MStorePipeline):
             entry[k] = lxmlparser(entry[k])
 
         origin_url = entry['url']
-        encoded_url = None
         try:
-            encoded_url = urlencode(origin_url)
+            encoded_url = quote(origin_url.encode('utf-8'), "/?:@&=+$,;#%")
         except:
             encoded_url = origin_url
-            spider.log(str.format("ERROR: {0} encode url error {1}", entry['fingerprint'], encoded_url))
-            pass
+            spider.log(unicode.format(u"ERROR: {0} encode url error {1}", entry['fingerprint'], encoded_url))
         entry['url'] = encoded_url
 
         self.db.start_transaction()
@@ -350,7 +348,7 @@ class ProductPipeline(MStorePipeline):
                     dest['gender'] = self.process_gender(entry['gender'])
 
                 for k in (
-                    'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
+                        'name', 'url', 'description', 'details', 'price', 'price_discount', 'price', 'price_discount'):
                     if k in entry:
                         dest[k] = entry[k]
 
@@ -380,7 +378,7 @@ class ProductPipeline(MStorePipeline):
             # 处理价格变化。其中，如果spider提供了货币信息，则优先使用之。
             if self.update_db_price(entry, pid, entry['brand_id'], entry['region'], self.db):
                 self.db.update({}, 'products', str.format('idproducts={0}', pid),
-                                   timestamps=['update_time', 'touch_time'])
+                                 timestamps=['update_time', 'touch_time'])
 
             # 处理标签变化
             self.process_tags_mapping(tags_mapping, entry, pid)
@@ -558,8 +556,9 @@ class ProductImagePipeline(ImagesPipeline):
                             'width': data['width'], 'height': data['height'], 'format': data['format'],
                             'size': data['size']}, 'images_store')
 
-        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model}, 'products_image', ignore=True)
-        # self.update_products_image(brand_id, model, checksum)
+        self.db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
+                        'fingerprint': gen_fingerprint(brand_id, model)},
+                       'products_image', ignore=True)
 
     def item_completed(self, results, item, info):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。
@@ -606,3 +605,78 @@ class ProductImagePipeline(ImagesPipeline):
                     raise
 
         return item
+
+class MonitorPipeline(UpdatePipeline):
+
+    def process_item(self, item, spider):
+        pid = item['idproduct']
+
+        self.db.start_transaction()
+        try:
+            mo_re = self.db.query_match({'idmonitor'},
+                                        'monitor_status', {'idmonitor': item['metadata']['idmonitor'], 'monitor_status': 0})
+            if mo_re.num_rows():
+                # 获得旧数据
+                rs = self.db.query_match({'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
+                                          'idproducts'}, 'products', {'idproducts': pid})
+                # 如果没有找到相应的记录，
+                if rs.num_rows() == 0:
+                    raise DropItem
+                record = rs.fetch_row(how=1)[0]
+                update_data = self.get_update_data(spider, item, record)
+
+                # 这里不判断model和offline的变化
+                if 'model' in update_data:
+                    update_data.pop('model')
+                # if 'offline' in update_data:
+                #     update_data.pop('offline')
+
+                if update_data:
+                    # 注意，这里的stop()，并不会立即停止所有爬虫线程
+                    spider.crawler.stop()
+
+                    self.db.update({'monitor_status': 1}, 'monitor_status', str.format('idmonitor={0}', item['metadata']['idmonitor']))
+        except:
+            self.db.rollback()
+            raise
+        finally:
+            self.db.commit()
+            
+
+class MonitorPipeline(UpdatePipeline):
+    def process_item(self, item, spider):
+        pid = item['idproduct']
+
+        self.db.start_transaction()
+        try:
+            mo_re = self.db.query_match({'idmonitor'},
+                                        'monitor_status',
+                                        {'idmonitor': item['metadata']['idmonitor'], 'monitor_status': 0})
+            if mo_re.num_rows():
+                # 获得旧数据
+                rs = self.db.query_match(
+                    {'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
+                     'idproducts'}, 'products', {'idproducts': pid})
+                # 如果没有找到相应的记录，
+                if rs.num_rows() == 0:
+                    raise DropItem
+                record = rs.fetch_row(how=1)[0]
+                update_data = self.get_update_data(spider, item, record)
+
+                # 这里不判断model和offline的变化
+                if 'model' in update_data:
+                    update_data.pop('model')
+                # if 'offline' in update_data:
+                #     update_data.pop('offline')
+
+                if update_data:
+                    # 注意，这里的stop()，并不会立即停止所有爬虫线程
+                    spider.crawler.stop()
+
+                    self.db.update({'monitor_status': 1}, 'monitor_status',
+                                   str.format('idmonitor={0}', item['metadata']['idmonitor']))
+        except:
+            self.db.rollback()
+            raise
+        finally:
+            self.db.commit()

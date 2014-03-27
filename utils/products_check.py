@@ -142,7 +142,8 @@ def check_products_is_valid_string(string):
 
         processed_string = re.sub(ur'&#?\w+;', '', processed_string)
 
-        # TODO 针对html标签的处理
+        # 针对html标签的处理，感觉这一步做的有点儿过了，不必要感觉
+        processed_string = re.sub(ur'<[^<>]*?>', '', processed_string)
 
         if processed_string == string:
             return True

@@ -28,9 +28,12 @@ class PriceTrendTasker(object):
             db.query(str.format('''
             UPDATE products AS p1
             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
-            SET p1.price_change='0'
-            WHERE p1.price_change!='0' AND p2.date<'{0}'
-            ''', ts))
+            SET p1.price_change='0', p1.update_time={1}
+            WHERE p1.price_change!='0' AND p2.date<{0}
+            ''',
+                                ts, datetime.datetime.now().strftime('"%Y-%m-%d %H:%M:%S"')))
+
+            db.query('UPDATE products SET price_change="0" WHERE price_change!="0" AND offline!=0')
 
     @classmethod
     def tag_changed(cls, **kwargs):
@@ -123,9 +126,11 @@ class PriceTrendTasker(object):
             f.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
         # 指明了SSH信息，需要上传到远程服务器作为备份
-        logger.info('UPLOADING...')
+
         ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
-        os.system(str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, file_name))
+        ssh_cmd = str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, file_name)
+        logger.info(str.format('UPLOADING: {0}', ssh_cmd))
+        os.system(ssh_cmd)
         os.remove(file_name)
 
         logger.info('DONE')

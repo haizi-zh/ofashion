@@ -153,7 +153,10 @@ if __name__ == "__main__":
         try:
             class_name = task_param['classname']
             func = getattr(my_import(class_name), 'run')
-            func(**task_param['param'])
+            if 'param' in task_param:
+                func(**task_param['param'])
+            else:
+                func()
 
         except (KeyError,):
             logger = get_logger().exception(unicode.format(u'Invalid task name: {0}',
