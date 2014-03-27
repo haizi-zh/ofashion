@@ -39,3 +39,7 @@ nosetests.xml
 .idea/**
 mstore.cfg
 scripts/sandbox.sql
+
+# MIsc
+**/*.log
+**/*.bak
