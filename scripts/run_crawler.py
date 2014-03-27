@@ -17,6 +17,7 @@ import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
 from scrapper.spiders.eshop_spider import EShopSpider
 from utils import info
+from scrapper.spiders.update_spider import UpdateSpider
 from utils.utils_core import iterable, parse_args
 
 __author__ = 'Zephyre'
@@ -46,10 +47,10 @@ def get_images_store(brand_id):
                                                                           glob.brand_info()[brand_id]['brandname_s'])))
 
 
-def set_up_spider(spider_class, data, is_update=False):
+def set_up_spider(spider_class, data, spider_type='default'):
     """
     设置爬虫对象
-    @param is_update: 是否是一个UpdateSpider
+    @param spider_type: 爬虫类型，是update还是monitor，还是普通爬虫
     @param spider_class:
     @param data: 爬虫的配置参数
     @return:
@@ -58,7 +59,7 @@ def set_up_spider(spider_class, data, is_update=False):
     crawler = Crawler(Settings())
     crawler.settings.values['BOT_NAME'] = 'mstore_bot'
 
-    if is_update:
+    if spider_type == 'update':
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.UpdatePipeline': 800}
         brand_list = [int(tmp) for tmp in (data['brand'] if 'brand' in data else [])]
         if 'region' in data:
@@ -68,6 +69,17 @@ def set_up_spider(spider_class, data, is_update=False):
         else:
             region_list = None
         spider = spider_class(brand_list, region_list, getattr(glob, 'DB_SPEC'))
+        welcome_msg = str.format('Updating started, processing the following brands: {0}',
+                                 ', '.join(str(tmp) for tmp in brand_list))
+    elif spider_type == 'monitor':
+        crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.MonitorPipeline': 800}
+        brand = int(data['brand'][0])
+        region = data['region'][0]
+        idmonitor = int(data['idmonitor'][0])
+        parameter = {'brand_id': brand, 'region': region}
+        spider = spider_class(idmonitor, parameter, getattr(glob, 'DB_SPEC'))
+        welcome_msg = str.format('STARTING MONITORING, idmonitory={0}, brand={1}, region={2}', idmonitor, brand,
+                                 idmonitor)
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
@@ -107,6 +119,7 @@ def set_up_spider(spider_class, data, is_update=False):
                     region_list.pop(region_list.index(r))
 
         spider = spider_class(region_list)
+        welcome_msg = str.format('Spider started, processing the following regions: {0}', ', '.join(region_list))
 
     crawler.settings.values['AUTOTHROTTLE_ENABLED'] = False
 
@@ -147,12 +160,7 @@ def set_up_spider(spider_class, data, is_update=False):
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
 
-    if is_update:
-        spider.log(str.format('Updating started, processing the following brands: {0}',
-                              ', '.join(str(tmp) for tmp in brand_list)), log.INFO)
-    else:
-        spider.log(str.format('Spider started, processing the following regions: {0}', ', '.join(region_list)),
-                   log.INFO)
+    spider.log(welcome_msg, log.INFO)
     crawler.crawl(spider)
     crawler.start()
 
@@ -178,9 +186,18 @@ def main():
             except (KeyError,IOError):
                 spider_module=None
 
-            spider_class = MFashionBaseSpider if cmd == 'update' else MFashionSpider
+            if cmd == 'update':
+                spider_class = MFashionBaseSpider
+                spider_type = 'update'
+            elif cmd == 'monitor':
+                spider_class = UpdateSpider
+                spider_type = 'monitor'
+            else:
+                spider_class = MFashionSpider
+                spider_type = 'default'
+
+            # spider_class = MFashionBaseSpider if cmd == 'update' else MFashionSpider
             eshop_spider_class = EShopSpider
-            is_update = (not spider_class == MFashionSpider)
 
             sc_list = list(ifilter(lambda val:
                                    isinstance(val, type) and issubclass(val,
@@ -196,17 +213,29 @@ def main():
                 if 'v' in param or getattr(glob, 'LOG_DEBUG'):
                     log.start(loglevel='DEBUG')
                 else:
-                    if is_update:
+                    if spider_type == 'update':
                         logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
                                                                 unicode.format(u'update_{0}_{1}.log',
                                                                                '_'.join(param['brand']),
                                                                                datetime.datetime.now().strftime(
                                                                                    '%Y%m%d%H%M%S'))))
-                    else:
+                    elif spider_type == 'default':
                         logfile = get_log_path(sc.spider_data['brand_id'], region_list=param['r'])
-                    log.start(loglevel='INFO', logfile=logfile)
+                    elif spider_type == 'monitor':
+                        logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
+                                                                unicode.format(u'monitor_{0}_{1}.log',
+                                                                               '_'.join(param['brand']),
+                                                                               datetime.datetime.now().strftime(
+                                                                                   '%Y%m%d%H%M%S'))))
+                    else:
+                        logfile = None
 
-                set_up_spider(sc, param, is_update=is_update)
+                    if logfile:
+                        log.start(loglevel='INFO', logfile=logfile)
+                    else:
+                        log.start(loglevel='INFO')
+
+                set_up_spider(sc, param, spider_type=spider_type)
                 reactor.run()  # the script will block here until the spider_closed signal was sent
 
 
