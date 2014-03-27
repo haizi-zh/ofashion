@@ -191,6 +191,9 @@ class UpdatePipeline(MStorePipeline):
             elif force_update:
                 self.db.update({}, 'products', str.format('idproducts={0}', pid),
                                  timestamps=['update_time', 'touch_time'])
+            else:
+                self.db.update({}, 'products', str.format('idproducts={0}', pid),
+                                 timestamps=['touch_time'])
 
         except:
             self.db.rollback()
@@ -330,7 +333,8 @@ class ProductPipeline(MStorePipeline):
         entry['fingerprint'] = gen_fingerprint(entry['brand_id'], entry['model'])
 
         for k in ('name', 'description', 'details'):
-            entry[k] = lxmlparser(entry[k])
+            if k in entry:
+                entry[k] = lxmlparser(entry[k])
 
         origin_url = entry['url']
         try:
@@ -631,19 +635,21 @@ class ProductImagePipeline(ImagesPipeline):
 
         return item
 
-class MonitorPipeline(UpdatePipeline):
 
+class MonitorPipeline(UpdatePipeline):
     def process_item(self, item, spider):
         pid = item['idproduct']
 
         self.db.start_transaction()
         try:
             mo_re = self.db.query_match({'idmonitor'},
-                                        'monitor_status', {'idmonitor': item['metadata']['idmonitor'], 'monitor_status': 0})
+                                        'monitor_status',
+                                        {'idmonitor': item['metadata']['idmonitor'], 'monitor_status': 0})
             if mo_re.num_rows():
                 # 获得旧数据
-                rs = self.db.query_match({'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
-                                          'idproducts'}, 'products', {'idproducts': pid})
+                rs = self.db.query_match(
+                    {'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
+                     'idproducts'}, 'products', {'idproducts': pid})
                 # 如果没有找到相应的记录，
                 if rs.num_rows() == 0:
                     raise DropItem
@@ -660,13 +666,14 @@ class MonitorPipeline(UpdatePipeline):
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
                     spider.crawler.stop()
 
-                    self.db.update({'monitor_status': 1}, 'monitor_status', str.format('idmonitor={0}', item['metadata']['idmonitor']))
+                    self.db.update({'monitor_status': 1}, 'monitor_status',
+                                   str.format('idmonitor={0}', item['metadata']['idmonitor']))
         except:
             self.db.rollback()
             raise
         finally:
             self.db.commit()
-            
+
 
 class MonitorPipeline(UpdatePipeline):
     def process_item(self, item, spider):
