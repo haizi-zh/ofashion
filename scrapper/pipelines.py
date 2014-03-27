@@ -71,15 +71,11 @@ class MStorePipeline(object):
                           'products_price_history')
             price_updated = insert_flag
         else:
-            # 如果原来有价格，现在却没有抓到价格信息，则需要一些额外处理：返回suggested_offline=True
+            # 如果原来有价格，现在却没有抓到价格信息，则uggested_offline=True
             rs = db.query_match(['price', 'price_discount', 'currency'], 'products_price_history',
                                 {'idproducts': pid}, tail_str='ORDER BY date DESC LIMIT 1')
             tmp = rs.fetch_row(maxrows=0, how=1)
-            if tmp and tmp[0]['price']:
-                # db.insert({'idproducts': pid, 'price': None, 'currency': tmp[0]['currency'],
-                #            'price_discount': None}, 'products_price_history')
-                suggested_offline = True
-                price_updated = True
+            suggested_offline = True if tmp else False
 
         return price_updated, suggested_offline
 
@@ -149,6 +145,16 @@ class UpdatePipeline(MStorePipeline):
 
         return update_data
 
+    @staticmethod
+    def is_update_price(item):
+        """
+        检查：是否需要进行价格更新
+        @param item:
+        """
+        # item['offline']的取值只有两种可能：0或者1。如果是1，说明已经下线，不需要进行价格更新。
+        # 如果是0，则有两种可能：完全正常，或者是其实没抓到价格（这一情况大部分时候意味着疑似下线）。需要进行进一步检查。
+        return item['offline'] == 0
+
     def process_item(self, item, spider):
         pid = item['idproduct']
 
@@ -161,28 +167,31 @@ class UpdatePipeline(MStorePipeline):
             if rs.num_rows() == 0:
                 raise DropItem
             record = rs.fetch_row(how=1)[0]
+            record['offline'] = int(record['offline'])
             update_data = self.get_update_data(spider, item, record)
+
+            # 如果为True，则无论update_data的状态，都需要更新
+            force_update = False
+
+            if self.is_update_price(item):
+                # 注意，如果价格更新，所以products的时间戳也需要更新，所以需要force_update为True
+                force_update, suggested_offline = self.update_db_price(item['metadata'], pid, item['brand'],
+                                                                       item['region'], self.db)
+
+                if suggested_offline:
+                    # 保证更新后的offline为1或者2。
+                    if 'offline' in update_data and update_data['offline'] == 0:
+                        update_data['offline'] = 2
+                    elif 'offline' not in update_data and record['offline'] == 0:
+                        update_data['offline'] = 2
 
             if update_data:
                 self.db.update(update_data, 'products', str.format('idproducts={0}', pid),
                                timestamps=['update_time', 'touch_time'])
-            else:
-                # 所有的字段都没有变化，仅仅需要更新一下touch_time
-                self.db.update({'offline': item['offline']}, 'products', str.format('idproducts={0}', pid),
-                               timestamps=['touch_time'])
+            elif force_update:
+                self.db.update({}, 'products', str.format('idproducts={0}', pid),
+                                 timestamps=['update_time', 'touch_time'])
 
-            # 一下几种情况，需要更新数据库中的价格记录：
-            # 1. update_data['offline']==0，说明最新抓取到的记录是有效的
-            # 2. update_data['offline']和item['offline']，若有任意一项不为0，说明不需要更新价格记录
-            if 'offline' in update_data and update_data['offline'] == 0 or \
-                    (not (('offline' in update_data and update_data['offline'] != 0) or (
-                                    'offline' in item and item['offline'] != 0))):
-                price_updated, suggested_offline = self.update_db_price(item['metadata'], pid, item['brand'],
-                                                                        item['region'], self.db)
-                if price_updated:
-                    # 如果商品可能已经下线，offline=2
-                    self.db.update({'offline': 2} if suggested_offline else {}, 'products',
-                                   str.format('idproducts={0}', pid), timestamps=['update_time', 'touch_time'])
         except:
             self.db.rollback()
             raise
@@ -388,9 +397,13 @@ class ProductPipeline(MStorePipeline):
             price_updated, suggested_offline = self.update_db_price(entry, pid, entry['brand_id'], entry['region'],
                                                                     self.db)
             if price_updated:
-                # 如果商品可能已经下线，offline=2
-                self.db.update({'offline': 2} if suggested_offline else {}, 'products',
-                               str.format('idproducts={0}', pid), timestamps=['update_time', 'touch_time'])
+                self.db.update({}, 'products', str.format('idproducts={0}', pid),
+                                 timestamps=['update_time', 'touch_time'])
+
+            if suggested_offline:
+                # 单品疑似下架
+                self.db.update({'offline': 2}, 'products', str.format('idproducts={0}', pid),
+                               timestamps=['update_time', 'touch_time'])
 
             # 处理标签变化
             self.process_tags_mapping(tags_mapping, entry, pid)
