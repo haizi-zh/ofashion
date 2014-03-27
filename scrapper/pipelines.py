@@ -631,42 +631,6 @@ class ProductImagePipeline(ImagesPipeline):
 
         return item
 
-class MonitorPipeline(UpdatePipeline):
-
-    def process_item(self, item, spider):
-        pid = item['idproduct']
-
-        self.db.start_transaction()
-        try:
-            mo_re = self.db.query_match({'idmonitor'},
-                                        'monitor_status', {'idmonitor': item['metadata']['idmonitor'], 'monitor_status': 0})
-            if mo_re.num_rows():
-                # 获得旧数据
-                rs = self.db.query_match({'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
-                                          'idproducts'}, 'products', {'idproducts': pid})
-                # 如果没有找到相应的记录，
-                if rs.num_rows() == 0:
-                    raise DropItem
-                record = rs.fetch_row(how=1)[0]
-                update_data = self.get_update_data(spider, item, record)
-
-                # 这里不判断model和offline的变化
-                if 'model' in update_data:
-                    update_data.pop('model')
-                # if 'offline' in update_data:
-                #     update_data.pop('offline')
-
-                if update_data:
-                    # 注意，这里的stop()，并不会立即停止所有爬虫线程
-                    spider.crawler.stop()
-
-                    self.db.update({'monitor_status': 1}, 'monitor_status', str.format('idmonitor={0}', item['metadata']['idmonitor']))
-        except:
-            self.db.rollback()
-            raise
-        finally:
-            self.db.commit()
-            
 
 class MonitorPipeline(UpdatePipeline):
     def process_item(self, item, spider):
@@ -676,7 +640,7 @@ class MonitorPipeline(UpdatePipeline):
         try:
             mo_re = self.db.query_match({'idmonitor'},
                                         'monitor_status',
-                                        {'idmonitor': item['metadata']['idmonitor'], 'monitor_status': 0})
+                                        {'idmonitor': spider.idmonitor, 'monitor_status': '0'})
             if mo_re.num_rows():
                 # 获得旧数据
                 rs = self.db.query_match(
@@ -694,14 +658,16 @@ class MonitorPipeline(UpdatePipeline):
                 # if 'offline' in update_data:
                 #     update_data.pop('offline')
 
+
                 if update_data:
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
+                    spider.log(update_data, log.INFO)
                     spider.crawler.stop()
 
                     self.db.update({'monitor_status': 1}, 'monitor_status',
-                                   str.format('idmonitor={0}', item['metadata']['idmonitor']))
+                                   str.format('idmonitor={0}', spider.idmonitor))
+            self.db.commit()
         except:
             self.db.rollback()
             raise
-        finally:
-            self.db.commit()
+
