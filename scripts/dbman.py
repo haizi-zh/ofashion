@@ -429,6 +429,9 @@ class PublishRelease(object):
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
         entry = release_filter(entry, logger)
 
+        if not entry['price_list']:
+            return
+
         entry['offline'] = entry['price_list'][0]['offline']
 
         # model的fetch_time的确定：所有对应pid中，fetch_time最早的那个。

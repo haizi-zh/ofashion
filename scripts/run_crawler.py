@@ -16,9 +16,7 @@ import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
 from scrapper.spiders.eshop_spider import EShopSpider
-from scrapy.contrib.spiders import CrawlSpider
-from scrapper.spiders.update_spider import UpdateSpider
-import scrapper.spiders.update_spider as ups
+from utils import info
 from utils.utils_core import iterable, parse_args
 
 __author__ = 'Zephyre'
@@ -174,13 +172,11 @@ def main():
             # 如果输入的不是spider名称，而是品牌编号，则进行查找
             try:
                 brand_id = int(cmd)
-                brand_info = glob.brand_info()
-                if brand_id in brand_info:
-                    spider_module = cm.get_spider_module(brand_info[brand_id]['brandname_s'])
-                else:
-                    spider_module = None
+                spider_module= cm.get_spider_module(info.spider_info()[brand_id]['cmdname'])
             except ValueError:
                 spider_module = cm.get_spider_module(cmd)
+            except (KeyError,IOError):
+                spider_module=None
 
             spider_class = MFashionBaseSpider if cmd == 'update' else MFashionSpider
             eshop_spider_class = EShopSpider
