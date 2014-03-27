@@ -4,7 +4,8 @@ import hashlib
 import logging
 import re
 import types
-import lxml.html
+import lxml.html.soupparser as soupparser
+
 import global_settings as glob
 
 __author__ = 'Zephyre'
@@ -240,7 +241,7 @@ def lxmlparser(val):
     if val is None:
         return None
     elif isinstance(val, str):
-        return lxml.html.fromstring(val).text_content()
+        return soupparser.fromstring(val).text_content()
     else:
         return val
 

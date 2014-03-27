@@ -9,11 +9,12 @@ import json
 import urlparse
 from core import RoseVisionDb
 import core
-import global_settings as gs
+import global_settings
 
 # import pydevd
 
 # pydevd.settrace('localhost', port=7100, stdoutToServer=True, stderrToServer=True)
+from scheduler import monitor
 
 from utils.utils_core import gen_fingerprint
 
@@ -49,7 +50,7 @@ class Sandbox(object):
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
 
     def run(self):
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
             try:
                 rs = db.query(
                     'SELECT idproducts_image, brand_id, model FROM products_image where fingerprint is null').fetch_row(

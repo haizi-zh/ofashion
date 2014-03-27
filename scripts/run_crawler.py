@@ -101,8 +101,7 @@ def set_up_spider(spider_class, data, is_update=False):
         elif not iterable(region_list):
             region_list = [region_list]
 
-        region_info = glob.region_info()
-        region_list = filter(lambda val: int(region_info[val]['status']), region_list)
+        region_list = filter(lambda val: glob.region_info()[val]['status'], region_list)
 
         if 'exclude-region' in data:
             for r in data['exclude-region']:

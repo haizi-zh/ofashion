@@ -34,6 +34,8 @@ class CurrencyUpdate(object):
                                                            '%m/%d/%Y %I:%M%p')
                     db.update({'rate': line_data[1], 'update_time': timestamp.strftime('%Y-%m-%d %H:%M:%S')},
                               'region_info', str.format('iso_code="{0}"', code))
+                    db.insert({'currency': currency, 'rate': line_data[1]},
+                              'currency_info', replace=True)
                 db.commit()
             except:
                 db.rollback()
