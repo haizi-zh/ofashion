@@ -20,7 +20,6 @@ class CurrencyUpdate(object):
 
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
             rs = db.query_match(['iso_code', 'currency'], 'region_info').fetch_row(maxrows=0)
-            db.start_transaction()
             try:
                 for code, currency in rs:
                     logger.info(str.format('Fetching for currency data for {0}...', currency))
