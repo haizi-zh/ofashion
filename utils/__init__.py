@@ -33,4 +33,5 @@ def init_logger(logger_name='rosevision', filename=None, to_file=False,
         logger.addHandler(fh)
     return logger
 
-init_logger(to_file=True)
+init_logger(logger_name='rosevision', to_file=True)
+init_logger(logger_name='monitor', to_file=True)

@@ -226,7 +226,7 @@ def main():
                                                                 unicode.format(u'update_{0}_{1}.log',
                                                                                '_'.join(param['brand']),
                                                                                datetime.datetime.now().strftime(
-                                                                                   '%Y%m%d%H%M%S'))))
+                                                                                   '%Y%m%d'))))
                     elif spider_type == 'default':
                         logfile = get_log_path(sc.spider_data['brand_id'], region_list=param['r'])
                     elif spider_type == 'monitor':
@@ -234,7 +234,7 @@ def main():
                                                                 unicode.format(u'monitor_{0}_{1}.log',
                                                                                '_'.join(param['brand']),
                                                                                datetime.datetime.now().strftime(
-                                                                                   '%Y%m%d%H%M%S'))))
+                                                                                   '%Y%m%d'))))
                     else:
                         logfile = None
 
