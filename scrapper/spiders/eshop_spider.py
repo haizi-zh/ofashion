@@ -11,24 +11,25 @@ class EShopSpider(MFashionSpider):
     spider_data = {}
 
     brand_list = {}
-    for brand_id, brand_info in glob.brand_info().items():
-        brand_name_c = brand_info['brandname_c']
-        brand_name_e = brand_info['brandname_e']
-        brand_name_s = brand_info['brandname_s']
-
-        if brand_name_c:
-            brand_name_c = brand_name_c.lower()
-        if brand_name_e:
-            brand_name_e = brand_name_e.lower()
-        if brand_name_s:
-            brand_name_s = brand_name_s.lower()
-
-        brand_list[unicode(brand_name_c)] = brand_id
-        brand_list[brand_name_e] = brand_id
-        brand_list[brand_name_s] = brand_id
 
     def __init__(self, name, region):
         super(EShopSpider, self).__init__(name, region)
+
+        for brand_id, brand_info in glob.brand_info().items():
+            brand_name_c = brand_info['brandname_c']
+            brand_name_e = brand_info['brandname_e']
+            brand_name_s = brand_info['brandname_s']
+
+            if brand_name_c:
+                brand_name_c = brand_name_c.lower()
+            if brand_name_e:
+                brand_name_e = brand_name_e.lower()
+            if brand_name_s:
+                brand_name_s = brand_name_s.lower()
+
+            self.brand_list[unicode(brand_name_c)] = brand_id
+            self.brand_list[brand_name_e] = brand_id
+            self.brand_list[brand_name_s] = brand_id
 
     @classmethod
     def match_known_brand(cls, brand):

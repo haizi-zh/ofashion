@@ -191,6 +191,9 @@ class UpdatePipeline(MStorePipeline):
             elif force_update:
                 self.db.update({}, 'products', str.format('idproducts={0}', pid),
                                  timestamps=['update_time', 'touch_time'])
+            else:
+                self.db.update({}, 'products', str.format('idproducts={0}', pid),
+                                 timestamps=['touch_time'])
 
         except:
             self.db.rollback()
@@ -330,7 +333,8 @@ class ProductPipeline(MStorePipeline):
         entry['fingerprint'] = gen_fingerprint(entry['brand_id'], entry['model'])
 
         for k in ('name', 'description', 'details'):
-            entry[k] = lxmlparser(entry[k])
+            if k in entry:
+                entry[k] = lxmlparser(entry[k])
 
         origin_url = entry['url']
         try:
@@ -630,7 +634,6 @@ class ProductImagePipeline(ImagesPipeline):
                     raise
 
         return item
-
 
 class MonitorPipeline(UpdatePipeline):
     def process_item(self, item, spider):

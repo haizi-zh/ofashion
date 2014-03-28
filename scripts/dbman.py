@@ -373,7 +373,8 @@ class PublishRelease(object):
         for item in db.query_match(['price', 'price_discount', 'currency', 'date', 'idproducts'],
                                    self.price_hist, {},
                                    str.format('idproducts IN ({0})',
-                                              ','.join(val['idproducts'] for val in prods))).fetch_row(maxrows=0,
+                                              ','.join(val['idproducts'] for val in prods)),
+                                   tail_str='ORDER BY date DESC').fetch_row(maxrows=0,
                                                                                                        how=1):
             pid = int(item['idproducts'])
             region = region_dict[pid]
@@ -398,7 +399,7 @@ class PublishRelease(object):
         # 如果无法找到不为None的价格，则跳过该pid
         for pid, pid_data in price_list.items():
             # 按照时间顺序逆排序，同时只保留price不为None的数据
-            pid_data = sorted(pid_data, key=lambda val: val['date'], reverse=True)
+            # pid_data = sorted(pid_data, key=lambda val: val['date'], reverse=True)
 
             if pid_data[0]['price']:
                 # 正常情况
@@ -416,9 +417,10 @@ class PublishRelease(object):
                     price_list[pid] = tmp
 
             # 第一次有效价格对应的时间，为fetch_time
-            pid_data = filter(lambda val: val['price'], sorted(pid_data, key=lambda val: val['date']))
+            # pid_data = filter(lambda val: val['price'], sorted(pid_data, key=lambda val: val['date']))
+            pid_data = filter(lambda val: val['price'], pid_data)
             if pid_data and pid in price_list:
-                price_list[pid]['fetch_time'] = pid_data[0]['date']
+                price_list[pid]['fetch_time'] = pid_data[-1]['date']
 
         # 如果没有价格信息，则不发布
         if not price_list:
@@ -426,6 +428,9 @@ class PublishRelease(object):
 
         entry['price_list'] = sorted(price_list.values(), key=lambda val: self.region_order[val['code']])
         entry = release_filter(entry, logger)
+
+        if not entry['price_list']:
+            return
 
         entry['offline'] = entry['price_list'][0]['offline']
 

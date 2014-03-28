@@ -16,10 +16,8 @@ import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
 from scrapper.spiders.eshop_spider import EShopSpider
-from scrapy.contrib.spiders import CrawlSpider
-from scrapper.spiders.monitor_spider import MonitorSpider
+from utils import info
 from scrapper.spiders.update_spider import UpdateSpider
-import scrapper.spiders.update_spider as ups
 from utils.utils_core import iterable, parse_args
 
 __author__ = 'Zephyre'
@@ -173,7 +171,15 @@ def main():
     logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
     logger = logging.getLogger()
 
-    ret = parse_args(sys.argv)
+    argv = sys.argv
+
+    if len(argv) == 2 and isinstance(argv[1], str):
+        # 一长串字符串，需要拆分
+        tmp = argv[1].split(' ')
+        del argv[1]
+        argv.extend(tmp)
+
+    ret = parse_args(argv)
     if ret:
         cmd = ret['cmd']
         param = ret['param']
@@ -182,13 +188,11 @@ def main():
             # 如果输入的不是spider名称，而是品牌编号，则进行查找
             try:
                 brand_id = int(cmd)
-                brand_info = glob.brand_info()
-                if brand_id in brand_info:
-                    spider_module = cm.get_spider_module(brand_info[brand_id]['brandname_s'])
-                else:
-                    spider_module = None
+                spider_module = cm.get_spider_module(info.spider_info()[brand_id]['cmdname'])
             except ValueError:
                 spider_module = cm.get_spider_module(cmd)
+            except (KeyError, IOError):
+                spider_module = None
 
             if cmd == 'update':
                 spider_class = MFashionBaseSpider
