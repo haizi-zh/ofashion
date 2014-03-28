@@ -18,7 +18,7 @@ class MonitorSpider(UpdateSpider):
         region = parameter['region']
 
         super(MonitorSpider, self).__init__([brand], [region], db_spec, *a, **kw)
-        self.name = 'monitor'
+        self.name = str.format('monitor-{0}-{1}', brand, region)
         self.idmonitor = idmonitor
 
         monitor_pid = os.getpid()

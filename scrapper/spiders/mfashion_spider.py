@@ -50,7 +50,7 @@ class MFashionSpider(MFashionBaseSpider):
         return urlparse.urljoin(referer, href)
 
     def __init__(self, name, region, *a, **kw):
-        self.name = name
+        self.name = str.format('{0}-{1}', name, '-'.join(region) if region else 'all')
         super(MFashionSpider, self).__init__(*a, **kw)
 
         if not region:

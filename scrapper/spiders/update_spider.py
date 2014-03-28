@@ -15,7 +15,8 @@ class UpdateSpider(MFashionBaseSpider):
     handle_httpstatus_list = [404]
 
     def __init__(self, brand_list, region_list, db_spec, *a, **kw):
-        self.name = 'update'
+        self.name = str.format('update-{0}-{1}', '-'.join(brand_list) if brand_list else 'all',
+                               '-'.join(region_list) if region_list else 'all')
         super(UpdateSpider, self).__init__(*a, **kw)
         self.brand_list = brand_list
         self.region_list = region_list
@@ -53,8 +54,9 @@ class UpdateSpider(MFashionBaseSpider):
                 rs = self.db.query_match({'idproducts', 'url', 'region', 'model'}, 'products',
                                          {'brand_id': brand, 'region': region}, extra='offline!=1')
                 products_map = {
-                int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region'], 'model': tmp['model']} for tmp in
-                rs.fetch_row(maxrows=0, how=1)}
+                    int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region'], 'model': tmp['model']} for tmp
+                    in
+                    rs.fetch_row(maxrows=0, how=1)}
                 for pid, data in products_map.items():
                     url = data['url']
                     region = data['region']
