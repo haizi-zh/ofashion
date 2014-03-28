@@ -75,7 +75,7 @@ def fetch_spider_info():
 
     info = {}
     for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
-        f, filename, description = imp.find_module(modname, ['scrapper/spiders'])
+        f, filename, description = imp.find_module(modname, scrapper.spiders.__path__)
         try:
             submodule_list = imp.load_module(modname, f, filename, description)
         except ImportError:

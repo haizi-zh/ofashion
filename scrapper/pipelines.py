@@ -661,7 +661,6 @@ class MonitorPipeline(UpdatePipeline):
                 # if 'offline' in update_data:
                 #     update_data.pop('offline')
 
-
                 if update_data:
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
                     spider.log(update_data, log.INFO)
@@ -673,7 +672,7 @@ class MonitorPipeline(UpdatePipeline):
                     logger = get_logger(logger_name='monitor')
 
                     logger.info('Monitor ended--> idmonitor:%s, brand_id:%s, region:%s' % (
-                        spider.idmonitor, item['brand_id'], item['brand_id']))
+                        spider.idmonitor, item['brand'], item['region']))
             self.db.commit()
         except:
             self.db.rollback()

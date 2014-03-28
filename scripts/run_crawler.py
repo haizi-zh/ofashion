@@ -79,7 +79,7 @@ def set_up_spider(spider_class, data, spider_type='default'):
         parameter = {'brand_id': brand, 'region': region}
         spider = spider_class(idmonitor, parameter, getattr(glob, 'DB_SPEC'))
         welcome_msg = str.format('STARTING MONITORING, idmonitory={0}, brand={1}, region={2}', idmonitor, brand,
-                                 idmonitor)
+                                 region)
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
