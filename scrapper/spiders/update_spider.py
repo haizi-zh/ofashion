@@ -15,7 +15,7 @@ class UpdateSpider(MFashionBaseSpider):
     handle_httpstatus_list = [404]
 
     def __init__(self, brand_list, region_list, db_spec, *a, **kw):
-        self.name = str.format('update-{0}-{1}', '-'.join(brand_list) if brand_list else 'all',
+        self.name = str.format('update-{0}-{1}', '-'.join(str(tmp) for tmp in brand_list) if brand_list else 'all',
                                '-'.join(region_list) if region_list else 'all')
         super(UpdateSpider, self).__init__(*a, **kw)
         self.brand_list = brand_list
