@@ -15,6 +15,7 @@ import global_settings
 
 # pydevd.settrace('localhost', port=7100, stdoutToServer=True, stderrToServer=True)
 from scheduler import monitor
+from utils.info import spider_info
 
 from utils.utils_core import gen_fingerprint
 
@@ -67,10 +68,14 @@ class Sandbox(object):
 
 
 def func1():
-    brand_list = [10074, 13084, 10142, 10008, 10105, 10152, 10109, 10308, 10373, 10080, 10259, 10178, 10270, 10305,
-                  10220, 10218, 10006, 10204, 10263, 10076, 10030, 10184, 10149, 10192, 10114, 10333, 10617, 10316,
-                  10106, 10212]
+    brand_list = [10006, 10008, 10009, 10029, 10030, 10040, 10049, 10057, 10058, 10066, 10074, 10076, 10080, 10084,
+                  10093, 10105, 10106, 10108, 10109, 10114, 10117, 10135, 10138, 10142, 10149, 10152, 10155, 10166,
+                  10169, 10178, 10184, 10192, 10204, 10212, 10218, 10220, 10226, 10239, 10241, 10248, 10259, 10263,
+                  10264, 10270, 10288, 10300, 10305, 10308, 10316, 10322, 10333, 10345, 10350, 10354, 10367, 10369,
+                  10373, 10388, 10429, 10510, 10617, 11301, 13084]
     for brand in brand_list:
+        if brand < 10259:
+            continue
         cmd1 = str.format('python scripts/mstore.py process-tags --cond brand_id={0}', brand)
         cmd2 = str.format('python scripts/mstore.py release --brand {0}', brand)
         cmd = '; '.join([cmd1, cmd2])
@@ -79,17 +84,17 @@ def func1():
 
 
 def func2():
-    with open('missing.txt', 'r') as f:
-        local = set(json.load(f))
-
-    with open('missing_p.txt', 'r') as f:
-        local_p = set(json.load(f))
+    # with open('missing.txt', 'r') as f:
+    #     local = set(json.load(f))
+    #
+    # with open('missing_p.txt', 'r') as f:
+    #     local_p = set(json.load(f))
 
     with open('fingerprint.csv', 'rb') as csvfile:
         reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
         remote = set([row[0].replace('"', '') for row in reader])
 
-    with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
         local = set(
             [tmp[0] for tmp in db.query('SELECT DISTINCT fingerprint FROM products_release').fetch_row(maxrows=0)])
         local_p = set(
@@ -113,3 +118,5 @@ def func2():
 
 if __name__ == '__main__':
     func1()
+    # spider_info()
+    # monitor.main()
