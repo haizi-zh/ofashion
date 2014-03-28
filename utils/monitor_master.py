@@ -17,8 +17,8 @@ class MonitorMaster(object):
         logger.info('Monitor STARTED!!!')
 
         #monitor process quantity, recrawl process quantity,limit interval for recrawl spider
-        monitor_no = kwargs['monitor_no'] if 'monitor_no' in kwargs else 10
-        recrawl_no = kwargs['recrawl_no'] if 'recrawl_no' in kwargs else 8
+        monitor_no = kwargs['monitor_no'] if 'monitor_no' in kwargs else 8
+        recrawl_no = kwargs['recrawl_no'] if 'recrawl_no' in kwargs else 6
         interval = kwargs['interval'] if 'interval' in kwargs else 7
         limit_time = datetime.datetime.now() - datetime.timedelta(interval)
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:

@@ -664,8 +664,8 @@ class MonitorPipeline(UpdatePipeline):
 
                 if update_data:
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
-                    spider.log(str.format('DIFFERENCE DETECTED: {0} => {1}', str({k: record[k] for k in update_data}),
-                                          str(update_data)), log.INFO)
+                    spider.log(str.format('DIFFERENCE DETECTED: {2}: {0} => {1}', str({k: record[k] for k in update_data}),
+                                          str(update_data), record['idproducts']), log.INFO)
                     spider.crawler.stop()
 
                     self.db.update({'monitor_status': 1}, 'monitor_status',

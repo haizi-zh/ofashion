@@ -91,12 +91,12 @@ def set_up_spider(spider_class, data, spider_type='default'):
             crawler.settings.values['JOBDIR'] = job_path
 
         # Telnet支持
-        crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
-        if 'telnet' in data and data['telnet']:
-            start_port = int(data['telnet'][0])
-        else:
-            start_port = spider_class.spider_data['brand_id']
-        crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
+        # crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
+        # if 'telnet' in data and data['telnet']:
+        #     start_port = int(data['telnet'][0])
+        # else:
+        #     start_port = spider_class.spider_data['brand_id']
+        # crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
 
         # 图像数据存储
         crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_class.spider_data['brand_id'])
