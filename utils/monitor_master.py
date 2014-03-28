@@ -13,6 +13,9 @@ import json
 class MonitorMaster(object):
     @classmethod
     def run(cls, logger=None, **kwargs):
+        logger = logger if 'logger' in kwargs else get_logger(logger_name='monitor')
+        logger.info('Monitor STARTED!!!')
+
         #monitor process quantity, recrawl process quantity,limit interval for recrawl spider
         monitor_no = kwargs['monitor_no'] if 'monitor_no' in kwargs else 10
         recrawl_no = kwargs['recrawl_no'] if 'recrawl_no' in kwargs else 8
@@ -74,6 +77,10 @@ class MonitorMaster(object):
                 for idmonitor, parameter, timestamp in ready_monitor:
                     args = json.loads(parameter)
                     #monitor --brand 10009 --region fr --idmonitor 1931 -v
+
+                    logger.info('Monitor started--> idmonitor:%s, brand_id:%s, region:%s' % (
+                    idmonitor, args['brand_id'], args['region']))
+
                     spawn_process(
                         os.path.join(scripts.__path__[0], 'run_crawler.py'),
                         'monitor --brand %s --region %s --idmonitor %s' % (args['brand_id'], args['region'], idmonitor))
@@ -89,7 +96,13 @@ class MonitorMaster(object):
                     args = json.loads(parameter)
                     args['idmonitor'] = idmonitor
                     para = '|'.join([str(idmonitor), str(args['brand_id']), args['region']])
+
+                    logger.info('Recrawl started--> idmonitor:%s, brand_id:%s, region:%s' % (
+                    idmonitor, args['brand_id'], args['region']))
+
                     spawn_process(os.path.join(scripts.__path__[0], 'recrawler.py'), para)
+
+        # logger.info('Monitor ENDED!!!')
 
 
 def spawn_process(pyfile, args):

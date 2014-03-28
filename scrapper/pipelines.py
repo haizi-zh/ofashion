@@ -19,7 +19,7 @@ from PIL import Image
 
 from core import RoseVisionDb
 import global_settings as glob
-from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint, lxmlparser
+from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint, lxmlparser, get_logger
 
 
 class MStorePipeline(object):
@@ -669,6 +669,11 @@ class MonitorPipeline(UpdatePipeline):
 
                     self.db.update({'monitor_status': 1}, 'monitor_status',
                                    str.format('idmonitor={0}', spider.idmonitor))
+
+                    logger = get_logger(logger_name='monitor')
+
+                    logger.info('Monitor ended--> idmonitor:%s, brand_id:%s, region:%s' % (
+                        spider.idmonitor, item['brand_id'], item['brand_id']))
             self.db.commit()
         except:
             self.db.rollback()
