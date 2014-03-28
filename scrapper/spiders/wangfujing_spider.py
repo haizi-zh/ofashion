@@ -33,10 +33,14 @@ class WangfujingSpider(EShopSpider):
         metadata = response.meta['userdata']
         sel = Selector(response)
 
-        nav_nodes = sel.xpath('//div[@id="nav"]/ul[@id="nav-list"]/li/a[@href][text()]')
+        # nav_nodes = sel.xpath('//div[@id="nav"]/ul[@id="nav-list"]/li/a[@href][text()]')
+        nav_nodes = sel.xpath('//nav[@id="navigation"]//div[@id="j_cats"]/div/dl[contains(@id, "cat")][child::dt[child::a[text()]]]')
         for node in nav_nodes:
             try:
-                tag_text = node.xpath('./text()').extract()[0]
+                # tag_text = node.xpath('./text()').extract()[0]
+                # tag_text = self.reformat(tag_text)
+                # tag_name = tag_text.lower()
+                tag_text = node.xpath('./dt/a/text()').extract()[0]
                 tag_text = self.reformat(tag_text)
                 tag_name = tag_text.lower()
             except(TypeError, IndexError):
@@ -53,10 +57,14 @@ class WangfujingSpider(EShopSpider):
                 if gender:
                     m['gender'] = [gender]
 
-                sub_nodes = node.xpath('..//div[@class="nav-main"]//div[@class="item-name"]/a[@href][text()]')
+                # sub_nodes = node.xpath('..//div[@class="nav-main"]//div[@class="item-name"]/a[@href][text()]')
+                sub_nodes = node.xpath('./div/textarea/div/dl[child::dt[child::a[text()]]]')
                 for sub_node in sub_nodes:
                     try:
-                        tag_text = sub_node.xpath('./text()').extract()[0]
+                        # tag_text = sub_node.xpath('./text()').extract()[0]
+                        # tag_text = self.reformat(tag_text)
+                        # tag_name = tag_text.lower()
+                        tag_text = sub_node.xpath('./dt/a/text()').extract()[0]
                         tag_text = self.reformat(tag_text)
                         tag_name = tag_text.lower()
                     except(TypeError, IndexError):
@@ -73,7 +81,8 @@ class WangfujingSpider(EShopSpider):
                         if gender:
                             mc['gender'] = [gender]
 
-                        third_nodes = sub_node.xpath('../../div[@class="item"]/a[@href][text()]')
+                        # third_nodes = sub_node.xpath('../../div[@class="item"]/a[@href][text()]')
+                        third_nodes = sub_node.xpath('./dd/span/a[@href][text()]')
                         for third_node in third_nodes:
                             try:
                                 tag_text = third_node.xpath('./text()').extract()[0]
