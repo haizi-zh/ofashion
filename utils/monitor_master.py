@@ -1,6 +1,7 @@
 # coding=utf-8
 import os
 import sys
+import scripts
 from utils.utils_core import get_logger
 from core import RoseVisionDb
 import global_settings as gs
@@ -34,7 +35,7 @@ class MonitorMaster(object):
             #更新
             rs_new = db.query_match(
                 ['idmonitor', 'parameter', 'monitor_status', 'monitor_pid', 'recrawl_pid', 'timestamp'],
-                'monitor_status', {'enabled': 1}, tail_str='ORDER BY timestamp').fetch_row(maxrows=0)
+                'monitor_status', {'enabled': 1}, tail_str='ORDER BY priority desc, timestamp').fetch_row(maxrows=0)
 
             #空闲product列表，排序后，最早更新的等待monitor
             idle_monitor_list = []
@@ -54,11 +55,11 @@ class MonitorMaster(object):
                 if monitor_status == '1' and monitor_pid is None and recrawl_pid is None:
                     idle_recrawl_list.append(( idmonitor, parameter, timestamp))
 
-                # #爬虫最后更新时间早于最大限制时间，重爬。
-                # update_time = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
-                # if update_time <= limit_time:
-                #     db.update({'monitor_status': 1}, 'monitor_status',
-                #               str.format('idmonitor={0}', idmonitor))
+                    # #爬虫最后更新时间早于最大限制时间，重爬。
+                    # update_time = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+                    # if update_time <= limit_time:
+                    #     db.update({'monitor_status': 1}, 'monitor_status',
+                    #               str.format('idmonitor={0}', idmonitor))
 
             # idle_monitor_list = sorted(idle_monitor_list, key=lambda m: m[2])
             # idle_recrawl_list = sorted(idle_recrawl_list, key=lambda m: m[2])
@@ -74,7 +75,7 @@ class MonitorMaster(object):
                     args = json.loads(parameter)
                     #monitor --brand 10009 --region fr --idmonitor 1931 -v
                     spawn_process(
-                        'scripts/run_crawler.py',
+                        os.path.join(scripts.__path__[0], 'run_crawler.py'),
                         'monitor --brand %s --region %s --idmonitor %s' % (args['brand_id'], args['region'], idmonitor))
 
             #start recrawl and reset monitor_status after recrawl ended
@@ -88,7 +89,7 @@ class MonitorMaster(object):
                     args = json.loads(parameter)
                     args['idmonitor'] = idmonitor
                     para = '|'.join([str(idmonitor), str(args['brand_id']), args['region']])
-                    spawn_process('scripts/recrawler.py', para)
+                    spawn_process(os.path.join(scripts.__path__[0], 'recrawler.py'), para)
 
 
 def spawn_process(pyfile, args):
