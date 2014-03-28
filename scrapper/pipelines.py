@@ -104,7 +104,7 @@ class UpdatePipeline(MStorePipeline):
         description = unicodify(lxmlparser(record['description']))
         details = unicodify(lxmlparser(record['details']))
         tmp = unicodify(record['color'])
-        color = json.loads(tmp) if tmp else None
+        # color = json.loads(tmp) if tmp else None
         price = unicodify(record['price'])
         price_discount = unicodify(record['price_discount'])
         offline = int(record['offline'])
@@ -123,8 +123,8 @@ class UpdatePipeline(MStorePipeline):
             update_data['description'] = metadata['description']
         if 'details' in metadata and metadata['details'] != details:
             update_data['details'] = metadata['details']
-        if 'color' in metadata and metadata['color'] != color:
-            update_data['color'] = json.dumps(metadata['color'], ensure_ascii=False)
+        # if 'color' in metadata and metadata['color'] != color:
+        #     update_data['color'] = json.dumps(metadata['color'], ensure_ascii=False)
 
         # 处理价格（注意：价格属于经常变动的信息，需要及时更新）
         if 'price' in metadata and metadata['price'] != price:
@@ -635,6 +635,7 @@ class ProductImagePipeline(ImagesPipeline):
 
         return item
 
+
 class MonitorPipeline(UpdatePipeline):
     def process_item(self, item, spider):
         pid = item['idproduct']
@@ -663,7 +664,8 @@ class MonitorPipeline(UpdatePipeline):
 
                 if update_data:
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
-                    spider.log(update_data, log.INFO)
+                    spider.log(str.format('DIFFERENCE DETECTED: {0} => {1}', str({k: record[k] for k in update_data}),
+                                          str(update_data)), log.INFO)
                     spider.crawler.stop()
 
                     self.db.update({'monitor_status': 1}, 'monitor_status',
