@@ -171,7 +171,15 @@ def main():
     logging.basicConfig(format='%(asctime)-24s%(levelname)-8s%(message)s', level='INFO')
     logger = logging.getLogger()
 
-    ret = parse_args(sys.argv)
+    argv = sys.argv
+
+    if len(argv) == 2 and isinstance(argv[1], str):
+        # 一长串字符串，需要拆分
+        tmp = argv[1].split(' ')
+        del argv[1]
+        argv.extend(tmp)
+
+    ret = parse_args(argv)
     if ret:
         cmd = ret['cmd']
         param = ret['param']
@@ -180,11 +188,11 @@ def main():
             # 如果输入的不是spider名称，而是品牌编号，则进行查找
             try:
                 brand_id = int(cmd)
-                spider_module= cm.get_spider_module(info.spider_info()[brand_id]['cmdname'])
+                spider_module = cm.get_spider_module(info.spider_info()[brand_id]['cmdname'])
             except ValueError:
                 spider_module = cm.get_spider_module(cmd)
-            except (KeyError,IOError):
-                spider_module=None
+            except (KeyError, IOError):
+                spider_module = None
 
             if cmd == 'update':
                 spider_class = MFashionBaseSpider
