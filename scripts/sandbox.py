@@ -20,6 +20,7 @@ import scrapper.spiders
 # pydevd.settrace('localhost', port=7100, stdoutToServer=True, stderrToServer=True)
 from scheduler import monitor
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils import info
 from utils.info import spider_info
 
 from utils.utils_core import gen_fingerprint
@@ -77,7 +78,7 @@ def spider_generator():
     对系统中的爬虫/国家进行遍历
     """
     for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
-        f, filename, description = imp.find_module(modname, ['scrapper/spiders'])
+        f, filename, description = imp.find_module(modname, scrapper.spiders.__path__)
         try:
             submodule_list = imp.load_module(modname, f, filename, description)
         finally:
@@ -109,16 +110,16 @@ def update_scheduler():
                    10152, 10109, 10308, 10367, 10373, 10080, 10259, 10178, 10354, 10142, 10084, 10076, 10006, 10009,
                    10149, 10030, 10184, 10192, 10117, 10105, 10114, 10108, 10138, 10429, 10333, 10263, 10204, 10218,
                    10220, 10305, 10270, 10617, 11301, 10369, 10106, 10212, 10316]
+    valid_region = filter(lambda key: info.region_info()[key]['status'] == 1, info.region_info().keys())
     with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
         db.start_transaction()
         try:
             # 得到已排期的爬虫
             for brand_id, region, modname in spider_generator():
                 # 如果brand_id不在valid_brand列表中，则确保它也不在monitor_status中
-                if brand_id not in valid_brand:
-                    db.query(str.format('DELETE FROM monitor_status WHERE parameter LIKE "%{0},%"', brand_id))
-                    continue
-                if global_settings.region_info()[region]['status'] != 1:
+                if brand_id not in valid_brand or region not in valid_region:
+                    db.query(str.format(r'DELETE FROM monitor_status WHERE parameter LIKE "%{0},%\"{1}\"%"', brand_id,
+                                        region))
                     continue
                 parameter = {'brand_id': brand_id, 'region': region}
 
