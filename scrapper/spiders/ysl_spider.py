@@ -122,6 +122,8 @@ class YslSpider(MFashionSpider):
 
                 m = copy.deepcopy(metadata)
 
+                # 这里的dont_filter不能去掉
+                # 多个栏目下有重复的单品，需要把标签打全
                 yield Request(url=href,
                               callback=self.parse_product,
                               errback=self.onerr,
@@ -134,6 +136,12 @@ class YslSpider(MFashionSpider):
                 mt = re.search(r'\?page=(\d+)', response.url)
                 if mt:
                     current_page = (int)(mt.group(1))
+
+                # THE PERMANENT COLLECTION 和 SPRING SUMMER 14
+                # 在页数超过最大时，不会返回无结果，而是继续返回最后一页
+                # 这里限制最大页数
+                if current_page > 20:
+                    return
 
                 next_page = current_page + 1
                 # 拼下一页的url
