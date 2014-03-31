@@ -304,16 +304,26 @@ class BaumeMercierSpider(MFashionSpider):
             except(TypeError, IndexError):
                 pass
 
-        image_urls = None
+        image_urls = []
         image_nodes = sel.xpath('//div[@id="scroll"]/ul/li[@data-hdimage]')
-        if image_nodes:
+        for image_node in image_nodes:
             try:
-                image_urls = [
-                    self.process_href(val, response.url)
-                    for val in image_nodes.xpath('./@data-hdimage').extract()
-                ]
+                url = image_node.xpath('./@data-hdimage').extract()[0]
+                url = self.reformat(url)
+                if url:
+                    url = self.process_href(url, response.url)
+                    if url:
+                        image_urls += [url]
             except(TypeError, IndexError):
-                pass
+                continue
+        # if image_nodes:
+        #     try:
+        #         image_urls = [
+        #             self.process_href(val, response.url)
+        #             for val in image_nodes.xpath('./@data-hdimage').extract()
+        #         ]
+        #     except(TypeError, IndexError):
+        #         pass
 
         item = ProductItem()
         item['url'] = metadata['url']
