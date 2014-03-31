@@ -424,7 +424,7 @@ class ProductImagePipeline(ImagesPipeline):
         super(ProductImagePipeline, self).__init__(store_uri)
         self.url_map = {}
         self.db = RoseVisionDb()
-        self.db.conn(glob.DB_SPEC)
+        self.db.conn(getattr(glob, 'DB_SPEC'))
 
     def get_images(self, response, request, info):
         media_guid = hashlib.sha1(request.url).hexdigest()
@@ -664,8 +664,9 @@ class MonitorPipeline(UpdatePipeline):
 
                 if update_data:
                     # 注意，这里的stop()，并不会立即停止所有爬虫线程
-                    spider.log(str.format('DIFFERENCE DETECTED: {2}: {0} => {1}', str({k: record[k] for k in update_data}),
-                                          str(update_data), record['idproducts']), log.INFO)
+                    spider.log(
+                        str.format('DIFFERENCE DETECTED: {2}: {0} => {1}', str({k: record[k] for k in update_data}),
+                                   str(update_data), record['idproducts']), log.INFO)
                     spider.crawler.stop()
 
                     self.db.update({'monitor_status': 1}, 'monitor_status',
