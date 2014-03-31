@@ -192,15 +192,21 @@ class UpdateSpider(MFashionBaseSpider):
     @staticmethod
     def onerror(reason):
         meta = None
-        if hasattr(reason.value, 'response'):
-            response = reason.value.response
-            # 这里response可能为None，比如出现
-            # ERROR: Error downloading <GET xxx>:
-            # [<twisted.python.failure.Failure <class 'twisted.internet.error.ConnectionDone'>>]
-            if response:
-                meta = response.meta
-        if not meta:
-            meta = reason.request.meta
+        try:
+            if hasattr(reason.value, 'response'):
+                response = reason.value.response
+                # 这里response可能为None，比如出现
+                # ERROR: Error downloading <GET xxx>:
+                # [<twisted.python.failure.Failure <class 'twisted.internet.error.ConnectionDone'>>]
+                if response:
+                    meta = response.meta
+        except AttributeError:
+            pass
+        try:
+            if not meta:
+                meta = reason.request.meta
+        except AttributeError:
+            pass
 
         if meta:
             brand = meta['brand']
@@ -208,7 +214,7 @@ class UpdateSpider(MFashionBaseSpider):
             item['idproduct'] = meta['pid']
             item['brand'] = brand
             item['region'] = meta['region']
-            sc = glob.spider_info()[brand]
+            # sc = glob.spider_info()[brand]
             metadata = {}
             item['metadata'] = metadata
 
