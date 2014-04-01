@@ -88,7 +88,7 @@ class SisleySpider(MFashionSpider):
                         m2['gender'] = list(tmp)
                     else:
                         m2['gender'] = [gender]
-                yield Request(url=self.process_href(node2.xpath('@href').extract()[0], response),
+                yield Request(url=self.process_href(node2.xpath('@href').extract()[0], response.url),
                               callback=self.parse_grid, errback=self.onerr, meta={'userdata': m2})
 
     def parse_grid(self, response):
@@ -98,7 +98,7 @@ class SisleySpider(MFashionSpider):
         # 其它页面
         for href in sel.xpath(
                 '//ul/li[contains(@class,"active_page") or contains(@class,"number_page")]/a[@href]/@href').extract():
-            url = self.process_href(href, response)
+            url = self.process_href(href, response.url)
             m = copy.deepcopy(metadata)
             yield Request(url=url, callback=self.parse_grid, errback=self.onerr, meta={'userdata': m})
 
@@ -106,7 +106,7 @@ class SisleySpider(MFashionSpider):
         for node in sel.xpath('//p[contains(@class,"product") and @itemprop="name"]'):
             try:
                 tmp = node.xpath('./a[@href]/@href').extract()
-                url = self.process_href(tmp[0], response)
+                url = self.process_href(tmp[0], response.url)
                 tmp = node.xpath('./a[@href]/text()').extract()
                 name = self.reformat(' '.join(tmp))
                 tmp = node.xpath('..//span[@class="price"]/text()').extract()
@@ -130,7 +130,7 @@ class SisleySpider(MFashionSpider):
         if desc:
             metadata['description'] = self.reformat(desc)
 
-        image_urls = [self.process_href(val, response) for val in
+        image_urls = [self.process_href(val, response.url) for val in
                       sel.xpath('//a[@id="zoomLnk" and @class="product_zoom" and @href]/@href').extract()]
         item = ProductItem()
         item['url'] = metadata['url']
