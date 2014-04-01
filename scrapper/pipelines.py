@@ -427,6 +427,13 @@ class ProductImagePipeline(ImagesPipeline):
         self.db.conn(getattr(glob, 'DB_SPEC'))
 
     def get_images(self, response, request, info):
+        """
+        和默认版本的get_images函数相比，主要的修改是：支持多种image/*格式。
+        @param response:
+        @param request:
+        @param info:
+        @raise ImageException:
+        """
         media_guid = hashlib.sha1(request.url).hexdigest()
         # 确定图像类型
         content_type = None

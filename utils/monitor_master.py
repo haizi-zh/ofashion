@@ -17,8 +17,15 @@ class MonitorMaster(object):
         logger.info('Monitor STARTED!!!')
 
         #monitor process quantity, recrawl process quantity,limit interval for recrawl spider
-        monitor_no = kwargs['monitor_no'] if 'monitor_no' in kwargs else 8
-        recrawl_no = kwargs['recrawl_no'] if 'recrawl_no' in kwargs else 6
+        try:
+            monitor_no = getattr(gs, 'MONITOR')['MAX_MONITOR']
+        except (AttributeError, KeyError):
+            monitor_no = 6
+        try:
+            recrawl_no = getattr(gs, 'MONITOR')['MAX_RECRAWLER']
+        except (AttributeError, KeyError):
+            recrawl_no = 12
+
         interval = kwargs['interval'] if 'interval' in kwargs else 7
         limit_time = datetime.datetime.now() - datetime.timedelta(interval)
         with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
@@ -79,7 +86,7 @@ class MonitorMaster(object):
                     #monitor --brand 10009 --region fr --idmonitor 1931 -v
 
                     logger.info('Monitor started--> idmonitor:%s, brand_id:%s, region:%s' % (
-                    idmonitor, args['brand_id'], args['region']))
+                        idmonitor, args['brand_id'], args['region']))
 
                     spawn_process(
                         os.path.join(scripts.__path__[0], 'run_crawler.py'),
@@ -98,11 +105,11 @@ class MonitorMaster(object):
                     para = '|'.join([str(idmonitor), str(args['brand_id']), args['region']])
 
                     logger.info('Recrawl started--> idmonitor:%s, brand_id:%s, region:%s' % (
-                    idmonitor, args['brand_id'], args['region']))
+                        idmonitor, args['brand_id'], args['region']))
 
                     spawn_process(os.path.join(scripts.__path__[0], 'recrawler.py'), para)
 
-        # logger.info('Monitor ENDED!!!')
+                    # logger.info('Monitor ENDED!!!')
 
 
 def spawn_process(pyfile, args):
