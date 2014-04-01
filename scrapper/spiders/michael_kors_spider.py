@@ -322,7 +322,7 @@ class MichaelKorsSpider(MFashionSpider):
                     model_text = model_node.xpath('./text()').extract()[0]
                     model_text = cls.reformat(model_text)
                     if model_text:
-                        mt = re.search(ur'([\w-]+)$', model_text)
+                        mt = re.search(ur'(\S+)$', model_text)
                         if mt:
                             model = mt.group(1)
             except(TypeError, IndexError):
