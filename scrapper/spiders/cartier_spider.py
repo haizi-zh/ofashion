@@ -107,6 +107,7 @@ class CartierSpider(MFashionSpider):
         #          log.DEBUG)
         for k in ('post_token', 'page_id'):
             if k in metadata:
+
                 metadata.pop(k)
         sel = Selector(response)
 
@@ -201,6 +202,10 @@ class CartierSpider(MFashionSpider):
                 if post_token:
                     m = copy.deepcopy(metadata)
                     m['page_id'] += 1
+                    # 这个分页请求，即使facetsajax和limit什么都不传，也会返回数据
+                    # 可能是它们改了逻辑，这里直接限制一下页数
+                    if m['page_id'] > 5:
+                        return
                     m['post_token'] = post_token
                     body = {'facetsajax': 'true', 'limit': m['page_id'], 'params': ''}
                     yield Request(url=self.spider_data['data_urls'][m['region']] + post_token, method='POST',
