@@ -107,7 +107,6 @@ class CartierSpider(MFashionSpider):
         #          log.DEBUG)
         for k in ('post_token', 'page_id'):
             if k in metadata:
-
                 metadata.pop(k)
         sel = Selector(response)
 
@@ -280,26 +279,25 @@ class CartierSpider(MFashionSpider):
         return name
 
     @classmethod
-    def fetch_description(cls, response, spider=None):
+    def fetch_details(cls, response, spider=None):
         sel = Selector(response)
 
         description = None
         try:
-            temp = sel.xpath('//div[@class="product-aesthetics"]//span[@itemprop="description"]/p')
-            description = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+            description = '\n'.join(filter(lambda val: val, [unicodify(tmp) for tmp in sel.xpath(
+                '//div[@class="product-aesthetics"]//span[@itemprop="description"]/p/text()').extract()]))
         except(TypeError, IndexError):
             pass
 
         return description
 
     @classmethod
-    def fetch_details(cls, response, spider=None):
+    def fetch_description(cls, response, spider=None):
         sel = Selector(response)
 
         details = None
         try:
-            temp = sel.xpath('//div[@class="product-details"]//div[contains(@class,"field-item")]/p')
-            details = '\n'.join(unicodify(val._root.text) for val in temp if val._root.text)
+            details = '\n'.join(filter(lambda val:val, [unicodify(tmp) for tmp in sel.xpath('//div[@class="product-details"]//div[contains(@class,"field-item")]/p/text()').extract()]))
         except(TypeError, IndexError):
             pass
 

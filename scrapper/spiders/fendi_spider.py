@@ -272,10 +272,8 @@ class FendiSpider(MFashionSpider):
 
         description = None
         try:
-            ret = sel.xpath("//aside[contains(@class, 'sidebar-actions')]//div[@class='desc']")
-            if len(ret) > 0:
-                temp = unicodify(ret[0]._root.text)
-                description = temp.strip() if temp else None
+            description = '\n'.join(filter(lambda val: val, [unicodify(val) for val in sel.xpath(
+                "//aside[contains(@class, 'sidebar-actions')]//div[@class='desc']/descendant-or-self::text()").extract()]))
         except(TypeError, IndexError):
             pass
 
