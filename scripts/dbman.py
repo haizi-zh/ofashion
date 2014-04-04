@@ -375,7 +375,7 @@ class PublishRelease(object):
                                    str.format('idproducts IN ({0})',
                                               ','.join(val['idproducts'] for val in prods)),
                                    tail_str='ORDER BY date DESC').fetch_row(maxrows=0,
-                                                                                                       how=1):
+                                                                            how=1):
             pid = int(item['idproducts'])
             region = region_dict[pid]
             offline = offline_dict[pid]
@@ -468,8 +468,8 @@ class PublishRelease(object):
         entry['last_price_ts'] = alt_prices[0][6]
 
         # 搜索字段
-        search_text = u' '.join(
-            entry[tmp] if entry[tmp] else '' for tmp in ('name', 'description', 'details', 'model'))
+        search_text = u' '.join(entry[tmp] if entry[tmp] else '' for tmp in
+                                ('name', 'description', 'details', 'model', 'brandname_e', 'brandname_c'))
         search_color = u' '.join(entry['color']) if entry['color'] else u''
         rs = db.query_match(['description_cn', 'description_en', 'details_cn', 'details_en'], 'products_translate',
                             {'fingerprint': entry['fingerprint']}).fetch_row()
