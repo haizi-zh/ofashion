@@ -72,9 +72,9 @@ class MFashionSpider(MFashionBaseSpider):
 
     def onerr(self, reason):
         url_main = None
-        if hasattr(reason.value, 'response'):
+        try:
             response = reason.value.response
-            url = response.url if hasattr(response, 'url') else 'unknown url'
+            url = response.url
 
             temp = reason.request.meta
             if 'userdata' in temp:
@@ -87,5 +87,5 @@ class MFashionSpider(MFashionBaseSpider):
                 msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
 
             self.log(msg, log.ERROR)
-        else:
+        except (TypeError, AttributeError):
             self.log(str.format('Error: {0}', reason))
