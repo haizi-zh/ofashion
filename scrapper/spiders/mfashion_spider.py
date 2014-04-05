@@ -74,7 +74,7 @@ class MFashionSpider(MFashionBaseSpider):
         url_main = None
         if hasattr(reason.value, 'response'):
             response = reason.value.response
-            url = response.url
+            url = response.url if hasattr(response, 'url') else 'unknown url'
 
             temp = reason.request.meta
             if 'userdata' in temp:
