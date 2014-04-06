@@ -1,4 +1,9 @@
 # coding=utf-8
+
+"""
+得到一些常用的信息
+"""
+
 import inspect
 import pkgutil
 import imp
@@ -8,8 +13,6 @@ from utils.db import RoseVisionDb
 import global_settings
 
 __author__ = 'Zephyre'
-
-# 得到各种信息
 
 
 def static_var(varname, value):
@@ -21,12 +24,13 @@ def static_var(varname, value):
 
 
 @static_var('region_info', None)
-def region_info():
+def region_info(refetch=False):
     """
-    返回国家/地区信息
+    返回国家/地区信息。
+    @param refetch: 强制重新读取信息。
     """
     info = getattr(region_info, 'region_info')
-    if info:
+    if info and not refetch:
         return info
 
     info = {}
@@ -42,12 +46,13 @@ def region_info():
 
 
 @static_var('spider_info', None)
-def spider_info():
+def spider_info(refetch=False):
     """
-    搜索spider路径，将其中的spider按照brand_id注册起来
+    搜索spider路径，将其中的spider按照brand_id注册起来。
+    @param refetch: 强制重新读取信息。
     """
     info = getattr(spider_info, 'spider_info')
-    if info:
+    if info and not refetch:
         return info
 
     info = {}

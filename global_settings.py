@@ -3,6 +3,7 @@ import ConfigParser
 import datetime
 import json
 import os
+from subprocess import check_output
 import sys
 import pkgutil
 import scrapper.spiders
@@ -40,7 +41,8 @@ def fetch_currency_info():
     import core
 
     with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
-        info = {tmp[0]:float(tmp[1]) for tmp in db.query('SELECT currency, rate FROM currency_info').fetch_row(maxrows=0)}
+        info = {tmp[0]: float(tmp[1]) for tmp in
+                db.query('SELECT currency, rate FROM currency_info').fetch_row(maxrows=0)}
         setattr(fetch_currency_info, 'currency_info', info)
         return info
 
@@ -124,13 +126,6 @@ def currency_info():
 
 
 def _load_user_cfg(cfg_file=None):
-    if not cfg_file:
-        cfg_file = os.path.join(os.path.split(__file__)[0], 'mstore.cfg')
-
-    # 加载mstore.cfg的设置内容
-    config = ConfigParser.ConfigParser()
-    config.optionxform = str
-
     def parse_val(val):
         """
         解析字符串val。如果是true/false，返回bool值；如果为整数，返回int值；如果为浮点数，返回float值。
@@ -179,7 +174,7 @@ def _load_user_cfg(cfg_file=None):
         return val
 
     def read_section(section):
-        return section, {option: parse_val(config.get(section, option)) for option in config.options(section)}
+        return {option: parse_val(config.get(section, option)) for option in config.options(section)}
 
     def read_settings(section, option, var=None, proc=lambda x: x):
         """
@@ -199,14 +194,18 @@ def _load_user_cfg(cfg_file=None):
         else:
             return False
 
-    conv_int = lambda val: int(val)
-    conv_bool = lambda val: val.lower() == 'true'
-
     def conv_datetime(val):
         try:
             return datetime.datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             return None
+
+    if not cfg_file:
+        cfg_file = os.path.join(os.path.split(__file__)[0], 'mstore.cfg')
+
+    # 加载mstore.cfg的设置内容
+    config = ConfigParser.ConfigParser()
+    config.optionxform = str
 
     try:
         with open(cfg_file, 'r') as cf:
@@ -214,38 +213,59 @@ def _load_user_cfg(cfg_file=None):
     except IOError:
         pass
 
-    data = dict(map(read_section, config.sections()))
+    # 尝试读取远程配置文件
+    if 'IMPORT' in config.sections():
+        for imp_spec in sorted(read_section('IMPORT').values(),
+                               key=lambda val: val['priority'] if 'priority' in val else 0):
+            host = imp_spec['host'] if 'host' in imp_spec else '127.0.0.1'
+            port = imp_spec['port'] if 'port' in imp_spec else 22
+            username = imp_spec['username']
+            path = imp_spec['path']
+            head = 'pscp' if sys.platform in ('win32',) else 'scp'
+            cmd_str = str.format('{4} -P {0} {1}@{2}:{3} tmp_config.conf', port, username, host, path, head)
+            check_output(cmd_str, shell=True)
+            _load_user_cfg(cfg_file='tmp_config.conf')
+            os.remove('tmp_config.conf')
+
+    section_list = filter(lambda val: val != 'IMPORT', config.sections())
+    data = dict(map(lambda x, y: (x, y), section_list, map(read_section, section_list)))
     self_module = sys.modules[__name__]
     for key, value in data.items():
         setattr(self_module, key, value)
 
-    # SECTION: DEBUG
-    section = 'DEBUG'
-    read_settings(section, 'DEBUG_HOST')
-    read_settings(section, 'DEBUG_PORT', proc=conv_int)
-    read_settings(section, 'DEBUG_FLAG', proc=conv_bool)
-    read_settings(section, 'LOG_DEBUG', proc=conv_bool)
-    read_settings(section, 'COOKIES_DEBUG', proc=conv_bool)
-    read_settings(section, 'COOKIES_ENABLED', proc=conv_bool)
+    # TODO 需要优化。目标：去掉这些手工指定的section。
+    # conv_int = lambda val: int(val)
+    # conv_bool = lambda val: val.lower() == 'true'
+    #
+    # # SECTION: DEBUG
+    # section = 'DEBUG'
+    # read_settings(section, 'DEBUG_HOST')
+    # read_settings(section, 'DEBUG_PORT', proc=conv_int)
+    # read_settings(section, 'DEBUG_FLAG', proc=conv_bool)
+    # read_settings(section, 'LOG_DEBUG', proc=conv_bool)
+    # read_settings(section, 'COOKIES_DEBUG', proc=conv_bool)
+    # read_settings(section, 'COOKIES_ENABLED', proc=conv_bool)
+    #
+    # # SECTION: MISC
+    # section = 'MISC'
+    # read_settings(section, 'EMAIL_ADDR', proc=lambda val: json.loads(val))
+    #
+    # # SECTION DATABASE
+    # section = 'DATABASE'
+    # read_settings(section, 'WRITE_DATABASE', proc=conv_bool)
+    # read_settings(section, 'DB_SPEC', proc=lambda val: json.loads(val))
+    #
+    # # SECTION STORAGE
+    # section = 'STORAGE'
+    # read_settings(section, 'STORAGE_PATH')
+    # read_settings(section, 'HOME_PATH')
+    #
+    # # SECTION CHECKPOINT
+    # section = 'CHECKPOINT'
+    # read_settings(section, 'LAST_CRAWLED', proc=conv_datetime)
+    # read_settings(section, 'LAST_PROCESS_TAGS', proc=conv_datetime)
 
-    # SECTION: MISC
-    section = 'MISC'
-    read_settings(section, 'EMAIL_ADDR', proc=lambda val: json.loads(val))
 
-    # SECTION DATABASE
-    section = 'DATABASE'
-    read_settings(section, 'WRITE_DATABASE', proc=conv_bool)
-    read_settings(section, 'DB_SPEC', proc=lambda val: json.loads(val))
-
-    # SECTION STORAGE
-    section = 'STORAGE'
-    read_settings(section, 'STORAGE_PATH')
-    read_settings(section, 'HOME_PATH')
-
-    # SECTION CHECKPOINT
-    section = 'CHECKPOINT'
-    read_settings(section, 'LAST_CRAWLED', proc=conv_datetime)
-    read_settings(section, 'LAST_PROCESS_TAGS', proc=conv_datetime)
-
-
+# 切换工作目录
+os.chdir(os.path.split(sys.modules[__name__].__file__)[0])
 _load_user_cfg()
