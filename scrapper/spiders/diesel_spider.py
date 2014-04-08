@@ -898,11 +898,34 @@ class DieselSpider(MFashionSpider):
         yield item
 
     @classmethod
+    def fetch_other_offline_identifier(cls, response, spider=None):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        if region == 'us':
+            not_available_node = sel.xpath('//div[@id="product-content-detail"]/div[@class="product-description"]/p[@class="pdp-not-available-msg"][text()]')
+            if not_available_node:
+                return True
+        else:
+            soldout_node = sel.xpath('//aside[@class="itemSidebar"]//div[@id="itemInfoComunication"]//button[contains(@class, "soldOutButton")]')
+            if soldout_node:
+                return True
+
+        return False
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
         name = cls.fetch_name(response)
 
-        if model and name:
+        other_offline_identifier = cls.fetch_other_offline_identifier(response)
+
+        if model and name and not other_offline_identifier:
             return False
         else:
             return True
