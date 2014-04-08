@@ -50,7 +50,7 @@ class MFashionSpider(MFashionBaseSpider):
         return urlparse.urljoin(referer, href)
 
     def __init__(self, name, region, *a, **kw):
-        self.name = name
+        self.name = str.format('{0}-{1}', name, '-'.join(region) if region else 'all')
         super(MFashionSpider, self).__init__(*a, **kw)
 
         if not region:
@@ -72,7 +72,7 @@ class MFashionSpider(MFashionBaseSpider):
 
     def onerr(self, reason):
         url_main = None
-        if hasattr(reason.value, 'response'):
+        try:
             response = reason.value.response
             url = response.url
 
@@ -87,5 +87,5 @@ class MFashionSpider(MFashionBaseSpider):
                 msg = str.format('ERROR ON PROCESSING {1}, CODE: {0}', response.status, url)
 
             self.log(msg, log.ERROR)
-        else:
+        except (TypeError, AttributeError):
             self.log(str.format('Error: {0}', reason))

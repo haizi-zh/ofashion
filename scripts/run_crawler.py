@@ -79,7 +79,7 @@ def set_up_spider(spider_class, data, spider_type='default'):
         parameter = {'brand_id': brand, 'region': region}
         spider = spider_class(idmonitor, parameter, getattr(glob, 'DB_SPEC'))
         welcome_msg = str.format('STARTING MONITORING, idmonitory={0}, brand={1}, region={2}', idmonitor, brand,
-                                 idmonitor)
+                                 region)
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
@@ -91,12 +91,12 @@ def set_up_spider(spider_class, data, spider_type='default'):
             crawler.settings.values['JOBDIR'] = job_path
 
         # Telnet支持
-        crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
-        if 'telnet' in data and data['telnet']:
-            start_port = int(data['telnet'][0])
-        else:
-            start_port = spider_class.spider_data['brand_id']
-        crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
+        # crawler.settings.values['TELNETCONSOLE_HOST'] = '127.0.0.1'
+        # if 'telnet' in data and data['telnet']:
+        #     start_port = int(data['telnet'][0])
+        # else:
+        #     start_port = spider_class.spider_data['brand_id']
+        # crawler.settings.values['TELNETCONSOLE_PORT'] = [start_port, start_port + 8]
 
         # 图像数据存储
         crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_class.spider_data['brand_id'])

@@ -1,20 +1,26 @@
 #!/usr/bin/env python
 # coding=utf-8
 import csv
+import inspect
 import os
+import pkgutil
 import re
 import sys
 import hashlib
 import json
 import urlparse
+import imp
 from core import RoseVisionDb
 import core
 import global_settings
+import scrapper.spiders
 
 # import pydevd
 
 # pydevd.settrace('localhost', port=7100, stdoutToServer=True, stderrToServer=True)
 from scheduler import monitor
+from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils import info
 from utils.info import spider_info
 
 from utils.utils_core import gen_fingerprint
@@ -67,6 +73,70 @@ class Sandbox(object):
                 raise
 
 
+def spider_generator():
+    """
+    对系统中的爬虫/国家进行遍历
+    """
+    for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
+        f, filename, description = imp.find_module(modname, scrapper.spiders.__path__)
+        try:
+            submodule_list = imp.load_module(modname, f, filename, description)
+        finally:
+            f.close()
+
+        sc_list = filter(
+            lambda val: isinstance(val[1], type) and issubclass(val[1], MFashionSpider) and val[1] != MFashionSpider,
+            inspect.getmembers(submodule_list))
+        if not sc_list:
+            continue
+        sc_name, sc_class = sc_list[0]
+
+        try:
+            brand_id = sc_class.spider_data['brand_id']
+            for region in sc_class.get_supported_regions():
+                if brand_id < 10000:
+                    continue
+                yield brand_id, region, modname
+        except (KeyError, AttributeError):
+            continue
+
+
+def update_scheduler():
+    """
+    根据z_online_schedule_info表的内容，将有效地爬虫写入monitor_status表
+
+    """
+    valid_brand = [10057, 10074, 10226, 10135, 10300, 10066, 13084, 10029, 10093, 10264, 10049, 10350, 10166, 10008,
+                   10152, 10109, 10308, 10367, 10373, 10080, 10259, 10178, 10354, 10142, 10084, 10076, 10006, 10009,
+                   10149, 10030, 10184, 10192, 10117, 10105, 10114, 10108, 10138, 10429, 10333, 10263, 10204, 10218,
+                   10220, 10305, 10270, 10617, 11301, 10369, 10106, 10212, 10316]
+    valid_region = filter(lambda key: info.region_info()[key]['status'] == 1, info.region_info().keys())
+    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+        db.start_transaction()
+        try:
+            # 得到已排期的爬虫
+            for brand_id, region, modname in spider_generator():
+                # 如果brand_id不在valid_brand列表中，则确保它也不在monitor_status中
+                if brand_id not in valid_brand or region not in valid_region:
+                    db.query(str.format(r'DELETE FROM monitor_status WHERE parameter LIKE "%{0},%\"{1}\"%"', brand_id,
+                                        region))
+                    continue
+                parameter = {'brand_id': brand_id, 'region': region}
+
+                # 检查是否存在
+                ret = db.query(str.format('SELECT * FROM monitor_status WHERE parameter LIKE "%{0}%{1}%"', brand_id,
+                                          region)).fetch_row(maxrows=0)
+                if ret:
+                    continue
+
+                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True)}, 'monitor_status', replace=True)
+            db.commit()
+        except:
+            db.rollback()
+            raise
+    pass
+
+
 def func1():
     brand_list = [10006, 10008, 10009, 10029, 10030, 10040, 10049, 10057, 10058, 10066, 10074, 10076, 10080, 10084,
                   10093, 10105, 10106, 10108, 10109, 10114, 10117, 10135, 10138, 10142, 10149, 10152, 10155, 10166,
@@ -117,6 +187,6 @@ def func2():
 
 
 if __name__ == '__main__':
-    func1()
+    update_scheduler()
     # spider_info()
     # monitor.main()

@@ -4,6 +4,8 @@ import pkgutil
 import imp
 import scrapper.spiders
 from scrapper.spiders.mfashion_spider import MFashionSpider
+from utils.db import RoseVisionDb
+import global_settings
 
 __author__ = 'Zephyre'
 
@@ -16,6 +18,27 @@ def static_var(varname, value):
         return func
 
     return decorate
+
+
+@static_var('region_info', None)
+def region_info():
+    """
+    返回国家/地区信息
+    """
+    info = getattr(region_info, 'region_info')
+    if info:
+        return info
+
+    info = {}
+    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+        for code, currency, weight, status in db.query_match(['iso_code', 'currency', 'weight', 'status'],
+                                                             'region_info', {}).fetch_row(maxrows=0):
+            weight = int(weight)
+            status = int(status)
+            info[code] = {'currency': currency, 'weight': weight, 'status': status}
+
+    setattr(region_info, 'region_info', info)
+    return info
 
 
 @static_var('spider_info', None)

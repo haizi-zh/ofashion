@@ -161,7 +161,7 @@ class EtroSpider(MFashionSpider):
                 price_discount = ''.join(
                     sel.xpath('//div[@class="product-main-info"]//p[@class="special-price"]//span//text()').extract())
             if price:
-                old_price = classmethod.reformat(price)
+                old_price = cls.reformat(price)
                 if price_discount:
                     new_price = cls.reformat(price_discount)
         except(TypeError, IndexError):

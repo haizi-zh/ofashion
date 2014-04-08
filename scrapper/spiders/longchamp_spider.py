@@ -31,6 +31,7 @@ class LongchampSpider(MFashionSpider):
             'sg': 'USD',
         },
         'home_urls': {
+            # 'us': 'http://it.longchamp.com/handbags/veau-foulonne/hobo-bag-2271021?sku=7855'
             'us': 'http://us.longchamp.com/',
             'uk': 'http://uk.longchamp.com/',
             'at': 'http://at.longchamp.com/',
@@ -66,6 +67,9 @@ class LongchampSpider(MFashionSpider):
         super(LongchampSpider, self).__init__('longchamp', region)
 
     def parse(self, response):
+
+        # for val in self.parse_product(response):
+        #     yield val
 
         metadata = response.meta['userdata']
         sel = Selector(response)
@@ -193,16 +197,26 @@ class LongchampSpider(MFashionSpider):
         if colors:
             metadata['color'] = colors
 
-        image_urls = None
+        image_urls = []
         image_nodes = sel.xpath('//div[@id="article"]//ul/li/img[@data-hd]')
-        if image_nodes:
+        for image_node in image_nodes:
             try:
-                image_urls = [
-                    self.process_href(self.reformat(val), response.url)
-                    for val in image_nodes.xpath('./@data-hd').extract()
-                ]
+                url = image_node.xpath('./@data-hd').extract()[0]
+                url = self.reformat(url)
+                if url:
+                    url = self.process_href(url, response.url)
+                    if url:
+                        image_urls += [url]
             except(TypeError, IndexError):
-                pass
+                continue
+        # if image_nodes:
+        #     try:
+        #         image_urls = [
+        #             self.process_href(self.reformat(val), response.url)
+        #             for val in image_nodes.xpath('./@data-hd').extract()
+        #         ]
+        #     except(TypeError, IndexError):
+        #         pass
 
         item = ProductItem()
         item['url'] = metadata['url']

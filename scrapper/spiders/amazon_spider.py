@@ -84,6 +84,22 @@ class AmazonSpider(EShopSpider):
 
         product_nodes = sel.xpath('//div[@id="resultsCol"]//div[contains(@id, "result_")]')
         for node in product_nodes:
+
+            see_all_node = node.xpath('.//li[@class="seeAll"]/a[@href]')
+            if see_all_node:
+                try:
+                    see_all_href = see_all_node.xpath('./@href').extract()[0]
+                    see_all_href = self.process_href(see_all_href, response.url)
+                    if see_all_href:
+                        ms = copy.deepcopy(metadata)
+
+                        yield Request(url=see_all_href,
+                                      callback=self.parse_product_list,
+                                      errback=self.onerr,
+                                      meta={'userdata': ms})
+                except(TypeError, IndexError):
+                    pass
+
             try:
                 href = node.xpath('.//a[@href]/@href').extract()[0]
                 href = self.process_href(href, response.url)

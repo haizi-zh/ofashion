@@ -8,6 +8,7 @@ import global_settings
 import scrapper.spiders
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import datetime
+from utils import info
 
 __author__ = 'Zephyre'
 
@@ -36,6 +37,8 @@ def spider_generator():
             brand_id = sc_class.spider_data['brand_id']
             for region in sc_class.get_supported_regions():
                 if brand_id < 10000:
+                    continue
+                if info.region_info[region]['status'] != 1:
                     continue
                 yield brand_id, region, modname
         except (KeyError, AttributeError):
