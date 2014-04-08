@@ -324,14 +324,14 @@ class DknySpider(MFashionSpider):
         if model_node:
             try:
                 model_text = model_node.xpath('./@id').extract()[0]
-                mt = re.search(r'-(\w+)$', model_text)
+                mt = re.search(r'-([-\w]+)$', model_text)
                 if mt:
                     model = mt.group(1)
             except(TypeError, IndexError):
                 pass
         if not model:
             try:
-                mt = re.search(r'.+/(\w+)/.+$', response.url)
+                mt = re.search(r'.+/([-\w]+)/.+$', response.url)
                 if mt:
                     model = mt.group(1)
                     if model:
