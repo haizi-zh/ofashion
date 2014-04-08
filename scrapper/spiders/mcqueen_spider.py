@@ -204,10 +204,23 @@ class McQueenSpider(MFashionSpider):
         return item
 
     @classmethod
+    def fetch_other_offline_identifier(cls, response, spider=None):
+        sel = Selector(response)
+
+        soldout_node = sel.xpath('//div[@id="dreambox"]/div[@class="soldOutBtn"]')
+
+        if soldout_node:
+            return True
+        else:
+            return False
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
-        if model:
+        other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
+
+        if model and not other_offline_identifier:
             return False
         else:
             return True
