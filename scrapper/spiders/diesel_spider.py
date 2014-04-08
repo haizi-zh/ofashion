@@ -920,9 +920,7 @@ class DieselSpider(MFashionSpider):
         model = None
         if region == 'us':
             try:
-                # 注意此处网址有这种
-                # http://shop.diesel.com/f.d.user/Y00842P0209.html?dwvar_Y00842P0209_color=T4005#.U0NhxGSSxfg
-                mt = re.search(r'[^/]/(\w+)\.htm|pid=(\w+)', response.url)
+                mt = re.search(r'[^/]/(\w+)\.|pid=(\w+)', response.url)
                 if mt:
                     model = mt.group(1)
                     if not model:
