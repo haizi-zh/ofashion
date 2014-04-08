@@ -32,4 +32,4 @@ with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
 logger = get_logger(logger_name='monitor')
 
 logger.info('Recrawl ended--> idmonitor:%s, brand_id:%s, region:%s' % (
-    parameter['idmonitor'], parameter['brand_id'], parameter['brand_id']))
+    parameter['idmonitor'], parameter['brand_id'], parameter['region']))

@@ -673,7 +673,7 @@ class MonitorPipeline(UpdatePipeline):
                     logger = get_logger(logger_name='monitor')
 
                     logger.info('Monitor ended--> idmonitor:%s, brand_id:%s, region:%s' % (
-                        spider.idmonitor, item['brand_id'], item['brand_id']))
+                        spider.idmonitor, item['brand'], item['region']))
             self.db.commit()
         except:
             self.db.rollback()
