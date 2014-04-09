@@ -507,28 +507,36 @@ class TodsSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
-        if origin_node:  # 打折
+        # 现在不打折的单品也会有这个node，里边是换行
+        # origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
+        # if origin_node:  # 打折
+        try:
+            origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
+            old_price = origin_node.xpath('./text()').extract()[0]
+            old_price = cls.reformat(old_price)
+        except(TypeError, IndexError):
+            pass
+        discount_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"][text()]')
+        if discount_node:
             try:
-                old_price = origin_node.xpath('./text()').extract()[0]
-                old_price = cls.reformat(old_price)
-            except(TypeError, IndexError):
-                pass
-            discount_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"][text()]')
-            if discount_node:
-                try:
-                    new_price = discount_node.xpath('./text()').extract()[0]
-                    new_price = cls.reformat(new_price)
-                except(TypeError, IndexError):
-                    pass
-        else:  # 未打折
-            try:
-                price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
+                # new_price = discount_node.xpath('./text()').extract()[0]
+                # new_price = cls.reformat(new_price)
+                price = discount_node.xpath('./text()').extract()[0]
                 price = cls.reformat(price)
-                if price:
+                if old_price:
+                    new_price = price
+                else:
                     old_price = price
             except(TypeError, IndexError):
                 pass
+        # else:  # 未打折
+        #     try:
+        #         price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
+        #         price = cls.reformat(price)
+        #         if price:
+        #             old_price = price
+        #     except(TypeError, IndexError):
+        #         pass
 
         if old_price:
             ret['price'] = old_price
