@@ -8,7 +8,7 @@ from scrapy.selector import Selector
 from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
-from utils.utils_core import unicodify
+from utils.utils_core import unicodify, process_price
 
 
 __author__ = 'Zephyre'
@@ -288,10 +288,33 @@ class MichaelKorsSpider(MFashionSpider):
         return item
 
     @classmethod
+    def fetch_other_offline_identifier(cls, response, spider=None):
+        sel = Selector(response)
+
+        region = None
+        if 'userdata' in response.meta:
+            region = response.meta['userdata']['region']
+        else:
+            region = response.meta['region']
+
+        ret = cls.fetch_price(response, spider)
+
+        price = None
+        if 'price' in ret:
+            price = process_price(ret['price'], region)
+
+        if not price:
+            return True
+        else:
+            return False
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
-        if model:
+        other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
+
+        if model and not other_offline_identifier:
             return False
         else:
             return True
