@@ -72,8 +72,7 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         # 菜单标题，作为第一级tag
-        sub_node_number = 1
-        nav_nodes = sel.xpath('//div[@class="nav-container"]/ul[@id="mega-dropdown-menu"]//li')
+        nav_nodes = sel.xpath('//div[@id="newnav"]/ul[contains(@class, "topMenu")]/li')
         for node in nav_nodes:
             try:
                 tag_text = node.xpath('./a/text()').extract()[0]
@@ -94,8 +93,8 @@ class TodsSpider(MFashionSpider):
                     m['gender'] = [gender]
 
                 # 针对这个node，生成xpath，找到第二级菜单，生成第二级tag
-                sub_xpath = str.format('//div[@id="maga-dropdown-inner"]/ul[{0}]/li//li', sub_node_number)
-                sub_nodes = sel.xpath(sub_xpath)
+                sub_xpath = str.format('./ul[@class="innerMenu"]/li/ul/li')
+                sub_nodes = node.xpath(sub_xpath)
                 for sub_node in sub_nodes:
                     try:
                         tag_text = sub_node.xpath('./a/text()').extract()[0]
@@ -130,8 +129,6 @@ class TodsSpider(MFashionSpider):
                                       callback=callback_func,
                                       errback=self.onerr,
                                       meta={'userdata': mc})
-
-                sub_node_number += 1
 
                 try:
                     href = node.xpath('./a/@href').extract()[0]
@@ -507,28 +504,36 @@ class TodsSpider(MFashionSpider):
 
         old_price = None
         new_price = None
-        origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
-        if origin_node:  # 打折
+        # 现在不打折的单品也会有这个node，里边是换行
+        # origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
+        # if origin_node:  # 打折
+        try:
+            origin_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="full-price"][text()]')
+            old_price = origin_node.xpath('./text()').extract()[0]
+            old_price = cls.reformat(old_price)
+        except(TypeError, IndexError):
+            pass
+        discount_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"][text()]')
+        if discount_node:
             try:
-                old_price = origin_node.xpath('./text()').extract()[0]
-                old_price = cls.reformat(old_price)
-            except(TypeError, IndexError):
-                pass
-            discount_node = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"][text()]')
-            if discount_node:
-                try:
-                    new_price = discount_node.xpath('./text()').extract()[0]
-                    new_price = cls.reformat(new_price)
-                except(TypeError, IndexError):
-                    pass
-        else:  # 未打折
-            try:
-                price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
+                # new_price = discount_node.xpath('./text()').extract()[0]
+                # new_price = cls.reformat(new_price)
+                price = discount_node.xpath('./text()').extract()[0]
                 price = cls.reformat(price)
-                if price:
+                if old_price:
+                    new_price = price
+                else:
                     old_price = price
             except(TypeError, IndexError):
                 pass
+        # else:  # 未打折
+        #     try:
+        #         price = sel.xpath('//div[contains(@class, "rightColumn")]//span[@class="final-price"]').extract()[0]
+        #         price = cls.reformat(price)
+        #         if price:
+        #             old_price = price
+        #     except(TypeError, IndexError):
+        #         pass
 
         if old_price:
             ret['price'] = old_price
