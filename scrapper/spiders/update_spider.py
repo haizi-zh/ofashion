@@ -99,9 +99,13 @@ class UpdateSpider(MFashionBaseSpider):
             item['offline'] = 1
             return item
         else:
-            item['offline'] = 1 if getattr(sc, 'is_offline')(response, self) else 0
-            if item['offline'] == 1:
-                return item
+            ret = getattr(sc, 'is_offline')(response, self)
+            if isinstance(ret, Request):
+                metadata['is_offline'] = ret
+            else:
+                item['offline'] = 1 if ret else 0
+                if item['offline'] == 1:
+                    return item
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response, self)
@@ -152,6 +156,10 @@ class UpdateSpider(MFashionBaseSpider):
                         item['metadata'][tmp] = ret[tmp]
                     else:
                         item['metadata'].pop(tmp)
+            elif key == 'is_offline':
+                item['offline'] = 1 if ret else 0
+                if item['offline'] == 1:
+                    return item
             else:
                 item['metadata'][key] = ret
         else:

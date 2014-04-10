@@ -11,6 +11,7 @@ import common
 import copy
 import re
 from utils.utils_core import process_price
+import json
 
 # TODO 爬虫下载图片会有部分提示错误
 
@@ -287,7 +288,6 @@ class LouisVuittonSpider(MFashionSpider):
 
     @classmethod
     def fetch_other_offline_identifier(cls, response, spider=None):
-        sel = Selector(response)
 
         region = None
         if 'userdata' in response.meta:
@@ -307,12 +307,58 @@ class LouisVuittonSpider(MFashionSpider):
             return False
 
     @classmethod
+    def is_notinstock(cls, response, spider=None):
+        sel = Selector(response)
+
+        sku_node = sel.xpath('//div[@id="infoProductBlockTop"]/div[@class="sku"][text()]')
+        if sku_node:
+            try:
+                sku_text = sku_node.xpath('./text()').extract()[0]
+                sku_text = cls.reformat(sku_text)
+                if sku_text:
+                    mt = re.search(ur'(\w+)$', sku_text)
+                    if mt:
+                        sku = mt.group(1)
+                        if sku:
+                            url = str.format('https://secure.louisvuitton.com/mobile/ajaxsecure/getStockLevel.jsp?skuId={0}', sku)
+                            return Request(url=url,
+                                           callback=cls.is_notinstock_server,
+                                           errback=cls.onerr,
+                                           meta=response.meta)
+            except(TypeError, IndexError):
+                pass
+
+        return None
+
+    @classmethod
+    def is_notinstock_server(cls, response, spider=None):
+        sel = Selector(response)
+
+        # response
+        # {"inStock":true,"backOrder":false,"commerceActive":true}
+        try:
+            json_data = json.loads(response.body)
+            if json_data:
+                in_stock = json_data['inStock']
+                if in_stock:
+                    return False
+        except (TypeError, IndexError):
+            pass
+
+        return True
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
         other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
 
         if model and not other_offline_identifier:
+
+            ret = cls.is_notinstock(response, spider)
+            if ret:
+                return ret
+
             return False
         else:
             return True
