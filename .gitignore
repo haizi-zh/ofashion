@@ -43,3 +43,4 @@ scripts/sandbox.sql
 # MIsc
 **/*.log
 **/*.bak
+**/*.exe
