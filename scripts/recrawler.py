@@ -12,7 +12,7 @@ brand = int(brand)
 idm = int(idm)
 parameter = {'idmonitor': idm, 'brand_id': brand, 'region': region}
 
-with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
     db.update({'monitor_status': 0, 'monitor_pid': None, 'recrawl_pid': os.getpid()}, 'monitor_status',
               str.format('idmonitor={0}', parameter['idmonitor']))
 
@@ -25,7 +25,7 @@ os.system(
 # os.system('python %s release --brand %s' % parameter['brand_id'])
 
 
-with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
     db.update({'recrawl_pid': None, 'priority': None}, 'monitor_status',
               str.format('idmonitor={0}', parameter['idmonitor']))
 

@@ -193,7 +193,7 @@ class PriceChangeDetect(object):
                         if c != '0':
                             changes[c].append(pid)
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             db.start_transaction()
             try:
                 for change_type in ['U', 'D']:
@@ -509,7 +509,7 @@ class PublishRelease(object):
         # 只处理关键国家的数据
         tmp = gs.region_info()
         key_regions = filter(lambda val: tmp[val]['status'] == 1, tmp)
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             # 删除原有的数据
             logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))

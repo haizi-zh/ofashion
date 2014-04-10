@@ -24,7 +24,7 @@ def static_var(varname, value):
 def __fetch_brand_info():
     import core
 
-    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DATABASE')['DB_SPEC']) as db:
         tmp = db.query('SELECT * FROM brand_info').fetch_row(how=1, maxrows=0)
         return {int(k['brand_id']): {'brandname_e': k['brandname_e'].decode('utf-8') if k['brandname_e'] else None,
                                      'brandname_c': k['brandname_c'].decode('utf-8') if k['brandname_c'] else None,
@@ -40,7 +40,7 @@ def fetch_currency_info():
 
     import core
 
-    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DATABASE')['DB_SPEC']) as db:
         info = {tmp[0]: float(tmp[1]) for tmp in
                 db.query('SELECT currency, rate FROM currency_info').fetch_row(maxrows=0)}
         setattr(fetch_currency_info, 'currency_info', info)
@@ -50,7 +50,7 @@ def fetch_currency_info():
 def __fetch_region_info():
     import core
 
-    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
+    with core.RoseVisionDb(getattr(sys.modules[__name__], 'DATABASE')['DB_SPEC']) as db:
         return {k['iso_code']: {'iso_code3': k['iso_code3'], 'status': int(k['status']),
                                 'weight': int(k['weight']), 'rate': float(k['rate']),
                                 'name_e': k['name_e'].decode('utf-8'),

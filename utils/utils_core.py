@@ -204,7 +204,7 @@ def parse_args(args):
         if 'debug-port' in param_dict:
             port = int(param_dict['debug-port'][0])
         else:
-            port = getattr(glob, 'DEBUG_PORT')
+            port = getattr(glob, 'DEBUG')['DEBUG_PORT']
         import pydevd
 
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)

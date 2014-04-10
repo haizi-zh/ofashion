@@ -17,7 +17,6 @@ import sys
 import errno
 import imp
 import global_settings as glob
-from utils.utils_core import unicodify
 
 __author__ = 'Zephyre'
 
@@ -78,7 +77,7 @@ class MStoreFileHandler(logging.FileHandler):
         if not filename:
             filename = '.'.join(os.path.basename(sys.modules['__main__'].__file__).split('.')[:-1]).decode('utf-8')
             # filename = unicode.format(u'{0}/{1}_{2}.log', path, filename, datetime.datetime.now().strftime('%Y%m%d'))
-        filename = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), 'products/log',
+        filename = os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], 'products/log',
                                                  str.format('{0}_{1}.log', filename,
                                                             datetime.datetime.now().strftime('%Y%m%d'))))
         super(MStoreFileHandler, self).__init__(filename.encode('utf-8'), mode, encoding='utf-8')
@@ -916,7 +915,7 @@ def norm_url(url, host=None):
 
 def get_spider_module(spider_name):
     spider_path = os.path.normpath(
-        os.path.join(getattr(glob, 'HOME_PATH'), str.format('scrapper/spiders/{0}_spider.py', spider_name)))
+        os.path.join(getattr(glob, 'STORAGE')['HOME_PATH'], str.format('scrapper/spiders/{0}_spider.py', spider_name)))
     return imp.load_source(spider_name, spider_path)
 
 
@@ -967,8 +966,8 @@ def get_spider_info(brand_id=None, brand_name=None):
 
     def func():
         for v in filter(lambda v: not re.search(r'^__init__\.py$', v) and not re.search(r'\.pyc$', v),
-                        os.listdir(os.path.join(getattr(glob, 'HOME_PATH'), 'scrapper/spiders'))):
-            full_path = os.path.join(getattr(glob, 'HOME_PATH'), str.format('scrapper/spiders/{0}', v))
+                        os.listdir(os.path.join(getattr(glob, 'STORAGE')['HOME_PATH'], 'scrapper/spiders'))):
+            full_path = os.path.join(getattr(glob, 'STORAGE')['HOME_PATH'], str.format('scrapper/spiders/{0}', v))
             name = os.path.splitext(os.path.split(full_path)[-1])[0]
 
             if name in (v[1]['module_name'] for v in get_spider_info.data.items()):

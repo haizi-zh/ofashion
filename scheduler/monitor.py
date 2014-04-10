@@ -46,7 +46,7 @@ def spider_generator():
 
 
 def main():
-    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
         db.start_transaction()
         try:
             for brand_id, region, modname in spider_generator():

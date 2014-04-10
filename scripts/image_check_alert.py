@@ -65,7 +65,7 @@ class ImageCheckAlertTasker(object):
         logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
         logger.info('IMAGE CHECK ALERT STARTED')
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             rs = db.query('SELECT fingerprint, brand_id, image_list, cover_image FROM products_release',
                           use_result=True)
             while True:

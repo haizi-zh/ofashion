@@ -62,26 +62,26 @@ class UpdateSpider(MFashionBaseSpider):
                     region = data['region']
                     model = data['model']
 
-                    # url = 'http://www.dvf.com/sutra-leather-hobo-bag/H2266055N13.html?dwvar_H2266055N13_color=BLACK'
-                    # region = 'us'
-                    # pid = 724862
-                    #
-                    # return [Request(url=url,
-                    #                 callback=self.parse,
-                    #                 meta={'brand': brand, 'pid': pid, 'region': region},
-                    #                 errback=self.onerror,
-                    #                 dont_filter=True)]
-                    if url:
-                        try:
-                            yield Request(url=url,
-                                          callback=self.parse,
-                                          meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
-                                          errback=self.onerror,
-                                          dont_filter=True)
-                        except TypeError:
-                            continue
-                    else:
-                        continue
+                    url = 'http://www.gucci.com/us/styles/3085353G0109060'
+                    region = 'us'
+                    pid = 196907
+
+                    return [Request(url=url,
+                                    callback=self.parse,
+                                    meta={'brand': brand, 'pid': pid, 'region': region},
+                                    errback=self.onerror,
+                                    dont_filter=True)]
+                    # if url:
+                    #     try:
+                    #         yield Request(url=url,
+                    #                       callback=self.parse,
+                    #                       meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
+                    #                       errback=self.onerror,
+                    #                       dont_filter=True)
+                    #     except TypeError:
+                    #         continue
+                    # else:
+                    #     continue
 
     def parse(self, response):
         brand = response.meta['brand']

@@ -106,7 +106,7 @@ def spider_prog_report(param_dict):
     time_range_str = map(lambda v: v.strftime('%Y-%m-%d %H:%M:%S'), [from_time, cur])
     stat_date_range = unicode.format(u'从{0}至{1}', time_range_str[0], time_range_str[1])
 
-    with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
         new_products = get_fetched_report(db, time_range_str)
         fetched_products = get_fetched_report(db, None)
 

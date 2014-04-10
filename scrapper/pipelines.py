@@ -83,7 +83,7 @@ class MStorePipeline(object):
 class UpdatePipeline(MStorePipeline):
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(getattr(glob, 'DB_SPEC'))
+        return cls(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def __init__(self, db_spec):
         self.db = RoseVisionDb()
@@ -205,7 +205,7 @@ class UpdatePipeline(MStorePipeline):
 class ProductPipeline(MStorePipeline):
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(getattr(glob, 'DB_SPEC'))
+        return cls(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def __init__(self, db_spec):
         self.db = RoseVisionDb()
@@ -424,7 +424,7 @@ class ProductImagePipeline(ImagesPipeline):
         super(ProductImagePipeline, self).__init__(store_uri)
         self.url_map = {}
         self.db = RoseVisionDb()
-        self.db.conn(getattr(glob, 'DB_SPEC'))
+        self.db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def get_images(self, response, request, info):
         """

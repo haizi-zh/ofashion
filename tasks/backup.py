@@ -56,7 +56,7 @@ class BackupTasker(object):
 
         # 将所有的sql文件打包
         logger.info('ZIPPING...')
-        backup_name = os.path.join(getattr(glob, 'STORAGE_PATH'), 'backups',
+        backup_name = os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], 'backups',
                                    str.format('{0}_auto_backup.7z', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
         os.system(str.format('7z a -mx7 {0} {1} > /dev/null', backup_name,
                              ' '.join(str.format('/tmp/{0}.sql', tmp) for tmp in tables)))

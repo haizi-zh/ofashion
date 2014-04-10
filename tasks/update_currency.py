@@ -23,7 +23,7 @@ class CurrencyUpdate(object):
         logger = logger if 'logger' in kwargs else get_logger()
         logger.info('Update currency STARTED!!!!')
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             for currency in db.query_match('currency', 'currency_info').fetch_row(maxrows=0):
                 currency = currency[0]
                 try:

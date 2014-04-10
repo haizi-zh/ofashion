@@ -34,7 +34,7 @@ def make_sure_path_exists(path):
 
 def backup_all(param_dict):
     logger.info('AUTO BACKUP STARTED')
-    storage_path = getattr(glob, 'STORAGE_PATH')
+    storage_path = getattr(glob, 'STORAGE')['STORAGE_PATH']
     original_path = os.getcwd()
     os.chdir(storage_path)
 

@@ -34,7 +34,7 @@ def region_info(refetch=False):
         return info
 
     info = {}
-    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
         for code, currency, weight, status in db.query_match(['iso_code', 'currency', 'weight', 'status'],
                                                              'region_info', {}).fetch_row(maxrows=0):
             weight = int(weight)

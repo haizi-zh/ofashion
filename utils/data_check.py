@@ -26,14 +26,14 @@ class DataCheck(object):
         if 'brand_list' in kwargs:
             brand_list = kwargs['brand_list']
         else:
-            with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+            with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
                 brand_list = db.query_match(['brand_id'],
                                             'products', distinct=True).fetch_row(maxrows=0)
                 db.start_transaction()
                 brand_list = [int(val[0]) for val in brand_list]
 
         for brand in brand_list:
-            with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+            with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
                 #=============================product check==================================================
                 logging.info(unicode.format(u'{0} PROCESSING product check {1} / {2}',
                                             datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,

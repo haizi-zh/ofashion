@@ -31,7 +31,7 @@ class RandomCheck(object):
         sel = webdriver.PhantomJS(
             executable_path=u'C:\phantomjs-1.9.7-windows\phantomjs-1.9.7-windows\phantomjs.exe')
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             rs = db.query_match(['idproducts', 'brand_id', 'model', 'name', 'url', 'description', 'price'],
                                 'products', {'brand_id': id, 'offline': '0'}).fetch_row(maxrows=0)
             db.start_transaction()

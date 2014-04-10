@@ -24,7 +24,7 @@ class PriceTrendTasker(object):
         """
         duration = int(kwargs['duration'][0]) if 'duration' in kwargs else 7
         ts = (datetime.datetime.now() - datetime.timedelta(duration)).strftime('"%Y-%m-%d %H:%M:%S"')
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             db.query(str.format('''
             UPDATE products AS p1
             JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
@@ -72,7 +72,7 @@ class PriceTrendTasker(object):
                         if c != '0':
                             changes[c].append(pid)
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             db.start_transaction()
             try:
                 for change_type in ['U', 'D']:
