@@ -285,23 +285,10 @@ class LouisVuittonSpider(MFashionSpider):
         yield item
 
     @classmethod
-    def fetch_other_offline_identifier(cls, response, spider=None):
-        sel = Selector(response)
-
-        notinstock_node = sel.xpath('//div[@id="infoProductBlock"]//div[@id="notInStock"]')
-
-        if notinstock_node:
-            return True
-        else:
-            return False
-
-    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
-        other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
-
-        if model and not other_offline_identifier:
+        if model:
             return False
         else:
             return True
