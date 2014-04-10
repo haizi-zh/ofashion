@@ -257,10 +257,23 @@ class GucciSpider(MFashionSpider):
         return ret
 
     @classmethod
+    def fetch_other_offline_identifier(cls, response, spider=None):
+        sel = Selector(response)
+
+        add_to_bag_node = sel.xpath('//div[@id="product_card"]//div[@id="shopping_bag"]/a[@class="addbag_btn"]')
+
+        if not add_to_bag_node:
+            return True
+        else:
+            return False
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
-        if model:
+        other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
+
+        if model and not other_offline_identifier:
             return False
         else:
             return True
