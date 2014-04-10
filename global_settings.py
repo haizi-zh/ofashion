@@ -125,7 +125,19 @@ def currency_info():
     return rate_data
 
 
-def _load_user_cfg(cfg_file=None):
+def _load_user_cfg(cfg_file=None, expire=600):
+    """
+    功能：加载配置文件。
+
+    描述：在加载主配置文件cfg_file后，如果里面有IMPORT区域，则按照该区域的指示，加载子配置。需要注意的是expire参数。
+    在加载IMPORT区域的时候，如果子配置文件已经存在，并且创建时间距离现在没有超过expire所指定的过期时间，则可以直接从本地读取子配置文件，
+    不再需要根据IMPORT指示从中央服务器获取。
+
+    @param cfg_file: 主配置文件。
+    @param expire: 过期时间，单位为秒。
+    @return:
+    """
+
     def parse_val(val):
         """
         解析字符串val。如果是true/false，返回bool值；如果为整数，返回int值；如果为浮点数，返回float值。
@@ -153,52 +165,17 @@ def _load_user_cfg(cfg_file=None):
             pass
 
         # 尝试解析为日期字符串
-        try:
-            return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
-        except ValueError:
-            pass
-        try:
-            return datetime.datetime.strptime(val, '%Y-%m-%d')
-        except ValueError:
-            pass
-        try:
-            return datetime.datetime.strptime(val, '%m/%d/%Y %H:%M:%S')
-        except ValueError:
-            pass
-        try:
-            return datetime.datetime.strptime(val, '%m/%d/%Y')
-        except ValueError:
-            pass
+        for ts_format in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%m/%d/%Y %H:%M:%S', '%m/%d/%Y'):
+            try:
+                return datetime.datetime.strptime(val, ts_format)
+            except ValueError:
+                pass
 
         # 作为原始字符串返回
         return val
 
     def read_section(section):
         return {option: parse_val(config.get(section, option)) for option in config.options(section)}
-
-    def read_settings(section, option, var=None, proc=lambda x: x):
-        """
-        从config文件中指定的section，读取指定的option，并写到全局变量var中。
-        @param section:
-        @param option:
-        @param var: 如果为None，则视为等同于option。
-        @param proc: 对读取到的option，应该如何处理？
-        @return:
-        """
-        if not var:
-            var = option
-        self_module = sys.modules[__name__]
-        if section in config.sections() and option in config.options(section):
-            setattr(self_module, var, proc(config.get(section, option)))
-            return True
-        else:
-            return False
-
-    def conv_datetime(val):
-        try:
-            return datetime.datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            return None
 
     if not cfg_file:
         cfg_file = os.path.join(os.path.split(__file__)[0], 'mstore.cfg')
@@ -217,15 +194,20 @@ def _load_user_cfg(cfg_file=None):
     if 'IMPORT' in config.sections():
         for imp_spec in sorted(read_section('IMPORT').values(),
                                key=lambda val: val['priority'] if 'priority' in val else 0):
-            host = imp_spec['host'] if 'host' in imp_spec else '127.0.0.1'
-            port = imp_spec['port'] if 'port' in imp_spec else 22
-            username = imp_spec['username']
+            # 检查本地缓存文件，并决定是否采用。
+
             path = imp_spec['path']
-            head = 'pscp' if sys.platform in ('win32',) else 'scp'
-            cmd_str = str.format('{4} -P {0} {1}@{2}:{3} tmp_config.conf', port, username, host, path, head)
-            check_output(cmd_str, shell=True)
-            _load_user_cfg(cfg_file='tmp_config.conf')
-            os.remove('tmp_config.conf')
+            sub_cfg_file = os.path.split(path)[-1]
+            if not (sub_cfg_file in os.listdir('.') and (datetime.datetime.now() - datetime.datetime.fromtimestamp(
+                    os.path.getmtime(sub_cfg_file))).total_seconds() < expire):
+                host = imp_spec['host'] if 'host' in imp_spec else '127.0.0.1'
+                port = imp_spec['port'] if 'port' in imp_spec else 22
+                username = imp_spec['username']
+                head = 'pscp' if sys.platform in ('win32',) else 'scp'
+                cmd_str = str.format('{4} -P {0} {1}@{2}:{3} {5}', port, username, host, path, head, sub_cfg_file)
+                check_output(cmd_str, shell=True)
+
+            _load_user_cfg(cfg_file=sub_cfg_file)
 
     section_list = filter(lambda val: val != 'IMPORT', config.sections())
     data = dict(map(lambda x, y: (x, y), section_list, map(read_section, section_list)))
@@ -233,37 +215,37 @@ def _load_user_cfg(cfg_file=None):
     for key, value in data.items():
         setattr(self_module, key, value)
 
-    # TODO 需要优化。目标：去掉这些手工指定的section。
-    # conv_int = lambda val: int(val)
-    # conv_bool = lambda val: val.lower() == 'true'
-    #
-    # # SECTION: DEBUG
-    # section = 'DEBUG'
-    # read_settings(section, 'DEBUG_HOST')
-    # read_settings(section, 'DEBUG_PORT', proc=conv_int)
-    # read_settings(section, 'DEBUG_FLAG', proc=conv_bool)
-    # read_settings(section, 'LOG_DEBUG', proc=conv_bool)
-    # read_settings(section, 'COOKIES_DEBUG', proc=conv_bool)
-    # read_settings(section, 'COOKIES_ENABLED', proc=conv_bool)
-    #
-    # # SECTION: MISC
-    # section = 'MISC'
-    # read_settings(section, 'EMAIL_ADDR', proc=lambda val: json.loads(val))
-    #
-    # # SECTION DATABASE
-    # section = 'DATABASE'
-    # read_settings(section, 'WRITE_DATABASE', proc=conv_bool)
-    # read_settings(section, 'DB_SPEC', proc=lambda val: json.loads(val))
-    #
-    # # SECTION STORAGE
-    # section = 'STORAGE'
-    # read_settings(section, 'STORAGE_PATH')
-    # read_settings(section, 'HOME_PATH')
-    #
-    # # SECTION CHECKPOINT
-    # section = 'CHECKPOINT'
-    # read_settings(section, 'LAST_CRAWLED', proc=conv_datetime)
-    # read_settings(section, 'LAST_PROCESS_TAGS', proc=conv_datetime)
+        # TODO 需要优化。目标：去掉这些手工指定的section。
+        # conv_int = lambda val: int(val)
+        # conv_bool = lambda val: val.lower() == 'true'
+        #
+        # # SECTION: DEBUG
+        # section = 'DEBUG'
+        # read_settings(section, 'DEBUG_HOST')
+        # read_settings(section, 'DEBUG_PORT', proc=conv_int)
+        # read_settings(section, 'DEBUG_FLAG', proc=conv_bool)
+        # read_settings(section, 'LOG_DEBUG', proc=conv_bool)
+        # read_settings(section, 'COOKIES_DEBUG', proc=conv_bool)
+        # read_settings(section, 'COOKIES_ENABLED', proc=conv_bool)
+        #
+        # # SECTION: MISC
+        # section = 'MISC'
+        # read_settings(section, 'EMAIL_ADDR', proc=lambda val: json.loads(val))
+        #
+        # # SECTION DATABASE
+        # section = 'DATABASE'
+        # read_settings(section, 'WRITE_DATABASE', proc=conv_bool)
+        # read_settings(section, 'DB_SPEC', proc=lambda val: json.loads(val))
+        #
+        # # SECTION STORAGE
+        # section = 'STORAGE'
+        # read_settings(section, 'STORAGE_PATH')
+        # read_settings(section, 'HOME_PATH')
+        #
+        # # SECTION CHECKPOINT
+        # section = 'CHECKPOINT'
+        # read_settings(section, 'LAST_CRAWLED', proc=conv_datetime)
+        # read_settings(section, 'LAST_PROCESS_TAGS', proc=conv_datetime)
 
 
 # 切换工作目录

@@ -44,3 +44,4 @@ scripts/sandbox.sql
 **/*.log
 **/*.bak
 **/*.exe
+*.cfg
