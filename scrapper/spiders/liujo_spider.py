@@ -129,10 +129,23 @@ class LiujoSpider(MFashionSpider):
         yield item
 
     @classmethod
+    def fetch_other_offline_identifier(cls, response, spider=None):
+        sel = Selector(response)
+
+        add_to_cart_button = sel.xpath('//div[@class="product-main-info"]//div[@class="add-to-cart"]/button[@type="button"]')
+
+        if not add_to_cart_button:
+            return True
+        else:
+            return False
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
-        if model:
+        other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
+
+        if model and not other_offline_identifier:
             return False
         else:
             return True
