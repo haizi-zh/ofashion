@@ -48,7 +48,7 @@ class UpdateSpider(MFashionBaseSpider):
                 rs = self.db.query(str.format('SELECT DISTINCT region FROM products WHERE brand_id={0}', brand))
                 region_list = [tmp['region'] for tmp in rs.fetch_row(maxrows=0, how=1)]
 
-            region_info = glob.region_info()
+            region_info = info.region_info()
             region_list = filter(lambda val: int(region_info[val]['status']), region_list)
 
             for region in region_list:

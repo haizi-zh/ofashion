@@ -5,6 +5,7 @@ import logging
 import re
 import types
 import lxml.html.soupparser as soupparser
+from utils import info
 
 import global_settings as glob
 
@@ -86,7 +87,7 @@ def process_price(price, region, decimal=None, currency=None):
         currency = guess_currency(price, region=region)
         if not currency:
             # 如果无法提取货币信息，则使用region的默认值
-            currency = glob.region_info()[region]['currency']
+            currency = info.region_info()[region]['currency']
 
     # 提取最长的数字，分隔符字符串
     tmp = sorted([func(tmp) for tmp in re.findall(r"(?<=[^\d])[\d\s,'\.]+(?=[^\d])", val, flags=re.U)],

@@ -50,7 +50,7 @@ def main():
         db.start_transaction()
         try:
             for brand_id, region, modname in spider_generator():
-                if global_settings.region_info()[region]['status'] != 1:
+                if info.region_info()[region]['status'] != 1:
                     continue
                 parameter = {'brand_id': brand_id, 'region': region}
 

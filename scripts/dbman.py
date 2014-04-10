@@ -313,7 +313,7 @@ class PublishRelease(object):
         self.tot = 0
         self.progress = 0
         # 国家的展示顺序
-        self.region_order = {k: gs.region_info()[k]['weight'] for k in gs.region_info()}
+        self.region_order = {k: info.region_info()[k]['weight'] for k in info.region_info()}
 
         self.products_tbl = 'products'
         self.prod_mt_tbl = 'products_mfashion_tags'
@@ -390,7 +390,7 @@ class PublishRelease(object):
             price_list[pid].append({'price': price, 'price_discount': price_discount, 'currency': item['currency'],
                                     'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
                                     'price_change': price_change_dict[pid], 'url': url_dict[pid],
-                                    'offline': offline, 'code': region, 'country': gs.region_info()[region]['name_c']})
+                                    'offline': offline, 'code': region, 'country': info.region_info()[region]['name_c']})
 
         currency_conv = lambda val, currency: gs.currency_info()[currency] * val
 
@@ -508,7 +508,7 @@ class PublishRelease(object):
     def run(self):
         logger = get_logger()
         # 只处理关键国家的数据
-        tmp = gs.region_info()
+        tmp = info.region_info()
         key_regions = filter(lambda val: tmp[val]['status'] == 1, tmp)
         with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             # 删除原有的数据

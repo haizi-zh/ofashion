@@ -35,11 +35,15 @@ def region_info(refetch=False):
 
     info = {}
     with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
-        for code, currency, weight, status in db.query_match(['iso_code', 'currency', 'weight', 'status'],
-                                                             'region_info', {}).fetch_row(maxrows=0):
+        for code, code3, name_e, name_c, currency, weight, status in db.query_match(
+                ['iso_code', 'iso_code3', 'name_e', 'name_c', 'currency', 'weight', 'status'], 'region_info',
+                {}).fetch_row(maxrows=0):
             weight = int(weight)
             status = int(status)
-            info[code] = {'currency': currency, 'weight': weight, 'status': status}
+            name_e = name_e.decode('utf-8') if name_e else None
+            name_c = name_c.decode('utf-8') if name_c else None
+            info[code] = {'iso_code3': code3, 'name_e': name_e, 'name_c': name_c, 'currency': currency,
+                          'weight': weight, 'status': status}
 
     setattr(region_info, 'region_info', info)
     return info

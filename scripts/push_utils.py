@@ -2,6 +2,7 @@
 import datetime
 from core import RoseVisionDb
 import global_settings as gs
+from utils import info
 from utils.utils_core import unicodify
 
 __author__ = 'Zephyre'
@@ -55,7 +56,7 @@ def price_changed(brand_list=None, start=None, end=None, start_delta=datetime.ti
             return err_no
 
     # 主要国家列表。只监控这些国家的单品的价格变化过程。
-    main_countries = [tmp[0] for tmp in filter(lambda val: val[1]['weight'] < 999999, gs.region_info().items())]
+    main_countries = [tmp[0] for tmp in filter(lambda val: val[1]['weight'] < 999999, info.region_info().items())]
     with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
         if not brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
@@ -195,7 +196,7 @@ def price_changed(brand_list=None, start=None, end=None, start_delta=datetime.ti
                         maxrows=0):
                     if fp not in fp_name_map:
                         fp_name_map[fp] = {'name': unicodify(name), 'region': region}
-                    elif gs.region_info()[region]['weight'] < gs.region_info()[fp_name_map[fp]['region']]['weight']:
+                    elif info.region_info()[region]['weight'] < info.region_info()[fp_name_map[fp]['region']]['weight']:
                         # 更高优先级的国家，替换：
                         fp_name_map[fp] = {'name': unicodify(name), 'region': region}
 
@@ -241,7 +242,7 @@ def newly_fetched(brand_list=None, start=None, end=None):
 
                     # 按照fingerprint进行归并，并按照国家的权重进行排序
                     tmp = sorted(filter(lambda val: val['fingerprint'] == fp, records),
-                                 key=lambda val: gs.region_info()[val['region']]['weight'])
+                                 key=lambda val: info.region_info()[val['region']]['weight'])
                     results[brand].append(
                         {'model': tmp[0]['model'], 'fingerprint': fp, 'name': unicodify(tmp[0]['name'])})
                     processed.add(fp)
