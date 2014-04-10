@@ -258,10 +258,24 @@ class ChristianLouboutinSpider(MFashionSpider):
         yield item
 
     @classmethod
+    def fetch_other_offline_identifier(cls, response, spider=None):
+        sel = Selector(response)
+
+        ret = cls.fetch_price(response, spider)
+
+        if 'price' not in ret and 'price_discount' not in ret:
+            return True
+        else:
+            return False
+
+
+    @classmethod
     def is_offline(cls, response, spider=None):
         model = cls.fetch_model(response)
 
-        if model:
+        other_offline_identifier = cls.fetch_other_offline_identifier(response, spider)
+
+        if model and not other_offline_identifier:
             return False
         else:
             return True
