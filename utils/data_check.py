@@ -6,6 +6,7 @@ import global_settings as gs
 import datetime
 import logging
 import json
+from utils import info
 
 logging.basicConfig(filename='DataCheck.log', level=logging.DEBUG)
 
@@ -37,7 +38,7 @@ class DataCheck(object):
                 #=============================product check==================================================
                 logging.info(unicode.format(u'{0} PROCESSING product check {1} / {2}',
                                             datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,
-                                            gs.brand_info()[brand]['brandname_e']))
+                                            info.brand_info()[brand]['brandname_e']))
                 rs = db.query_match(
                     ['idproducts', 'region', 'name', 'url', 'color', 'description', 'details', 'price_change'],
                     'products', {'brand_id': brand}).fetch_row(maxrows=0)
@@ -78,7 +79,7 @@ class DataCheck(object):
                         #=============================price check==================================================
                         logging.info(unicode.format(u'{0} PROCESSING price check {1} / {2}',
                                                     datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,
-                                                    gs.brand_info()[brand]['brandname_e']))
+                                                    info.brand_info()[brand]['brandname_e']))
                         prs = db.query(str.format(
                             'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
                             'p1.region,p1.name,p1.model,p1.offline FROM products AS p1 JOIN products_price_history AS p2 ON '
@@ -113,7 +114,7 @@ class DataCheck(object):
                                                    brand, model,
                                                    sorted_data[0]['nprice'], sorted_data[0]['region'],
                                                    sorted_data[-1]['nprice'], sorted_data[-1]['region'],
-                                                   gs.brand_info()[brand]['brandname_e']))
+                                                   info.brand_info()[brand]['brandname_e']))
 
         logging.info('PRODUCT CHECK ENDED!!!!')
 

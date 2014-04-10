@@ -30,13 +30,13 @@ def default_error():
 def get_job_path(brand_id):
     return os.path.normpath(
         os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'],
-                     unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.brand_info()[brand_id]['brandname_s'])))
+                     unicode.format(u'products/crawl/{0}_{1}', brand_id, info.brand_info()[brand_id]['brandname_s'])))
 
 
 def get_log_path(brand_id, region_list=None):
     return os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
                                          unicode.format(u'{0}_{1}_{2}_{3}.log', brand_id,
-                                                        glob.brand_info()[brand_id]['brandname_s'],
+                                                        info.brand_info()[brand_id]['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'),
                                                         '_'.join(region_list) if region_list else 'all')))
 
@@ -44,7 +44,8 @@ def get_log_path(brand_id, region_list=None):
 def get_images_store(brand_id):
     return os.path.normpath(os.path.join(
         getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/images', unicode.format(u'{0}_{1}', brand_id,
-                                                                          glob.brand_info()[brand_id]['brandname_s'])))
+                                                                                     info.brand_info()[brand_id][
+                                                                                         'brandname_s'])))
 
 
 def set_up_spider(spider_class, data, spider_type='default'):
@@ -226,19 +227,21 @@ def main():
                     log.start(loglevel='DEBUG')
                 else:
                     if spider_type == 'update':
-                        logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
-                                                                unicode.format(u'update_{0}_{1}.log',
-                                                                               '_'.join(param['brand']),
-                                                                               datetime.datetime.now().strftime(
-                                                                                   '%Y%m%d'))))
+                        logfile = os.path.normpath(
+                            os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
+                                         unicode.format(u'update_{0}_{1}.log',
+                                                        '_'.join(param['brand']),
+                                                        datetime.datetime.now().strftime(
+                                                            '%Y%m%d'))))
                     elif spider_type == 'default':
                         logfile = get_log_path(sc.spider_data['brand_id'], region_list=param['r'])
                     elif spider_type == 'monitor':
-                        logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
-                                                                unicode.format(u'monitor_{0}_{1}.log',
-                                                                               '_'.join(param['brand']),
-                                                                               datetime.datetime.now().strftime(
-                                                                                   '%Y%m%d'))))
+                        logfile = os.path.normpath(
+                            os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
+                                         unicode.format(u'monitor_{0}_{1}.log',
+                                                        '_'.join(param['brand']),
+                                                        datetime.datetime.now().strftime(
+                                                            '%Y%m%d'))))
                     else:
                         logfile = None
 

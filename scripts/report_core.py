@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 import global_settings as gs
 import datetime
 from core import RoseVisionDb
+from utils import info
 
 
 __author__ = 'Zephyre'
@@ -43,7 +44,7 @@ def get_fetched_report(db, time_range_str):
 
         cnt_by_region = '/'.join(map(func1, ['cn', 'us', 'fr', 'uk', 'it']))
         return unicode.format(
-            u'<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>', brand, gs.brand_info()[brand]['brandname_e'],
+            u'<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>', brand, info.brand_info()[brand]['brandname_e'],
             cnt_tot, cnt_by_region
         )
 

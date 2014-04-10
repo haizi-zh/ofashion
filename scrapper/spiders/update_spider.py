@@ -6,6 +6,7 @@ from scrapy.http import Request
 from scrapper.items import UpdateItem
 import global_settings as glob
 from scrapper.spiders.mfashion_spider import MFashionBaseSpider
+from utils import info
 
 __author__ = 'Zephyre'
 
@@ -27,7 +28,7 @@ class UpdateSpider(MFashionBaseSpider):
         # 如果未指定brand_list，则默认对所有的品牌进行更新
         # 获得所有的品牌数据
         if not self.brand_list:
-            self.brand_list = glob.brand_info().keys()
+            self.brand_list = info.brand_info().keys()
 
         # UpdateSpider的可选区域参数
         region_cond = str.format('region IN ({0})',

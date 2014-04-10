@@ -60,7 +60,6 @@ def __fetch_region_info():
 
 
 __cached_region_info = None
-__cached_brand_info = None
 __cached_currency_rate = None
 cached_spider_info = None
 
@@ -103,13 +102,6 @@ def spider_info():
     if not cached_spider_info:
         cached_spider_info = fetch_spider_info()
     return cached_spider_info
-
-
-def brand_info():
-    global __cached_brand_info
-    if not __cached_brand_info:
-        __cached_brand_info = __fetch_brand_info()
-    return __cached_brand_info
 
 
 def currency_info():

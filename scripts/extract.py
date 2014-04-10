@@ -8,6 +8,7 @@ from core import RoseVisionDb
 import global_settings as gs
 import common as cm
 import json
+from utils import info
 from utils.utils_core import unicodify, iterable
 
 __author__ = 'Zephyre'
@@ -81,8 +82,8 @@ class SampleExtractor(object):
         for brand in brand_list:
             results = {}
 
-            print unicode.format(u'PROCESSING {0} / {1}', brand, gs.brand_info()[brand]['brandname_e'])
-            brand_name = gs.brand_info()[brand]['brandname_e']
+            print unicode.format(u'PROCESSING {0} / {1}', brand, info.brand_info()[brand]['brandname_e'])
+            brand_name = info.brand_info()[brand]['brandname_e']
             self.progress += 1
 
             rs = db.query(str.format('''SELECT p1.idproducts,p1.brand_id,p1.model,p1.region,p2.price,p2.price_discount,p2.currency,p2.date,p1.name,p4.tag,p1.url FROM products AS p1

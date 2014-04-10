@@ -45,6 +45,31 @@ def region_info(refetch=False):
     return info
 
 
+@static_var('brand_info', None)
+def brand_info(refetch=False):
+    """
+    返回品牌信息。
+    @param refetch: 强制重新读取信息。
+    """
+    info = getattr(brand_info, 'brand_info')
+    if info and not refetch:
+        return info
+
+    info = {}
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
+        for brand_id, name_e, name_c, name_s in db.query_match(
+                ['brand_id', 'brandname_e', 'brandname_c', 'brandname_s'],
+                'brand_info', {}).fetch_row(maxrows=0):
+            brand_id = int(brand_id)
+            name_e = name_e.decode('utf-8') if name_e else None
+            name_c = name_c.decode('utf-8') if name_c else None
+            name_s = name_s.decode('utf-8') if name_s else None
+            info[brand_id] = {'brandname_e': name_e, 'brandname_c': name_c, 'brandname_s': name_s}
+
+    setattr(brand_info, 'brand_info', info)
+    return info
+
+
 @static_var('spider_info', None)
 def spider_info(refetch=False):
     """
