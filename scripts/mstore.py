@@ -9,7 +9,6 @@ import logging
 import codecs
 import os
 import _mysql
-import datetime
 from threading import Thread
 import urllib2
 import _mysql_exceptions
@@ -20,7 +19,8 @@ from scripts.extract import SampleExtractor
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report, process_log
 import core
-from utils.utils_core import process_price, unicodify, iterable, parse_args
+from utils.utils_core import process_price, parse_args
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -623,6 +623,7 @@ def price_check(param_dict):
 def extract(param_dict):
     obj = SampleExtractor(param_dict)
     obj.run()
+
 
 def fingerprint_check(param_dict):
     core.func_carrier(FingerprintCheck(param_dict), 1)

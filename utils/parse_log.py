@@ -1,5 +1,6 @@
 # coding=utf-8
-from utils.utils_core import unicodify, get_logger
+from utils.utils_core import get_logger
+from utils.text import unicodify
 from core import RoseVisionDb
 import global_settings as gs
 import os

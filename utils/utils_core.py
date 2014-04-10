@@ -8,6 +8,7 @@ import lxml.html.soupparser as soupparser
 from utils import info
 
 import global_settings as glob
+from utils.text import unicodify
 
 __author__ = 'Zephyre'
 
@@ -222,19 +223,6 @@ def get_logger(logger_name='rosevision'):
     return logging.getLogger(logger_name)
 
 
-def unicodify(val):
-    """
-    Unicode化，并且strip
-    :param val:
-    :return:
-    """
-    if val is None:
-        return None
-    elif isinstance(val, str):
-        return val.decode('utf-8').strip()
-    else:
-        return unicode(val).strip()
-
 def lxmlparser(val):
     """
     html parser转义html标签及转义字符
@@ -245,17 +233,3 @@ def lxmlparser(val):
         return soupparser.fromstring(val).text_content()
     else:
         return val
-
-def iterable(val):
-    """
-    val是否iterable。注意：val为str的话，返回False。
-    :param val:
-    """
-    if isinstance(val, types.StringTypes):
-        return False
-    else:
-        try:
-            iter(val)
-            return True
-        except TypeError:
-            return False

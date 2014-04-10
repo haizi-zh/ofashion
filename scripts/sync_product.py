@@ -2,10 +2,10 @@
 import json
 import re
 from _mysql_exceptions import OperationalError
-import time
 import core
 import common as cm
-from utils.utils_core import process_price, unicodify, iterable
+from utils.utils_core import process_price
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 

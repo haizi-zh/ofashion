@@ -5,7 +5,7 @@ import datetime
 import threading
 import time
 import sys
-from utils.utils_core import unicodify, iterable
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 

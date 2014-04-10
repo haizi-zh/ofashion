@@ -11,7 +11,8 @@ import json
 from scripts.push_utils import price_changed
 from utils import info
 from utils.filters import release_filter
-from utils.utils_core import unicodify, iterable, gen_fingerprint, get_logger
+from utils.text import unicodify, iterable
+from utils.utils_core import gen_fingerprint, get_logger
 
 __author__ = 'Zephyre'
 

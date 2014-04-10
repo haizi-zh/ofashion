@@ -7,6 +7,7 @@
 import inspect
 import pkgutil
 import imp
+import datetime
 import scrapper.spiders
 from scrapper.spiders.mfashion_spider import MFashionSpider
 from utils.db import RoseVisionDb
@@ -46,6 +47,31 @@ def region_info(refetch=False):
                           'weight': weight, 'status': status}
 
     setattr(region_info, 'region_info', info)
+    return info
+
+
+@static_var('currency_info', None)
+def currency_info(refetch=False):
+    """
+    返回货币信息。
+    @param refetch: 强制重新读取信息。
+    """
+    info = getattr(currency_info, 'currency_info')
+    if info and not refetch:
+        return info
+
+    info = {}
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
+        for currency, symbol, name, rate, update_time in db.query_match(
+                ['currency', 'symbol', 'name', 'rate', 'update_time'], 'currency_info', {}).fetch_row(maxrows=0):
+            currency = currency.decode('utf-8')
+            symbol = symbol.decode('utf-8') if symbol else None
+            name = name.decode('utf-8') if name else None
+            rate = float(rate) if rate else None
+            update_time = datetime.datetime.strptime(update_time,'%Y-%m-%d %H:%M:%S') if update_time else None
+            info[currency] = {'symbol': symbol, 'name': name, 'rate': rate, 'update_time': update_time}
+
+    setattr(currency_info, 'currency_info', info)
     return info
 
 

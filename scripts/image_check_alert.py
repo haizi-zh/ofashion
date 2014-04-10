@@ -2,18 +2,16 @@
 # coding=utf-8
 from email.mime.text import MIMEText
 import json
-import os
 import re
-import hashlib
 import smtplib
-import urlparse
 from core import RoseVisionDb
 import global_settings as gs
 
 # import pydevd
 # pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
 
-from utils.utils_core import unicodify, get_logger
+from utils.utils_core import get_logger
+from utils.text import unicodify
 
 
 class ImageCheckAlertTasker(object):

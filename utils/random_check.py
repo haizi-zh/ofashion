@@ -8,7 +8,7 @@ import os
 import re
 import logging
 from selenium import webdriver
-from utils.utils_core import unicodify
+from utils.text import unicodify
 
 logging.basicConfig(filename='ImagesCheck.log', level=logging.DEBUG)
 import random

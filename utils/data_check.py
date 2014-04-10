@@ -1,6 +1,6 @@
 # coding=utf-8
 import urllib
-from utils.utils_core import unicodify
+from utils.text import unicodify
 from core import RoseVisionDb
 import global_settings as gs
 import datetime

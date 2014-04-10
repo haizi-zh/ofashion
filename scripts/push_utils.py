@@ -3,7 +3,7 @@ import datetime
 from core import RoseVisionDb
 import global_settings as gs
 from utils import info
-from utils.utils_core import unicodify
+from utils.text import unicodify
 
 __author__ = 'Zephyre'
 

@@ -19,7 +19,8 @@ from PIL import Image
 
 from core import RoseVisionDb
 import global_settings as glob
-from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint, lxmlparser, get_logger
+from utils.text import unicodify, iterable
+from utils.utils_core import process_price, gen_fingerprint, lxmlparser, get_logger
 
 
 class MStorePipeline(object):

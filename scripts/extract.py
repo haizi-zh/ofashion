@@ -9,7 +9,7 @@ import global_settings as gs
 import common as cm
 import json
 from utils import info
-from utils.utils_core import unicodify, iterable
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 

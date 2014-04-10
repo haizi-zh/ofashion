@@ -12,7 +12,8 @@ import errno
 import sys
 import global_settings as glob
 import re
-from utils.utils_core import parse_args, unicodify, get_logger
+from utils.utils_core import parse_args, get_logger
+from utils.text import unicodify
 
 __author__ = 'Zephyre'
 
