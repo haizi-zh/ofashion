@@ -24,7 +24,7 @@ __author__ = 'Zephyre'
 class BurberrySpider(MFashionSpider):
     handle_httpstatus_list = [403]
     spider_data = {'brand_id': 10057,
-                   'currency': {'sg': 'SGD'}}
+                   'currency': {'sg': 'SGD', 'ca': 'CAD', 'au': 'AUD'}}
     supported_regions = {'cn', 'us', 'fr', 'uk', 'hk', 'jp', 'it', 'sg', 'tw', 'mo', 'au', 'ae', 'de', 'ca', 'es',
                          'ru', 'br', 'kr', 'my'}
 
