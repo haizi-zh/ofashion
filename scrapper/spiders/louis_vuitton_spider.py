@@ -310,6 +310,11 @@ class LouisVuittonSpider(MFashionSpider):
     def is_notinstock(cls, response, spider=None):
         sel = Selector(response)
 
+        store_lang = None
+        mt = re.search(ur'mobile/(\w+)/', response.url)
+        if mt:
+            store_lang = mt.group(1)
+
         sku_node = sel.xpath('//div[@id="infoProductBlockTop"]/div[@class="sku"][text()]')
         if sku_node:
             try:
@@ -319,13 +324,19 @@ class LouisVuittonSpider(MFashionSpider):
                     mt = re.search(ur'(\w+)$', sku_text)
                     if mt:
                         sku = mt.group(1)
-                        if sku:
-                            url = str.format('https://secure.louisvuitton.com/mobile/ajaxsecure/getStockLevel.jsp?skuId={0}', sku)
+                        if sku and store_lang:
+                            url = str.format('https://secure.louisvuitton.com/mobile/ajaxsecure/getStockLevel.jsp?storeLang={0}&skuId={1}', store_lang, sku)
 
+                            # cookie = {
+                            #     'v1st': 'C29E9C5C813A8B71',
+                            #     'JSESSIONID': '6AD05F7CC8D1152132163C08C1284CF9.mobile11',
+                            #     'utag_main': '_st:1397126830351$ses_id:1397123762243%3Bexp-session',
+                            # }
                             ret = Request(url=url,
                                            callback=cls.is_notinstock_server,
                                            errback=spider.onerror,
                                            meta=response.meta)
+                                           # cookies=cookie)
                             # ret.headers.setdefault('User-Agent', 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5')
 
                             return ret
