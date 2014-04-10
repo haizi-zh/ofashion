@@ -321,10 +321,14 @@ class LouisVuittonSpider(MFashionSpider):
                         sku = mt.group(1)
                         if sku:
                             url = str.format('https://secure.louisvuitton.com/mobile/ajaxsecure/getStockLevel.jsp?skuId={0}', sku)
-                            return Request(url=url,
+
+                            ret = Request(url=url,
                                            callback=cls.is_notinstock_server,
-                                           errback=cls.onerr,
+                                           errback=spider.onerror,
                                            meta=response.meta)
+                            # ret.headers.setdefault('User-Agent', 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5')
+
+                            return ret
             except(TypeError, IndexError):
                 pass
 
