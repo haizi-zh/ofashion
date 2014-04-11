@@ -39,8 +39,14 @@ def fetch_currency_info():
 
     import core
 
+    info = {}
     with core.RoseVisionDb(getattr(sys.modules[__name__], 'DB_SPEC')) as db:
-        info = {tmp[0]:float(tmp[1]) for tmp in db.query('SELECT currency, rate FROM currency_info').fetch_row(maxrows=0)}
+        for currency, rate in db.query('SELECT currency, rate FROM currency_info').fetch_row(maxrows=0):
+            try:
+                rate = float(rate)
+            except (ValueError, TypeError):
+                continue
+            info[currency] = rate
         setattr(fetch_currency_info, 'currency_info', info)
         return info
 
