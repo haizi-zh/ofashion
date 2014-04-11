@@ -11,9 +11,9 @@ import common
 import copy
 import re
 
-class JuicyCoutureSpider(MFashionSpider):
+class JilSanderSpider(MFashionSpider):
     spider_data = {
-        'brand_id': 10186,
+        'brand_id': 10183,
         'home_urls': {
             'us': 'http://store.jilsander.com/us',
             'au': 'http://store.jilsander.com/au',
@@ -40,7 +40,7 @@ class JuicyCoutureSpider(MFashionSpider):
             'es': 'http://store.jilsander.com/es',
             'se': 'http://store.jilsander.com/se',
             'ch': 'http://store.jilsander.com/ch',
-            'gb': 'http://store.jilsander.com/gb',
+            'uk': 'http://store.jilsander.com/gb',
         },
     }
 
@@ -49,7 +49,7 @@ class JuicyCoutureSpider(MFashionSpider):
         return cls.spider_data['home_urls'].keys()
 
     def __init__(self, region):
-        super(JuicyCoutureSpider, self).__init__('juicy_couture', region)
+        super(JilSanderSpider, self).__init__('jil_sander', region)
 
     def parse(self, response):
 
