@@ -709,7 +709,7 @@ class ChanelSpider(MFashionSpider):
                 cls.spider_data['base_url'][region], cls.spider_data['watch_term'][region][0],
                 cls.fetch_model(response))
 
-            return Request(url=price_url,
+            return ProxiedRequest(url=price_url,
                            callback=cls.fetch_price_request_watch,
                            errback=spider.onerror,
                            meta=response.meta)
@@ -740,7 +740,7 @@ class ChanelSpider(MFashionSpider):
                                     url = temp
                                 else:
                                     url = str.format('{0}{1}', cls.spider_data['hosts'][region], temp)
-                                return Request(url=url,
+                                return ProxiedRequest(url=url,
                                                meta=response.meta,
                                                callback=cls.fetch_price_request_fashion_json,
                                                dont_filter=True,
@@ -804,7 +804,7 @@ class ChanelSpider(MFashionSpider):
                         region = meta['region']
 
                     url = cls.spider_data['pricing'] % (cls.spider_data['base_url'][region], info['refPrice'])
-                    return Request(url=url,
+                    return ProxiedRequest(url=url,
                                    meta={'handle_httpstatus_list': [400]},
                                    callback=cls.fetch_price_request_fashion_price,
                                    errback=spider.onerror,
