@@ -12,6 +12,9 @@ import copy
 import re
 
 class JuicyCoutureSpider(MFashionSpider):
+
+    # TODO 网页似乎没有切换国家选项，价格写的是$，网址也是美国的，所以这里写了美国
+
     spider_data = {
         'brand_id': 10186,
         'home_urls': {
