@@ -57,7 +57,7 @@ class Sandbox(object):
                           float(self.progress) / self.tot) if self.tot > 0 else 'IDLE'
 
     def run(self):
-        with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
             try:
                 rs = db.query(
                     'SELECT idproducts_image, brand_id, model FROM products_image where fingerprint is null').fetch_row(
@@ -111,7 +111,7 @@ def update_scheduler():
                    10149, 10030, 10184, 10192, 10117, 10105, 10114, 10108, 10138, 10429, 10333, 10263, 10204, 10218,
                    10220, 10305, 10270, 10617, 11301, 10369, 10106, 10212, 10316]
     valid_region = filter(lambda key: info.region_info()[key]['status'] == 1, info.region_info().keys())
-    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
         db.start_transaction()
         try:
             # 得到已排期的爬虫
@@ -164,7 +164,7 @@ def func2():
         reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
         remote = set([row[0].replace('"', '') for row in reader])
 
-    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
         local = set(
             [tmp[0] for tmp in db.query('SELECT DISTINCT fingerprint FROM products_release').fetch_row(maxrows=0)])
         local_p = set(

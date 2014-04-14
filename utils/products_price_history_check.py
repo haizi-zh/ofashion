@@ -6,7 +6,7 @@ import global_settings as gs
 __author__ = 'Ryan'
 
 db = RoseVisionDb()
-db.conn(getattr(gs, 'DB_SPEC'))
+db.conn(getattr(gs, 'DATABASE')['DB_SPEC'])
 rs = db.query(str.format('select currency, rate from region_info'))
 exchange_dic = {
     val['currency']: val['rate']

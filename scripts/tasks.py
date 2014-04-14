@@ -36,7 +36,7 @@ def monitor_crawl(**kwargs):
             run_crawler, kwargs['brand_id'], kwargs['region'], kwargs['idmonitor']),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, shell=True)
-    t1 = monitor.stdout.readlines()
+    t1 = monitor.communicate()
 
     #-----------重爬----------------
     #todo judge monitor status

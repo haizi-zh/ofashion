@@ -18,7 +18,8 @@ from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
 from scrapper.spiders.eshop_spider import EShopSpider
 from utils import info
 from scrapper.spiders.update_spider import UpdateSpider
-from utils.utils_core import iterable, parse_args
+from utils.utils_core import parse_args
+from utils.text import iterable
 
 __author__ = 'Zephyre'
 
@@ -29,22 +30,23 @@ def default_error():
 
 def get_job_path(brand_id):
     return os.path.normpath(
-        os.path.join(getattr(glob, 'STORAGE_PATH'),
-                     unicode.format(u'products/crawl/{0}_{1}', brand_id, glob.brand_info()[brand_id]['brandname_s'])))
+        os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'],
+                     unicode.format(u'products/crawl/{0}_{1}', brand_id, info.brand_info()[brand_id]['brandname_s'])))
 
 
 def get_log_path(brand_id, region_list=None):
-    return os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
+    return os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
                                          unicode.format(u'{0}_{1}_{2}_{3}.log', brand_id,
-                                                        glob.brand_info()[brand_id]['brandname_s'],
+                                                        info.brand_info()[brand_id]['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'),
                                                         '_'.join(region_list) if region_list else 'all')))
 
 
 def get_images_store(brand_id):
     return os.path.normpath(os.path.join(
-        getattr(glob, 'STORAGE_PATH'), u'products/images', unicode.format(u'{0}_{1}', brand_id,
-                                                                          glob.brand_info()[brand_id]['brandname_s'])))
+        getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/images', unicode.format(u'{0}_{1}', brand_id,
+                                                                                     info.brand_info()[brand_id][
+                                                                                         'brandname_s'])))
 
 
 def set_up_spider(spider_class, data, spider_type='default'):
@@ -68,7 +70,7 @@ def set_up_spider(spider_class, data, spider_type='default'):
             region_list = data['r']
         else:
             region_list = None
-        spider = spider_class(brand_list, region_list, getattr(glob, 'DB_SPEC'))
+        spider = spider_class(brand_list, region_list, getattr(glob, 'DATABASE')['DB_SPEC'])
         welcome_msg = str.format('Updating started, processing the following brands: {0}',
                                  ', '.join(str(tmp) for tmp in brand_list))
     elif spider_type == 'monitor':
@@ -77,13 +79,13 @@ def set_up_spider(spider_class, data, spider_type='default'):
         region = data['region'][0]
         idmonitor = int(data['idmonitor'][0])
         parameter = {'brand_id': brand, 'region': region}
-        spider = spider_class(idmonitor, parameter, getattr(glob, 'DB_SPEC'))
+        spider = spider_class(idmonitor, parameter, getattr(glob, 'DATABASE')['DB_SPEC'])
         welcome_msg = str.format('STARTING MONITORING, idmonitory={0}, brand={1}, region={2}', idmonitor, brand,
                                  region)
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
-            if getattr(glob, 'WRITE_DATABASE') else {}
+            if getattr(glob, 'DATABASE')['WRITE_DATABASE'] else {}
         if 'job' in data:
             job_path = get_job_path(spider_class.spider_data['brand_id']) + '-1'
             if 'rst-job' in data:
@@ -111,7 +113,7 @@ def set_up_spider(spider_class, data, spider_type='default'):
         elif not iterable(region_list):
             region_list = [region_list]
 
-        region_list = filter(lambda val: glob.region_info()[val]['status'], region_list)
+        region_list = filter(lambda val: info.region_info()[val]['status'], region_list)
 
         if 'exclude-region' in data:
             for r in data['exclude-region']:
@@ -148,14 +150,18 @@ def set_up_spider(spider_class, data, spider_type='default'):
     else:
         crawler.settings.values['PROXY_ENABLED'] = False
 
-    cookie_flag = getattr(glob, 'COOKIES_ENABLED', False)
-    try:
-        cookie_flag = (data['cookie'][0].lower() == 'true')
-    except (IndexError, KeyError):
-        pass
-    crawler.settings.values['COOKIES_ENABLED'] = cookie_flag
-
-    crawler.settings.values['COOKIES_DEBUG'] = getattr(glob, 'COOKIES_DEBUG', False)
+    # TODO deal with cookies
+    # cookie_flag = getattr(glob, 'COOKIES_ENABLED', False)
+    # try:
+    #     cookie_flag = (data['cookie'][0].lower() == 'true')
+    # except (IndexError, KeyError):
+    #     pass
+    # crawler.settings.values['COOKIES_ENABLED'] = cookie_flag
+    #
+    # try:
+    #     crawler.settings.values['COOKIES_DEBUG'] = getattr(glob, 'DEBUG')['COOKIES_DEBUG']
+    # except (AttributeError, KeyError):
+    #     crawler.settings.values['COOKIES_DEBUG'] = False
 
     crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
     crawler.configure()
@@ -222,19 +228,21 @@ def main():
                     log.start(loglevel='DEBUG')
                 else:
                     if spider_type == 'update':
-                        logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
-                                                                unicode.format(u'update_{0}_{1}.log',
-                                                                               '_'.join(param['brand']),
-                                                                               datetime.datetime.now().strftime(
-                                                                                   '%Y%m%d'))))
+                        logfile = os.path.normpath(
+                            os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
+                                         unicode.format(u'update_{0}_{1}.log',
+                                                        '_'.join(param['brand']),
+                                                        datetime.datetime.now().strftime(
+                                                            '%Y%m%d'))))
                     elif spider_type == 'default':
                         logfile = get_log_path(sc.spider_data['brand_id'], region_list=param['r'])
                     elif spider_type == 'monitor':
-                        logfile = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), u'products/log',
-                                                                unicode.format(u'monitor_{0}_{1}.log',
-                                                                               '_'.join(param['brand']),
-                                                                               datetime.datetime.now().strftime(
-                                                                                   '%Y%m%d'))))
+                        logfile = os.path.normpath(
+                            os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/log',
+                                         unicode.format(u'monitor_{0}_{1}.log',
+                                                        '_'.join(param['brand']),
+                                                        datetime.datetime.now().strftime(
+                                                            '%Y%m%d'))))
                     else:
                         logfile = None
 

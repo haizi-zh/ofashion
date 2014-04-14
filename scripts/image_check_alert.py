@@ -2,18 +2,16 @@
 # coding=utf-8
 from email.mime.text import MIMEText
 import json
-import os
 import re
-import hashlib
 import smtplib
-import urlparse
 from core import RoseVisionDb
 import global_settings as gs
 
 # import pydevd
 # pydevd.settrace('localhost', port=7103, stdoutToServer=True, stderrToServer=True)
 
-from utils.utils_core import unicodify, get_logger
+from utils.utils_core import get_logger
+from utils.text import unicodify
 
 
 class ImageCheckAlertTasker(object):
@@ -65,7 +63,7 @@ class ImageCheckAlertTasker(object):
         logger = kwargs['logger'] if 'logger' in kwargs else get_logger()
         logger.info('IMAGE CHECK ALERT STARTED')
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             rs = db.query('SELECT fingerprint, brand_id, image_list, cover_image FROM products_release',
                           use_result=True)
             while True:

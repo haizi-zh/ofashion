@@ -9,8 +9,10 @@ import global_settings as gs
 import common as cm
 import json
 from scripts.push_utils import price_changed
+from utils import info
 from utils.filters import release_filter
-from utils.utils_core import unicodify, iterable, gen_fingerprint, get_logger
+from utils.text import unicodify, iterable
+from utils.utils_core import gen_fingerprint, get_logger
 
 __author__ = 'Zephyre'
 
@@ -56,7 +58,7 @@ class FingerprintCheck(object):
                                            ','.join(str(tmp) for tmp in brand_list))).fetch_row()[0][0])
         for brand in brand_list:
             if not self.silent:
-                print unicode.format(u'\nPROCESSING {0} / {1}\n', brand, gs.brand_info()[brand]['brandname_e'])
+                print unicode.format(u'\nPROCESSING {0} / {1}\n', brand, info.brand_info()[brand]['brandname_e'])
 
             db.start_transaction()
             try:
@@ -117,7 +119,7 @@ class PriceCheck(object):
         self.progress = 0
         self.tot = len(brand_list)
         for brand in brand_list:
-            print unicode.format(u'PROCESSING {0} / {1}', brand, gs.brand_info()[brand]['brandname_e'])
+            print unicode.format(u'PROCESSING {0} / {1}', brand, info.brand_info()[brand]['brandname_e'])
             self.progress += 1
             rs = db.query(str.format(
                 'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
@@ -155,7 +157,7 @@ class PriceCheck(object):
                                          brand, model,
                                          sorted_data[0]['nprice'], sorted_data[0]['region'],
                                          sorted_data[-1]['nprice'], sorted_data[-1]['region'],
-                                         gs.brand_info()[brand]['brandname_e'])
+                                         info.brand_info()[brand]['brandname_e'])
 
         db.close()
 
@@ -193,7 +195,7 @@ class PriceChangeDetect(object):
                         if c != '0':
                             changes[c].append(pid)
 
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             db.start_transaction()
             try:
                 for change_type in ['U', 'D']:
@@ -312,7 +314,7 @@ class PublishRelease(object):
         self.tot = 0
         self.progress = 0
         # 国家的展示顺序
-        self.region_order = {k: gs.region_info()[k]['weight'] for k in gs.region_info()}
+        self.region_order = {k: info.region_info()[k]['weight'] for k in info.region_info()}
 
         self.products_tbl = 'products'
         self.prod_mt_tbl = 'products_mfashion_tags'
@@ -356,8 +358,8 @@ class PublishRelease(object):
         entry['original_tags'] = ''  #json.dumps(original_tags, ensure_ascii=False)
 
         entry['region_list'] = json.dumps([val['region'] for val in prods], ensure_ascii=False)
-        entry['brandname_e'] = gs.brand_info()[int(entry['brand_id'])]['brandname_e']
-        entry['brandname_c'] = gs.brand_info()[int(entry['brand_id'])]['brandname_c']
+        entry['brandname_e'] = info.brand_info()[int(entry['brand_id'])]['brandname_e']
+        entry['brandname_c'] = info.brand_info()[int(entry['brand_id'])]['brandname_c']
         # # 该单品在所有国家的记录中，第一次被抓取到的时间，作为release的fetch_time
         # entry['fetch_time'] = \
         #     sorted(datetime.datetime.strptime(tmp['fetch_time'], "%Y-%m-%d %H:%M:%S") for tmp in prods)[
@@ -389,7 +391,7 @@ class PublishRelease(object):
             price_list[pid].append({'price': price, 'price_discount': price_discount, 'currency': item['currency'],
                                     'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
                                     'price_change': price_change_dict[pid], 'url': url_dict[pid],
-                                    'offline': offline, 'code': region, 'country': gs.region_info()[region]['name_c']})
+                                    'offline': offline, 'code': region, 'country': info.region_info()[region]['name_c']})
 
         currency_conv = lambda val, currency: gs.currency_info()[currency] * val
 
@@ -507,9 +509,9 @@ class PublishRelease(object):
     def run(self):
         logger = get_logger()
         # 只处理关键国家的数据
-        tmp = gs.region_info()
+        tmp = info.region_info()
         key_regions = filter(lambda val: tmp[val]['status'] == 1, tmp)
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             # 删除原有的数据
             logger.info(str.format('DELETING OLD RECORDS: brand_id={0}', self.brand_id))
             db.execute(str.format('DELETE FROM products_release WHERE brand_id={0}', self.brand_id))

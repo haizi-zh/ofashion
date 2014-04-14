@@ -19,7 +19,8 @@ from PIL import Image
 
 from core import RoseVisionDb
 import global_settings as glob
-from utils.utils_core import process_price, unicodify, iterable, gen_fingerprint, lxmlparser, get_logger
+from utils.text import unicodify, iterable
+from utils.utils_core import process_price, gen_fingerprint, lxmlparser, get_logger
 
 
 class MStorePipeline(object):
@@ -83,7 +84,7 @@ class MStorePipeline(object):
 class UpdatePipeline(MStorePipeline):
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(getattr(glob, 'DB_SPEC'))
+        return cls(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def __init__(self, db_spec):
         self.db = RoseVisionDb()
@@ -205,7 +206,7 @@ class UpdatePipeline(MStorePipeline):
 class ProductPipeline(MStorePipeline):
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(getattr(glob, 'DB_SPEC'))
+        return cls(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def __init__(self, db_spec):
         self.db = RoseVisionDb()
@@ -424,7 +425,7 @@ class ProductImagePipeline(ImagesPipeline):
         super(ProductImagePipeline, self).__init__(store_uri)
         self.url_map = {}
         self.db = RoseVisionDb()
-        self.db.conn(getattr(glob, 'DB_SPEC'))
+        self.db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def get_images(self, response, request, info):
         """
@@ -619,7 +620,7 @@ class ProductImagePipeline(ImagesPipeline):
                 full_path = os.path.normpath(os.path.join(dir_path, file_name))
                 _, ext = os.path.splitext(file_name)
                 path_db = os.path.normpath(os.path.join(
-                    unicode.format(u'{0}_{1}/{2}{3}', brand_id, glob.brand_info()[brand_id]['brandname_s'],
+                    unicode.format(u'{0}_{1}/{2}{3}', brand_id, info.brand_info()[brand_id]['brandname_s'],
                                    os.path.splitext(path)[0], ext)))
 
                 file_size = os.path.getsize(full_path)

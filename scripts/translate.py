@@ -224,7 +224,7 @@ def translate_main(start=0, count=100, logger=None, db_spec='DB_SPEC'):
     if not logger:
         logger = get_logger()
 
-    with RoseVisionDb(getattr(global_settings, db_spec)) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')[db_spec]) as db:
         gs = goslate.Goslate()
         proxy_name = get_proxy()
         proxy = urllib2.ProxyHandler({'http': proxy_name}) if proxy_name else None

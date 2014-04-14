@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 import global_settings as gs
 import datetime
 from core import RoseVisionDb
+from utils import info
 
 
 __author__ = 'Zephyre'
@@ -43,7 +44,7 @@ def get_fetched_report(db, time_range_str):
 
         cnt_by_region = '/'.join(map(func1, ['cn', 'us', 'fr', 'uk', 'it']))
         return unicode.format(
-            u'<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>', brand, gs.brand_info()[brand]['brandname_e'],
+            u'<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>', brand, info.brand_info()[brand]['brandname_e'],
             cnt_tot, cnt_by_region
         )
 
@@ -106,7 +107,7 @@ def spider_prog_report(param_dict):
     time_range_str = map(lambda v: v.strftime('%Y-%m-%d %H:%M:%S'), [from_time, cur])
     stat_date_range = unicode.format(u'从{0}至{1}', time_range_str[0], time_range_str[1])
 
-    with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
         new_products = get_fetched_report(db, time_range_str)
         fetched_products = get_fetched_report(db, None)
 

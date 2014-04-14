@@ -6,6 +6,7 @@ from scrapy.http import Request
 from scrapper.items import UpdateItem
 import global_settings as glob
 from scrapper.spiders.mfashion_spider import MFashionBaseSpider
+from utils import info
 
 __author__ = 'Zephyre'
 
@@ -27,7 +28,7 @@ class UpdateSpider(MFashionBaseSpider):
         # 如果未指定brand_list，则默认对所有的品牌进行更新
         # 获得所有的品牌数据
         if not self.brand_list:
-            self.brand_list = glob.brand_info().keys()
+            self.brand_list = info.brand_info().keys()
 
         # UpdateSpider的可选区域参数
         region_cond = str.format('region IN ({0})',
@@ -47,7 +48,7 @@ class UpdateSpider(MFashionBaseSpider):
                 rs = self.db.query(str.format('SELECT DISTINCT region FROM products WHERE brand_id={0}', brand))
                 region_list = [tmp['region'] for tmp in rs.fetch_row(maxrows=0, how=1)]
 
-            region_info = glob.region_info()
+            region_info = info.region_info()
             region_list = filter(lambda val: int(region_info[val]['status']), region_list)
 
             for region in region_list:
@@ -62,26 +63,26 @@ class UpdateSpider(MFashionBaseSpider):
                     region = data['region']
                     model = data['model']
 
-                    # url = 'http://www.dvf.com/sutra-leather-hobo-bag/H2266055N13.html?dwvar_H2266055N13_color=BLACK'
-                    # region = 'us'
-                    # pid = 724862
-                    #
-                    # return [Request(url=url,
-                    #                 callback=self.parse,
-                    #                 meta={'brand': brand, 'pid': pid, 'region': region},
-                    #                 errback=self.onerror,
-                    #                 dont_filter=True)]
-                    if url:
-                        try:
-                            yield Request(url=url,
-                                          callback=self.parse,
-                                          meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
-                                          errback=self.onerror,
-                                          dont_filter=True)
-                        except TypeError:
-                            continue
-                    else:
-                        continue
+                    url = 'http://www.gucci.com/us/styles/3085353G0109060'
+                    region = 'us'
+                    pid = 196907
+
+                    return [Request(url=url,
+                                    callback=self.parse,
+                                    meta={'brand': brand, 'pid': pid, 'region': region},
+                                    errback=self.onerror,
+                                    dont_filter=True)]
+                    # if url:
+                    #     try:
+                    #         yield Request(url=url,
+                    #                       callback=self.parse,
+                    #                       meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
+                    #                       errback=self.onerror,
+                    #                       dont_filter=True)
+                    #     except TypeError:
+                    #         continue
+                    # else:
+                    #     continue
 
     def parse(self, response):
         brand = response.meta['brand']
