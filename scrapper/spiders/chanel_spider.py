@@ -24,6 +24,8 @@ brand_id = 10074
 
 # TODO 这个的update，只写了is_offline，model，name，price，其余没写
 
+# TODO 好好整理一下proxy中的region设置（现在是强制使用proxy）
+
 class ChanelSpider(MFashionSpider):
     allowed_domains = ['chanel.com']
 
@@ -85,7 +87,8 @@ class ChanelSpider(MFashionSpider):
 
         for region in self.region_list:
             yield ProxiedRequest(
-                url=str.format('{0}/{1}/', self.spider_data['hosts'][region], self.spider_data['base_url'][region]))
+                url=str.format('{0}/{1}/', self.spider_data['hosts'][region], self.spider_data['base_url'][region]),
+                proxy_region=region, proxy_enabled=True)
 
     def parse_watch(self, response):
         mt = re.search(r'chanel\.com/([^/]+)/', response.url)
@@ -132,13 +135,14 @@ class ChanelSpider(MFashionSpider):
                     'http://www-cn.chanel.com/{0}/{1}/collection_product_detail?product_id={2}&maj=price',
                     self.spider_data['base_url'][region], self.spider_data['watch_term'][region][0], m['model'])
                 yield ProxiedRequest(url=price_url, callback=self.parse_watch_price, errback=self.onerr,
-                                     meta={'userdata': m})
+                                     meta={'userdata': m}, proxy_enabled=True, proxy_region=region)
         else:
             for node in sel.xpath('//*[@href]'):
                 url = self.process_href(node.xpath('@href').extract()[0], response.url)
                 if re.search(unicode.format(ur'chanel\.com/{0}/({1})/.+', self.spider_data['base_url'][region],
                                             '|'.join(self.spider_data['watch_term'][region])), url, flags=re.I | re.U):
-                    yield ProxiedRequest(url=url, callback=self.parse_watch, errback=self.onerr)
+                    yield ProxiedRequest(url=url, callback=self.parse_watch, errback=self.onerr,
+                                         proxy_enabled=True, proxy_region=region)
 
     @staticmethod
     def parse_watch_price(response):
@@ -685,7 +689,6 @@ class ChanelSpider(MFashionSpider):
 
         response.meta['url'] = response.url
 
-        region = None
         if 'userdata' in response.meta:
             region = response.meta['userdata']['region']
         else:
@@ -709,10 +712,8 @@ class ChanelSpider(MFashionSpider):
                 cls.spider_data['base_url'][region], cls.spider_data['watch_term'][region][0],
                 cls.fetch_model(response))
 
-            return ProxiedRequest(url=price_url,
-                           callback=cls.fetch_price_request_watch,
-                           errback=spider.onerror,
-                           meta=response.meta)
+            return ProxiedRequest(url=price_url, callback=cls.fetch_price_request_watch, errback=spider.onerror,
+                                  meta=response.meta, proxy_enabled=True, proxy_region=region)
         else:
             mt = re.search(str.format(r'chanel\.com/({0})/.+\?sku=\d+$', region_code), response.url)
             if mt:  # 对应 parse_sku1
@@ -740,11 +741,10 @@ class ChanelSpider(MFashionSpider):
                                     url = temp
                                 else:
                                     url = str.format('{0}{1}', cls.spider_data['hosts'][region], temp)
-                                return ProxiedRequest(url=url,
-                                               meta=response.meta,
-                                               callback=cls.fetch_price_request_fashion_json,
-                                               dont_filter=True,
-                                               errback=spider.onerror)
+                                return ProxiedRequest(url=url, meta=response.meta,
+                                                      callback=cls.fetch_price_request_fashion_json,
+                                                      proxy_enabled=True, proxy_region=region, dont_filter=True,
+                                                      errback=spider.onerror)
                             else:
                                 return cls.fetch_price_request_fashion(response.meta, data['sectionCache'], spider)
                         except (KeyError, TypeError, IndexError):
@@ -804,11 +804,10 @@ class ChanelSpider(MFashionSpider):
                         region = meta['region']
 
                     url = cls.spider_data['pricing'] % (cls.spider_data['base_url'][region], info['refPrice'])
-                    return ProxiedRequest(url=url,
-                                   meta={'handle_httpstatus_list': [400]},
-                                   callback=cls.fetch_price_request_fashion_price,
-                                   errback=spider.onerror,
-                                   dont_filter=True)
+                    return ProxiedRequest(url=url, meta={'handle_httpstatus_list': [400]},
+                                          callback=cls.fetch_price_request_fashion_price,
+                                          errback=spider.onerror, dont_filter=True, proxy_enabled=True,
+                                          proxy_region=region)
 
         return None
 
