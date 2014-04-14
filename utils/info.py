@@ -102,36 +102,6 @@ def brand_info(refetch=False):
 
 @static_var('spider_info', None)
 def spider_info(refetch=False):
-    info = getattr(spider_info, 'spider_info')
-    if info and not refetch:
-        return info
-
-    info = {}
-    for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
-        f, filename, description = imp.find_module(modname, scrapper.spiders.__path__)
-        try:
-            submodule_list = imp.load_module(modname, f, filename, description)
-        except ImportError:
-            continue
-        finally:
-            f.close()
-
-        sc_list = filter(
-            lambda val: isinstance(val[1], type) and issubclass(val[1], MFashionSpider) and val[1] != MFashionSpider,
-            inspect.getmembers(submodule_list))
-        if not sc_list:
-            continue
-        sc_name, sc_class = sc_list[0]
-        if 'brand_id' in sc_class.spider_data:
-            brand_id = sc_class.spider_data['brand_id']
-            info[brand_id] = sc_class
-
-    setattr(spider_info, 'spider_info', info)
-    return info
-
-
-@static_var('spider_info', None)
-def spider_info(refetch=False):
     """
     搜索spider路径，将其中的spider按照brand_id注册起来。
     @param refetch: 强制重新读取信息。
@@ -148,7 +118,6 @@ def spider_info(refetch=False):
         try:
             ret = importer.find_module(modname)
             submodule_list = imp.load_module(modname, ret.file, ret.filename, ret.etc)
-
             sc_list = filter(
                 lambda val: isinstance(val[1], type) and issubclass(val[1], MFashionSpider) and val[
                     1] != MFashionSpider,
@@ -160,7 +129,7 @@ def spider_info(refetch=False):
                     continue
                 if 'brand_id' in spider_data:
                     cmdname = '_'.join(modname.split('_')[:-1])
-                    info[spider_data['brand_id']] = {'modname': modname, 'cmdname': cmdname}
+                    info[spider_data['brand_id']] = {'modname': modname, 'cmdname': cmdname, 'spider_class': sc}
 
         except (IndexError, ImportError):
             continue

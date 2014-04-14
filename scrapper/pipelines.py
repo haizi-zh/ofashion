@@ -35,7 +35,7 @@ class MStorePipeline(object):
         price_updated = False
         try:
             # 爬虫指定的货币
-            spider_currency = info.spider_info()[brand].spider_data['currency'][region]
+            spider_currency = info.spider_info()[brand]['spider_class'].spider_data['currency'][region]
         except KeyError:
             spider_currency = None
         if 'price' in metadata:
