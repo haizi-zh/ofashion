@@ -2,7 +2,7 @@
 import datetime
 import json
 import os
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 from scripts.push_utils import price_changed
 from utils.utils_core import get_logger

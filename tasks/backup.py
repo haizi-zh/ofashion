@@ -1,6 +1,6 @@
 # coding=utf-8
 import datetime
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as glob
 import os
 from utils.utils_core import get_logger

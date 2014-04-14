@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 
 __author__ = 'Ryan'

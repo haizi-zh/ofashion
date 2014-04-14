@@ -17,7 +17,7 @@ from scrapy.exceptions import DropItem
 from scrapy.http import Request
 from PIL import Image
 
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as glob
 from utils import info
 from utils.text import unicodify, iterable

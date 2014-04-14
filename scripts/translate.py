@@ -3,7 +3,7 @@ import getopt
 import logging
 import sys
 from utils.utils_core import get_logger
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import goslate
 import urllib2
 import global_settings

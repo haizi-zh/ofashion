@@ -2,7 +2,7 @@
 import os
 import sys
 import json
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import scripts
 from utils.utils_core import get_logger

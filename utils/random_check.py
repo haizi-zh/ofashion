@@ -1,7 +1,7 @@
 # coding=utf-8
 __author__ = 'Administrator'
 
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import datetime
 import os

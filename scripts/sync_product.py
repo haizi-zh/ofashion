@@ -10,7 +10,7 @@ from utils.text import unicodify, iterable
 __author__ = 'Zephyre'
 
 import global_settings as glob
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 
 
 class SyncProducts(object):

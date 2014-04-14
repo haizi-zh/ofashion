@@ -7,7 +7,7 @@ import re
 from email.mime.text import MIMEText
 import global_settings as gs
 import datetime
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 from utils import info
 
 

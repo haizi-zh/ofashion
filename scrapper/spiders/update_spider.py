@@ -1,7 +1,7 @@
 # coding=utf-8
 import scrapy.contrib.spiders
 from scrapy import log
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 from scrapy.http import Request
 from scrapper.items import UpdateItem
 import global_settings as glob
