@@ -598,7 +598,7 @@ class ProductImagePipeline(ImagesPipeline):
                         'fingerprint': gen_fingerprint(brand_id, model)},
                        'products_image', ignore=True)
 
-    def item_completed(self, results, item, info):
+    def item_completed(self, results, item, pipeline_info):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。
         results = self.preprocess(results, item)
         brand_id = item['metadata']['brand_id']

@@ -52,8 +52,6 @@ class ChanelSpider(MFashionSpider):
 
     def __init__(self, region):
         super(ChanelSpider, self).__init__('chanel', region)
-        # Chanel强制使用代理
-        self.crawler.settings.values['PROXY_ENABLED'] = True
         self.rules = None
 
     @classmethod
@@ -64,6 +62,9 @@ class ChanelSpider(MFashionSpider):
         return self.spider_data['hosts'][region]
 
     def start_requests(self):
+        # Chanel强制使用代理
+        self.crawler.settings.values['PROXY_ENABLED'] = True
+
         region_code = '|'.join(self.spider_data['base_url'][region] for region in self.region_list)
         watch_code = []
         for r in self.region_list:
