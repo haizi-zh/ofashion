@@ -156,13 +156,15 @@ class UpdateSpider(MFashionBaseSpider):
         item = response.meta['item']
         key = response.meta['key']
         ret = spider_cb(response)
+
+        # key对应的
+        item['metadata'].pop(key)
+
         if ret:
             if key == 'price':
                 for tmp in ('price', 'price_discount'):
                     if tmp in ret:
                         item['metadata'][tmp] = ret[tmp]
-                    else:
-                        item['metadata'].pop(tmp)
             else:
                 item['metadata'][key] = ret
         else:
@@ -171,8 +173,6 @@ class UpdateSpider(MFashionBaseSpider):
                 for tmp in ('price', 'price_discount'):
                     if tmp in item['metadata']:
                         item['metadata'].pop(tmp)
-            else:
-                item['metadata'].pop(key)
         return self.resolve_requests(item)
 
     def resolve_requests(self, item):
@@ -220,15 +220,16 @@ class UpdateSpider(MFashionBaseSpider):
             pass
 
         if meta:
-            brand = meta['brand']
-            item = UpdateItem()
-            item['idproduct'] = meta['pid']
-            item['brand'] = brand
-            item['region'] = meta['region']
-            # sc = glob.spider_info()[brand]
-            metadata = {}
-            item['metadata'] = metadata
-
-            item['offline'] = 1
-
-            return item
+            try:
+                brand = meta['brand']
+                item = UpdateItem()
+                item['idproduct'] = meta['pid']
+                item['brand'] = brand
+                item['region'] = meta['region']
+                # sc = glob.spider_info()[brand]
+                metadata = {}
+                item['metadata'] = metadata
+                item['offline'] = 1
+                return item
+            except KeyError:
+                return
