@@ -146,7 +146,7 @@ class PriceCheck(object):
             for model in price_data:
                 for item in price_data[model]:
                     price = float(item['price'])
-                    item['nprice'] = gs.currency_info()[item['currency']] * price
+                    item['nprice'] = info.currency_info()[item['currency']]['rate'] * price
 
                 # 按照nprice大小排序
                 sorted_data = sorted(price_data[model], key=lambda item: item['nprice'])
@@ -393,7 +393,7 @@ class PublishRelease(object):
                                     'price_change': price_change_dict[pid], 'url': url_dict[pid],
                                     'offline': offline, 'code': region, 'country': info.region_info()[region]['name_c']})
 
-        currency_conv = lambda val, currency: gs.currency_info()[currency] * val
+        currency_conv = lambda val, currency: info.currency_info()[currency]['rate'] * val
 
         # 对price_list进行简并操作。
         # 策略：如果有正常的最新价格，则返回正常的价格数据。

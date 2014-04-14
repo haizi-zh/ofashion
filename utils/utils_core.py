@@ -33,7 +33,7 @@ def guess_currency(price, region=None):
 
     # 若字符串中包含大写的三个字母，并且该标识出现在货币列表中，说明这三个字母组成的字符串是货币信息
     mt = re.search(r'([A-Z]{3})', price, flags=re.U)
-    if mt and mt.group(1) in glob.currency_info().keys():
+    if mt and mt.group(1) in info.currency_info().keys():
         return mt.group(1)
     else:
         # 未找到货币信息

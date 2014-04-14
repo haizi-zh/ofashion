@@ -19,6 +19,7 @@ from PIL import Image
 
 from core import RoseVisionDb
 import global_settings as glob
+from utils import info
 from utils.text import unicodify, iterable
 from utils.utils_core import process_price, gen_fingerprint, lxmlparser, get_logger
 
@@ -34,7 +35,7 @@ class MStorePipeline(object):
         price_updated = False
         try:
             # 爬虫指定的货币
-            spider_currency = glob.spider_info()[brand].spider_data['currency'][region]
+            spider_currency = info.spider_info()[brand].spider_data['currency'][region]
         except KeyError:
             spider_currency = None
         if 'price' in metadata:

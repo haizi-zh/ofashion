@@ -101,7 +101,7 @@ class DataCheck(object):
                         for model in price_data:
                             for item in price_data[model]:
                                 price = float(item['price'])
-                                item['nprice'] = gs.currency_info()[item['currency']] * price
+                                item['nprice'] = info.currency_info()[item['currency']]['rate'] * price
 
                             # 按照nprice大小排序
                             sorted_data = sorted(price_data[model], key=lambda item: item['nprice'])

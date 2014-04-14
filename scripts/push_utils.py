@@ -127,7 +127,7 @@ def price_changed(brand_list=None, start=None, end=None, start_delta=datetime.ti
                     continue
 
                 def func(idx):
-                    rate = gs.currency_info()[price_history[idx][-2]]
+                    rate = info.currency_info()[price_history[idx][-2]]['rate']
                     return (float(price_history[idx][-4]) * rate if price_history[idx][-4] else None,
                             float(price_history[idx][-3]) * rate if price_history[idx][-3] else None)
 

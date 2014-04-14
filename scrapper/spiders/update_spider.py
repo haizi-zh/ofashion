@@ -90,7 +90,7 @@ class UpdateSpider(MFashionBaseSpider):
         item['idproduct'] = response.meta['pid']
         item['brand'] = brand
         item['region'] = response.meta['region']
-        sc = glob.spider_info()[brand]
+        sc = info.spider_info()[brand]
         metadata = {}
         item['metadata'] = metadata
 

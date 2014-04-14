@@ -68,7 +68,7 @@ def currency_info(refetch=False):
             symbol = symbol.decode('utf-8') if symbol else None
             name = name.decode('utf-8') if name else None
             rate = float(rate) if rate else None
-            update_time = datetime.datetime.strptime(update_time,'%Y-%m-%d %H:%M:%S') if update_time else None
+            update_time = datetime.datetime.strptime(update_time, '%Y-%m-%d %H:%M:%S') if update_time else None
             info[currency] = {'symbol': symbol, 'name': name, 'rate': rate, 'update_time': update_time}
 
     setattr(currency_info, 'currency_info', info)
@@ -97,6 +97,36 @@ def brand_info(refetch=False):
             info[brand_id] = {'brandname_e': name_e, 'brandname_c': name_c, 'brandname_s': name_s}
 
     setattr(brand_info, 'brand_info', info)
+    return info
+
+
+@static_var('spider_info', None)
+def spider_info(refetch=False):
+    info = getattr(spider_info, 'spider_info')
+    if info and not refetch:
+        return info
+
+    info = {}
+    for importer, modname, ispkg in pkgutil.iter_modules(scrapper.spiders.__path__):
+        f, filename, description = imp.find_module(modname, scrapper.spiders.__path__)
+        try:
+            submodule_list = imp.load_module(modname, f, filename, description)
+        except ImportError:
+            continue
+        finally:
+            f.close()
+
+        sc_list = filter(
+            lambda val: isinstance(val[1], type) and issubclass(val[1], MFashionSpider) and val[1] != MFashionSpider,
+            inspect.getmembers(submodule_list))
+        if not sc_list:
+            continue
+        sc_name, sc_class = sc_list[0]
+        if 'brand_id' in sc_class.spider_data:
+            brand_id = sc_class.spider_data['brand_id']
+            info[brand_id] = sc_class
+
+    setattr(spider_info, 'spider_info', info)
     return info
 
 
