@@ -224,7 +224,7 @@ def main():
             if sc_list:
                 sc = sc_list[0]
 
-                if 'v' in param or getattr(glob, 'LOG_DEBUG'):
+                if 'v' in param:
                     log.start(loglevel='DEBUG')
                 else:
                     if spider_type == 'update':

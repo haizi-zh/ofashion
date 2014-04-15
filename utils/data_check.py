@@ -4,7 +4,7 @@
 # pydevd.settrace('127.0.0.1', port=33333, stdoutToServer=True, stderrToServer=True)
 import urllib
 from utils.text import unicodify
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import datetime
 import logging

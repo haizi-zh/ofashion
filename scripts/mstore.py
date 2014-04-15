@@ -19,6 +19,7 @@ from scripts.extract import SampleExtractor
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report, process_log
 import core
+from utils.db import RoseVisionDb
 from utils.utils_core import process_price, parse_args
 from utils.text import unicodify, iterable
 
@@ -447,7 +448,7 @@ class ImageCheck(object):
         self.checksum_mismatch = 0
         self.path_error = 0
 
-        self.db = core.RoseVisionDb()
+        self.db = RoseVisionDb()
         self.db.conn(db_spec)
 
         self.progress = 0

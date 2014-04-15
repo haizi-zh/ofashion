@@ -1,12 +1,12 @@
 # coding=utf-8
-import scrapy.contrib.spiders
 from scrapy import log
-from core import RoseVisionDb
+from twisted.python.log import PythonLoggingObserver
+from utils.db import RoseVisionDb
 from scrapy.http import Request
 from scrapper.items import UpdateItem
-import global_settings as glob
 from scrapper.spiders.mfashion_spider import MFashionBaseSpider
 from utils import info
+from utils.utils_core import get_logger
 
 __author__ = 'Zephyre'
 
@@ -24,11 +24,17 @@ class UpdateSpider(MFashionBaseSpider):
         self.db = RoseVisionDb()
         self.db.conn(db_spec)
 
+        # self.python_logger = get_logger()
+        # PythonLoggingObserver(loggerName='rosevision').start()
+
     def start_requests(self):
         # 如果未指定brand_list，则默认对所有的品牌进行更新
         # 获得所有的品牌数据
         if not self.brand_list:
             self.brand_list = info.brand_info().keys()
+        # self.log('TEST', log.INFO)
+        #
+        # return
 
         # UpdateSpider的可选区域参数
         region_cond = str.format('region IN ({0})',
@@ -63,26 +69,26 @@ class UpdateSpider(MFashionBaseSpider):
                     region = data['region']
                     model = data['model']
 
-                    url = 'http://www.gucci.com/us/styles/3085353G0109060'
-                    region = 'us'
-                    pid = 196907
-
-                    return [Request(url=url,
-                                    callback=self.parse,
-                                    meta={'brand': brand, 'pid': pid, 'region': region},
-                                    errback=self.onerror,
-                                    dont_filter=True)]
-                    # if url:
-                    #     try:
-                    #         yield Request(url=url,
-                    #                       callback=self.parse,
-                    #                       meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
-                    #                       errback=self.onerror,
-                    #                       dont_filter=True)
-                    #     except TypeError:
-                    #         continue
-                    # else:
-                    #     continue
+                    # url = 'http://www.gucci.com/us/styles/3085353G0109060'
+                    # region = 'us'
+                    # pid = 196907
+                    #
+                    # return [Request(url=url,
+                    #                 callback=self.parse,
+                    #                 meta={'brand': brand, 'pid': pid, 'region': region},
+                    #                 errback=self.onerror,
+                    #                 dont_filter=True)]
+                    if url:
+                        try:
+                            yield Request(url=url,
+                                          callback=self.parse,
+                                          meta={'brand': brand, 'pid': pid, 'region': region, 'model': model},
+                                          errback=self.onerror,
+                                          dont_filter=True)
+                        except TypeError:
+                            continue
+                    else:
+                        continue
 
     def parse(self, response):
         brand = response.meta['brand']
@@ -90,7 +96,7 @@ class UpdateSpider(MFashionBaseSpider):
         item['idproduct'] = response.meta['pid']
         item['brand'] = brand
         item['region'] = response.meta['region']
-        sc = info.spider_info()[brand]
+        sc = info.spider_info()[brand]['spider_class']
         metadata = {}
         item['metadata'] = metadata
 
@@ -100,9 +106,13 @@ class UpdateSpider(MFashionBaseSpider):
             item['offline'] = 1
             return item
         else:
-            item['offline'] = 1 if getattr(sc, 'is_offline')(response, self) else 0
-            if item['offline'] == 1:
-                return item
+            try:
+                func = getattr(sc, 'is_offline')
+                item['offline'] = 1 if func(response, self) else 0
+                if item['offline'] == 1:
+                    return item
+            except AttributeError:
+                pass
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response, self)
@@ -146,13 +156,15 @@ class UpdateSpider(MFashionBaseSpider):
         item = response.meta['item']
         key = response.meta['key']
         ret = spider_cb(response)
+
+        # key对应的
+        item['metadata'].pop(key)
+
         if ret:
             if key == 'price':
                 for tmp in ('price', 'price_discount'):
                     if tmp in ret:
                         item['metadata'][tmp] = ret[tmp]
-                    else:
-                        item['metadata'].pop(tmp)
             else:
                 item['metadata'][key] = ret
         else:
@@ -161,8 +173,6 @@ class UpdateSpider(MFashionBaseSpider):
                 for tmp in ('price', 'price_discount'):
                     if tmp in item['metadata']:
                         item['metadata'].pop(tmp)
-            else:
-                item['metadata'].pop(key)
         return self.resolve_requests(item)
 
     def resolve_requests(self, item):
@@ -210,15 +220,16 @@ class UpdateSpider(MFashionBaseSpider):
             pass
 
         if meta:
-            brand = meta['brand']
-            item = UpdateItem()
-            item['idproduct'] = meta['pid']
-            item['brand'] = brand
-            item['region'] = meta['region']
-            # sc = glob.spider_info()[brand]
-            metadata = {}
-            item['metadata'] = metadata
-
-            item['offline'] = 1
-
-            return item
+            try:
+                brand = meta['brand']
+                item = UpdateItem()
+                item['idproduct'] = meta['pid']
+                item['brand'] = brand
+                item['region'] = meta['region']
+                # sc = glob.spider_info()[brand]
+                metadata = {}
+                item['metadata'] = metadata
+                item['offline'] = 1
+                return item
+            except KeyError:
+                return

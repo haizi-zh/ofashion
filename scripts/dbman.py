@@ -4,7 +4,7 @@ import copy
 import csv
 import sys
 import datetime
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import common as cm
 import json

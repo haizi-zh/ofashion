@@ -3,11 +3,10 @@ import inspect
 import json
 import pkgutil
 import imp
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings
 import scrapper.spiders
 from scrapper.spiders.mfashion_spider import MFashionSpider
-import datetime
 from utils import info
 
 __author__ = 'Zephyre'

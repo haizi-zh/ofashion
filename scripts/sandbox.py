@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 # coding=utf-8
+import copy
 import csv
 import inspect
 import os
 import pkgutil
+import random
 import re
+import socket
 import sys
 import hashlib
 import json
 import urlparse
 import imp
-from core import RoseVisionDb
+import datetime
+from utils.db import RoseVisionDb
 import core
 import global_settings
 import scrapper.spiders
@@ -186,7 +190,58 @@ def func2():
         json.dump(list(delta_p), f)
 
 
+import logging.handlers
+import logging
+
+
+class RoseVisionAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        extra = copy.copy(self.extra)
+        for k, v in kwargs.items():
+            extra[k] = v
+
+        return msg, {'extra': extra}
+
+
+# FORMAT = "%(asctime)-15s %(clientip)s %(user)-8s %(message)s"
+# logging.basicConfig(format=FORMAT)
+d = {'clientip': '192.168.0.1', 'user': 'fbloggs'}
+# logger = logging.getLogger("tcpserver")
+# logger.warning("Protocol problem: %s", "connection reset", extra=d)
+
+
 if __name__ == '__main__':
-    update_scheduler()
+    # logging.basicConfig(format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s')
+
+    my_logger = logging.getLogger('MyLogger')
+    my_logger.setLevel(logging.INFO)
+    sh = logging.handlers.SysLogHandler(address=('rosebluesky.vicp.cc', 515), socktype=socket.SOCK_STREAM,
+                                        facility=logging.handlers.SysLogHandler.LOG_LOCAL1)
+    ch = logging.StreamHandler()
+    # formatter = logging.Formatter('%(message)s')
+    formatter = logging.Formatter('%(clientip)s %(user)s %(message)s')
+
+    sh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    my_logger.addHandler(sh)
+    # my_logger.addHandler(ch)
+
+    my_adapter = RoseVisionAdapter(my_logger, extra={'clientip': 'zephyre-office', 'user': 'haizi'})
+
+    # ts1 = datetime.datetime.now()
+    # for i in xrange(100):
+    #     code = random.randint(0, 100)
+    #     my_adapter.info('Code=%d' % code)
+    #
+    # ts2 = datetime.datetime.now()
+    # print ts2 - ts1
+    my_adapter.info('INFO')
+
+    # my_adapter.debug('this is debug')
+    # my_logger.critical('this is critical', extra={'clientip':'zephyre-tp', 'user':'z'})
+    # my_adapter.critical('a b c d e f g h i j k l m n')
+    # my_adapter.warning('this is warning')
+    # my_adapter.info('this is info')
+
     # spider_info()
     # monitor.main()

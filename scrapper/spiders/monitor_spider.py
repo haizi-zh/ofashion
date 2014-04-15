@@ -3,7 +3,7 @@
 from scrapper.spiders.update_spider import UpdateSpider
 from scrapy.http import Request
 import global_settings as glob
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 from scrapy import log
 import random
 import json

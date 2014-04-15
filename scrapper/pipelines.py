@@ -17,7 +17,7 @@ from scrapy.exceptions import DropItem
 from scrapy.http import Request
 from PIL import Image
 
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as glob
 from utils import info
 from utils.text import unicodify, iterable
@@ -35,7 +35,7 @@ class MStorePipeline(object):
         price_updated = False
         try:
             # 爬虫指定的货币
-            spider_currency = info.spider_info()[brand].spider_data['currency'][region]
+            spider_currency = info.spider_info()[brand]['spider_class'].spider_data['currency'][region]
         except KeyError:
             spider_currency = None
         if 'price' in metadata:
@@ -598,7 +598,7 @@ class ProductImagePipeline(ImagesPipeline):
                         'fingerprint': gen_fingerprint(brand_id, model)},
                        'products_image', ignore=True)
 
-    def item_completed(self, results, item, info):
+    def item_completed(self, results, item, pipeline_info):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。
         results = self.preprocess(results, item)
         brand_id = item['metadata']['brand_id']

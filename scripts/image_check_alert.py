@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 import json
 import re
 import smtplib
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 
 # import pydevd

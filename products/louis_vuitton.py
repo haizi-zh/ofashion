@@ -13,12 +13,13 @@ from lxml.etree import ParserError
 from pyquery import PyQuery as pq
 
 import common as cm
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 from products.products_utils import get_image_path, fetch_image, get_data_path
 import global_settings as glob
 from scrapper.items import ProductItem
 from scrapper.pipelines import ProductPipeline, ProductImagePipeline
-from products_utils.utils import process_price, unicodify
+from utils.text import unicodify
+from utils.utils_core import process_price
 
 
 __author__ = 'Zephyre'
