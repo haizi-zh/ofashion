@@ -5,7 +5,7 @@ import sys
 
 __author__ = 'Ryan'
 
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 from urllib2 import quote
 
 

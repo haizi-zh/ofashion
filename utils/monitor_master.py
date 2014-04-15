@@ -3,7 +3,7 @@ import os
 import sys
 import scripts
 from utils.utils_core import get_logger
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import datetime
 import psutil
@@ -28,7 +28,7 @@ class MonitorMaster(object):
 
         interval = kwargs['interval'] if 'interval' in kwargs else 7
         limit_time = datetime.datetime.now() - datetime.timedelta(interval)
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             pid_list = psutil.pids()
 
             rs = db.query_match(['idmonitor', 'parameter', 'monitor_status', 'monitor_pid', 'recrawl_pid'],

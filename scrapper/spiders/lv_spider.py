@@ -147,7 +147,7 @@ def create_spider():
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(getattr(global_settings, 'STORAGE_PATH'),
+        os.path.join(getattr(global_settings, 'DATABASE')['STORAGE_PATH'],
                      unicode.format(u'products/crawl/{0}', lv_data['brandname_s'])))
 
 

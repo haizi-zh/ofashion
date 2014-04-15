@@ -3,7 +3,7 @@ __author__ = 'Administrator'
 # import pydevd
 #
 # pydevd.settrace('127.0.0.1', port=33333, stdoutToServer=True, stderrToServer=True)
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import datetime
 import hashlib
@@ -26,7 +26,7 @@ class ImagesCheck(object):
         img_flag = True if 'img_flag' not in kwargs else kwargs['img_flag']
 
         storage_path = os.path.normpath(os.path.join(getattr(gs, 'STORAGE_PATH'), 'products/images'))
-        with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+        with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             rs = db.query_match(['checksum', 'url', 'path', 'width', 'height', 'format', 'size'],
                                 'images_store',).fetch_row(
                 maxrows=0)

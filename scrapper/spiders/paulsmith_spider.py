@@ -11,7 +11,7 @@ from scrapper.items import ProductItem
 from scrapper.spiders.mfashion_spider import MFashionSpider
 import common as cm
 
-from utils.utils_core import unicodify, iterable
+from utils.text import unicodify, iterable
 
 __author__ = 'wuya'
 #brand_id	brand_name	url

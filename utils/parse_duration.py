@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import os
 import re
@@ -25,7 +25,7 @@ class ParseDuration(object):
         if not brands:
             pass
         else:
-            with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+            with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
 
                 for brand in brands:
                     file_list = []

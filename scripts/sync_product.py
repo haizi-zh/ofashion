@@ -2,15 +2,15 @@
 import json
 import re
 from _mysql_exceptions import OperationalError
-import time
 import core
 import common as cm
-from utils.utils_core import process_price, unicodify, iterable
+from utils.utils_core import process_price
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 
 import global_settings as glob
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 
 
 class SyncProducts(object):
@@ -193,40 +193,40 @@ class EditorPriceProcessor(object):
         return str.format('{0} out of {1} completed({2:.1%})', self.progress, self.tot, float(self.progress) / self.tot)
 
 
-def spider2editor(src=getattr(glob, 'SPIDER_SPEC'), dst=getattr(glob, 'DB_SPEC'), table='products'):
-    """
-    从spider库到editor库的更新机制
-    """
-    scr_db = RoseVisionDb()
-    scr_db.conn(src)
-    dst_db = RoseVisionDb()
-    dst_db.conn(dst)
-
-    # 根据update_time字段判断哪些记录是需要更新的
-    editor_ts = dst_db.query('SELECT MAX(update_time) FROM products').fetch_row()[0][0]
-    if not editor_ts:
-        editor_ts = '1900-01-01 00:00:00'
-    obj = Spider2EditorHlper(scr_db.query(str.format('SELECT * FROM {0} WHERE update_time>"{1}"',
-                                                     table, editor_ts)), dst_db)
-
-    dst_db.lock([table])
-    dst_db.start_transaction()
-    try:
-        cnt = int(
-            dst_db.query(str.format('SELECT COUNT(idproducts) FROM {0} WHERE update_flag!="N"', table)).fetch_row()[
-                0][0])
-        if cnt == 0:
-            core.func_carrier(obj, 1)
-        else:
-            print str.format('{0} uncommited records exist in editor_stores, unable to sync.', cnt)
-    except OperationalError:
-        dst_db.rollback()
-    finally:
-        dst_db.commit()
-        dst_db.unlock()
-
-    dst_db.close()
-    scr_db.close()
+# def spider2editor(src=getattr(glob, 'SPIDER_SPEC'), dst=getattr(glob, 'DATABASE')['DB_SPEC'], table='products'):
+#     """
+#     从spider库到editor库的更新机制
+#     """
+#     scr_db = RoseVisionDb()
+#     scr_db.conn(src)
+#     dst_db = RoseVisionDb()
+#     dst_db.conn(dst)
+#
+#     # 根据update_time字段判断哪些记录是需要更新的
+#     editor_ts = dst_db.query('SELECT MAX(update_time) FROM products').fetch_row()[0][0]
+#     if not editor_ts:
+#         editor_ts = '1900-01-01 00:00:00'
+#     obj = Spider2EditorHlper(scr_db.query(str.format('SELECT * FROM {0} WHERE update_time>"{1}"',
+#                                                      table, editor_ts)), dst_db)
+#
+#     dst_db.lock([table])
+#     dst_db.start_transaction()
+#     try:
+#         cnt = int(
+#             dst_db.query(str.format('SELECT COUNT(idproducts) FROM {0} WHERE update_flag!="N"', table)).fetch_row()[
+#                 0][0])
+#         if cnt == 0:
+#             core.func_carrier(obj, 1)
+#         else:
+#             print str.format('{0} uncommited records exist in editor_stores, unable to sync.', cnt)
+#     except OperationalError:
+#         dst_db.rollback()
+#     finally:
+#         dst_db.commit()
+#         dst_db.unlock()
+#
+#     dst_db.close()
+#     scr_db.close()
 
 
 def process_editor_price(db_spec=glob.DB_SPEC, table='products', extra_cond=None):
@@ -257,7 +257,7 @@ def process_editor_price(db_spec=glob.DB_SPEC, table='products', extra_cond=None
         db.close()
 
 
-def process_editor_tags(db_spec=getattr(glob, 'DB_SPEC'), db_spider_spec=getattr(glob, 'SPIDER_SPEC'),
+def process_editor_tags(db_spec=getattr(glob, 'DATABASE')['DB_SPEC'], db_spider_spec=getattr(glob, 'SPIDER_SPEC'),
                         table='products', extra_cond=None):
     """
     给editor库的数据添加tags字段

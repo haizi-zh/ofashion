@@ -9,7 +9,6 @@ import logging
 import codecs
 import os
 import _mysql
-import datetime
 from threading import Thread
 import urllib2
 import _mysql_exceptions
@@ -20,7 +19,9 @@ from scripts.extract import SampleExtractor
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report, process_log
 import core
-from utils.utils_core import process_price, unicodify, iterable, parse_args
+from utils.db import RoseVisionDb
+from utils.utils_core import process_price, parse_args
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -447,7 +448,7 @@ class ImageCheck(object):
         self.checksum_mismatch = 0
         self.path_error = 0
 
-        self.db = core.RoseVisionDb()
+        self.db = RoseVisionDb()
         self.db.conn(db_spec)
 
         self.progress = 0
@@ -510,7 +511,7 @@ class ImageCheck(object):
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
             ' AND '.join(self.cond)))
         self.tot = int(rs.fetch_row(maxrows=0)[0][0])
-        storage_path = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), 'products/images'))
+        storage_path = os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], 'products/images'))
         rs = self.db.query(str.format(
             'SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
@@ -623,6 +624,7 @@ def price_check(param_dict):
 def extract(param_dict):
     obj = SampleExtractor(param_dict)
     obj.run()
+
 
 def fingerprint_check(param_dict):
     core.func_carrier(FingerprintCheck(param_dict), 1)

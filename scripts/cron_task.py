@@ -12,7 +12,8 @@ import errno
 import sys
 import global_settings as glob
 import re
-from utils.utils_core import parse_args, unicodify, get_logger
+from utils.utils_core import parse_args, get_logger
+from utils.text import unicodify
 
 __author__ = 'Zephyre'
 
@@ -34,7 +35,7 @@ def make_sure_path_exists(path):
 
 def backup_all(param_dict):
     logger.info('AUTO BACKUP STARTED')
-    storage_path = getattr(glob, 'STORAGE_PATH')
+    storage_path = getattr(glob, 'STORAGE')['STORAGE_PATH']
     original_path = os.getcwd()
     os.chdir(storage_path)
 

@@ -1,6 +1,7 @@
 # coding=utf-8
 from scrapy.http import Request
 import global_settings as gs
+from utils import info
 
 __author__ = 'Zephyre'
 
@@ -18,7 +19,7 @@ class ProxiedRequest(Request):
                 return proxy_dict[region][idx]
 
             # 没有相应国家的代理节点
-            if gs.region_info()[region]['currency'] == 'EUR':
+            if info.region_info()[region]['currency'] == 'EUR':
                 # 欧元区，使用法国等代理替代
                 for alt_region in ('fr', 'it', 'nl'):
                     if alt_region in proxy_dict:
