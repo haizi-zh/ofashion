@@ -1,15 +1,17 @@
 # coding=utf-8
 from kombu import Exchange, Queue
+from celery.schedules import crontab
 
-BROKER_URL = 'amqp://spider:rose123@localhost:5672/celery'
+BROKER_URL = 'amqp://rose:rosecelery@localhost:5672/celery'
+# BROKER_URL = 'amqp://guest:guest@localhost:5672/celery'
 
 # CELERY_RESULT_BACKEND = 'amqp://'
 
 #add 'celery' table to mysql as the backend
 CELERY_RESULT_BACKEND = 'db+mysql://root:rose123@localhost/celery'
 CELERY_RESULT_DB_TABLENAMES = {
-    'task': 'celery_taskmeta',
-    'group': 'celery_groupmeta',
+    'task': 'taskmeta',
+    'group': 'groupmeta',
 }
 # CELERY_TASK_RESULT_EXPIRES = 20
 
@@ -27,11 +29,24 @@ CELERY_ENABLE_UTC = True
 from datetime import timedelta
 #定时任务
 CELERYBEAT_SCHEDULE = {
-    "main-cycle-per-5-minutes": {
+    # Executes main_cycle every xx minute
+    "main-cycle-per-20-seconds": {
         "task": "tasks.main_cycle",
-        "schedule": timedelta(minutes=5),
-        "args": None
+        "schedule": timedelta(seconds=20),
+        "args": None,
     },
+    # # Executes every Monday morning at 7:30 A.M
+    # 'add-every-monday-morning': {
+    # 'task': 'tasks.initialize',
+    # 'schedule': crontab(hour=0, minute=15, day_of_week=1),
+    # 'args': None,
+    # },
+    # # Executes every Monday morning at 7:30 A.M
+    # 'add-every-monday-morning1': {
+    # 'task': 'tasks.initialize',
+    # 'schedule': crontab(hour=0, minute=16, day_of_week=1),
+    # 'args': None,
+    # },
 }
 
 CELERY_DEFAULT_QUEUE = 'default'
@@ -39,16 +54,13 @@ CELERY_DEFAULT_EXCHANGE_TYPE = 'direct'
 CELERY_DEFAULT_ROUTING_KEY = 'default'
 
 default_exchange = Exchange('default', type='direct')
-vps_exchange = Exchange('vps', type='topic')
+media_exchange = Exchange('media', type='direct')
 
 CELERY_QUEUES = (
     Queue('default', default_exchange, routing_key='default'),
-    Queue('us', vps_exchange, routing_key='vps.us'),  #linode USA
-    Queue('uk', vps_exchange, routing_key='vps.uk'),  #linode UK
-    Queue('jp', vps_exchange, routing_key='vps.jp'),  #linode JAPAN
-
-    Queue('fr', vps_exchange, routing_key='vps.fr'),  #hostvirtual FRANCE NOT READY!
-    Queue('ca', vps_exchange, routing_key='vps.ca'),  #hostvirtual CANADA NOT READY!
+    Queue('videos', media_exchange, routing_key='media.video'),
+    Queue('images', media_exchange, routing_key='media.image'),
+    Queue('feeds', media_exchange, routing_key='fssss'),
 )
 
 
@@ -58,6 +70,8 @@ class MyRouter(object):
             return {'exchange': 'video',
                     'exchange_type': 'topic',
                     'routing_key': 'video.compress'}
+        # elif task == 'tasks.test':
+        #     return {'queue': 'feeds', }
 
         elif task.startswith('dongwm.tasks.test'):
             return {
