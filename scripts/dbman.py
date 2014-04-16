@@ -40,7 +40,7 @@ class FingerprintCheck(object):
 
     def run(self):
         db = RoseVisionDb()
-        db.conn(gs.DB_SPEC)
+        db.conn(getattr(gs,'DATABASE')['DB_SPEC'])
 
         if not self.brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
@@ -107,7 +107,7 @@ class PriceCheck(object):
 
     def run(self):
         db = RoseVisionDb()
-        db.conn(gs.DB_SPEC)
+        db.conn(getattr(gs,'DATABASE')['DB_SPEC'])
 
         if not self.brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
@@ -222,7 +222,7 @@ class ProcessTags(object):
     prod_mt_tbl = 'products_mfashion_tags'
     products = 'products'
 
-    db_spec = gs.DB_SPEC
+    db_spec = getattr(gs,'DATABASE')['DB_SPEC']
     tot = 1
     progress = 0
 
@@ -554,7 +554,7 @@ def currency_update(param_dict):
     @param param_dict:
     """
     db = RoseVisionDb()
-    db.conn(gs.DB_SPEC)
+    db.conn(getattr(gs,'DATABASE')['DB_SPEC'])
     rs = db.query_match(['iso_code', 'currency'], 'region_info').fetch_row(maxrows=0)
     db.start_transaction()
     try:

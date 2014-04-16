@@ -14,7 +14,7 @@ from utils.db import RoseVisionDb
 
 
 class SyncProducts(object):
-    def __init__(self, src_spec=glob.DB_SPEC, dst_spec=glob.DB_SPEC, cond=None):
+    def __init__(self, src_spec=getattr(glob, 'DATABASE')['DB_SPEC'], dst_spec=getattr(glob, 'DATABASE')['DB_SPEC'], cond=None):
         self.progress = 0
         self.tot = 1
         if cond:
@@ -229,7 +229,7 @@ class EditorPriceProcessor(object):
 #     scr_db.close()
 
 
-def process_editor_price(db_spec=glob.DB_SPEC, table='products', extra_cond=None):
+def process_editor_price(db_spec=getattr(glob, 'DATABASE')['DB_SPEC'], table='products', extra_cond=None):
     """
     处理editor库中的价格信息
     :param table: 需要操作的表。默认为products。
