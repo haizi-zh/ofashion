@@ -185,9 +185,9 @@ class BurberrySpider(MFashionSpider):
 
         model = None
         try:
-            tmp = sel.xpath('//p[contains(@class,"product-id")]/text()').extract()
-            if tmp and tmp[0]:
-                mt = re.search(r'(\d+)', cls.reformat(tmp[0]))
+            tmp = ' '.join(sel.xpath('//p[contains(@class,"product-id")]/descendant-or-self::text()').extract())
+            if tmp:
+                mt = re.search(r'(\d+)', cls.reformat(tmp))
                 if mt:
                     model = mt.group(1)
         except(TypeError, IndexError):
