@@ -59,7 +59,8 @@ def main():
                 if ret:
                     continue
 
-                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True)}, 'monitor_status', replace=True)
+                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True), 'enabled': 0}, 'monitor_status',
+                          replace=True)
             db.commit()
         except:
             db.rollback()

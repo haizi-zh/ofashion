@@ -6,7 +6,6 @@ from scrapy.http import Request
 from scrapper.items import UpdateItem
 from scrapper.spiders.mfashion_spider import MFashionBaseSpider
 from utils import info
-from utils.utils_core import get_logger
 
 __author__ = 'Zephyre'
 

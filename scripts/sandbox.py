@@ -211,17 +211,19 @@ d = {'clientip': '192.168.0.1', 'user': 'fbloggs'}
 
 
 if __name__ == '__main__':
-    with RoseVisionDb(spec=getattr(global_settings, 'DATABASE')['DB128_SPEC']) as db:
-        pid_list = [int(tmp[0]) for tmp in db.query('SELECT idproducts FROM products').fetch_row(maxrows=0)]
+    # with RoseVisionDb(spec=getattr(global_settings, 'DATABASE')['DB128_SPEC']) as db:
+    #     pid_list = [int(tmp[0]) for tmp in db.query('SELECT idproducts FROM products').fetch_row(maxrows=0)]
+    #
+    # offset = 0
+    # max_bulk = 10
+    # while True:
+    #     tmp_list = pid_list[offset:offset + max_bulk]
+    #     offset += max_bulk
+    #     if offset >= len(pid_list):
+    #         break
+    #     statement = 'INSERT INTO products_contents (idproducts, name) VALUES ' + ', '.join(
+    #         str.format('({0}, NULL)', tmp) for tmp in tmp_list)
+    #     db.insert({'idproducts':tmp_list[0]},'products_contents')
+    #     # db.query(statement)
 
-    offset = 0
-    max_bulk = 10
-    while True:
-        tmp_list = pid_list[offset:offset + max_bulk]
-        offset += max_bulk
-        if offset >= len(pid_list):
-            break
-        statement = 'INSERT INTO products_contents (idproducts, name) VALUES ' + ', '.join(
-            str.format('({0}, NULL)', tmp) for tmp in tmp_list)
-        db.insert({'idproducts':tmp_list[0]},'products_contents')
-        # db.query(statement)
+    monitor.main()
