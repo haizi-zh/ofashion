@@ -317,7 +317,8 @@ class GucciSpider(MFashionSpider):
                 old_price = cls.reformat(old_price)
             except(TypeError, IndexError):
                 pass
-        else:
+        # 这里有price_node里边无价格，但包含一些字符的情况
+        if not price_node:
             style_id = os.path.split(response.url)[1]
             url = str.format('{0}/{1}/styles/{2}/load_style.js', cls.spider_data['hosts'][region],
                              'ca-en' if region == 'ca' else region, style_id)

@@ -13,7 +13,7 @@ from scrapy import log
 import common
 import copy
 import re
-from utils.utils_core import iterable
+from utils.text import iterable
 
 
 class HogoBossSpider(MFashionSpider):

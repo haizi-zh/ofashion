@@ -1,8 +1,7 @@
 # coding=utf-8
 
 import copy
-import logging
-import global_settings
+from utils import info
 
 __author__ = 'Zephyre'
 
@@ -21,8 +20,7 @@ def price_check(price_list, model, threshold=5, logger=None):
     price_list = copy.deepcopy(price_list)
 
     def price_conv(price, currency):
-        info = global_settings.fetch_currency_info()
-        return price * info[currency]
+        return price * info.currency_info()[currency]['rate']
 
     def avg(data):
         return float(sum(data)) / len(data) if len(data) > 0 else float('nan')

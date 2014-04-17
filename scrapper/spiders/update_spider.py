@@ -6,7 +6,6 @@ from scrapy.http import Request
 from scrapper.items import UpdateItem
 from scrapper.spiders.mfashion_spider import MFashionBaseSpider
 from utils import info
-from utils.utils_core import get_logger
 
 __author__ = 'Zephyre'
 
@@ -106,13 +105,10 @@ class UpdateSpider(MFashionBaseSpider):
             item['offline'] = 1
             return item
         else:
-            try:
-                func = getattr(sc, 'is_offline')
-                item['offline'] = 1 if func(response, self) else 0
-                if item['offline'] == 1:
-                    return item
-            except AttributeError:
-                pass
+            func = getattr(sc, 'is_offline')
+            item['offline'] = 1 if func(response, self) else 0
+            if item['offline'] == 1:
+                return item
 
         if 'fetch_price' in dir(sc):
             ret = getattr(sc, 'fetch_price')(response, self)

@@ -28,8 +28,9 @@ class McQueenSpider(MFashionSpider):
                      'tw': 'USD'},
         'brand_id': 10008}
     region_list = {'us', 'fr', 'it', 'uk', 'au', 'at', 'bh', 'be', 'bn', 'bg', 'ca', 'cy', 'cz', 'dk', 'fi', 'ge',
-                   'de', 'gr', 'hu', 'is', 'in', 'id', 'ie', 'il', 'jp', 'jo', 'kw', 'lv', 'li', 'lt', 'lu', 'mo',
+                   'de', 'gr', 'hu', 'is', 'in', 'id', 'ie', 'il', 'jo', 'kw', 'lv', 'li', 'lt', 'lu', 'mo',
                    'mk', 'my', 'mt', 'mx', 'mc', 'nl', 'eg', 'nz', 'no', 'pl', 'pt', 'qa', 'ru', 'sg', 'si', 'sk',
+                   # 'jp',
                    'kr', 'es', 'se', 'ch', 'tw', }
     spider_data['hosts'] = {k: 'http://www.alexandermcqueen.com' for k in region_list}
     spider_data['home_urls'] = {k: str.format('http://www.alexandermcqueen.com/{0}', k if k != 'uk' else 'gb')

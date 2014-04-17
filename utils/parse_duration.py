@@ -15,7 +15,7 @@ class ParseDuration(object):
         logger = logger if 'logger' in kwargs else get_logger()
         logger.info('Parse Duration Check STARTED')
 
-        log_path = os.sep.join((getattr(gs, 'STORAGE_PATH'), 'products', 'log'))
+        log_path = os.sep.join((getattr(gs, 'STORAGE')['STORAGE_PATH'], 'products', 'log'))
         tmp = []
         for x in os.listdir(log_path):
             if re.findall(r'^\d{5}', x):

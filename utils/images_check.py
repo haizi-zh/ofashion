@@ -25,7 +25,7 @@ class ImagesCheck(object):
         url_flag = True if 'url_flag' not in kwargs else kwargs['url_flag']
         img_flag = True if 'img_flag' not in kwargs else kwargs['img_flag']
 
-        storage_path = os.path.normpath(os.path.join(getattr(gs, 'STORAGE_PATH'), 'products/images'))
+        storage_path = os.path.normpath(os.path.join(getattr(gs, 'STORAGE')['STORAGE_PATH'], 'products/images'))
         with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             rs = db.query_match(['checksum', 'url', 'path', 'width', 'height', 'format', 'size'],
                                 'images_store',).fetch_row(

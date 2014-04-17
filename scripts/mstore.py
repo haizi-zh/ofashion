@@ -68,7 +68,7 @@ def import_tag_mapping(args):
     map_file = None
     region = 'cn'
     brand_id = None
-    db_spec = glob.DB_SPEC
+    db_spec = getattr(glob, 'DATABASE')['DB_SPEC']
     while True:
         if idx >= len(args):
             break
@@ -164,7 +164,7 @@ def editor_price_processor(args):
         print 'Invalid syntax.'
         return
 
-    db_spec = glob.DB_SPEC
+    db_spec = getattr(glob, 'DATABASE')['DB_SPEC']
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
     db.query("SET NAMES 'utf8'")
@@ -403,9 +403,9 @@ class ImageDownloader(object):
 # def sync(args):
 #     idx = 0
 #     cond = []
-#     src_spec = glob.DB_SPEC
-#     dst_spec = glob.DB_SPEC
-#     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
+#     src_spec = getattr(glob, 'DATABASE')['DB_SPEC']
+#     dst_spec = getattr(glob, 'DATABASE')['DB_SPEC']
+#     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': getattr(glob, 'DATABASE')['DB_SPEC'],
 #               'release': glob.RELEASE_SPEC}
 #     while True:
 #         if idx >= len(args):
@@ -641,8 +641,8 @@ def image_check(param_dict):
     :param param_dict:
     :return:
     """
-    db_spec = glob.DB_SPEC
-    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
+    db_spec = getattr(glob, 'DATABASE')['DB_SPEC']
+    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': getattr(glob, 'DATABASE')['DB_SPEC'],
               'release': glob.RELEASE_SPEC}
     cond = ['1']
     gen_checksum = False
