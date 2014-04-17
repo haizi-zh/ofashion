@@ -147,12 +147,12 @@ def create_spider():
 
 def get_job_path():
     return os.path.normpath(
-        os.path.join(getattr(global_settings, 'DATABASE')['STORAGE_PATH'],
+        os.path.join(getattr(global_settings, 'STORAGE')['STORAGE_PATH'],
                      unicode.format(u'products/crawl/{0}', lv_data['brandname_s'])))
 
 
 def get_log_path():
-    return os.path.normpath(os.path.join(global_settings.STORAGE_PATH, u'products/log',
+    return os.path.normpath(os.path.join(getattr(global_settings, 'STORAGE')['STORAGE_PATH'], u'products/log',
                                          unicode.format(u'{0}_{1}_{2}.log', lv_data['brand_id'],
                                                         lv_data['brandname_s'],
                                                         datetime.datetime.now().strftime('%Y%m%d'))))

@@ -37,7 +37,7 @@ def spider_generator():
             for region in sc_class.get_supported_regions():
                 if brand_id < 10000:
                     continue
-                if info.region_info[region]['status'] != 1:
+                if info.region_info()[region]['status'] != 1:
                     continue
                 yield brand_id, region, modname
         except (KeyError, AttributeError):
@@ -59,7 +59,8 @@ def main():
                 if ret:
                     continue
 
-                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True)}, 'monitor_status', replace=True)
+                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True), 'enabled': 0}, 'monitor_status',
+                          replace=True)
             db.commit()
         except:
             db.rollback()
