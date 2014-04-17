@@ -37,7 +37,7 @@ def spider_generator():
             for region in sc_class.get_supported_regions():
                 if brand_id < 10000:
                     continue
-                if info.region_info[region]['status'] != 1:
+                if info.region_info()[region]['status'] != 1:
                     continue
                 yield brand_id, region, modname
         except (KeyError, AttributeError):
