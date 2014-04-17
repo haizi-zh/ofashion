@@ -30,7 +30,7 @@ class ParseLog(object):
         if 'log-path' in param:
             log_path = param['log-path']
         else:
-            log_path = os.sep.join((getattr(gs, 'DATABASE')['STORAGE_PATH'], 'products', 'log'))
+            log_path = os.sep.join((getattr(gs, 'STORAGE')['STORAGE_PATH'], 'products', 'log'))
 
         if 'interval' in param:
             interval = param['interval']
