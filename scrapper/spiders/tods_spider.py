@@ -72,8 +72,7 @@ class TodsSpider(MFashionSpider):
         sel = Selector(response)
 
         # 菜单标题，作为第一级tag
-        sub_node_number = 1
-        nav_nodes = sel.xpath('//div[@class="nav-container"]/ul[@id="mega-dropdown-menu"]//li')
+        nav_nodes = sel.xpath('//div[@id="newnav"]/ul[contains(@class, "topMenu")]/li')
         for node in nav_nodes:
             try:
                 tag_text = node.xpath('./a/text()').extract()[0]
@@ -94,8 +93,8 @@ class TodsSpider(MFashionSpider):
                     m['gender'] = [gender]
 
                 # 针对这个node，生成xpath，找到第二级菜单，生成第二级tag
-                sub_xpath = str.format('//div[@id="maga-dropdown-inner"]/ul[{0}]/li//li', sub_node_number)
-                sub_nodes = sel.xpath(sub_xpath)
+                sub_xpath = str.format('./ul[@class="innerMenu"]/li/ul/li')
+                sub_nodes = node.xpath(sub_xpath)
                 for sub_node in sub_nodes:
                     try:
                         tag_text = sub_node.xpath('./a/text()').extract()[0]
@@ -130,8 +129,6 @@ class TodsSpider(MFashionSpider):
                                       callback=callback_func,
                                       errback=self.onerr,
                                       meta={'userdata': mc})
-
-                sub_node_number += 1
 
                 try:
                     href = node.xpath('./a/@href').extract()[0]

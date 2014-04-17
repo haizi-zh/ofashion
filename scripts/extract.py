@@ -63,7 +63,7 @@ class SampleExtractor(object):
 
     def run(self):
         db = RoseVisionDb()
-        db.conn(gs.DB_SPEC)
+        db.conn(getattr(gs, 'DATABASE')['DB_SPEC'])
 
         # 如果没有指定brand_list，则默认使用数据库中所有的brand_list
         if not self.brand_list:

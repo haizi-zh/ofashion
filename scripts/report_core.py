@@ -144,7 +144,7 @@ class ProcessLog(object):
         if 'log-path' in param:
             self.log_path = param['log-path']
         else:
-            self.log_path = os.sep.join((getattr(gs, 'STORAGE_PATH'), 'products', 'log'))
+            self.log_path = os.sep.join((getattr(gs, 'STORAGE')['STORAGE_PATH'], 'products', 'log'))
 
         if 'interval' in param:
             self.interval = param['interval']

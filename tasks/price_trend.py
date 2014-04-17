@@ -25,13 +25,21 @@ class PriceTrendTasker(object):
         duration = int(kwargs['duration'][0]) if 'duration' in kwargs else 7
         ts = (datetime.datetime.now() - datetime.timedelta(duration)).strftime('"%Y-%m-%d %H:%M:%S"')
         with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
-            db.query(str.format('''
-            UPDATE products AS p1
-            JOIN products_price_history AS p2 ON p1.idproducts=p2.idproducts
-            SET p1.price_change='0', p1.update_time={1}
-            WHERE p1.price_change!='0' AND p2.date<{0}
-            ''',
-                                ts, datetime.datetime.now().strftime('"%Y-%m-%d %H:%M:%S"')))
+            pid_list = [int(tmp[0]) for tmp in
+                        db.query(str.format('''
+            SELECT prod.idproducts FROM products AS prod
+            JOIN products_price_history AS price ON prod.idproducts=price.idproducts
+            WHERE prod.price_change!='0' AND price.date<'{0}'
+            ''', ts)).fetch_row(maxrows=0)]
+
+            max_bulk = 1000
+            offset = 0
+            while offset < len(pid_list):
+                tmp_list = pid_list[offset:offset + max_bulk]
+                offset += max_bulk
+                db.query(str.format('''
+                UPDATE products SET price_change='0', update_time='{1}' WHERE idproducts IN ({0})
+                ''', ', '.join(str(tmp) for tmp in tmp_list), datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
             db.query('UPDATE products SET price_change="0" WHERE price_change!="0" AND offline!=0')
 

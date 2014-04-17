@@ -31,9 +31,9 @@ def get_logger():
     # return logging.getLogger()
 
 
-product_pipeline = ProductPipeline(glob.DB_SPEC)
+product_pipeline = ProductPipeline(getattr(glob, 'DATABASE')['DB_SPEC'])
 store_uri = os.path.normpath(os.path.join(glob.STORAGE_PATH, 'products/images', '10226_louis_vuitton'))
-image_pipeline = ProductImagePipeline(store_uri, db_spec=glob.DB_SPEC)
+image_pipeline = ProductImagePipeline(store_uri, db_spec=getattr(glob, 'DATABASE')['DB_SPEC'])
 spider = None
 
 logger = get_logger()
@@ -161,7 +161,7 @@ categories = {'books--stationery', 'handbags', 'travel', 'watches', 'timepieces'
               'accessories/key-holders-and-other-accessories'}
 
 db = RoseVisionDb()
-db.conn(glob.DB_SPEC)
+db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
 
 
 def make_post_str(post_data):
