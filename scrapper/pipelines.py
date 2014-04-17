@@ -16,6 +16,7 @@ from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
 from scrapy.exceptions import DropItem
 from scrapy.http import Request
 from PIL import Image
+from scrapper.mfimages import MFImagesPipeline
 
 from utils.db import RoseVisionDb
 import global_settings as glob
@@ -421,7 +422,7 @@ class ProductPipeline(MStorePipeline):
         return item
 
 
-class ProductImagePipeline(ImagesPipeline):
+class ProductImagePipeline(MFImagesPipeline):
     def __init__(self, store_uri):
         super(ProductImagePipeline, self).__init__(store_uri)
         self.url_map = {}
