@@ -1,9 +1,10 @@
 # coding=utf-8
 import os
 from celery import Celery
-# import scripts
+import scripts
 import subprocess
 import json
+import mmap
 from utils.db import RoseVisionDb
 
 app = Celery()
@@ -59,46 +60,52 @@ def main_cycle():
             #生成新任务
             cycle_task = monitor_crawl.apply_async(kwargs=parameter)
             #访问完结束的任务后，将标志位置1
-            db.update({'access_done': 1, }, 'taskmeta', str.format('task_id="{0}"',task_id))
+            db.update({'access_done': 1, }, 'taskmeta', str.format('task_id="{0}"', task_id))
             #更新task_id
             db.update({'task_id': cycle_task.id}, 'crawl_status', str.format('idmonitor={0}', idmonitor))
+
+
+# @app.task
+# def monitor_crawl(**kwargs):
+#     """循环监视、爬取"""
+#     #todo for test.NEED delete!
+#     print monitor_crawl.request.id
+#     print kwargs['brand_id'], kwargs['region']
+#     return kwargs['brand_id'], kwargs['region']
 
 
 @app.task
 def monitor_crawl(**kwargs):
     """循环监视、爬取"""
-    #todo for test.NEED delete!
-    print monitor_crawl.request.id
-    print kwargs['brand_id'], kwargs['region']
-    return kwargs['brand_id'], kwargs['region']
+    #todo add mmap to subprocess
+    run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
 
-# @app.task
-# def monitor_crawl(**kwargs):
-#     """循环监视、爬取"""
-#     run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
-#
-#     #-----------monitor--------------
-#     monitor = subprocess.Popen(
-#         "python %s monitor --brand %s --region %s --idmonitor %s" % (
-#             run_crawler, kwargs['brand_id'], kwargs['region'], kwargs['idmonitor']),
-#         stdin=subprocess.PIPE,
-#         stdout=subprocess.PIPE, shell=True)
-#     t1 = monitor.communicate()
-#
-#     #-----------重爬----------------
-#     #todo judge monitor status
-#     if 'need_monitor_flag' in t1:
-#         #update
-#         update = subprocess.Popen(
-#             "python %s update --brand %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
-#             stdin=subprocess.PIPE,
-#             stdout=subprocess.PIPE, shell=True)
-#         #crawl
-#         crawl = subprocess.Popen("python %s %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
-#                                  stdin=subprocess.PIPE,
-#                                  stdout=subprocess.PIPE, shell=True)
-#         t2 = update.stdout.readlines()
-#         return 'has_update', 'recrawled'
-#
-#     return 'no_update', 'unrecrawled'
+    #共享内存用于进程间通讯
+    mm = mmap.mmap(fileno=-1, length=10, tagname=kwargs['idmonitor'], access=mmap.ACCESS_WRITE)
+    #-----------monitor--------------
+    monitor = subprocess.Popen(
+        "python %s monitor --brand %s --region %s --idmonitor %s" % (
+            run_crawler, kwargs['brand_id'], kwargs['region'], kwargs['idmonitor']),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, shell=True)
+    monitor.communicate()
+
+    #-----------重爬----------------
+    #共享内存用于进程间通讯
+    mm.seek(0)
+    if mm.readline() == 'recrawl':
+        #update
+        update = subprocess.Popen(
+            "python %s update --brand %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, shell=True)
+        update.communicate()
+        #crawl
+        crawl = subprocess.Popen("python %s %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
+                                 stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, shell=True)
+        crawl.communicate()
+        return 'has_update', 'recrawled'
+
+    return 'no_update', 'unrecrawled'
 
