@@ -44,7 +44,7 @@ def get_log_path(brand_id, region_list=None):
 
 def get_images_store(brand_id):
     return os.path.normpath(os.path.join(
-        getattr(glob, 'STORAGE')['STORAGE_PATH'], u'products/images', unicode.format(u'{0}_{1}', brand_id,
+        getattr(glob, 'STORAGE')['STORAGE_PATH'], u'up://rose:mfashion123@mfashion/test_images', unicode.format(u'{0}_{1}', brand_id,
                                                                                      info.brand_info()[brand_id][
                                                                                          'brandname_s'])))
 
