@@ -1,5 +1,7 @@
 # coding=utf-8
 import os
+# import sys
+# sys.path.append('/home/rose/MStore')
 from celery import Celery
 import scripts
 import subprocess
@@ -13,10 +15,11 @@ app.config_from_object('scripts.celeryconfig')
 mysql_con = {"host": "localhost", "port": 3306, "schema": "celery", "username": "root", "password": "rose123"}
 
 # command:
+# export PYTHONPATH=/home/rose/MStore;
 # celery -A tasks worker -l info -Q queues -n xxx
-# celery flower --address=127.0.0.1 --port=5555
+# celery flower --address=0.0.0.0 --port=5555 --broker=amqp://rose:rosecelery@localhost:5672/celery
 # celery beat
-
+#
 @app.task
 def initialize():
     """初始化队列"""
@@ -77,7 +80,6 @@ def main_cycle():
 @app.task
 def monitor_crawl(**kwargs):
     """循环监视、爬取"""
-    #todo add mmap to subprocess
     run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
 
     #共享内存用于进程间通讯
