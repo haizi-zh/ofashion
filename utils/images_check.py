@@ -13,32 +13,35 @@ import logging
 
 logging.basicConfig(filename='ImagesCheck.log', level=logging.DEBUG)
 
+
 class ImagesCheck(object):
     """
     图片信息检验
     @param param_dict:
     """
+
     @classmethod
     def run(cls, logger=None, **kwargs):
         logging.info('IMAGE CHECK STARTED!!!!')
         #check flag for urls and images
         url_flag = True if 'url_flag' not in kwargs else kwargs['url_flag']
-        img_flag = True if 'img_flag' not in kwargs else kwargs['img_flag']
+        img_flag1 = True if 'img_flag1' not in kwargs else kwargs['img_flag1']
+        img_flag2 = True if 'img_flag2' not in kwargs else kwargs['img_flag2']
 
         storage_path = os.path.normpath(os.path.join(getattr(gs, 'STORAGE')['STORAGE_PATH'], 'products/images'))
         with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
             rs = db.query_match(['checksum', 'url', 'path', 'width', 'height', 'format', 'size'],
-                                'images_store',).fetch_row(
+                                'images_store', ).fetch_row(
                 maxrows=0)
-            db.start_transaction()
+            # db.start_transaction()
             total = len(rs)
             count = 0
             try:
                 for checksum, url, path, width, height, fmt, size in rs:
                     full_path = os.path.normpath(os.path.join(storage_path, path))
                     #错误标志
-                    url_err = checksum_err = path_err = width_err = height_err = fmt_err = size_err = False
-
+                    url_err = checksum_err = img_err = path_err = width_err = height_err = fmt_err = size_err = False
+                    cur_check = cur_width = cur_height = cur_format = cur_size = None
                     #check
                     """
                     可能出现的错误：height_err or width_err and size_err代表图片更新过，数据库size_err未更新
@@ -52,7 +55,7 @@ class ImagesCheck(object):
                         if not url or not url.strip():
                             url_err = True
                     # check img
-                    if img_flag:
+                    if img_flag1:
                         try:
                             f = open(full_path, 'rb')
                             cur_check = hashlib.md5(f.read()).hexdigest()
@@ -76,11 +79,19 @@ class ImagesCheck(object):
                             fmt_err = True
                         if cur_size != int(size):
                             size_err = True
+                    if img_flag2:
+                        img = Image.open(full_path)
+                        try:
+                            img.load()
+                        except IOError:
+                            img_err = True
 
-                    if url_err or checksum_err or path_err or width_err or height_err or fmt_err or size_err:
+                    if url_err or checksum_err or img_err or path_err or width_err or height_err or fmt_err or size_err:
                         logging.error((datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Detail:', (
                             checksum,
                             'url_err' if url_err else None,
+                            'checksum_err' if checksum_err else None,
+                            'img_err' if img_err else None,
                             'path_err' if path_err else None,
                             'width_err' if width_err else None,
                             'height_err' if height_err else None,
@@ -103,6 +114,10 @@ class ImagesCheck(object):
                 raise
         logging.info('IMAGE CHECK ENDED!!!!')
 
+
 if __name__ == '__main__':
     t = ImagesCheck()
-    t.run()
+    # t.run()
+
+    # check truncated image
+    t.run(url_flag=False, img_flag1=False)
