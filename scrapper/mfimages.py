@@ -91,3 +91,27 @@ class MFImagesPipeline(ImagesPipeline):
         store_cls = self.STORE_SCHEMES[scheme]
         return store_cls(uri)
 
+    def convert_image(self, image, size=None):
+        if image.format == 'PNG' and image.mode == 'RGBA':
+            background = Image.new('RGBA', image.size, (255, 255, 255))
+            background.paste(image, image)
+            image = background.convert('RGB')
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+
+        if size:
+            image = image.copy()
+            image.thumbnail(size, Image.ANTIALIAS)
+
+        buf = StringIO()
+        if image.format == 'PNG':
+            image.save(buf, 'PNG')
+        elif image.format == 'BMP':
+            image.save(buf, 'BMP')
+        elif image.format == 'GIF':
+            image.save(buf, 'GIF')
+        elif image.format == 'TIFF':
+            image.save(buf, 'TIFF')
+        else:
+            image.save(buf, 'JPEG')
+        return image, buf

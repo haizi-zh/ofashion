@@ -451,6 +451,14 @@ class ProductImagePipeline(MFImagesPipeline):
             ext = 'tif'
         elif content_type == 'image/png':
             ext = 'png'
+        elif content_type == 'image/gif':
+            ext = 'gif'
+        elif content_type == 'image/bmp':
+            ext = 'bmp'
+        elif content_type == 'image/jpeg':
+            ext = 'jpg'
+        else:
+            raise DropItem
         key = str.format('full/{0}.{1}', media_guid, ext)
 
         orig_image = Image.open(StringIO(response.body))
