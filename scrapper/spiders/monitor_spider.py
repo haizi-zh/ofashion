@@ -13,18 +13,14 @@ __author__ = 'Ryan'
 
 
 class MonitorSpider(UpdateSpider):
-    def __init__(self, idmonitor, parameter, db_spec, *a, **kw):
+    def __init__(self, parameter, db_spec, *a, **kw):
         brand = parameter['brand_id']
         region = parameter['region']
 
         super(MonitorSpider, self).__init__([brand], [region], db_spec, *a, **kw)
         self.name = str.format('monitor-{0}-{1}', brand, region)
-        self.idmonitor = idmonitor
 
         monitor_pid = os.getpid()
-        self.db.update({'monitor_pid': monitor_pid}, 'monitor_status',
-                       str.format('idmonitor={0}', idmonitor))
-        self.db.commit()
         # super(MonitorSpider, self).__init__(*a, **kw)
         # self.brand = brand
         # self.region = region
@@ -53,7 +49,6 @@ def start_requests(self):
                       meta={'brand': int(item['brand_id']),
                             'pid': item['idproducts'],
                             'region': item['region'],
-                            'model': item['model'],
-                            'idmonitor': self.idmonitor},
+                            'model': item['model']},
                       errback=self.onerror,
                       dont_filter=True)

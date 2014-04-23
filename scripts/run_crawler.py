@@ -12,6 +12,8 @@ from scrapy import log, signals
 from scrapy.crawler import Crawler
 from scrapy.settings import Settings
 from twisted.internet import reactor
+import sys
+sys.path.append('/home/rose/MStore')
 import global_settings as glob
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider, MFashionBaseSpider
@@ -77,10 +79,9 @@ def set_up_spider(spider_class, data, spider_type='default'):
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.MonitorPipeline': 800}
         brand = int(data['brand'][0])
         region = data['region'][0]
-        idmonitor = int(data['idmonitor'][0])
         parameter = {'brand_id': brand, 'region': region}
-        spider = spider_class(idmonitor, parameter, getattr(glob, 'DATABASE')['DB_SPEC'])
-        welcome_msg = str.format('STARTING MONITORING, idmonitory={0}, brand={1}, region={2}', idmonitor, brand,
+        spider = spider_class(parameter, getattr(glob, 'DATABASE')['DB_SPEC'])
+        welcome_msg = str.format('STARTING MONITORING, brand={0}, region={1}', brand,
                                  region)
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,

@@ -652,40 +652,33 @@ class MonitorPipeline(UpdatePipeline):
 
         self.db.start_transaction()
         try:
-            mo_re = self.db.query_match({'idmonitor'},
-                                        'monitor_status',
-                                        {'idmonitor': spider.idmonitor, 'monitor_status': '0'})
-            if mo_re.num_rows():
-                # 获得旧数据
-                rs = self.db.query_match(
-                    {'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
-                     'idproducts'}, 'products', {'idproducts': pid})
-                # 如果没有找到相应的记录，
-                if rs.num_rows() == 0:
-                    raise DropItem
-                record = rs.fetch_row(how=1)[0]
-                update_data = self.get_update_data(spider, item, record)
+            # 获得旧数据
+            rs = self.db.query_match(
+                {'model', 'description', 'details', 'color', 'price', 'price_discount', 'offline',
+                 'idproducts'}, 'products', {'idproducts': pid})
+            # 如果没有找到相应的记录，
+            if rs.num_rows() == 0:
+                raise DropItem
+            record = rs.fetch_row(how=1)[0]
+            update_data = self.get_update_data(spider, item, record)
 
-                # 这里不判断model和offline的变化
-                if 'model' in update_data:
-                    update_data.pop('model')
-                # if 'offline' in update_data:
-                #     update_data.pop('offline')
+            # 这里不判断model和offline的变化
+            if 'model' in update_data:
+                update_data.pop('model')
+            # if 'offline' in update_data:
+            #     update_data.pop('offline')
 
-                if update_data:
-                    # 注意，这里的stop()，并不会立即停止所有爬虫线程
-                    spider.log(
-                        str.format('DIFFERENCE DETECTED: {2}: {0} => {1}', str({k: record[k] for k in update_data}),
-                                   str(update_data), record['idproducts']), log.INFO)
-                    spider.crawler.stop()
+            if update_data:
+                # 注意，这里的stop()，并不会立即停止所有爬虫线程
+                spider.log(
+                    str.format('DIFFERENCE DETECTED: {2}: {0} => {1}', str({k: record[k] for k in update_data}),
+                               str(update_data), record['idproducts']), log.INFO)
+                spider.crawler.stop()
 
-                    self.db.update({'monitor_status': 1}, 'monitor_status',
-                                   str.format('idmonitor={0}', spider.idmonitor))
+                logger = get_logger(logger_name='monitor')
 
-                    logger = get_logger(logger_name='monitor')
-
-                    logger.info('Monitor ended--> idmonitor:%s, brand_id:%s, region:%s' % (
-                        spider.idmonitor, item['brand'], item['region']))
+                logger.info('Monitor ended--> brand_id:%s, region:%s' % (
+                     item['brand'], item['region']))
             self.db.commit()
         except:
             self.db.rollback()
