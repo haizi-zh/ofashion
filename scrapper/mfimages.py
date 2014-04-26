@@ -4,6 +4,7 @@ import re
 import urlparse
 
 from PIL import Image
+import datetime
 from scrapy.contrib.pipeline.images import ImagesPipeline
 from scrapy.contrib.pipeline.media import MediaPipeline
 
@@ -12,14 +13,18 @@ from scrapy.http import Request
 from scrapy.exceptions import DropItem, NotConfigured
 #TODO: from scrapy.contrib.pipeline.media import MediaPipeline
 from scrapy.contrib.pipeline.files import FileException, FilesPipeline, FSFilesStore, S3FilesStore, os
+import time
 import upyun
 from twisted.internet import defer, threads
+from scrapy import log
+from utils.db import RoseVisionDb
+import global_settings as glob
 
 
 class UPYUNFilesStore(object):
-    UP_BUCKETNAME = None
-    UP_USERNAME = None
-    UP_PASSWORD = None
+    # UP_BUCKETNAME = None
+    # UP_USERNAME = None
+    # UP_PASSWORD = None
 
     # headers = {"x-gmkerl-rotate": "360"}
 
@@ -27,20 +32,30 @@ class UPYUNFilesStore(object):
         assert uri.startswith('up://')
         info, self.dirpath = uri[5:].split('/', 1)
         self.UP_USERNAME, self.UP_PASSWORD, self.UP_BUCKETNAME = re.split('[:@]', info)
+        self.db = RoseVisionDb()
+        self.db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
 
     def stat_file(self, path, info):
-        def _onsuccess(checksum_info):
-            checksum, modified_stamp = checksum_info
-            return {'checksum': checksum, 'last_modified': modified_stamp}
+        def _onsuccess(info):
+            if info:
+                (checksum, last_modified, width, height, size, fmt ) = (
+                info['checksum'], info['update_time'], info['width'], info['height'], info['size'],info['format'])
+                last_modified = time.mktime(datetime.datetime.strptime(last_modified, '%Y-%m-%d %H:%M:%S').timetuple())
+            else:
+                checksum = last_modified = width = height = size = fmt = None
+
+            return {'checksum': checksum, 'last_modified': last_modified, 'width': width, 'height': height,
+                    'size': size, 'format': fmt}
 
         return self._get_info(path).addCallback(_onsuccess)
 
     def access_mysql_info(self, path):
-        # with RoseVisionDb({"host": "localhost", "port": 3306, "schema": "celery", "username": "root", "password": "rose123"}) as db:
-        #     rs = self.db.query_match(['path', 'checksum'], 'checksum_info', {'path': path})
-        # kv = rs[0]
-        # return {'checksum': checksum, 'last_modified': last_modified}
-        return {''}
+        rs = self.db.query_match(['checksum', 'update_time', 'width', 'height', 'size', 'format'], 'images_store',
+                                 {'path': path})
+        if rs.num_rows() == 0:
+            return None
+        else:
+            return rs.fetch_row(how=1)[0]
 
     def _get_info(self, path):
         """get info from MySQL"""
@@ -51,9 +66,8 @@ class UPYUNFilesStore(object):
         up = upyun.UpYun(self.UP_BUCKETNAME, self.UP_USERNAME, self.UP_PASSWORD, timeout=30,
                          endpoint=upyun.ED_AUTO)
         # headers = self.headers
-        full_file = os.path.join(self.dirpath,path)
-        return threads.deferToThread(up.put, '/'+full_file, buf.getvalue(), checksum=False)
-        # return up.put('/'+full_file, buf.getvalue(), checksum=False,)
+        full_file = os.path.join(self.dirpath, path)
+        return threads.deferToThread(up.put, '/' + full_file, buf.getvalue(), checksum=False)
 
 
 class MFImagesPipeline(ImagesPipeline):
@@ -83,13 +97,13 @@ class MFImagesPipeline(ImagesPipeline):
 
         return cls(store_uri)
 
-    def _get_store(self, uri):
-        if os.path.isabs(uri):  # to support win32 paths like: C:\\some\dir
-            scheme = 'file'
-        else:
-            scheme = urlparse.urlparse(uri).scheme
-        store_cls = self.STORE_SCHEMES[scheme]
-        return store_cls(uri)
+    # def _get_store(self, uri):
+    #     if os.path.isabs(uri):  # to support win32 paths like: C:\\some\dir
+    #         scheme = 'file'
+    #     else:
+    #         scheme = urlparse.urlparse(uri).scheme
+    #     store_cls = self.STORE_SCHEMES[scheme]
+    #     return store_cls(uri)
 
     def convert_image(self, image, size=None):
         if image.format == 'PNG' and image.mode == 'RGBA':
@@ -115,3 +129,46 @@ class MFImagesPipeline(ImagesPipeline):
         else:
             image.save(buf, 'JPEG')
         return image, buf
+
+    def media_downloaded(self, response, request, info):
+        referer = request.headers.get('Referer')
+
+        if response.status != 200:
+            log.msg(
+                format='File (code: %(status)s): Error downloading image from %(request)s referred in <%(referer)s>',
+                level=log.WARNING, spider=info.spider,
+                status=response.status, request=request, referer=referer)
+            raise FileException('download-error')
+
+        if not response.body:
+            log.msg(format='File (empty-content): Empty image from %(request)s referred in <%(referer)s>: no-content',
+                    level=log.WARNING, spider=info.spider,
+                    request=request, referer=referer)
+            raise FileException('empty-content')
+
+        status = 'cached' if 'cached' in response.flags else 'downloaded'
+        log.msg(format='File (%(status)s): Downloaded image from %(request)s referred in <%(referer)s>',
+                level=log.DEBUG, spider=info.spider,
+                status=status, request=request, referer=referer)
+        self.inc_stats(info.spider, status)
+
+        try:
+            path = self.file_path(request, response=response, info=info)
+            checksum = self.file_downloaded(response, request, info)
+        except FileException as exc:
+            whyfmt = 'File (error): Error processing image from %(request)s referred in <%(referer)s>: %(errormsg)s'
+            log.msg(format=whyfmt, level=log.WARNING, spider=info.spider,
+                    request=request, referer=referer, errormsg=str(exc))
+            raise
+        except Exception as exc:
+            whyfmt = 'File (unknown-error): Error processing image from %(request)s referred in <%(referer)s>'
+            log.err(None, whyfmt % {'request': request, 'referer': referer}, spider=info.spider)
+            raise FileException(str(exc))
+
+        orig_image = Image.open(StringIO(response.body))
+        width, height = orig_image.size
+        fmt = orig_image.format
+        size = len(response.body)
+
+        return {'url': request.url, 'path': path, 'checksum': checksum, 'width': width, 'height': height,
+                'size': size, 'format': fmt}

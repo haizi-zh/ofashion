@@ -10,6 +10,7 @@ import json
 import os
 import re
 from urllib2 import quote
+import mmap
 
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
@@ -446,7 +447,6 @@ class ProductImagePipeline(MFImagesPipeline):
                     content_type = response.headers[k].lower()
                 except (TypeError, IndexError):
                     pass
-        ext = 'jpg'
         if content_type == 'image/tiff':
             ext = 'tif'
         elif content_type == 'image/png':
@@ -470,13 +470,14 @@ class ProductImagePipeline(MFImagesPipeline):
 
         self.convert_image(orig_image)
         image, buf = orig_image, StringIO(response.body)
+        # image, buf = self.convert_image(orig_image)
 
         yield key, image, buf
 
-        for thumb_id, size in self.THUMBS.iteritems():
-            thumb_key = str.format('thumbs/{0}/{1}.{2}', thumb_id, media_guid, ext)
-            thumb_image, thumb_buf = self.convert_image(image, size)
-            yield thumb_key, thumb_image, thumb_buf
+        # for thumb_id, size in self.THUMBS.iteritems():
+        #     thumb_key = str.format('thumbs/{0}/{1}.{2}', thumb_id, media_guid, ext)
+        #     thumb_image, thumb_buf = self.convert_image(image, size)
+        #     yield thumb_key, thumb_image, thumb_buf
 
     def get_media_requests(self, item, info):
         if 'image_urls' in item:
@@ -609,47 +610,57 @@ class ProductImagePipeline(MFImagesPipeline):
 
     def item_completed(self, results, item, pipeline_info):
         # Tiffany需要特殊处理。因为Tiffany的图片下载机制是：下载一批可能的图片，在下载成功的图片中，挑选分辨率最好的那个。
-        results = self.preprocess(results, item)
+        # results = self.preprocess(results, item)
         brand_id = item['metadata']['brand_id']
         model = unicodify(item['metadata']['model'])
         for status, r in filter(lambda val: val[0], results):
             path = r['path']  #.replace(u'\\', u'/')
 
-            # 框架返回的文件名，有可能后缀是错的。需要找到真实的图片文件名称
-            full_path = os.path.normpath(os.path.join(self.store.basedir, path))
-            dir_path, file_name = os.path.split(full_path)
-            file_base, ext = os.path.splitext(file_name)
+            self.db.start_transaction()
+            try:
+                self.update_db({'brand_id': brand_id, 'model': model, 'checksum': r['checksum'], 'path': r['path'],
+                                'width': r['width'], 'height': r['height'], 'format': r['format'], 'url': r['url'],
+                                'size': r['size']})
+                self.db.commit()
+            except:
+                self.db.rollback()
+                raise
 
-            # 找到具有同样base name的文件中，modified time最后的那个
-            tmp = sorted([val for val in os.listdir(dir_path) if re.search(file_base, val)],
-                         key=lambda val: os.stat(os.path.join(dir_path, val)).st_mtime, reverse=True)
-            if not tmp:
-                continue
-            else:
-                file_name = tmp[0]
-                full_path = os.path.normpath(os.path.join(dir_path, file_name))
-                _, ext = os.path.splitext(file_name)
-                path_db = os.path.normpath(os.path.join(
-                    unicode.format(u'{0}_{1}/{2}{3}', brand_id, info.brand_info()[brand_id]['brandname_s'],
-                                   os.path.splitext(path)[0], ext)))
-
-                file_size = os.path.getsize(full_path)
-                checksum = r['checksum']
-                try:
-                    img = Image.open(full_path)
-                    aw, ah = img.size
-                    afmt = img.format
-                except IOError:
-                    continue
-
-                self.db.start_transaction()
-                try:
-                    self.update_db({'brand_id': brand_id, 'model': model, 'checksum': checksum, 'path': path_db,
-                                    'width': aw, 'height': ah, 'format': afmt, 'url': r['url'], 'size': file_size})
-                    self.db.commit()
-                except:
-                    self.db.rollback()
-                    raise
+                # # 框架返回的文件名，有可能后缀是错的。需要找到真实的图片文件名称
+                # full_path = os.path.normpath(os.path.join(self.store.basedir, path))
+                # dir_path, file_name = os.path.split(full_path)
+                # file_base, ext = os.path.splitext(file_name)
+                #
+                # # 找到具有同样base name的文件中，modified time最后的那个
+                # tmp = sorted([val for val in os.listdir(dir_path) if re.search(file_base, val)],
+                #              key=lambda val: os.stat(os.path.join(dir_path, val)).st_mtime, reverse=True)
+                # if not tmp:
+                #     continue
+                # else:
+                #     file_name = tmp[0]
+                #     full_path = os.path.normpath(os.path.join(dir_path, file_name))
+                #     _, ext = os.path.splitext(file_name)
+                #     path_db = os.path.normpath(os.path.join(
+                #         unicode.format(u'{0}_{1}/{2}{3}', brand_id, info.brand_info()[brand_id]['brandname_s'],
+                #                        os.path.splitext(path)[0], ext)))
+                #
+                #     file_size = os.path.getsize(full_path)
+                #     checksum = r['checksum']
+                #     try:
+                #         img = Image.open(full_path)
+                #         aw, ah = img.size
+                #         afmt = img.format
+                #     except IOError:
+                #         continue
+                #
+                #     self.db.start_transaction()
+                #     try:
+                #         self.update_db({'brand_id': brand_id, 'model': model, 'checksum': checksum, 'path': path_db,
+                #                         'width': aw, 'height': ah, 'format': afmt, 'url': r['url'], 'size': file_size})
+                #         self.db.commit()
+                #     except:
+                #         self.db.rollback()
+                #         raise
 
         return item
 
@@ -685,8 +696,15 @@ class MonitorPipeline(UpdatePipeline):
 
                 logger = get_logger(logger_name='monitor')
 
+                filename = str(item['brand_id']) + item['region']
+                fd = os.open(filename, os.O_RDWR)
+                assert os.write(fd, '\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
+
+                mm = mmap.mmap(fd, mmap.PAGESIZE, access=mmap.ACCESS_WRITE)
+                mm.write('recrawl')
+
                 logger.info('Monitor ended--> brand_id:%s, region:%s' % (
-                     item['brand'], item['region']))
+                    item['brand'], item['region']))
             self.db.commit()
         except:
             self.db.rollback()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
+
 from Queue import Queue
 from itertools import ifilter
 import logging
@@ -13,6 +14,7 @@ from scrapy.crawler import Crawler
 from scrapy.settings import Settings
 from twisted.internet import reactor
 import sys
+
 sys.path.append('/home/rose/MStore')
 import global_settings as glob
 import common as cm
@@ -45,10 +47,10 @@ def get_log_path(brand_id, region_list=None):
 
 
 def get_images_store(brand_id):
-    return os.path.normpath(os.path.join(
-        getattr(glob, 'STORAGE')['STORAGE_PATH'], u'up://rose:mfashion123@mfashion/test_images', unicode.format(u'{0}_{1}', brand_id,
-                                                                                     info.brand_info()[brand_id][
-                                                                                         'brandname_s'])))
+    return os.path.join(
+        getattr(glob, 'STORAGE')['IMAGE_STORE_PATH'], u'products/images', unicode.format(u'{0}_{1}', brand_id,
+                                                                                         info.brand_info()[brand_id][
+                                                                                             'brandname_s']))
 
 
 def set_up_spider(spider_class, data, spider_type='default'):
