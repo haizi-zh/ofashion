@@ -102,9 +102,9 @@ def set_up_spider(spider_class, data, spider_type='default'):
 
         # 图像数据存储
         crawler.settings.values['IMAGES_STORE'] = get_images_store(spider_class.spider_data['brand_id'])
-        crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
-        crawler.settings.values['IMAGES_MIN_HEIGHT'] = 64
-        crawler.settings.values['IMAGES_MIN_WIDTH'] = 64
+        # crawler.settings.values['IMAGES_THUMBS'] = {'small': (480, 480), 'medium': (1200, 1200)}
+        crawler.settings.values['IMAGES_MIN_HEIGHT'] = 128
+        crawler.settings.values['IMAGES_MIN_WIDTH'] = 128
 
         # 获取爬虫区域
         region_list = data['r']

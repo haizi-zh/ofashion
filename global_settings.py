@@ -3,7 +3,7 @@ import ConfigParser
 import datetime
 import json
 import os
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 import sys
 import pkgutil
 import scrapper.spiders
@@ -86,14 +86,18 @@ def _load_user_cfg(cfg_file=None, expire=600):
 
             path = imp_spec['path']
             sub_cfg_file = os.path.split(path)[-1]
-            if not (sub_cfg_file in os.listdir('.') and (datetime.datetime.now() - datetime.datetime.fromtimestamp(
-                    os.path.getmtime(sub_cfg_file))).total_seconds() < expire):
+            if False:
+            # if not (sub_cfg_file in os.listdir('.') and (datetime.datetime.now() - datetime.datetime.fromtimestamp(
+            #         os.path.getmtime(sub_cfg_file))).total_seconds() < expire):
                 host = imp_spec['host'] if 'host' in imp_spec else '127.0.0.1'
                 port = imp_spec['port'] if 'port' in imp_spec else 22
                 username = imp_spec['username']
                 head = 'pscp' if sys.platform in ('win32',) else 'scp'
                 cmd_str = str.format('{4} -P {0} {1}@{2}:{3} {5}', port, username, host, path, head, sub_cfg_file)
-                check_output(cmd_str, shell=True)
+                try:
+                    check_output(cmd_str, shell=True)
+                except CalledProcessError as e:
+                    print e.message
 
             _load_user_cfg(cfg_file=sub_cfg_file)
 
