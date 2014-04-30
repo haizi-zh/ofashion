@@ -3,7 +3,6 @@ import ConfigParser
 import datetime
 import json
 import os
-from subprocess import check_output
 import sys
 import pkgutil
 import urllib

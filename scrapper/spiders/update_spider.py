@@ -101,9 +101,11 @@ class UpdateSpider(MFashionBaseSpider):
 
         metadata['url'] = response.url
 
-        if response.status < 200 or response.status > 300:
+        if response.status == 404:
             item['offline'] = 1
             return item
+        elif response.status < 200 or response.status > 300:
+            return
         else:
             func = getattr(sc, 'is_offline')
             item['offline'] = 1 if func(response, self) else 0

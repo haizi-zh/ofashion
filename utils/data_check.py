@@ -117,6 +117,7 @@ class DataCheck(object):
                             ))
 
                         #=============================price check==================================================
+
                         logging.info(unicode.format(u'{0} PROCESSING price check {1} / {2}',
                                                     datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,
                                                     info.brand_info()[brand]['brandname_e']))
