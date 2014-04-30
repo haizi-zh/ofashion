@@ -3,12 +3,14 @@ import ConfigParser
 import datetime
 import json
 import os
-from subprocess import check_output, CalledProcessError
 import sys
 import pkgutil
+import urllib
 import scrapper.spiders
 import inspect
 import imp
+import base64
+from Crypto.Cipher import AES
 
 __author__ = 'Zephyre'
 
@@ -82,24 +84,8 @@ def _load_user_cfg(cfg_file=None, expire=600):
     if 'IMPORT' in config.sections():
         for imp_spec in sorted(read_section('IMPORT').values(),
                                key=lambda val: val['priority'] if 'priority' in val else 0):
-            # 检查本地缓存文件，并决定是否采用。
-
-            path = imp_spec['path']
-            sub_cfg_file = os.path.split(path)[-1]
-            if False:
-            # if not (sub_cfg_file in os.listdir('.') and (datetime.datetime.now() - datetime.datetime.fromtimestamp(
-            #         os.path.getmtime(sub_cfg_file))).total_seconds() < expire):
-                host = imp_spec['host'] if 'host' in imp_spec else '127.0.0.1'
-                port = imp_spec['port'] if 'port' in imp_spec else 22
-                username = imp_spec['username']
-                head = 'pscp' if sys.platform in ('win32',) else 'scp'
-                cmd_str = str.format('{4} -P {0} {1}@{2}:{3} {5}', port, username, host, path, head, sub_cfg_file)
-                try:
-                    check_output(cmd_str, shell=True)
-                except CalledProcessError as e:
-                    print e.message
-
-            _load_user_cfg(cfg_file=sub_cfg_file)
+            name = imp_spec['name']
+            get_cfg_from_SAE(name)
 
     section_list = filter(lambda val: val != 'IMPORT', config.sections())
     data = dict(map(lambda x, y: (x, y), section_list, map(read_section, section_list)))
@@ -110,3 +96,17 @@ def _load_user_cfg(cfg_file=None, expire=600):
 # 切换工作目录
 os.chdir(os.path.split(sys.modules[__name__].__file__)[0])
 _load_user_cfg()
+
+def get_cfg_from_SAE(spider=None):
+    url = "http://mstore.sinaapp.com/conf/?spider=%s"%spider
+    t = urllib.urlopen(url)
+    raw = t.read()
+
+    key = 'keyforrosevision'
+    cipher = AES.new(key, AES.MODE_ECB)
+    data = json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
+
+    self_module = sys.modules[__name__]
+    for k, v in data.iteritems():
+        # print k,v
+        setattr(self_module, k, v)
