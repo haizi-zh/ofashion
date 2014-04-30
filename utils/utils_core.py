@@ -5,8 +5,10 @@ import logging
 import re
 import types
 import lxml.html.soupparser as soupparser
+from utils import info
 
 import global_settings as glob
+from utils.text import unicodify
 
 __author__ = 'Zephyre'
 
@@ -31,7 +33,7 @@ def guess_currency(price, region=None):
 
     # 若字符串中包含大写的三个字母，并且该标识出现在货币列表中，说明这三个字母组成的字符串是货币信息
     mt = re.search(r'([A-Z]{3})', price, flags=re.U)
-    if mt and mt.group(1) in glob.currency_info().keys():
+    if mt and mt.group(1) in info.currency_info().keys():
         return mt.group(1)
     else:
         # 未找到货币信息
@@ -86,7 +88,7 @@ def process_price(price, region, decimal=None, currency=None):
         currency = guess_currency(price, region=region)
         if not currency:
             # 如果无法提取货币信息，则使用region的默认值
-            currency = glob.region_info()[region]['currency']
+            currency = info.region_info()[region]['currency']
 
     # 提取最长的数字，分隔符字符串
     tmp = sorted([func(tmp) for tmp in re.findall(r"(?<=[^\d])[\d\s,'\.]+(?=[^\d])", val, flags=re.U)],
@@ -204,7 +206,7 @@ def parse_args(args):
         if 'debug-port' in param_dict:
             port = int(param_dict['debug-port'][0])
         else:
-            port = getattr(glob, 'DEBUG_PORT')
+            port = getattr(glob, 'DEBUG')['DEBUG_PORT']
         import pydevd
 
         pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
@@ -221,19 +223,6 @@ def get_logger(logger_name='rosevision'):
     return logging.getLogger(logger_name)
 
 
-def unicodify(val):
-    """
-    Unicode化，并且strip
-    :param val:
-    :return:
-    """
-    if val is None:
-        return None
-    elif isinstance(val, str):
-        return val.decode('utf-8').strip()
-    else:
-        return unicode(val).strip()
-
 def lxmlparser(val):
     """
     html parser转义html标签及转义字符
@@ -244,17 +233,3 @@ def lxmlparser(val):
         return soupparser.fromstring(val).text_content()
     else:
         return val
-
-def iterable(val):
-    """
-    val是否iterable。注意：val为str的话，返回False。
-    :param val:
-    """
-    if isinstance(val, types.StringTypes):
-        return False
-    else:
-        try:
-            iter(val)
-            return True
-        except TypeError:
-            return False

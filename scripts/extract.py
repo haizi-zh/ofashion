@@ -4,11 +4,12 @@ import csv
 import random
 import sys
 import datetime
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings as gs
 import common as cm
 import json
-from utils.utils_core import unicodify, iterable
+from utils import info
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -62,7 +63,7 @@ class SampleExtractor(object):
 
     def run(self):
         db = RoseVisionDb()
-        db.conn(gs.DB_SPEC)
+        db.conn(getattr(gs, 'DATABASE')['DB_SPEC'])
 
         # 如果没有指定brand_list，则默认使用数据库中所有的brand_list
         if not self.brand_list:
@@ -81,8 +82,8 @@ class SampleExtractor(object):
         for brand in brand_list:
             results = {}
 
-            print unicode.format(u'PROCESSING {0} / {1}', brand, gs.brand_info()[brand]['brandname_e'])
-            brand_name = gs.brand_info()[brand]['brandname_e']
+            print unicode.format(u'PROCESSING {0} / {1}', brand, info.brand_info()[brand]['brandname_e'])
+            brand_name = info.brand_info()[brand]['brandname_e']
             self.progress += 1
 
             rs = db.query(str.format('''SELECT p1.idproducts,p1.brand_id,p1.model,p1.region,p2.price,p2.price_discount,p2.currency,p2.date,p1.name,p4.tag,p1.url FROM products AS p1

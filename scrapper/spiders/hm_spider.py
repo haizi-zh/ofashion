@@ -14,7 +14,6 @@ from scrapy import log
 import re
 import common
 import copy
-from utils.utils_core import iterable
 
 
 class HMSpider(MFashionSpider):

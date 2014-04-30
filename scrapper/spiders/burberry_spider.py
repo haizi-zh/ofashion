@@ -9,7 +9,7 @@ from scrapy.selector import Selector
 from scrapper.items import ProductItem
 import common as cm
 from scrapper.spiders.mfashion_spider import MFashionSpider
-from utils.utils_core import unicodify
+from utils.text import unicodify
 
 
 __author__ = 'Zephyre'
@@ -23,7 +23,8 @@ __author__ = 'Zephyre'
 
 class BurberrySpider(MFashionSpider):
     handle_httpstatus_list = [403]
-    spider_data = {'brand_id': 10057}
+    spider_data = {'brand_id': 10057,
+                   'currency': {'sg': 'SGD', 'ca': 'CAD', 'au': 'AUD'}}
     supported_regions = {'cn', 'us', 'fr', 'uk', 'hk', 'jp', 'it', 'sg', 'tw', 'mo', 'au', 'ae', 'de', 'ca', 'es',
                          'ru', 'br', 'kr', 'my'}
 
@@ -184,9 +185,9 @@ class BurberrySpider(MFashionSpider):
 
         model = None
         try:
-            tmp = sel.xpath('//p[contains(@class,"product-id")]/text()').extract()
-            if tmp and tmp[0]:
-                mt = re.search(r'(\d+)', cls.reformat(tmp[0]))
+            tmp = ' '.join(sel.xpath('//p[contains(@class,"product-id")]/descendant-or-self::text()').extract())
+            if tmp:
+                mt = re.search(r'(\d+)', cls.reformat(tmp))
                 if mt:
                     model = mt.group(1)
         except(TypeError, IndexError):

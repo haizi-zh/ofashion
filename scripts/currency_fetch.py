@@ -14,7 +14,7 @@ __author__ = 'Zephyre'
 
 def main():
     data = cm.get_data('http://www.xe.com/symbols.php', proxy={'url': '127.0.0.1:8087'})
-    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
         for node in Selector(text=data['body']).xpath(
                 '//table[@class="cSymbl_tbl"]/tr[@class="row1" or @class="row2"]'):
             tmp = node.xpath('./td/text()').extract()

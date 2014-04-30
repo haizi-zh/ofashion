@@ -15,7 +15,7 @@ class EShopSpider(MFashionSpider):
     def __init__(self, name, region):
         super(EShopSpider, self).__init__(name, region)
 
-        for brand_id, brand_info in glob.brand_info().items():
+        for brand_id, brand_info in info.brand_info().items():
             brand_name_c = brand_info['brandname_c']
             brand_name_e = brand_info['brandname_e']
             brand_name_s = brand_info['brandname_s']

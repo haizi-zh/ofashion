@@ -1,6 +1,7 @@
 # coding=utf-8
-from utils.utils_core import unicodify, get_logger
-from core import RoseVisionDb
+from utils.utils_core import get_logger
+from utils.text import unicodify
+from utils.db import RoseVisionDb
 import global_settings as gs
 import os
 import re
@@ -29,7 +30,7 @@ class ParseLog(object):
         if 'log-path' in param:
             log_path = param['log-path']
         else:
-            log_path = os.sep.join((getattr(gs, 'STORAGE_PATH'), 'products', 'log'))
+            log_path = os.sep.join((getattr(gs, 'STORAGE')['STORAGE_PATH'], 'products', 'log'))
 
         if 'interval' in param:
             interval = param['interval']

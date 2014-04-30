@@ -258,11 +258,13 @@ class RalphLaurenSpider(MFashionSpider):
         old_price = None
         new_price = None
         if region == 'us':
-            discount_node = sel.xpath(
-                '//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="templateSalePrice"][text()]')
+            # discount_node = sel.xpath(
+            #     '//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="templateSalePrice"][text()]')
+            discount_node = sel.xpath('//*[@class="rightcolpad"]/div[@class="itemheadernew"]//*[@class="templateSalePrice"][text()]')
             if discount_node:
-                old_price_node = sel.xpath(
-                    '//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="prodourprice"][text()]')
+                # old_price_node = sel.xpath(
+                #     '//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="prodourprice"][text()]')
+                old_price_node = sel.xpath('//*[@class="rightcolpad"]/div[@class="itemheadernew"]//*[@class="prodourprice"][text()]')
                 if old_price_node:
                     try:
                         old_price = old_price_node.xpath('./text()').extract()[0]
@@ -277,7 +279,7 @@ class RalphLaurenSpider(MFashionSpider):
                     pass
             else:
                 old_price_node = sel.xpath(
-                    '//*[@class="rightcolpad"]//div[@class="ProductPriceContainer"]/span[@class="prodourprice"][text()]')
+                    '//*[@class="rightcolpad"]/div[@class="itemheadernew"]//*[@class="prodourprice"][text()]')
                 if old_price_node:
                     try:
                         old_price = old_price_node.xpath('./text()').extract()[0]

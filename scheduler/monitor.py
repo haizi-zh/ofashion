@@ -3,11 +3,10 @@ import inspect
 import json
 import pkgutil
 import imp
-from core import RoseVisionDb
+from utils.db import RoseVisionDb
 import global_settings
 import scrapper.spiders
 from scrapper.spiders.mfashion_spider import MFashionSpider
-import datetime
 from utils import info
 
 __author__ = 'Zephyre'
@@ -38,7 +37,7 @@ def spider_generator():
             for region in sc_class.get_supported_regions():
                 if brand_id < 10000:
                     continue
-                if info.region_info[region]['status'] != 1:
+                if info.region_info()[region]['status'] != 1:
                     continue
                 yield brand_id, region, modname
         except (KeyError, AttributeError):
@@ -46,11 +45,11 @@ def spider_generator():
 
 
 def main():
-    with RoseVisionDb(getattr(global_settings, 'DB_SPEC')) as db:
+    with RoseVisionDb(getattr(global_settings, 'DATABASE')['DB_SPEC']) as db:
         db.start_transaction()
         try:
             for brand_id, region, modname in spider_generator():
-                if global_settings.region_info()[region]['status'] != 1:
+                if info.region_info()[region]['status'] != 1:
                     continue
                 parameter = {'brand_id': brand_id, 'region': region}
 
@@ -60,7 +59,8 @@ def main():
                 if ret:
                     continue
 
-                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True)}, 'monitor_status', replace=True)
+                db.insert({'parameter': json.dumps(parameter, ensure_ascii=True), 'enabled': 0}, 'monitor_status',
+                          replace=True)
             db.commit()
         except:
             db.rollback()

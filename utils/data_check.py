@@ -3,15 +3,21 @@
 #
 # pydevd.settrace('127.0.0.1', port=33333, stdoutToServer=True, stderrToServer=True)
 import urllib
-from utils.utils_core import unicodify, lxmlparser
-from core import RoseVisionDb
+
+from utils.text import unicodify
+from utils.db import RoseVisionDb
+
 import global_settings as gs
 import datetime
 import logging
 import json
+
 import os
 import re
 
+from utils import info
+
+logging.basicConfig(filename='DataCheck.log', level=logging.DEBUG)
 
 class DataCheck(object):
     """
@@ -32,18 +38,18 @@ class DataCheck(object):
         if 'brand_list' in kwargs:
             brand_list = kwargs['brand_list']
         else:
-            with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+            with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
                 brand_list = db.query_match(['brand_id'],
                                             'products', distinct=True).fetch_row(maxrows=0)
                 db.start_transaction()
                 brand_list = [int(val[0]) for val in brand_list]
 
         for brand in brand_list:
-            with RoseVisionDb(getattr(gs, 'DB_SPEC')) as db:
+            with RoseVisionDb(getattr(gs, 'DATABASE')['DB_SPEC']) as db:
                 #=============================product check==================================================
                 logging.info(unicode.format(u'{0} PROCESSING product check {1} / {2}',
                                             datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,
-                                            gs.brand_info()[brand]['brandname_e']))
+                                            info.brand_info()[brand]['brandname_e']))
                 rs = db.query_match(
                     ['idproducts', 'region', 'name', 'url', 'color', 'description', 'details', 'price_change'],
                     'products', {'brand_id': brand}).fetch_row(maxrows=0)
@@ -114,45 +120,45 @@ class DataCheck(object):
                             ))
 
                         #=============================price check==================================================
-                        # logging.info(unicode.format(u'{0} PROCESSING price check {1} / {2}',
-                        #                             datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,
-                        #                             gs.brand_info()[brand]['brandname_e']))
-                        # prs = db.query(str.format(
-                        #     'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
-                        #     'p1.region,p1.name,p1.model,p1.offline FROM products AS p1 JOIN products_price_history AS p2 ON '
-                        #     'p1.idproducts=p2.idproducts '
-                        #     'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts', brand))
-                        # # 以model为键值，将同一个model下，不同区域的价格放在一起。
-                        # records = prs.fetch_row(maxrows=0, how=1)
-                        # price_data = {}
-                        # for r in records:
-                        #     model = r['model']
-                        #     # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
-                        #     if r['price'] and int(r['offline']) == 0:
-                        #         # 首先检查model是否已存在
-                        #         if model not in price_data:
-                        #             price_data[model] = []
-                        #         price_data[model].append(r)
-                        #
-                        # # 最大值和最小值之间，如果差别过大，则说明价格可能有问题
-                        # for model in price_data:
-                        #     for item in price_data[model]:
-                        #         price = float(item['price'])
-                        #         item['nprice'] = gs.currency_info()[item['currency']] * price
-                        #
-                        #     # 按照nprice大小排序
-                        #     sorted_data = sorted(price_data[model], key=lambda item: item['nprice'])
-                        #     max_price = sorted_data[-1]['nprice']
-                        #     min_price = sorted_data[0]['nprice']
-                        #     if min_price > 0 and max_price / min_price > threshold:
-                        #         logging.warning(
-                        #             unicode.format(u'{0} WARNING: {1}:{7} MODEL={2}, {3} / {4} => {5} / {6}',
-                        #                            datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        #                            brand, model,
-                        #                            sorted_data[0]['nprice'], sorted_data[0]['region'],
-                        #                            sorted_data[-1]['nprice'], sorted_data[-1]['region'],
-                        #                            gs.brand_info()[brand]['brandname_e']))
 
+                        logging.info(unicode.format(u'{0} PROCESSING price check {1} / {2}',
+                                                    datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), brand,
+                                                    info.brand_info()[brand]['brandname_e']))
+                        prs = db.query(str.format(
+                            'SELECT * FROM (SELECT p2.idprice_history,p2.date,p2.price,p2.currency,p1.idproducts,p1.brand_id,'
+                            'p1.region,p1.name,p1.model,p1.offline FROM products AS p1 JOIN products_price_history AS p2 ON '
+                            'p1.idproducts=p2.idproducts '
+                            'WHERE p1.brand_id={0} ORDER BY p2.date DESC) AS p3 GROUP BY p3.idproducts', brand))
+                        # 以model为键值，将同一个model下，不同区域的价格放在一起。
+                        records = prs.fetch_row(maxrows=0, how=1)
+                        price_data = {}
+                        for r in records:
+                            model = r['model']
+                            # 仅有那些price不为None，且offline为0的数据，才加入到price check中。
+                            if r['price'] and int(r['offline']) == 0:
+                                # 首先检查model是否已存在
+                                if model not in price_data:
+                                    price_data[model] = []
+                                price_data[model].append(r)
+
+                        # 最大值和最小值之间，如果差别过大，则说明价格可能有问题
+                        for model in price_data:
+                            for item in price_data[model]:
+                                price = float(item['price'])
+                                item['nprice'] = info.currency_info()[item['currency']]['rate'] * price
+
+                            # 按照nprice大小排序
+                            sorted_data = sorted(price_data[model], key=lambda item: item['nprice'])
+                            max_price = sorted_data[-1]['nprice']
+                            min_price = sorted_data[0]['nprice']
+                            if min_price > 0 and max_price / min_price > threshold:
+                                logging.warning(
+                                    unicode.format(u'{0} WARNING: {1}:{7} MODEL={2}, {3} / {4} => {5} / {6}',
+                                                   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                                   brand, model,
+                                                   sorted_data[0]['nprice'], sorted_data[0]['region'],
+                                                   sorted_data[-1]['nprice'], sorted_data[-1]['region'],
+                                                   info.brand_info()[brand]['brandname_e']))
         logging.info('PRODUCT CHECK ENDED!!!!')
 
 

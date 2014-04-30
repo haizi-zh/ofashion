@@ -487,6 +487,9 @@ class ToryBurchSpider(MFashionSpider):
         else:
             region = response.meta['region']
 
+        # TODO 有区间价格的形式，现在无法取的价格
+        # 例如：http://www.toryburch.com/harp-pant/52131241.html?start=86&cgid=clothing-sale&dwvar_52131241_color=832
+
         old_price = None
         new_price = None
         if region != 'jp':
@@ -497,16 +500,14 @@ class ToryBurchSpider(MFashionSpider):
                     old_price = cls.reformat(old_price)
 
                     new_price = sel.xpath(
-                        '//div[contains(@id,"product-")]//div[@class="salesprice standardP"][text()]/text()').extract()[
-                        0]
+                        '//div[contains(@id,"product-")]//div[contains(@class, "salesprice standardP")][text()]/text()').extract()[0]
                     new_price = cls.reformat(new_price)
                 except(TypeError, IndexError):
                     pass
             else:
                 try:
                     old_price = sel.xpath(
-                        '//div[contains(@id,"product-")]//div[@class="salesprice standardP"][text()]/text()').extract()[
-                        0]
+                        '//div[contains(@id,"product-")]//div[contains(@class, "salesprice standardP")][text()]/text()').extract()[0]
                     old_price = cls.reformat(old_price)
                 except(TypeError, IndexError):
                     pass

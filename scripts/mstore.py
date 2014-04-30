@@ -9,7 +9,6 @@ import logging
 import codecs
 import os
 import _mysql
-import datetime
 from threading import Thread
 import urllib2
 import _mysql_exceptions
@@ -20,7 +19,9 @@ from scripts.extract import SampleExtractor
 from scripts.dbman import ProcessTags, PriceCheck, FingerprintCheck, PriceChangeDetect
 from scripts.report_core import spider_prog_report, process_log
 import core
-from utils.utils_core import process_price, unicodify, iterable, parse_args
+from utils.db import RoseVisionDb
+from utils.utils_core import process_price, parse_args
+from utils.text import unicodify, iterable
 
 __author__ = 'Zephyre'
 
@@ -67,7 +68,7 @@ def import_tag_mapping(args):
     map_file = None
     region = 'cn'
     brand_id = None
-    db_spec = glob.DB_SPEC
+    db_spec = getattr(glob, 'DATABASE')['DB_SPEC']
     while True:
         if idx >= len(args):
             break
@@ -163,7 +164,7 @@ def editor_price_processor(args):
         print 'Invalid syntax.'
         return
 
-    db_spec = glob.DB_SPEC
+    db_spec = getattr(glob, 'DATABASE')['DB_SPEC']
     db = _mysql.connect(host=db_spec['host'], port=db_spec['port'], user=db_spec['username'],
                         passwd=db_spec['password'], db=db_spec['schema'])
     db.query("SET NAMES 'utf8'")
@@ -402,9 +403,9 @@ class ImageDownloader(object):
 # def sync(args):
 #     idx = 0
 #     cond = []
-#     src_spec = glob.DB_SPEC
-#     dst_spec = glob.DB_SPEC
-#     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
+#     src_spec = getattr(glob, 'DATABASE')['DB_SPEC']
+#     dst_spec = getattr(glob, 'DATABASE')['DB_SPEC']
+#     db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': getattr(glob, 'DATABASE')['DB_SPEC'],
 #               'release': glob.RELEASE_SPEC}
 #     while True:
 #         if idx >= len(args):
@@ -447,7 +448,7 @@ class ImageCheck(object):
         self.checksum_mismatch = 0
         self.path_error = 0
 
-        self.db = core.RoseVisionDb()
+        self.db = RoseVisionDb()
         self.db.conn(db_spec)
 
         self.progress = 0
@@ -510,7 +511,7 @@ class ImageCheck(object):
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
             ' AND '.join(self.cond)))
         self.tot = int(rs.fetch_row(maxrows=0)[0][0])
-        storage_path = os.path.normpath(os.path.join(getattr(glob, 'STORAGE_PATH'), 'products/images'))
+        storage_path = os.path.normpath(os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], 'products/images'))
         rs = self.db.query(str.format(
             'SELECT DISTINCT p1.checksum,p1.width,p1.height,p1.format,p1.size,p1.url,p1.path,p2.brand_id,p2.model FROM images_store AS p1 '
             'JOIN products_image AS p2 ON p1.checksum=p2.checksum WHERE {0}',
@@ -624,6 +625,7 @@ def extract(param_dict):
     obj = SampleExtractor(param_dict)
     obj.run()
 
+
 def fingerprint_check(param_dict):
     core.func_carrier(FingerprintCheck(param_dict), 1)
 
@@ -639,8 +641,8 @@ def image_check(param_dict):
     :param param_dict:
     :return:
     """
-    db_spec = glob.DB_SPEC
-    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': glob.DB_SPEC,
+    db_spec = getattr(glob, 'DATABASE')['DB_SPEC']
+    db_map = {'tmp': glob.TMP_SPEC, 'spider': glob.SPIDER_SPEC, 'editor': getattr(glob, 'DATABASE')['DB_SPEC'],
               'release': glob.RELEASE_SPEC}
     cond = ['1']
     gen_checksum = False

@@ -19,7 +19,7 @@ def init_logger(logger_name='rosevision', filename=None, to_file=False,
     @return:
     """
     if to_file and not filename:
-        filename = os.path.join(getattr(glob, 'STORAGE_PATH'), 'log',
+        filename = os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], 'log',
                                 unicode.format(u'{0}_{1}.log', logger_name,
                                                datetime.datetime.now().strftime('%Y%m%d')))
     fh = logging.FileHandler(filename, encoding='utf-8') if filename else None
