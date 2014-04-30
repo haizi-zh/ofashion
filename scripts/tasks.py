@@ -1,6 +1,10 @@
 # coding=utf-8
 import os
 import sys
+import time
+
+sys.path.append('/home/rose/MStore')
+import global_settings as gs
 
 sys.path.append('/home/rose/MStore')
 from celery import Celery
@@ -13,7 +17,7 @@ from utils.db import RoseVisionDb
 app = Celery()
 app.config_from_object('scripts.celeryconfig')
 
-mysql_con = {"host": "localhost", "port": 3306, "schema": "celery", "username": "root", "password": "rose123"}
+mysql_con = {"host": "173.255.255.30", "port": 3306, "schema": "celery", "username": "root", "password": "rose123"}
 
 # command:
 # export PYTHONPATH=/home/rose/MStore;
@@ -42,89 +46,94 @@ def finalize():
         db.update({'access_done': 1, }, 'taskmeta', True)
 
 
-@app.task
+@app.task()
 def main_cycle():
     """主循环，定时调用，将不同爬虫送入指定队列"""
-    with RoseVisionDb(mysql_con) as db:
-        #add new tasks
-        initial_tasks = db.query_match(['idmonitor', 'task_id', 'parameter'], 'crawl_status',
-                                       {'enabled': '1', 'task_id': None}).fetch_row(maxrows=0)
-        for idmonitor, task_id, parameter in initial_tasks:
-            parameter = json.loads(parameter)
-            parameter['idmonitor'] = idmonitor
-            #添加新任务
-            new_task = new_crawl.apply_async(kwargs=parameter)
-            db.update({'task_id': new_task.id, }, 'crawl_status', str.format('idmonitor={0}', idmonitor))
+    # with RoseVisionDb(mysql_con) as db:
+    #     #add new tasks
+    #     initial_tasks = db.query_match(['idmonitor', 'task_id', 'parameter'], 'crawl_status',
+    #                                    {'enabled': '1', 'task_id': None}).fetch_row(maxrows=0)
+    #     for idmonitor, task_id, parameter in initial_tasks:
+    #         parameter = json.loads(parameter)
+    #         parameter['idmonitor'] = idmonitor
+    #         #添加新任务
+    #         new_task = new_crawl.apply_async(kwargs=parameter)
+    #         db.update({'task_id': new_task.id, }, 'crawl_status', str.format('idmonitor={0}', idmonitor))
+    #
+    #     rs = db.query(
+    #         str.format('SELECT taskmeta.task_id, taskmeta.status, crawl_status.idmonitor, '
+    #                    'crawl_status.parameter FROM taskmeta JOIN crawl_status ON taskmeta.task_id = crawl_status.task_id '
+    #         )).fetch_row(maxrows=0)
+    #     for task_id, status, idmonitor, parameter in rs:
+    #         parameter = json.loads(parameter)
+    #         parameter['idmonitor'] = idmonitor
+    #         #生成新任务
+    #         cycle_task = monitor_crawl.apply_async(kwargs=parameter, routing_key='crawl')
+    #         #访问完结束的任务后，将标志位置1
+    #         #db.update({'access_done': 1, }, 'taskmeta', str.format('task_id="{0}"', task_id))
+    #         #更新task_id
+    #         db.update({'task_id': cycle_task.id}, 'crawl_status', str.format('idmonitor={0}', idmonitor))
 
-        rs = db.query(
-            str.format('SELECT taskmeta.task_id, taskmeta.status, crawl_status.idmonitor, '
-                       'crawl_status.parameter FROM taskmeta JOIN crawl_status ON taskmeta.task_id = crawl_status.task_id '
-            )).fetch_row(maxrows=0)
-        for task_id, status, idmonitor, parameter in rs:
-            parameter = json.loads(parameter)
-            parameter['idmonitor'] = idmonitor
-            #生成新任务
-            cycle_task = monitor_crawl.apply_async(kwargs=parameter)
-            #访问完结束的任务后，将标志位置1
-            #db.update({'access_done': 1, }, 'taskmeta', str.format('task_id="{0}"', task_id))
-            #更新task_id
-            db.update({'task_id': cycle_task.id}, 'crawl_status', str.format('idmonitor={0}', idmonitor))
-
-
-# @app.task
-# def monitor_crawl(**kwargs):
-#     """循环监视、爬取"""
-#     #todo for test.NEED delete!
-#     print monitor_crawl.request.id
-#     print kwargs['brand_id'], kwargs['region']
-#     returnask
-
-@app.task
-def new_crawl(**kwargs):
-    """新爬虫添加"""
-    run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
-    crawl = subprocess.Popen("python %s %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE, shell=True)
-    crawl.communicate()
-    return 'crawled'
+    for i in xrange(50000):
+        monitor_crawl.apply_async(routing_key='crawl')
 
 
 @app.task
 def monitor_crawl(**kwargs):
     """循环监视、爬取"""
+    #todo for test.NEED delete!
+    time.sleep(10)
+    return 1
+
+@app.task()
+def new_crawl(**kwargs):
+    """新爬虫添加"""
     run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
+    crawl = subprocess.Popen("python %s %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, shell=True)
+    crawl.communicate()
+    return 'crawled'
 
-    #共享内存用于进程间通讯
-    filename = str(kwargs['brand_id']) + kwargs['region']
-    fd = os.open(filename, os.O_CREAT | os.O_TRUNC | os.O_RDWR)
-    assert os.write(fd, '\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
 
-    mm = mmap.mmap(fd, mmap.PAGESIZE, access=mmap.ACCESS_WRITE)
-    #-----------monitor--------------
-    monitor = subprocess.Popen(
-        "python %s monitor --brand %s --region %s" % (
-            run_crawler, kwargs['brand_id'], kwargs['region']),
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, shell=True)
-    monitor.communicate()
-
-    #-----------重爬----------------
-    #共享内存用于进程间通讯
-    mm.seek(0)
-    if mm.readline() == 'recrawl':
-        #update
-        update = subprocess.Popen(
-            "python %s update --brand %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, shell=True)
-        update.communicate()
-        #crawl
-        crawl = subprocess.Popen("python %s %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE, shell=True)
-        crawl.communicate()
-        return 'has_update', 'recrawled'
-
-    return 'no_update', 'unrecrawled'
-
+# @app.task()
+# def monitor_crawl(**kwargs):
+#     """循环监视、爬取"""
+#     run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
+#
+#     #共享内存用于进程间通讯
+#     filename = str(kwargs['brand_id']) + kwargs['region']
+#     fd = os.open(filename, os.O_CREAT | os.O_TRUNC | os.O_RDWR)
+#     assert os.write(fd, '\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
+#
+#     mm = mmap.mmap(fd, mmap.PAGESIZE, access=mmap.ACCESS_WRITE)
+#     #-----------monitor--------------
+#     monitor = subprocess.Popen(
+#         "python %s monitor --brand %s --region %s" % (
+#             run_crawler, kwargs['brand_id'], kwargs['region']),
+#         stdin=subprocess.PIPE,
+#         stdout=subprocess.PIPE, shell=True)
+#     monitor.communicate()
+#
+#     #-----------重爬----------------
+#     #共享内存用于进程间通讯
+#     mm.seek(0)
+#     get_status = mm.readline()
+#     # print 'return status:', get_status
+#     # print 'recrawl' in get_status
+#     if 'recrawl' in get_status:
+#         #update
+#         update = subprocess.Popen(
+#             "python %s update --brand %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
+#             stdin=subprocess.PIPE,
+#             stdout=subprocess.PIPE, shell=True)
+#         update.communicate()
+#         #crawl
+#         crawl = subprocess.Popen("python %s %s -r %s" % (run_crawler, kwargs['brand_id'], kwargs['region']),
+#                                  stdin=subprocess.PIPE,
+#                                  stdout=subprocess.PIPE, shell=True)
+#         crawl.communicate()
+#         return kwargs['brand_id'], kwargs['region'], 'recrawled'
+#
+#     return kwargs['brand_id'], kwargs['region'], 'no_update'
+#

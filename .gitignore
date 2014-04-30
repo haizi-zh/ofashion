@@ -45,3 +45,4 @@ scripts/sandbox.sql
 **/*.bak
 **/*.exe
 *.cfg
+.svn/

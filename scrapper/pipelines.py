@@ -696,7 +696,7 @@ class MonitorPipeline(UpdatePipeline):
 
                 logger = get_logger(logger_name='monitor')
 
-                filename = str(item['brand_id']) + item['region']
+                filename = str(item['brand']) + item['region']
                 fd = os.open(filename, os.O_RDWR)
                 assert os.write(fd, '\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
 
@@ -706,7 +706,8 @@ class MonitorPipeline(UpdatePipeline):
                 logger.info('Monitor ended--> brand_id:%s, region:%s' % (
                     item['brand'], item['region']))
             self.db.commit()
-        except:
+        except Exception as e:
+            print e
             self.db.rollback()
             raise
 

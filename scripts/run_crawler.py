@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
-
+# import pydevd
+# pydevd.settrace('127.0.0.1', port=33333, stdoutToServer=True, stderrToServer=True)
 from Queue import Queue
 from itertools import ifilter
 import logging

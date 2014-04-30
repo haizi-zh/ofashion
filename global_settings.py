@@ -6,6 +6,7 @@ import os
 from subprocess import check_output
 import sys
 import pkgutil
+import urllib
 import scrapper.spiders
 import inspect
 import imp
@@ -105,4 +106,16 @@ def _load_user_cfg(cfg_file=None, expire=600):
 
 # 切换工作目录
 os.chdir(os.path.split(sys.modules[__name__].__file__)[0])
-_load_user_cfg()
+# _load_user_cfg()
+
+def get_conf_from_SAE():
+
+    new_url = "http://mstore.sinaapp.com/conf"
+    t = urllib.urlopen(new_url)
+    data = json.loads(t.read())
+    self_module = sys.modules[__name__]
+    for k,v in data.iteritems():
+                    # print k,v
+                    setattr(self_module,k,v)
+
+get_conf_from_SAE()
