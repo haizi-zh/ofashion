@@ -14,6 +14,19 @@ from Crypto.Cipher import AES
 
 __author__ = 'Zephyre'
 
+def get_cfg_from_SAE(spider=None):
+    url = "http://mstore.sinaapp.com/conf/?spider=%s"%spider
+    t = urllib.urlopen(url)
+    raw = t.read()
+
+    key = 'keyforrosevision'
+    cipher = AES.new(key, AES.MODE_ECB)
+    data = json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
+
+    self_module = sys.modules[__name__]
+    for k, v in data.iteritems():
+        # print k,v
+        setattr(self_module, k, v)
 
 def _load_user_cfg(cfg_file=None, expire=600):
     """
@@ -97,16 +110,4 @@ def _load_user_cfg(cfg_file=None, expire=600):
 os.chdir(os.path.split(sys.modules[__name__].__file__)[0])
 _load_user_cfg()
 
-def get_cfg_from_SAE(spider=None):
-    url = "http://mstore.sinaapp.com/conf/?spider=%s"%spider
-    t = urllib.urlopen(url)
-    raw = t.read()
 
-    key = 'keyforrosevision'
-    cipher = AES.new(key, AES.MODE_ECB)
-    data = json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
-
-    self_module = sys.modules[__name__]
-    for k, v in data.iteritems():
-        # print k,v
-        setattr(self_module, k, v)
