@@ -14,7 +14,7 @@ from Crypto.Cipher import AES
 
 __author__ = 'Zephyre'
 
-def get_cfg_from_SAE(spider=None, conf_url=None):
+def get_cfg_from_SAE(spider, conf_url):
     url = conf_url+spider
     t = urllib.urlopen(url)
     raw = t.read()
