@@ -13,6 +13,7 @@ import re
 
 
 class FolliFollieSpider(MFashionSpider):
+    """FolliFollie user-agent必须使用ipad才能访问!!!"""
     spider_data = {
         'brand_id': 10138,
         'home_urls': {

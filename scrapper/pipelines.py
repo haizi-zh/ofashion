@@ -11,19 +11,24 @@ import os
 import re
 from urllib2 import quote
 import mmap
+import urllib2
 
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
 from scrapy.exceptions import DropItem
 from scrapy.http import Request
 from PIL import Image
+from upyun import upyun
 from scrapper.mfimages import MFImagesPipeline
+from scripts.run_crawler import get_images_store
 
 from utils.db import RoseVisionDb
 import global_settings as glob
 from utils import info
 from utils.text import unicodify, iterable
 from utils.utils_core import process_price, gen_fingerprint, lxmlparser, get_logger
+
+from scripts.tasks import image_download
 
 
 class MStorePipeline(object):
@@ -711,3 +716,108 @@ class MonitorPipeline(UpdatePipeline):
             self.db.rollback()
             raise
 
+
+def upyun_upload(brand_id, buf, image_path):
+    uri = get_images_store(brand_id)
+    assert uri.startswith('up://')
+    info, dirpath = uri[5:].split('/', 1)
+    UP_USERNAME, UP_PASSWORD, UP_BUCKETNAME = re.split('[:@]', info)
+    up = upyun.UpYun(UP_BUCKETNAME, UP_USERNAME, UP_PASSWORD, timeout=30,
+                     endpoint=upyun.ED_AUTO)
+    full_file = os.path.join(dirpath, image_path)
+    up.put(full_file, buf.getvalue(), checksum=False)
+
+
+def update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path):
+    db = RoseVisionDb()
+    db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
+    rs1 = db.query_match('checksum', 'images_store', {'checksum': checksum})
+    checksum_anchor = rs1.num_rows() > 0
+    rs2 = db.query_match('checksum', 'images_store', {'path': path})
+    path_anchor = rs2.num_rows() > 0
+
+    if rs2.num_rows() == 1:
+        rs = rs2.fetch_row(maxrows=0)
+        if rs[0]['checksum'] == checksum:
+            pass
+
+    if not checksum_anchor and path_anchor:
+        # 说明原来的checksum有误，整体更正
+        upyun_upload(brand_id, buf, image_path)
+        db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
+    elif not checksum_anchor and not path_anchor:
+        # 在images_store里面新增一个item
+        upyun_upload(brand_id, buf, image_path)
+        db.insert({'checksum': checksum, 'url': url, 'path': path,
+                   'width': width, 'height': height, 'format': fmt,
+                   'size': size}, 'images_store')
+
+    db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
+               'fingerprint': gen_fingerprint(brand_id, model)},
+              'products_image', ignore=True)
+
+
+class CeleryPipeline(object):
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(getattr(glob, 'DATABASE')['DB_SPEC'])
+
+    def __init__(self, db_spec):
+        self.db = RoseVisionDb()
+        self.db.conn(db_spec)
+        self.processed_tags = set([])
+
+    def process_item(self, item, spider):
+        if 'image_urls' in item:
+            # spider.log(item)
+            # image_download.apply_async(kwargs=item)
+            i_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9.1) Gecko/20090624 Firefox/3.5",
+                "Accept": "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,image/jpeg,image/gif;q=0.2,*/*;q=0.1",
+            }
+            for url in item['image_urls']:
+                request = urllib2.Request(url, headers=i_headers)
+                response = urllib2.urlopen(request)
+
+                # 确定图像类型
+                content_type = None
+                for k in response.headers:
+                    if k.lower() == 'content-type':
+                        try:
+                            content_type = response.headers[k].lower()
+                        except (TypeError, IndexError):
+                            pass
+                if content_type == 'image/tiff':
+                    ext = 'tif'
+                elif content_type == 'image/png':
+                    ext = 'png'
+                elif content_type == 'image/gif':
+                    ext = 'gif'
+                elif content_type == 'image/bmp':
+                    ext = 'bmp'
+                elif content_type == 'image/jpeg':
+                    ext = 'jpg'
+                else:
+                    raise
+                media_guid = hashlib.sha1(url).hexdigest()
+                image_path = str.format('full/{0}.{1}', media_guid, ext)
+
+                body = response.read()
+
+                buf = StringIO(body)
+                orig_image = Image.open(buf)
+                width, height = orig_image.size
+                fmt = orig_image.format
+                checksum = hashlib.md5(body).hexdigest()
+
+                metadata = item['metadata']
+
+                brand_id = metadata['brand_id']
+                model = metadata['model']
+                size = len(body)
+
+                try:
+                    path = '/'.join([get_images_store(brand_id).split('/')[-1], image_path])
+                    update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path)
+                except:
+                    pass

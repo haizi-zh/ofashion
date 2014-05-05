@@ -87,7 +87,7 @@ def set_up_spider(spider_class, data, spider_type='default'):
         welcome_msg = str.format('STARTING MONITORING, brand={0}, region={1}', brand,
                                  region)
     else:
-        crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
+        crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.CeleryPipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
             if getattr(glob, 'DATABASE')['WRITE_DATABASE'] else {}
         if 'job' in data:
