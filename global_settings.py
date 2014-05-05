@@ -14,8 +14,8 @@ from Crypto.Cipher import AES
 
 __author__ = 'Zephyre'
 
-def get_cfg_from_SAE(spider=None):
-    url = "http://mstore.sinaapp.com/conf/?spider=%s"%spider
+def get_cfg_from_SAE(spider=None, conf_url=None):
+    url = conf_url+spider
     t = urllib.urlopen(url)
     raw = t.read()
 
@@ -98,7 +98,8 @@ def _load_user_cfg(cfg_file=None, expire=600):
         for imp_spec in sorted(read_section('IMPORT').values(),
                                key=lambda val: val['priority'] if 'priority' in val else 0):
             name = imp_spec['name']
-            get_cfg_from_SAE(name)
+            conf_url = read_section('CONFIG_URL').values()[0]['url']
+            get_cfg_from_SAE(name, conf_url)
 
     section_list = filter(lambda val: val != 'IMPORT', config.sections())
     data = dict(map(lambda x, y: (x, y), section_list, map(read_section, section_list)))
