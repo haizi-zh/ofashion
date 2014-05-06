@@ -39,7 +39,7 @@ class UpdateSpider(MFashionBaseSpider):
         region_cond = str.format('region IN ({0})',
                                  ','.join("'" + tmp + "'" for tmp in self.region_list)) if self.region_list else '1'
 
-        rs = self.db.query(str.format('SELECT COUNT(*) FROM products WHERE brand_id IN ({0}) AND {1} AND offline!=1',
+        rs = self.db.query(str.format('SELECT COUNT(*) FROM products WHERE brand_id IN ({0}) AND {1}',
                                       ','.join(str(tmp) for tmp in self.brand_list), region_cond))
         tot_num = int(rs.fetch_row()[0][0])
         self.log(str.format('Total number of records to update: {0}', tot_num), level=log.INFO)
