@@ -138,40 +138,51 @@ def monitor_crawl(**kwargs):
 
 
 def upyun_upload(brand_id, buf, image_path):
-    try:
-        uri = get_images_store(brand_id)
-        assert uri.startswith('up://')
-        info, dirpath = uri[5:].split('/', 1)
-        UP_USERNAME, UP_PASSWORD, UP_BUCKETNAME = re.split('[:@]', info)
-        up = upyun.UpYun(UP_BUCKETNAME, UP_USERNAME, UP_PASSWORD, timeout=30,
-                         endpoint=upyun.ED_AUTO)
-        full_file = os.path.join(dirpath, image_path)
-        up.put(
-            full_file, buf.getvalue(), checksum=False)
-    except:
-        pass
+    uri = get_images_store(brand_id)
+    assert uri.startswith('up://')
+    info, dirpath = uri[5:].split('/', 1)
+    UP_USERNAME, UP_PASSWORD, UP_BUCKETNAME = re.split('[:@]', info)
+    up = upyun.UpYun(UP_BUCKETNAME, UP_USERNAME, UP_PASSWORD, timeout=30,
+                     endpoint=upyun.ED_AUTO)
+    full_file = os.path.join(dirpath, image_path)
+    for i in range(3):
+        try:
+            up.put(full_file, buf.getvalue(), checksum=True)
+            up.getinfo(full_file)
+            break
+        except Exception as e:
+            if i == 2:
+                #todo need to write logs to rsyslog
+                raise e
 
 
-def update_images(checksum, url, path, width, height, fmt, size, brand_id, model):
+def update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path):
     db = RoseVisionDb()
     db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
-    rs = db.query_match('checksum', 'images_store', {'checksum': checksum})
-    checksum_anchor = rs.num_rows() > 0
-    rs = db.query_match('checksum', 'images_store', {'path': path})
-    path_anchor = rs.num_rows() > 0
+    rs1 = db.query_match('checksum', 'images_store', {'checksum': checksum})
+    checksum_anchor = rs1.num_rows() > 0
+    rs2 = db.query_match('checksum', 'images_store', {'path': path})
+    path_anchor = rs2.num_rows() > 0
 
-    if not checksum_anchor and path_anchor:
-        # 说明原来的checksum有误，整体更正
-        db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
-    elif not checksum_anchor and not path_anchor:
-        # 在images_store里面新增一个item
-        db.insert({'checksum': checksum, 'url': url, 'path': path,
-                   'width': width, 'height': height, 'format': fmt,
-                   'size': size}, 'images_store')
+    try:
 
-    db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
-               'fingerprint': gen_fingerprint(brand_id, model)},
-              'products_image', ignore=True)
+        if not checksum_anchor and path_anchor:
+            # 说明原来的checksum有误，整体更正
+            upyun_upload(brand_id, buf, image_path)
+            db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
+        elif not checksum_anchor and not path_anchor:
+            # 在images_store里面新增一个item
+            upyun_upload(brand_id, buf, image_path)
+            db.insert({'checksum': checksum, 'url': url, 'path': path,
+                       'width': width, 'height': height, 'format': fmt,
+                       'size': size}, 'images_store')
+
+        db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
+                   'fingerprint': gen_fingerprint(brand_id, model)},
+                  'products_image', ignore=True)
+    except:
+        #todo need to write logs to rsyslog
+        print('upload image error:%s,%s' % (url, image_path))
 
 
 @app.task()
@@ -180,9 +191,16 @@ def image_download(item):
                  "Accept": "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,image/jpeg,image/gif;q=0.2,*/*;q=0.1",
     }
     for url in item['image_urls']:
-        request = urllib2.Request(url, headers=i_headers)
-        response = urllib2.urlopen(request)
-
+        #获取图片，重试三次
+        for i in xrange(3):
+            try:
+                request = urllib2.Request(url, headers=i_headers)
+                response = urllib2.urlopen(request)
+                break
+            except Exception as e:
+                if i == 2:
+                    #todo need to write logs to rsyslog
+                    raise e
         # 确定图像类型
         content_type = None
         for k in response.headers:
@@ -215,20 +233,10 @@ def image_download(item):
         checksum = hashlib.md5(body).hexdigest()
 
         metadata = item['metadata']
-
         brand_id = metadata['brand_id']
         model = metadata['model']
         size = len(body)
 
-        try:
-            upyun_upload(brand_id, buf, image_path)
-            path = '/'.join(get_images_store(brand_id).split('/')[-1], image_path)
-            update_images(checksum, url, path, width, height, fmt, size, brand_id, model)
-        except:
-            pass
-
-
-
-
-
-
+        path = '/'.join([get_images_store(brand_id).split('/')[-1], image_path])
+        #图片上传，入库顺序执行。
+        update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path)

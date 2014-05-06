@@ -5,6 +5,7 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from cStringIO import StringIO
+import copy
 import hashlib
 import json
 import os
@@ -725,7 +726,14 @@ def upyun_upload(brand_id, buf, image_path):
     up = upyun.UpYun(UP_BUCKETNAME, UP_USERNAME, UP_PASSWORD, timeout=30,
                      endpoint=upyun.ED_AUTO)
     full_file = os.path.join(dirpath, image_path)
-    up.put(full_file, buf.getvalue(), checksum=False)
+    for i in range(3):
+        try:
+            up.put(full_file, buf.getvalue(), checksum=True)
+            up.getinfo(full_file)
+            break
+        except Exception as e:
+            if i == 2:
+                raise e
 
 
 def update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path):
@@ -736,25 +744,27 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
     rs2 = db.query_match('checksum', 'images_store', {'path': path})
     path_anchor = rs2.num_rows() > 0
 
-    if rs2.num_rows() == 1:
-        rs = rs2.fetch_row(maxrows=0)
-        if rs[0]['checksum'] == checksum:
-            pass
 
-    if not checksum_anchor and path_anchor:
-        # 说明原来的checksum有误，整体更正
-        upyun_upload(brand_id, buf, image_path)
-        db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
-    elif not checksum_anchor and not path_anchor:
-        # 在images_store里面新增一个item
-        upyun_upload(brand_id, buf, image_path)
-        db.insert({'checksum': checksum, 'url': url, 'path': path,
-                   'width': width, 'height': height, 'format': fmt,
-                   'size': size}, 'images_store')
 
-    db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
-               'fingerprint': gen_fingerprint(brand_id, model)},
-              'products_image', ignore=True)
+    try:
+
+        if not checksum_anchor and path_anchor:
+            # 说明原来的checksum有误，整体更正
+            upyun_upload(brand_id, buf, image_path)
+            db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
+        elif not checksum_anchor and not path_anchor:
+            # 在images_store里面新增一个item
+            upyun_upload(brand_id, buf, image_path)
+            db.insert({'checksum': checksum, 'url': url, 'path': path,
+                       'width': width, 'height': height, 'format': fmt,
+                       'size': size}, 'images_store')
+
+        db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
+                   'fingerprint': gen_fingerprint(brand_id, model)},
+                  'products_image', ignore=True)
+    except:
+        #todo need to write logs to rsyslog
+        print('upload image error:%s,%s'%(url,image_path))
 
 
 class CeleryPipeline(object):
@@ -770,54 +780,12 @@ class CeleryPipeline(object):
     def process_item(self, item, spider):
         if 'image_urls' in item:
             # spider.log(item)
-            # image_download.apply_async(kwargs=item)
-            i_headers = {
-                "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9.1) Gecko/20090624 Firefox/3.5",
-                "Accept": "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,image/jpeg,image/gif;q=0.2,*/*;q=0.1",
-            }
-            for url in item['image_urls']:
-                request = urllib2.Request(url, headers=i_headers)
-                response = urllib2.urlopen(request)
+            data = copy.deepcopy(item)
+            data['metadata'].pop('description')
+            data['metadata'].pop('category')
+            data['metadata'].pop('color')
+            data['metadata'].pop('name')
+            data['metadata'].pop('touch_time')
+            data['metadata'].pop('update_time')
 
-                # 确定图像类型
-                content_type = None
-                for k in response.headers:
-                    if k.lower() == 'content-type':
-                        try:
-                            content_type = response.headers[k].lower()
-                        except (TypeError, IndexError):
-                            pass
-                if content_type == 'image/tiff':
-                    ext = 'tif'
-                elif content_type == 'image/png':
-                    ext = 'png'
-                elif content_type == 'image/gif':
-                    ext = 'gif'
-                elif content_type == 'image/bmp':
-                    ext = 'bmp'
-                elif content_type == 'image/jpeg':
-                    ext = 'jpg'
-                else:
-                    raise
-                media_guid = hashlib.sha1(url).hexdigest()
-                image_path = str.format('full/{0}.{1}', media_guid, ext)
-
-                body = response.read()
-
-                buf = StringIO(body)
-                orig_image = Image.open(buf)
-                width, height = orig_image.size
-                fmt = orig_image.format
-                checksum = hashlib.md5(body).hexdigest()
-
-                metadata = item['metadata']
-
-                brand_id = metadata['brand_id']
-                model = metadata['model']
-                size = len(body)
-
-                try:
-                    path = '/'.join([get_images_store(brand_id).split('/')[-1], image_path])
-                    update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path)
-                except:
-                    pass
+            image_download.apply_async(kwargs=data)
