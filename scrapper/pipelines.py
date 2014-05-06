@@ -585,6 +585,17 @@ class ProductImagePipeline(ImagesPipeline):
         rs = self.db.query_match('checksum', 'images_store', {'path': path})
         path_anchor = rs.num_rows() > 0
 
+        # checksum_anchor: 说明数据库中已经有记录，其checksum和新插入的图像是一致的。
+        # path_anchor：说明数据库中已经有记录，其path（也就是图像的url），和新插入的图像是一致的。
+        # 这里分为4种情况讨论：
+        # 1. checksum_anchor==True and path_anchor==True：说明一切正常，新增加的图像在数据库中已经有记录。
+        #    不用对images_store作任何操作。
+        # 2. checksum_anchor==True and path_anchor==False：数据库中已经存在这幅图像，但path不符。一般来说，可能是下面这种情况
+        #    引起的：url_a和url_b这两个图像链接，指向了同样一张图像。假定数据库中已有图像记录的链接为url_a。由于url_a和url_b都存在，
+        #    切对应于同一张图像，所以通常我们可以忽略url_b，不用对images_store作任何操作。
+        # 3. checksum_anchor==False and path_anchor=True：二者不一致，说明该path对应图像发生了变化（比如，原网站对图像做了一
+        #    些改动等，但并未更改url链接等）。此时，需要更新数据库的记录。
+        # 4. checksum_anchor==False and path_anchor==False：说明这是一条全新的图像，直接入库。
         if not checksum_anchor and path_anchor:
             # 说明原来的checksum有误，整体更正
             self.db.update({'checksum': checksum}, 'images_store', str.format('path="{0}"', path))
