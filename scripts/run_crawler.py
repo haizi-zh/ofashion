@@ -73,6 +73,9 @@ def set_up_spider(spider_class, data, spider_type='default'):
         spider = spider_class(brand_list, region_list, getattr(glob, 'DATABASE')['DB_SPEC'])
         welcome_msg = str.format('Updating started, processing the following brands: {0}',
                                  ', '.join(str(tmp) for tmp in brand_list))
+
+        # TODO update类型的spider可以指定多个品牌，导致user agent很不好处理。这是一种不太好的架构，以后考虑改成：一个UpdateSpider对应一个特定的品牌
+        major_brand = brand_list[0]
     elif spider_type == 'monitor':
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.MonitorPipeline': 800}
         brand = int(data['brand'][0])
@@ -82,6 +85,7 @@ def set_up_spider(spider_class, data, spider_type='default'):
         spider = spider_class(idmonitor, parameter, getattr(glob, 'DATABASE')['DB_SPEC'])
         welcome_msg = str.format('STARTING MONITORING, idmonitory={0}, brand={1}, region={2}', idmonitor, brand,
                                  region)
+        major_brand = brand
     else:
         crawler.settings.values['ITEM_PIPELINES'] = {'scrapper.pipelines.ProductImagePipeline': 800,
                                                      'scrapper.pipelines.ProductPipeline': 300} \
@@ -123,21 +127,31 @@ def set_up_spider(spider_class, data, spider_type='default'):
         spider = spider_class(region_list)
         welcome_msg = str.format('Spider started, processing the following regions: {0}', ', '.join(region_list))
 
+        major_brand = spider_class.spider_data['brand_id']
+
     crawler.settings.values['AUTOTHROTTLE_ENABLED'] = False
 
     # 设置spider的user agent
-    ua = data['user-agent'][0] if 'user-agent' in data else 'chrome'
-    if ua.lower() == 'chrome':
-        crawler.settings.values[
-            'USER_AGENT'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
-    elif ua.lower() == 'iphone':
-        crawler.settings.values[
-            'USER_AGENT'] = 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5'
-    elif ua.lower() == 'ipad':
-        crawler.settings.values[
-            'USER_AGENT'] = 'Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B334b Safari/531.21.10'
+    # 优先级如下：
+    # 1. 命令行中--user-agent参数指定
+    # 2. 配置文件指定，参见global_settings['USER_AGENT']项目
+    # 3. spider_class中，spider_data['USER_AGENT']指定
+    # 4. 默认为chrome
+    # TODO 以上第2项暂未实现
+    ua_map = {
+        'chrome': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36',
+        'iphone': 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5',
+        'ipad': 'Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B334b Safari/531.21.10'}
+
+    if 'user-agent' in data:
+        ua = data['user-agent'][0]
     else:
-        crawler.settings.values['USER_AGENT'] = ua
+        spider_spec = info.spider_info()[major_brand]['spider_class']
+        if 'user_agent' in spider_spec.spider_data:
+            ua = spider_spec.spider_data['user_agent']
+        else:
+            ua = 'chrome'
+    crawler.settings.values['USER_AGENT'] = ua_map[ua.lower()] if ua.lower() in ua_map else ua
 
     # 设置spider的proxy信息
     crawler.settings.values['DOWNLOADER_MIDDLEWARES'] = {

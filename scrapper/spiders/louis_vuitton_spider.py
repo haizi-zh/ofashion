@@ -44,6 +44,7 @@ class LouisVuittonSpider(MFashionSpider):
             'ca': 'USD',
         },
         'image_host': 'http://images.louisvuitton.com/content/dam/lv/online/picture/',
+        'user_agent': 'ipad'
     }
 
     @classmethod

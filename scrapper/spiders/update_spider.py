@@ -57,8 +57,9 @@ class UpdateSpider(MFashionBaseSpider):
             region_list = filter(lambda val: int(region_info[val]['status']), region_list)
 
             for region in region_list:
+                # 对该brand，该区域的所有商品，无论其下线状态是什么，都进行更新。
                 rs = self.db.query_match({'idproducts', 'url', 'region', 'model'}, 'products',
-                                         {'brand_id': brand, 'region': region}, extra='offline!=1')
+                                         {'brand_id': brand, 'region': region})
                 products_map = {
                     int(tmp['idproducts']): {'url': tmp['url'], 'region': tmp['region'], 'model': tmp['model']} for tmp
                     in
