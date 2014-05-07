@@ -159,13 +159,24 @@ def upyun_upload(brand_id, buf, image_path):
 def update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path):
     db = RoseVisionDb()
     db.conn(getattr(glob, 'DATABASE')['DB_SPEC'])
-    rs1 = db.query_match('checksum', 'images_store', {'checksum': checksum})
-    checksum_anchor = rs1.num_rows() > 0
-    rs2 = db.query_match('checksum', 'images_store', {'path': path})
-    path_anchor = rs2.num_rows() > 0
-
+    db.start_transaction()
     try:
+        rs1 = db.query_match('checksum', 'images_store', {'checksum': checksum})
+        checksum_anchor = rs1.num_rows() > 0
+        rs2 = db.query_match('checksum', 'images_store', {'path': path})
+        path_anchor = rs2.num_rows() > 0
 
+        # checksum_anchor: 说明数据库中已经有记录，其checksum和新插入的图像是一致的。
+        # path_anchor：说明数据库中已经有记录，其path（也就是图像的url），和新插入的图像是一致的。
+        # 这里分为4种情况讨论：
+        # 1. checksum_anchor==True and path_anchor==True：说明一切正常，新增加的图像在数据库中已经有记录。
+        #    不用对images_store作任何操作。
+        # 2. checksum_anchor==True and path_anchor==False：数据库中已经存在这幅图像，但path不符。一般来说，可能是下面这种情况
+        #    引起的：url_a和url_b这两个图像链接，指向了同样一张图像。假定数据库中已有图像记录的链接为url_a。由于url_a和url_b都存在，
+        #    切对应于同一张图像，所以通常我们可以忽略url_b，不用对images_store作任何操作。
+        # 3. checksum_anchor==False and path_anchor=True：二者不一致，说明该path对应图像发生了变化（比如，原网站对图像做了一
+        #    些改动等，但并未更改url链接等）。此时，需要更新数据库的记录。
+        # 4. checksum_anchor==False and path_anchor==False：说明这是一条全新的图像，直接入库。
         if not checksum_anchor and path_anchor:
             # 说明原来的checksum有误，整体更正
             upyun_upload(brand_id, buf, image_path)
@@ -180,14 +191,19 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
         db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
                    'fingerprint': gen_fingerprint(brand_id, model)},
                   'products_image', ignore=True)
+        db.commit()
     except:
-        #todo need to write logs to rsyslog
-        print('upload image error:%s,%s' % (url, image_path))
+        db.rollback()
+        raise
+
 
 
 @app.task()
-def image_download(item):
-    i_headers = {"User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9.1) Gecko/20090624 Firefox/3.5",
+def image_download(**item):
+    ua = item['metadata'][
+        'ua'] if 'ua' in item else 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
+
+    i_headers = {"User-Agent": ua,
                  "Accept": "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,image/jpeg,image/gif;q=0.2,*/*;q=0.1",
     }
     for url in item['image_urls']:
@@ -236,7 +252,10 @@ def image_download(item):
         brand_id = metadata['brand_id']
         model = metadata['model']
         size = len(body)
+        region = metadata['region']
 
+        # print('upload image:%s,%s,%s,%s\n' % (model,region, url, image_path))
         path = '/'.join([get_images_store(brand_id).split('/')[-1], image_path])
         #图片上传，入库顺序执行。
         update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path)
+        # print('upload image:%s,%s,%s,%s\n' % (model,region, url, image_path))

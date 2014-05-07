@@ -62,33 +62,40 @@ CELERY_QUEUES = (
     Queue('videos', media_exchange, routing_key='media.video'),
     Queue('images', media_exchange, routing_key='media.image'),
 
-    Queue('main', default_exchange, routing_key='main'),
-    Queue('crawl', default_exchange, routing_key='crawl'),
+    #main_cycle用于任务分发，置于中心节点,队列使用main做名称
+    Queue('main', default_exchange, routing_key='main_cycle'),
+    #image_download用于图片下载，分发给专门的下载上传节点，队列使用download做名称
+    Queue('download', default_exchange, routing_key='image_download'),
+
 )
 
 
 class MyRouter(object):
     def route_for_task(self, task, args=None, kwargs=None):
-        if task == 'app.tasks.main_cycle':
+        if task == 'tasks.main_cycle':
             return {
-                'exchange': 'default',
-                'exchange_type': 'direct',
-                'routing_key': 'main'}
+                'routing_key': 'main_cycle'}
 
-        if task == 'app.tasks.monitor_crawl':
+        elif task == 'tasks.image_download':
             return {
-                'exchange': 'default',
-                'exchange_type': 'direct',
-                'routing_key': 'crawl'}
+                'routing_key': 'image_download'}
+
+        elif task == 'tasks.new_crawl':
+            return {
+                'routing_key': 'default'}
+
+        elif task == 'tasks.monitor_crawl':
+            return {
+                'routing_key': 'default'}
+        # if task == 'app.tasks.monitor_crawl':
+        #     return {
+        #         'exchange': 'default',
+        #         'exchange_type': 'direct',
+        #         'routing_key': 'crawl'}
         # elif task == 'tasks.test':
         #     return {'exchange': 'main',
         #             'exchange_type': 'direct',
         #             'routing_key': 'main'}
-
-        elif task.startswith('dongwm.tasks.test'):
-            return {
-                "exchange": "broadcast_tasks",
-            }
         else:
             return None
 

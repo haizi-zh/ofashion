@@ -29,7 +29,9 @@ from utils import info
 from utils.text import unicodify, iterable
 from utils.utils_core import process_price, gen_fingerprint, lxmlparser, get_logger
 
-from scripts.tasks import image_download
+import sys
+sys.path.append('/home/rose/Mstore/scripts')
+from tasks import image_download
 
 
 class MStorePipeline(object):
@@ -755,8 +757,6 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
     rs2 = db.query_match('checksum', 'images_store', {'path': path})
     path_anchor = rs2.num_rows() > 0
 
-
-
     try:
 
         if not checksum_anchor and path_anchor:
@@ -775,7 +775,7 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
                   'products_image', ignore=True)
     except:
         #todo need to write logs to rsyslog
-        print('upload image error:%s,%s'%(url,image_path))
+        print('upload image error:%s,%s' % (url, image_path))
 
 
 class CeleryPipeline(object):
@@ -792,11 +792,19 @@ class CeleryPipeline(object):
         if 'image_urls' in item:
             # spider.log(item)
             data = copy.deepcopy(item)
-            data['metadata'].pop('description')
-            data['metadata'].pop('category')
-            data['metadata'].pop('color')
-            data['metadata'].pop('name')
-            data['metadata'].pop('touch_time')
-            data['metadata'].pop('update_time')
+            if 'description' in data['metadata']:
+                data['metadata'].pop('description')
+            if 'category' in data['metadata']:
+                data['metadata'].pop('category')
+            if 'color' in data['metadata']:
+                data['metadata'].pop('color')
+            if 'name' in data['metadata']:
+                data['metadata'].pop('name')
+            if 'touch_time' in data['metadata']:
+                data['metadata'].pop('touch_time')
+            if 'update_time' in data['metadata']:
+                data['metadata'].pop('update_time')
 
+            data['metadata']['ua'] = spider.settings.values['USER_AGENT']
+            data = dict(data)
             image_download.apply_async(kwargs=data)
