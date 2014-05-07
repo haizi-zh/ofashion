@@ -90,7 +90,7 @@ def _load_user_cfg(cfg_file=None, expire=600):
     except IOError:
         pass
 
-    cfg_expire=sys.maxint
+    cfg_expire = None
     # 获得配置文件的过期时间
     if 'IMPORT_MISC' in config.sections():
         tmp = read_section('IMPORT_MISC')
@@ -99,10 +99,10 @@ def _load_user_cfg(cfg_file=None, expire=600):
 
     refresh_cfg = True
     cached_path = 'cached_mstore.cfg'
-    if os.path.exists(cached_path):
+    if cfg_expire and os.path.exists(cached_path):
         delta = (datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(cached_path)))
-        if delta < datetime.timedelta(0,cfg_expire):
-            refresh_cfg=False
+        if delta < datetime.timedelta(0, cfg_expire):
+            refresh_cfg = False
 
     self_module = sys.modules[__name__]
     if not refresh_cfg:
