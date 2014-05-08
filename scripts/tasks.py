@@ -77,7 +77,7 @@ def main_cycle():
             parameter = json.loads(parameter)
             parameter['idmonitor'] = idmonitor
             #生成新任务
-            cycle_task = monitor_crawl.apply_async(kwargs=parameter, routing_key='crawl')
+            cycle_task = monitor_crawl.apply_async(kwargs=parameter)
             #访问完结束的任务后，将标志位置1
             #db.update({'access_done': 1, }, 'taskmeta', str.format('task_id="{0}"', task_id))
             #更新task_id
@@ -197,7 +197,6 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
         raise
 
 
-
 @app.task()
 def image_download(**item):
     ua = item['metadata'][
@@ -206,7 +205,7 @@ def image_download(**item):
     i_headers = {"User-Agent": ua,
                  "Accept": "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,image/jpeg,image/gif;q=0.2,*/*;q=0.1",
     }
-    for url in item['image_urls']:
+    for url in list(set(item['image_urls'])):
         #获取图片，重试三次
         for i in xrange(3):
             try:
@@ -254,7 +253,8 @@ def image_download(**item):
         size = len(body)
         region = metadata['region']
 
-        # print('upload image:%s,%s,%s,%s\n' % (model,region, url, image_path))
+        # print('upload image:%s,%s,%s,%s,%s\n %s' % (model, region, url, image_path,checksum,item))
+        # print 'pid:%s' % os.getpid()
         path = '/'.join([get_images_store(brand_id).split('/')[-1], image_path])
         #图片上传，入库顺序执行。
         update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path)

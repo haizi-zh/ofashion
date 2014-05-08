@@ -30,6 +30,7 @@ from utils.text import unicodify, iterable
 from utils.utils_core import process_price, gen_fingerprint, lxmlparser, get_logger
 
 import sys
+
 sys.path.append('/home/rose/Mstore/scripts')
 from tasks import image_download
 
@@ -768,7 +769,7 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
             upyun_upload(brand_id, buf, image_path)
             db.insert({'checksum': checksum, 'url': url, 'path': path,
                        'width': width, 'height': height, 'format': fmt,
-                       'size': size}, 'images_store')
+                       'size': size}, 'images_store', ignore=True)
 
         db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
                    'fingerprint': gen_fingerprint(brand_id, model)},
@@ -806,5 +807,11 @@ class CeleryPipeline(object):
                 data['metadata'].pop('update_time')
 
             data['metadata']['ua'] = spider.settings.values['USER_AGENT']
+
             data = dict(data)
+            #todo test find duplicate items
+            logger = get_logger(logger_name='item')
+            logger.info(data)
+
             image_download.apply_async(kwargs=data)
+
