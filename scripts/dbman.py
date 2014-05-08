@@ -414,7 +414,7 @@ class PublishRelease(object):
                 price_list[pid] = pid_data[0]
                 # 如果当前没有折扣价，查看是否为一周内原价悄悄下降的情况
                 currency = valid_pid_data[0]['currency']
-                if len(valid_pid_data) > 1 and currency == valid_pid_data[1]['currency']:
+                if price_change_dict[pid]=='D' and len(valid_pid_data) > 1 and currency == valid_pid_data[1]['currency']:
                     if not pid_data[0]['price_discount'] and currency_conv(valid_pid_data[1]['price'],
                                                                            currency) > currency_conv(
                             valid_pid_data[0]['price'], currency) and (
