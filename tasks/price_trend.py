@@ -2,6 +2,7 @@
 import datetime
 import json
 import os
+from scripts.dbman import PublishRelease
 from utils.db import RoseVisionDb
 import global_settings as gs
 from scripts.push_utils import price_changed
@@ -122,24 +123,30 @@ class PriceTrendTasker(object):
                 # Default ssh port
                 ssh_port = 22
 
-        if not ssh_host:
+        if ssh_host:
             # 如果没有SSH信息，说明不需要通过SFTP将结果传输到远端服务器上
-            logger.info('DONE')
-            return
+            logger.info('UPLOADING PRICE TRENDS')
+            # 将变动结果写入临时目录
+            file_name = str.format('/tmp/price_change_{0}.log', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+            with open(file_name, 'wb') as f:
+                f.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
-        logger.info('UPLOADING PRICE TRENDS')
-        # 将变动结果写入临时目录
-        file_name = str.format('/tmp/price_change_{0}.log', datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
-        with open(file_name, 'wb') as f:
-            f.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+            # 指明了SSH信息，需要上传到远程服务器作为备份
 
-        # 指明了SSH信息，需要上传到远程服务器作为备份
+            ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
+            ssh_cmd = str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst,
+                                 file_name)
+            logger.info(str.format('UPLOADING: {0}', ssh_cmd))
+            os.system(ssh_cmd)
+            os.remove(file_name)
 
-        ssh_port_str = str.format('-P {0}', ssh_port) if ssh_port else ''
-        ssh_cmd = str.format('scp {0} {4} {1}@{2}:{3} > /dev/null', ssh_port_str, ssh_user, ssh_host, dst, file_name)
-        logger.info(str.format('UPLOADING: {0}', ssh_cmd))
-        os.system(ssh_cmd)
-        os.remove(file_name)
+        # 发布更新的商品
+        updated_brands = set([])
+        for k in ('discount_down', 'discount_up', 'price_down', 'price_up'):
+            updated_brands = updated_brands.union(result['discount_down'].keys())
+
+        for brand in updated_brands:
+            PublishRelease(brand).run()
 
         logger.info('DONE')
 
