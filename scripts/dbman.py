@@ -438,8 +438,7 @@ class PublishRelease(object):
             # pid_data = filter(lambda val: val['price'], pid_data)
             if valid_pid_data and pid in price_list:
                 price_list[pid]['fetch_time'] = valid_pid_data[-1]['date']
-
-            price_list[pid]['idproducts'] = pid
+                price_list[pid]['idproducts'] = pid
 
         # 如果没有价格信息，则不发布
         if not price_list:
