@@ -13,6 +13,7 @@ import re
 from urllib2 import quote
 import mmap
 import urllib2
+import memcache
 
 from scrapy import log
 from scrapy.contrib.pipeline.images import ImagesPipeline, ImageException
@@ -716,12 +717,8 @@ class MonitorPipeline(UpdatePipeline):
 
                 logger = get_logger(logger_name='monitor')
 
-                filename = str(item['brand']) + item['region']
-                fd = os.open(filename, os.O_RDWR)
-                assert os.write(fd, '\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
-
-                mm = mmap.mmap(fd, mmap.PAGESIZE, access=mmap.ACCESS_WRITE)
-                mm.write('recrawl')
+                mc = memcache.Client(['127.0.0.1:11211'], debug=0)
+                mc.set(str(item['brand']) + item['region'], "recrawl")
 
                 logger.info('Monitor ended--> brand_id:%s, region:%s' % (
                     item['brand'], item['region']))

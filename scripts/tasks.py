@@ -19,7 +19,7 @@ from celery import Celery
 import scripts
 import subprocess
 import json
-import mmap
+import memcache
 from utils.db import RoseVisionDb
 import urllib2
 
@@ -101,11 +101,9 @@ def monitor_crawl(**kwargs):
     run_crawler = os.path.join(scripts.__path__[0], 'run_crawler.py')
 
     #共享内存用于进程间通讯
-    filename = str(kwargs['brand_id']) + kwargs['region']
-    fd = os.open(filename, os.O_CREAT | os.O_TRUNC | os.O_RDWR)
-    assert os.write(fd, '\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
+    mc = memcache.Client(['127.0.0.1:11211'], debug=0)
+    mc.set(str(kwargs['brand_id']) + kwargs['region'], "")
 
-    mm = mmap.mmap(fd, mmap.PAGESIZE, access=mmap.ACCESS_WRITE)
     #-----------monitor--------------
     monitor = subprocess.Popen(
         "python %s monitor --brand %s --region %s" % (
@@ -116,10 +114,8 @@ def monitor_crawl(**kwargs):
 
     #-----------重爬----------------
     #共享内存用于进程间通讯
-    mm.seek(0)
-    get_status = mm.readline()
-    # print 'return status:', get_status
-    # print 'recrawl' in get_status
+    get_status = mc.get(str(kwargs['brand_id']) + kwargs['region'])
+
     if 'recrawl' in get_status:
         #update
         update = subprocess.Popen(
