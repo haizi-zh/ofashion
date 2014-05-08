@@ -471,7 +471,7 @@ class ProductImagePipeline(ImagesPipeline):
 
     def get_media_requests(self, item, info):
         if 'image_urls' in item:
-            for url in item['image_urls']:
+            for url in set(item['image_urls']):
                 yield Request(url)
 
     def preprocess(self, results, item):
