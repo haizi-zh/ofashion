@@ -368,6 +368,8 @@ class PublishRelease(object):
         url_dict = {int(val['idproducts']): val['url'] for val in prods}
         offline_dict = {int(val['idproducts']): int(val['offline']) for val in prods}
         price_change_dict = {int(val['idproducts']): val['price_change'] for val in prods}
+        update_time_dict = {int(val['idproducts']): datetime.datetime.strptime(val['update_time'], "%Y-%m-%d %H:%M:%S")
+                            for val in prods}
         # pid和region之间的关系
         region_dict = {int(val['idproducts']): val['region'] for val in prods}
         price_list = {}
@@ -421,21 +423,23 @@ class PublishRelease(object):
                         price_list[pid]['price'] = valid_pid_data[1]['price']
             else:
                 # 寻找回溯第一条price不为None的数据。
-                tmp = filter(lambda val: val['price'], pid_data)
-                if not tmp:
+                # tmp = filter(lambda val: val['price'], pid_data)
+                if not valid_pid_data:
                     # 没有价格信息，取消该pid记录
                     price_list.pop(pid)
                 else:
                     # 取最近一次价格，同时取消折扣价，保留最新记录的offline状态
-                    tmp = tmp[0]
+                    tmp = valid_pid_data[0]
                     tmp['price_discount'] = None
                     price_list[pid] = tmp
 
             # 第一次有效价格对应的时间，为fetch_time
             # pid_data = filter(lambda val: val['price'], sorted(pid_data, key=lambda val: val['date']))
-            pid_data = filter(lambda val: val['price'], pid_data)
-            if pid_data and pid in price_list:
-                price_list[pid]['fetch_time'] = pid_data[-1]['date']
+            # pid_data = filter(lambda val: val['price'], pid_data)
+            if valid_pid_data and pid in price_list:
+                price_list[pid]['fetch_time'] = valid_pid_data[-1]['date']
+
+            price_list[pid]['idproducts'] = pid
 
         # 如果没有价格信息，则不发布
         if not price_list:
@@ -463,24 +467,34 @@ class PublishRelease(object):
                     tmp = map(lambda key_name: currency_conv(price_item[key_name], price_item['currency']),
                               ('price', 'price_discount'))
                     tmp.extend(
-                        [price_item[key] for key in ('price_change', 'price', 'price_discount', 'currency', 'date')])
+                        [price_item[key] for key in
+                         ('price_change', 'price', 'price_discount', 'currency', 'date', 'idproducts')])
                     alt_prices.append(tmp)
                 else:
                     alt_prices.append(
                         [currency_conv(price_item['price'], price_item['currency']), None, price_item['price_change'],
-                         price_item['price'], price_item['price_discount'], price_item['currency'], price_item['date']])
+                         price_item['price'], price_item['price_discount'], price_item['currency'], price_item['date'],
+                         price_item['idproducts']])
             else:
                 alt_prices.append(
                     [currency_conv(price_item['price'], price_item['currency']), None, price_item['price_change'],
-                     price_item['price'], price_item['price_discount'], price_item['currency'], price_item['date']])
+                     price_item['price'], price_item['price_discount'], price_item['currency'], price_item['date'],
+                     price_item['idproducts']])
 
         # 返回的价格：如果有折扣价，返回折扣价；如果没有，返回原价
         alt_prices = sorted(alt_prices, key=lambda val: val[1] if val[1] else val[0])
+
         entry['price'], entry['price_discount'] = alt_prices[0][:2] if alt_prices else (None,) * 2
         entry['price_change'] = alt_prices[0][2] if alt_prices else '0'
         entry['o_price'], entry['o_discount'], entry['o_currency'] = alt_prices[0][3:6]
+
+        # 取消entry['price_list']中的idproducts
+        for i in xrange(len(entry['price_list'])):
+            entry['price_list'][i].pop('idproducts')
         entry['price_list'] = json.dumps(entry['price_list'], ensure_ascii=False)
+
         entry['last_price_ts'] = alt_prices[0][6]
+        entry['product_update_ts'] = update_time_dict[alt_prices[0][7]].strftime("%Y-%m-%d %H:%M:%S")
 
         # 搜索字段
         search_text = u' '.join(entry[tmp] if entry[tmp] else '' for tmp in
