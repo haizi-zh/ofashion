@@ -39,32 +39,22 @@ class BackupTasker(object):
         host_str = str.format('-h{0}', host) if host else ''
         port_str = str.format('-P{0}', port) if port else ''
 
-        # 获得schema中的所有table
-        with RoseVisionDb(db_spec) as db:
-            tables = [tmp[0] for tmp in db.query(
-                str.format('select TABLE_NAME from information_schema.tables where TABLE_SCHEMA="{0}"',
-                           schema)).fetch_row(maxrows=0)]
+        tmp_file = '/tmp/single_backup.sql'
+        # single-transaction备份
+        logger.info('EXPORTING...')
+        os.system(
+            str.format('mysqldump {3} {4} -u {0} -p{1} --single-transaction {2} > {5}', db_user,
+                       db_pwd, schema, host_str, port_str, tmp_file))
 
-        # tables = ['brand_info', 'brand_duration', 'translation', 'region_info', 'images_store', 'mfashion_tags',
-        #           'original_tags', 'products', 'products_image', 'products_mfashion_tags', 'products_original_tags',
-        #           'products_price_history', 'products_release', 'products_translate']
-        for table in tables:
-            logger.info(str.format('EXPORTING {0}...', table))
-            os.system(
-                str.format('mysqldump {3} {4} -u {0} -p{1} -c {2} {5} > /tmp/{5}.sql', db_user, db_pwd, schema,
-                           host_str, port_str, table))
-
-        # 将所有的sql文件打包
+        # 打包
         logger.info('ZIPPING...')
         backup_name = os.path.join(getattr(glob, 'STORAGE')['STORAGE_PATH'], 'backups',
                                    str.format('{0}_auto_backup.7z', datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
-        os.system(str.format('7z a -mx7 {0} {1} > /dev/null', backup_name,
-                             ' '.join(str.format('/tmp/{0}.sql', tmp) for tmp in tables)))
+        os.system(str.format('7z a -mx7 {0} {1} > /dev/null', backup_name, tmp_file))
 
         # 移除临时sql文件
         logger.info('REMOVING TEMPORARY SQL FILES...')
-        for rm_file in [str.format('/tmp/{0}.sql', tmp) for tmp in tables]:
-            os.remove(rm_file)
+        os.remove(tmp_file)
 
         # SCP
         if ssh_user and ssh_host and ssh_port:
