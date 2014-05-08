@@ -24,21 +24,6 @@ def get_cfg_from_SAE(spider, conf_url):
     cipher = AES.new(key, AES.MODE_ECB)
     return json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
 
-
-def get_cfg_from_SAE(spider, conf_url):
-    url = conf_url+spider
-    t = urllib.urlopen(url)
-    raw = t.read()
-
-    key = 'keyforrosevision'
-    cipher = AES.new(key, AES.MODE_ECB)
-    data = json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
-
-    self_module = sys.modules[__name__]
-    for k, v in data.iteritems():
-        # print k,v
-        setattr(self_module, k, v)
-
 def _load_user_cfg(cfg_file=None, expire=600):
     """
     功能：加载配置文件。
@@ -132,7 +117,7 @@ def _load_user_cfg(cfg_file=None, expire=600):
                 name = imp_spec['name']
                 conf_url = read_section('CONFIG_URL').values()[0]['url']
                 data = get_cfg_from_SAE(name, conf_url)
-                for key, value in data.items():
+                for key, value in data.iteritems():
                     all_settings[key] = value
 
         section_list = filter(lambda val: val != 'IMPORT', config.sections())
