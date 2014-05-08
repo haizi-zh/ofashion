@@ -40,7 +40,7 @@ class FingerprintCheck(object):
 
     def run(self):
         db = RoseVisionDb()
-        db.conn(getattr(gs,'DATABASE')['DB_SPEC'])
+        db.conn(getattr(gs, 'DATABASE')['DB_SPEC'])
 
         if not self.brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
@@ -107,7 +107,7 @@ class PriceCheck(object):
 
     def run(self):
         db = RoseVisionDb()
-        db.conn(getattr(gs,'DATABASE')['DB_SPEC'])
+        db.conn(getattr(gs, 'DATABASE')['DB_SPEC'])
 
         if not self.brand_list:
             rs = db.query_match(['brand_id'], 'products', distinct=True)
@@ -222,7 +222,7 @@ class ProcessTags(object):
     prod_mt_tbl = 'products_mfashion_tags'
     products = 'products'
 
-    db_spec = getattr(gs,'DATABASE')['DB_SPEC']
+    db_spec = getattr(gs, 'DATABASE')['DB_SPEC']
     tot = 1
     progress = 0
 
@@ -376,8 +376,8 @@ class PublishRelease(object):
                                    self.price_hist, {},
                                    str.format('idproducts IN ({0})',
                                               ','.join(val['idproducts'] for val in prods)),
-                                   tail_str='ORDER BY date DESC').fetch_row(maxrows=0,
-                                                                            how=1):
+                                   tail_str='ORDER BY idprice_history DESC').fetch_row(maxrows=0,
+                                                                                       how=1):
             pid = int(item['idproducts'])
             region = region_dict[pid]
             offline = offline_dict[pid]
@@ -391,7 +391,8 @@ class PublishRelease(object):
             price_list[pid].append({'price': price, 'price_discount': price_discount, 'currency': item['currency'],
                                     'date': datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M:%S"),
                                     'price_change': price_change_dict[pid], 'url': url_dict[pid],
-                                    'offline': offline, 'code': region, 'country': info.region_info()[region]['name_c']})
+                                    'offline': offline, 'code': region,
+                                    'country': info.region_info()[region]['name_c']})
 
         currency_conv = lambda val, currency: info.currency_info()[currency]['rate'] * val
 
@@ -403,9 +404,21 @@ class PublishRelease(object):
             # 按照时间顺序逆排序，同时只保留price不为None的数据
             # pid_data = sorted(pid_data, key=lambda val: val['date'], reverse=True)
 
+            # 有价格的pid_data子集
+            valid_pid_data = filter(lambda val: val['price'], pid_data)
+
             if pid_data[0]['price']:
                 # 正常情况
                 price_list[pid] = pid_data[0]
+                # 如果当前没有折扣价，查看是否为一周内原价悄悄下降的情况
+                currency = valid_pid_data[0]['currency']
+                if len(valid_pid_data) > 1 and currency == valid_pid_data[1]['currency']:
+                    if not pid_data[0]['price_discount'] and currency_conv(valid_pid_data[1]['price'],
+                                                                           currency) > currency_conv(
+                            valid_pid_data[0]['price'], currency) and (
+                                datetime.datetime.now() - valid_pid_data[0]['date']) < datetime.timedelta(7):
+                        price_list[pid]['price_discount'] = price_list[pid]['price']
+                        price_list[pid]['price'] = valid_pid_data[1]['price']
             else:
                 # 寻找回溯第一条price不为None的数据。
                 tmp = filter(lambda val: val['price'], pid_data)
@@ -554,7 +567,7 @@ def currency_update(param_dict):
     @param param_dict:
     """
     db = RoseVisionDb()
-    db.conn(getattr(gs,'DATABASE')['DB_SPEC'])
+    db.conn(getattr(gs, 'DATABASE')['DB_SPEC'])
     rs = db.query_match(['iso_code', 'currency'], 'region_info').fetch_row(maxrows=0)
     db.start_transaction()
     try:
