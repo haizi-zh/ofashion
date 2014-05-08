@@ -47,3 +47,5 @@ sandbox.py
 **/*.exe
 *.cfg
 sandbox.py
+storage/
+

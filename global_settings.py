@@ -14,19 +14,16 @@ from Crypto.Cipher import AES
 
 __author__ = 'Zephyre'
 
+
 def get_cfg_from_SAE(spider, conf_url):
-    url = conf_url+spider
+    url = conf_url + spider
     t = urllib.urlopen(url)
     raw = t.read()
 
     key = 'keyforrosevision'
     cipher = AES.new(key, AES.MODE_ECB)
-    data = json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
+    return json.loads(cipher.decrypt(base64.b64decode(raw)).strip())
 
-    self_module = sys.modules[__name__]
-    for k, v in data.iteritems():
-        # print k,v
-        setattr(self_module, k, v)
 
 def get_cfg_from_SAE(spider, conf_url):
     url = conf_url+spider
@@ -107,19 +104,47 @@ def _load_user_cfg(cfg_file=None, expire=600):
     except IOError:
         pass
 
-    # 尝试读取远程配置文件
-    if 'IMPORT' in config.sections():
-        for imp_spec in sorted(read_section('IMPORT').values(),
-                               key=lambda val: val['priority'] if 'priority' in val else 0):
-            name = imp_spec['name']
+    cfg_expire=sys.maxint
+    # 获得配置文件的过期时间
+    if 'IMPORT_MISC' in config.sections():
+        tmp = read_section('IMPORT_MISC')
+        if 'EXPIRE' in tmp:
+            cfg_expire = tmp['EXPIRE'] * 60
 
-            conf_url = read_section('CONFIG_URL').values()[0]['url']
-            get_cfg_from_SAE(name, conf_url)
+    refresh_cfg = True
+    cached_path = 'cached_mstore.cfg'
+    if os.path.exists(cached_path):
+        delta = (datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(cached_path)))
+        if delta < datetime.timedelta(0,cfg_expire):
+            refresh_cfg=False
 
-    section_list = filter(lambda val: val != 'IMPORT', config.sections())
-    data = dict(map(lambda x, y: (x, y), section_list, map(read_section, section_list)))
     self_module = sys.modules[__name__]
-    for key, value in data.items():
+    if not refresh_cfg:
+        with open(cached_path, 'rb') as f:
+            all_settings = json.load(f)
+    else:
+        all_settings = {}
+
+        # 尝试读取远程配置文件
+        if 'IMPORT' in config.sections():
+            for imp_spec in sorted(read_section('IMPORT').values(),
+                                   key=lambda val: val['priority'] if 'priority' in val else 0):
+                name = imp_spec['name']
+                conf_url = read_section('CONFIG_URL').values()[0]['url']
+                data = get_cfg_from_SAE(name, conf_url)
+                for key, value in data.items():
+                    all_settings[key] = value
+
+        section_list = filter(lambda val: val != 'IMPORT', config.sections())
+        data = dict(map(lambda x, y: (x, y), section_list, map(read_section, section_list)))
+        for key, value in data.items():
+            all_settings[key] = value
+
+        with open(cached_path, 'wb') as f:
+            json.dump(all_settings, f)
+
+    # 加载设置
+    for key, value in all_settings.items():
         setattr(self_module, key, value)
 
 # 切换工作目录
