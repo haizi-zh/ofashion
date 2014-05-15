@@ -338,6 +338,21 @@ class BallySpider(MFashionSpider):
         return descripton
 
     @classmethod
+    def fetch_details(cls, response, spider=None):
+        sel = Selector(response)
+
+        details = None
+        try:
+            details_node = sel.xpath('//div[@id="descr_content"]/div[@class="ItemDescription"]')
+            if details_node:
+                details = details_node.xpath('./text()').extract()
+                details = cls.reformat(u'\r\n'.join(details))
+        except(TypeError, IndexError):
+            pass
+
+        return details
+
+    @classmethod
     def fetch_color(cls, response, spider=None):
         sel = Selector(response)
 
