@@ -2,14 +2,14 @@
 from kombu import Exchange, Queue
 from celery.schedules import crontab
 
-BROKER_URL = 'amqp://rose:rosecelery@173.255.255.30:5672/celery'
+BROKER_URL = 'amqp://rose:rosecelery@192.168.1.111:5672/celery'
 # BROKER_URL = 'amqp://rose:rosecelery@localhost:5672/celery'
 # BROKER_URL = 'amqp://guest:guest@localhost:5672/celery'
 
 # CELERY_RESULT_BACKEND = 'amqp://'
 
 #add 'celery' table to mysql as the backend
-CELERY_RESULT_BACKEND = 'db+mysql://root:rose123@173.255.255.30/celery'
+CELERY_RESULT_BACKEND = 'db+mysql://rose:rose123@192.168.1.111/celery'
 CELERY_RESULT_DB_TABLENAMES = {
     'task': 'taskmeta',
     'group': 'groupmeta',

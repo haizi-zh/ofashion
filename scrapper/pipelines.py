@@ -718,7 +718,7 @@ class MonitorPipeline(UpdatePipeline):
                 logger = get_logger(logger_name='monitor')
 
                 mc = memcache.Client(['127.0.0.1:11211'], debug=0)
-                mc.set(str(item['brand']) + item['region'], "recrawl")
+                mc.set(str(str(item['brand']) + item['region']), "recrawl")
 
                 logger.info('Monitor ended--> brand_id:%s, region:%s' % (
                     item['brand'], item['region']))
@@ -807,8 +807,8 @@ class CeleryPipeline(object):
 
             data = dict(data)
             #todo test find duplicate items
-            logger = get_logger(logger_name='item')
-            logger.info(data)
+            # logger = get_logger(logger_name='item')
+            # logger.info(data)
 
             image_download.apply_async(kwargs=data)
 

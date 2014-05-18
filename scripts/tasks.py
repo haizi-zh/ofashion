@@ -30,7 +30,9 @@ app.config_from_object('scripts.celeryconfig')
 
 # command:
 # export PYTHONPATH=/home/rose/MStore;
-# celery -A tasks worker -l info -Q queues -n xxx
+# celery -A tasks worker -l info -Q main -n main
+# celery -A tasks worker -l info -Q download -n download
+# celery -A tasks worker -l info -Q default -n default
 # celery flower --address=0.0.0.0 --port=5555 --broker=amqp://rose:rosecelery@localhost:5672/celery
 # celery beat
 #
@@ -102,7 +104,7 @@ def monitor_crawl(**kwargs):
 
     #共享内存用于进程间通讯
     mc = memcache.Client(['127.0.0.1:11211'], debug=0)
-    mc.set(str(kwargs['brand_id']) + kwargs['region'], "")
+    mc.set(str(str(kwargs['brand_id']) + kwargs['region']), "")
 
     #-----------monitor--------------
     monitor = subprocess.Popen(
@@ -114,7 +116,7 @@ def monitor_crawl(**kwargs):
 
     #-----------重爬----------------
     #共享内存用于进程间通讯
-    get_status = mc.get(str(kwargs['brand_id']) + kwargs['region'])
+    get_status = mc.get(str(str(kwargs['brand_id']) + kwargs['region']))
 
     if 'recrawl' in get_status:
         #update
@@ -182,7 +184,7 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
             upyun_upload(brand_id, buf, image_path)
             db.insert({'checksum': checksum, 'url': url, 'path': path,
                        'width': width, 'height': height, 'format': fmt,
-                       'size': size}, 'images_store')
+                       'size': size}, 'images_store', ignore=True)
 
         db.insert({'checksum': checksum, 'brand_id': brand_id, 'model': model,
                    'fingerprint': gen_fingerprint(brand_id, model)},
@@ -195,6 +197,7 @@ def update_images(checksum, url, path, width, height, fmt, size, brand_id, model
 
 @app.task()
 def image_download(**item):
+
     ua = item['metadata'][
         'ua'] if 'ua' in item else 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36'
 
@@ -202,6 +205,7 @@ def image_download(**item):
                  "Accept": "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,image/jpeg,image/gif;q=0.2,*/*;q=0.1",
     }
     for url in list(set(item['image_urls'])):
+        t = time.time()
         #获取图片，重试三次
         for i in xrange(3):
             try:
@@ -213,6 +217,9 @@ def image_download(**item):
                     #todo need to write logs to rsyslog
                     raise e
         # 确定图像类型
+        tt1 = time.time()
+        print 'download time:%s'%(tt1 - t)
+
         content_type = None
         for k in response.headers:
             if k.lower() == 'content-type':
@@ -232,8 +239,13 @@ def image_download(**item):
             ext = 'jpg'
         else:
             raise
+
+
         media_guid = hashlib.sha1(url).hexdigest()
         image_path = str.format('full/{0}.{1}', media_guid, ext)
+
+        tt2 = time.time()
+        print 'hash time:%s'%(tt2 - tt1)
 
         body = response.read()
 
@@ -241,7 +253,14 @@ def image_download(**item):
         orig_image = Image.open(buf)
         width, height = orig_image.size
         fmt = orig_image.format
+
+        tt3 = time.time()
+        print 'image buf time:%s'%(tt3 - tt2)
+
         checksum = hashlib.md5(body).hexdigest()
+
+        tt4 = time.time()
+        print 'checksum time:%s'%(tt4 - tt3)
 
         metadata = item['metadata']
         brand_id = metadata['brand_id']
@@ -253,5 +272,9 @@ def image_download(**item):
         # print 'pid:%s' % os.getpid()
         path = '/'.join([get_images_store(brand_id).split('/')[-1], image_path])
         #图片上传，入库顺序执行。
+        t1 = time.time()
+        print 'get image elapse:%s'%(t1 - tt4)
         update_images(checksum, url, path, width, height, fmt, size, brand_id, model, buf, image_path)
+        t2 = time.time()
+        print 'upload image elapse:%s'%(t2 - t1)
         # print('upload image:%s,%s,%s,%s\n' % (model,region, url, image_path))
