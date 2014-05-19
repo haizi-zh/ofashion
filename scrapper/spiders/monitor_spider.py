@@ -49,7 +49,6 @@ class MonitorSpider(UpdateSpider):
                           meta={'brand': int(item['brand_id']),
                                 'pid': item['idproducts'],
                                 'region': item['region'],
-                                'model': item['model'],
-                                'idmonitor': self.idmonitor},
+                                'model': item['model']},
                           errback=self.onerror,
                           dont_filter=True)
