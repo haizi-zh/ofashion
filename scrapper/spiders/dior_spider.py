@@ -331,7 +331,7 @@ class DiorSpider(MFashionSpider):
         price = None
         price_node = sel.xpath('//div[@class="modEcommerce"]//span[@class="hoverPrice"][text()]')
         if not price_node:
-            price_node = sel.xpath('//div[@class="modEcommerce"]//*[@class="price"][text()]')
+            price_node = sel.xpath('//div[@class="modEcommerce"]//*[@class="value"][text()]')
         if price_node:
             try:
                 price = price_node.xpath('./text()').extract()[0]
